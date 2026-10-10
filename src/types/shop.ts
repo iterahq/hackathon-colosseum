@@ -73,6 +73,15 @@ export interface ShopItem {
   equipped: boolean;
   /** Inks and frames are bought per certification: the trail (unit) ids this one was bought for. */
   ownedRefs: string[];
+  /** Present on an item that is also earned: free to claim once the learner reaches `level`. */
+  unlock?: ShopUnlock | null;
+}
+
+export interface ShopUnlock {
+  level: number;
+  /** Null when nobody is signed in. */
+  currentLevel: number | null;
+  unlocked: boolean;
 }
 
 export interface PurchaseIntent {

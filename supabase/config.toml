@@ -59,3 +59,7 @@ verify_jwt = false
 # Invite code, claim and status. Same rule as `passport`: the token is checked in code.
 [functions.referral]
 verify_jwt = false
+
+# Takes an item the learner earned (level unlock) without payment. Token checked in code.
+[functions.shop-claim]
+verify_jwt = false

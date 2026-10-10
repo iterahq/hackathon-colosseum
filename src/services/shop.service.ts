@@ -1,7 +1,7 @@
 /** Tera's shop: the item list and the purchase rail (intent -> wallet signature -> confirm), plus the devnet faucet. */
-import { toConfirmation, toFaucet, toIntent, toShopItems } from '@/services/shopNormalize';
+import { toConfirmation, toFaucet, toIntent, toShopItems, toSnapshot } from '@/services/shopNormalize';
 import { ShopCallError, callShop } from '@/services/shopTransport';
-import type { FaucetResult, PurchaseConfirmation, PurchaseIntent, ShopItem } from '@/types/shop';
+import type { CompanionSnapshot, FaucetResult, PurchaseConfirmation, PurchaseIntent, ShopItem } from '@/types/shop';
 
 export async function getShopItems(lang: string): Promise<ShopItem[]> {
   const { data } = await callShop('shop-items', { method: 'GET', query: { lang } });
@@ -38,6 +38,12 @@ export const confirmPurchase = (intentId: string, signature: string, lang: strin
 
 /** For a wallet that only signed: the backend broadcasts `signedTransaction` (base64), then answers like `purchase-confirm`. Idempotent. */
 export const submitPurchase = (intentId: string, signedTransaction: string, lang: string) => settle('purchase-submit', { intent_id: intentId, signed_transaction: signedTransaction, lang });
+
+/** Takes an item the learner earned (a level unlock) without paying. Idempotent on the backend. */
+export async function claimShopItem(itemKey: string, lang: string): Promise<CompanionSnapshot> {
+  const { data, mocked } = await callShop('shop-claim', { body: { item_key: itemKey, lang } });
+  return toSnapshot(data, mocked);
+}
 
 export async function requestFaucet(): Promise<FaucetResult> {
   const { data } = await callShop('wallet-faucet', { body: {} });

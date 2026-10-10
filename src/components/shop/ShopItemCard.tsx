@@ -14,17 +14,19 @@ interface Props {
   /** Highlights the card while its outfit is on the big Tera. */
   active?: boolean;
   onBuy: () => void;
+  /** Present when the item can be taken for free right now (a level unlock). */
+  onClaim?: () => void;
   onEquip?: () => void;
   onUnequip?: () => void;
   onPreview?: () => void;
 }
 
 /** One thing on the shelf: art, title, description, the backend's price with a devnet badge, and what you can do with it. */
-export function ShopItemCard({ item, art, children, busy, buyDisabled = false, active = false, onBuy, onEquip, onUnequip, onPreview }: Props) {
+export function ShopItemCard({ item, art, children, busy, buyDisabled = false, active = false, onBuy, onClaim, onEquip, onUnequip, onPreview }: Props) {
   const { t } = useI18n();
   const consumable = item.kind === 'life';
   const owned = item.owned && !consumable;
-  const state = owned ? (item.equipped ? 'equipped' : 'owned') : 'buy';
+  const state = owned ? (item.equipped ? 'equipped' : 'owned') : onClaim ? 'claim' : 'buy';
 
   return (
     <article
@@ -52,12 +54,17 @@ export function ShopItemCard({ item, art, children, busy, buyDisabled = false, a
         <p className="[font:400_14px/1.45_Inter] text-[#C9BFB0]">{item.description}</p>
         {children}
         <div className="mt-auto flex flex-col gap-3 pt-2">
-          {!owned && (
+          {state === 'buy' && (
             <span className="flex flex-wrap items-center gap-2">
               <span className="[font:700_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="shop-price">
                 {item.priceLabel}
               </span>
             </span>
+          )}
+          {state === 'claim' && (
+            <button type="button" disabled={busy} onClick={onClaim} data-testid="shop-claim" className={`${BTN_PRIMARY} ${BTN_SMALL} w-full`}>
+              {t('shop.claim')}
+            </button>
           )}
           {state === 'buy' && (
             <button type="button" disabled={busy || buyDisabled} onClick={onBuy} data-testid="shop-buy" className={`${BTN_PRIMARY} ${BTN_SMALL} w-full`}>

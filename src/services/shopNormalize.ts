@@ -12,6 +12,7 @@ import type {
   PurchaseStatus,
   ShopItem,
   ShopItemKind,
+  ShopUnlock,
 } from '@/types/shop';
 import { DEFAULT_MAX_LIVES, DEFAULT_REGEN_SECONDS } from '@/utils/lives';
 import { priceLabel } from '@/utils/shopPrice';
@@ -87,6 +88,12 @@ export function toLivesUpdate(v: unknown): LivesUpdate {
   return { lives, companion: r.companion ? toCompanion(r.companion) : null, bonus, chain: toChain(r.chain) };
 }
 
+export function toUnlock(v: unknown): ShopUnlock | null {
+  const r = row(v);
+  if (typeof r.level !== 'number') return null;
+  return { level: r.level, currentLevel: typeof r.current_level === 'number' ? r.current_level : null, unlocked: r.unlocked === true };
+}
+
 export function toShopItems(v: unknown): ShopItem[] {
   const list = Array.isArray(v) ? v : row(v).items;
   return rows(list)
@@ -105,6 +112,7 @@ export function toShopItems(v: unknown): ShopItem[] {
         owned: r.owned === true,
         equipped: r.equipped === true,
         ownedRefs: Array.isArray(r.owned_refs) ? r.owned_refs.filter((ref): ref is string => typeof ref === 'string') : [],
+        unlock: toUnlock(r.unlock),
       };
     })
     .filter((item) => item.key);
