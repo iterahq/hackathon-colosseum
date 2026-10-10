@@ -72,6 +72,8 @@ describe('companion mirror', () => {
     outfit: 'outfit_crown',
     stats: { level: 4, xp: 780, streak: 2 },
     assetAddress: null,
+    mirrored: null,
+    mirroredAt: null,
   };
 
   it('mirrors lives, outfit and stats as string attributes', () => {

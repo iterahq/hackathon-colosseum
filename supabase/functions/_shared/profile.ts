@@ -1,5 +1,5 @@
 import type { Lang } from './art.ts';
-import { companionFromAttributes, companionImageUrl, type CompanionValues } from './companion.ts';
+import { companionChainImageUrl, companionFromAttributes, companionImageUrl, type CompanionValues } from './companion.ts';
 import { cosmeticsOf } from './cosmetics.ts';
 import {
   APP_URL,
@@ -30,6 +30,8 @@ export interface ProfileCompanion {
   id: string;
   asset_address: string;
   version: number;
+  /** When the asset's attributes were last written; `null` when unknown. */
+  mirrored_at: string | null;
   /** The database's values, used only when the asset could not be read. */
   stored: CompanionValues;
 }
@@ -126,7 +128,11 @@ export function buildProfile(input: ProfileInput) {
       asset,
       verified: check(asset, config.collection_companions),
       ...values,
-      image_url: `${companionImageUrl(functionsBase, id)}${langQuery(lang, `${version}-${values.outfit ?? 'none'}`)}`,
+      // Chain values come with art that draws the same values; the database fallback keeps the live art.
+      image_url: read
+        ? companionChainImageUrl(functionsBase, id, values, lang)
+        : `${companionImageUrl(functionsBase, id)}${langQuery(lang, `${version}-${values.outfit ?? 'none'}`)}`,
+      mirrored_at: input.companion.mirrored_at,
       explorer_url: explorerUrl('address', asset),
     };
   }

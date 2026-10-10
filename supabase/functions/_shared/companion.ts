@@ -14,6 +14,9 @@ export interface CompanionSnapshot {
   outfit: string | null;
   stats: CompanionStats;
   assetAddress: string | null;
+  /** The attributes last written on chain and when; `null` before the first mirror or when unknown. */
+  mirrored: OnchainAttribute[] | null;
+  mirroredAt: string | null;
 }
 
 const TEXT = {
@@ -27,6 +30,15 @@ export function companionMetadataUrl(functionsBase: string, companionId: string)
 
 export function companionImageUrl(functionsBase: string, companionId: string): string {
   return `${companionMetadataUrl(functionsBase, companionId)}/image.svg`;
+}
+
+/**
+ * Art that draws what the asset says (`source=chain`) instead of the live
+ * database row. The values are part of the URL, so a cached image is never stale.
+ */
+export function companionChainImageUrl(functionsBase: string, companionId: string, values: CompanionValues, lang?: Lang): string {
+  const version = `${values.lives}-${values.max_lives}-${values.level}-${values.outfit ?? 'none'}`;
+  return `${companionImageUrl(functionsBase, companionId)}?source=chain${lang ? `&lang=${lang}` : ''}&v=${version}`;
 }
 
 /** The Attributes plugin of the companion asset: a mirror of the database. */
@@ -67,6 +79,17 @@ export function companionFromAttributes(attributes: OnchainAttribute[]): Compani
     level: integer('level'),
     xp: integer('xp'),
     streak: integer('streak'),
+  };
+}
+
+/** The snapshot redrawn with the values an asset carries; identity and serial stay the row's. */
+export function withChainValues(snapshot: CompanionSnapshot, values: CompanionValues): CompanionSnapshot {
+  return {
+    ...snapshot,
+    lives: values.lives,
+    maxLives: values.max_lives,
+    outfit: values.outfit,
+    stats: { ...snapshot.stats, level: values.level, xp: values.xp, streak: values.streak },
   };
 }
 

@@ -28,8 +28,10 @@ itera.progress ──► computeAwards (pure TS) ──► itera.user_achievemen
 - Every address we create is derived from the authority key plus a label (row id, collection
   name). A retry after a lost response finds the account instead of minting a duplicate.
 - A learner without a wallet (email login) still earns rows; they stay `unclaimed` and are minted
-  by a later call made with a wallet session.
-- The wallet is read from the auth identity (`provider = web3`, written by the auth server), not
+  by the first `passport` call made after the account linked a wallet (`link-wallet`, see
+  [`onchain-purchases.md`](onchain-purchases.md)).
+- The wallet is read from the auth identity (`provider = web3`, written by the auth server) or, for
+  an account without one, from `itera.user_wallets` (written only after a verified signature). Never
   from user-editable metadata, and never from the request.
 
 | key | row `ref_id` | on-chain |
@@ -142,7 +144,8 @@ itera user id.
 
 For a **companion** asset the answer also carries an optional top-level
 `companion: { lives, max_lives, outfit, level, xp, streak, image_url, metadata_url }` parsed from the
-on-chain attributes (numbers as numbers, `outfit` the item key or `null`). `achievement.state` stays
+on-chain attributes (numbers as numbers, `outfit` the item key or `null`) and
+`snapshot: { source: "chain", mirrored_at }`; both `image_url`s of a companion draw the on-chain values. `achievement.state` stays
 the database's view of the same companion. Certification and medal assets have no `companion` key.
 
 ### `GET /learner-profile/<wallet address>` (public)
@@ -156,7 +159,8 @@ read in one `getMultipleAccounts` call, at most 50 assets.
 {
   "wallet": "<address>", "cluster": "devnet", "verified_count": 4,
   "companion": { "asset": "…", "verified": true, "lives": 4, "max_lives": 5, "outfit": "outfit_crown",
-                 "level": 1, "xp": 0, "streak": 0, "image_url": "…", "explorer_url": "…" },
+                 "level": 1, "xp": 0, "streak": 0, "image_url": "…?source=chain&…",
+                 "mirrored_at": "2026-10-10T00:24:54.999+00:00", "explorer_url": "…" },
   "certifications": [{ "asset": "…", "verified": true, "trail": "Semana 1 · HTML",
                        "trail_title": { "pt": "Semana 1 · HTML", "en": "Week 1 · HTML" },
                        "days_done": 5, "total_days": 5, "tier": "gold", "ink": "violet", "frame": "gold-leaf",
@@ -173,6 +177,10 @@ read in one `getMultipleAccounts` call, at most 50 assets.
   that fails any of these stays in the list with `verified: false`. `verified_count` counts the rest.
 - `companion` is `null` when the wallet has none. Its numbers are the on-chain attributes (the
   database's only when the asset cannot be read); lives regenerate off chain between mirror moments.
+  `companion.image_url` draws those same on-chain values (`?source=chain`) and
+  `companion.mirrored_at` (ISO or `null`) says when the asset was last written.
+- A wallet linked to an e-mail account is listed like any other: rows are found by the address they
+  were minted to.
 - `ink` is `"emerald" | "violet" | null`, `frame` is `"gold-leaf" | null`, both derived from the paid
   purchases. `trail` is the title in `?lang=pt|en` (default `pt`), as is a medal's `title`.
 - The `image_url`s carry `lang` and a version, so the one-minute art cache never serves a stale page.
@@ -202,7 +210,7 @@ the Solana SDK only when there is something to mint.
 ## Tests
 
 ```bash
-npx vitest run --config vitest.supabase.config.ts      # pure modules, 101 tests
+npx vitest run --config vitest.supabase.config.ts      # pure modules, 128 tests
 source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN HACKATHON_DB_PASSWORD HACKATHON_DEMO_EMAIL HACKATHON_DEMO_PASSWORD
 node scripts/hackathon/passport-e2e.mjs demo   [--lessons N] [--reset]   # email user, no wallet
 node scripts/hackathon/passport-e2e.mjs wallet [--lessons N]             # throwaway wallet user, exercises the mint

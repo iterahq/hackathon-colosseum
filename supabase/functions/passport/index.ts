@@ -1,6 +1,5 @@
 import { computeAwards, type Award, type AwardsInput } from '../_shared/awards.ts';
-import { isSolanaAddress } from '../_shared/address.ts';
-import { walletOf } from '../_shared/caller.ts';
+import { linkedWalletOf, resolveWallet, walletOf } from '../_shared/caller.ts';
 import type { Chain } from '../_shared/chain.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import {
@@ -65,9 +64,7 @@ async function resolveCaller(db: IteraClient, request: Request): Promise<Caller 
   if (!identity) return json({ error: 'no_itera_profile' }, 403, cors);
 
   // identity_data is written by the auth server at sign-in; user_metadata is editable by the user.
-  const web3 = (data.user.identities ?? []).find((entry) => entry.provider === 'web3');
-  const claims = web3?.identity_data?.custom_claims as { chain?: string; address?: string } | undefined;
-  const wallet = claims?.chain === 'solana' && isSolanaAddress(claims.address) ? claims.address : null;
+  const { wallet } = await resolveWallet(db, identity.user_id, data.user.identities);
   return { iteraUserId: identity.user_id, wallet };
 }
 
@@ -89,7 +86,7 @@ async function isOperator(request: Request): Promise<boolean> {
   return difference === 0;
 }
 
-/** The learner an operator named, with the wallet of that learner's own web3 identity. */
+/** The learner an operator named, with that learner's own wallet: the web3 identity, else the linked one. */
 async function resolveNamedUser(db: IteraClient, iteraUserId: string): Promise<Caller | null> {
   const { data, error } = await db.from('identities').select('provider_subject').eq('user_id', iteraUserId);
   if (error) throw new Error(`identities: ${error.message}`);
@@ -100,7 +97,7 @@ async function resolveNamedUser(db: IteraClient, iteraUserId: string): Promise<C
     const wallet = walletOf(account?.user?.identities);
     if (wallet) return { iteraUserId, wallet };
   }
-  return { iteraUserId, wallet: null };
+  return { iteraUserId, wallet: (await linkedWalletOf(db, iteraUserId))?.wallet ?? null };
 }
 
 /** The learner's rows. A passport wears what was paid for, whatever its stored state says. */

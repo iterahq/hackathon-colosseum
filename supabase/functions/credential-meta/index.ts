@@ -1,6 +1,6 @@
 import { renderArt } from '../_shared/art.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
-import { companionArtInput, companionMetadata } from '../_shared/companion.ts';
+import { companionArtInput, companionFromAttributes, companionMetadata, withChainValues, type CompanionSnapshot } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
 import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { APP_URL, artInput, buildMetadata, type AchievementRow, type CatalogEntry } from '../_shared/credential.ts';
@@ -42,6 +42,23 @@ async function loadCredential(db: IteraClient, rowId: string): Promise<Credentia
     passport = parent ? (await restoreCosmetics(db, [parent as AchievementRow]))[0] : null;
   }
   return { row: credential, catalog: catalog as CatalogEntry, passport };
+}
+
+/**
+ * The companion as its asset says it, for the public views that report chain
+ * values. Falls back to the last mirrored attributes, then to the row itself.
+ */
+async function chainSnapshot(snapshot: CompanionSnapshot): Promise<CompanionSnapshot> {
+  let attributes = snapshot.mirrored;
+  if (snapshot.assetAddress) {
+    try {
+      const { readAssets } = await import('../_shared/chain-read.ts');
+      attributes = (await readAssets([snapshot.assetAddress], [])).get(snapshot.assetAddress)?.attributes ?? attributes;
+    } catch (error) {
+      console.error('companion art: chain read failed', error instanceof Error ? error.message : error);
+    }
+  }
+  return attributes ? withChainValues(snapshot, companionFromAttributes(attributes)) : snapshot;
 }
 
 const COLLECTION_TEXT: Record<CollectionKind, string> = {
@@ -119,7 +136,10 @@ Deno.serve(async (request) => {
       const snapshot = await loadCompanionSnapshot(serviceClient(), second);
       if (!snapshot) return json({ error: 'not_found' }, 404, cors);
       const companionLang = langOf(request, 'en');
-      if (wantsCompanionImage) return svg(renderArt(companionArtInput(snapshot, companionLang)), cors);
+      if (wantsCompanionImage) {
+        const fromChain = new URL(request.url).searchParams.get('source') === 'chain';
+        return svg(renderArt(companionArtInput(fromChain ? await chainSnapshot(snapshot) : snapshot, companionLang)), cors);
+      }
       return json(companionMetadata(snapshot, companionLang, functionsBase()), 200, cached);
     }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { escapeXml, renderArt, wrapText, type ArtInput } from './art';
-import { companionArtInput } from './companion';
+import { companionArtInput, companionChainImageUrl, companionFromAttributes, withChainValues } from './companion';
 import { artInput, assetName, awardView, buildMetadata, onchainAttributes, type AchievementRow, type CatalogEntry } from './credential';
 
 const BASE = 'https://example.supabase.co/functions/v1';
@@ -179,8 +179,36 @@ describe('companion art', () => {
     outfit: null as string | null,
     stats: { level: 4, xp: 780, streak: 2 },
     assetAddress: null,
+    mirrored: null,
+    mirroredAt: null,
   };
   const draw = (patch: Partial<typeof snapshot> = {}, lang: 'pt' | 'en' = 'en') => renderArt(companionArtInput({ ...snapshot, ...patch }, lang));
+
+  it('draws the asset\'s values instead of the live row when asked for the chain snapshot', () => {
+    const onchain = companionFromAttributes([
+      { key: 'lives', value: '5' },
+      { key: 'max_lives', value: '5' },
+      { key: 'outfit', value: 'outfit_crown' },
+      { key: 'level', value: '3' },
+    ]);
+    const redrawn = withChainValues(snapshot, onchain);
+    const svg = renderArt(companionArtInput(redrawn, 'en'));
+    expect(svg).toContain('5/5 LIVES');
+    expect(svg).toContain('LEVEL 3');
+    expect(svg).not.toBe(draw());
+    expect(redrawn.id).toBe(snapshot.id);
+    expect(redrawn.userId).toBe(snapshot.userId);
+    expect(draw()).toContain('2/5 LIVES');
+  });
+
+  it('puts the chain values in the art URL, so each snapshot has its own cache entry', () => {
+    const base = 'https://x.supabase.co/functions/v1';
+    const values = { lives: 5, max_lives: 5, outfit: null, level: 1, xp: 0, streak: 0 };
+    const url = companionChainImageUrl(base, snapshot.id, values);
+    expect(url).toBe(`${base}/credential-meta/companion/${snapshot.id}/image.svg?source=chain&v=5-5-1-none`);
+    expect(companionChainImageUrl(base, snapshot.id, { ...values, lives: 0 })).not.toBe(url);
+    expect(companionChainImageUrl(base, snapshot.id, { ...values, outfit: 'outfit_crown' }, 'pt')).toContain('?source=chain&lang=pt&v=5-5-1-outfit_crown');
+  });
 
   it('draws one heart per life slot, filled up to the current lives', () => {
     const svg = draw();

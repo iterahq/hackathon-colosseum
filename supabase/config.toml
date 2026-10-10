@@ -22,6 +22,10 @@ verify_jwt = false
 [functions.purchase-confirm]
 verify_jwt = false
 
+# Same settlement as `purchase-confirm`, for a wallet that only signs: the server broadcasts.
+[functions.purchase-submit]
+verify_jwt = false
+
 # Readable without a session; a valid token only adds `owned` / `equipped`.
 [functions.shop-items]
 verify_jwt = false
@@ -37,4 +41,8 @@ verify_jwt = false
 
 # Public profile of a wallet: the Itera assets it holds, each checked on chain.
 [functions.learner-profile]
+verify_jwt = false
+
+# An e-mail account binds one Solana wallet by signing a challenge.
+[functions.link-wallet]
 verify_jwt = false
