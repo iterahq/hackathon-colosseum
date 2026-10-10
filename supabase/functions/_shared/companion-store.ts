@@ -294,8 +294,8 @@ export async function syncMirror(db: IteraClient, userId: string): Promise<Mirro
     const attributes = companionAttributes(snapshotOf(row, await loadStats(db, userId, now), now));
     let write: ChainWrite | null = null;
     if (!sameAttributes(row.mirrored, attributes)) {
-      const sdk = await import('./chain.ts');
-      const collection = (await loadConfig(db))[COLLECTIONS.companions.configKey];
+      const [sdk, config] = await Promise.all([import('./chain.ts'), loadConfig(db)]);
+      const collection = config[COLLECTIONS.companions.configKey];
       if (!collection) throw new Error('companions collection is not configured');
       const signature = await sdk.updateCredentialAttributes(sdk.loadChain(), { asset: row.asset_address, collection, attributes });
       write = {

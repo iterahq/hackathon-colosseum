@@ -11,7 +11,8 @@
 //   HACKATHON_AUTHORITY_KEYFILE (default ~/.config/itera-hackathon/devnet-authority.json): funds the wallet.
 //
 // Spends about 0.02 SOL of the authority (wallet funding + one companion mint +
-// attribute updates). Leaves one throwaway wallet user behind.
+// attribute updates). Leaves one throwaway wallet user behind. The demo e-mail
+// user is only read: nothing here changes its lives or progress.
 import { execFileSync } from 'node:child_process';
 import { createPrivateKey, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -36,6 +37,8 @@ const TREASURY_FLOAT = 100_000_000n;
 
 const results = [];
 const timings = new Map();
+const livesTimings = { mirrored: null, quiet: null };
+const isSignatureText = (value) => typeof value === 'string' && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(value);
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -238,6 +241,9 @@ async function buy(call, wallet, itemKey, refId) {
 }
 
 const median = (values) => [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) / 2)];
+const LAMPORTS_PER_CENT = 55_000;
+/** The one price rule: lamports from cents at the pinned rate, label with the exact SOL amount. */
+const priceLabel = (cents) => `US$ ${(cents / 100).toFixed(2)} ≈ ${((cents * LAMPORTS_PER_CENT) / 1e9).toFixed(9).replace(/0+$/, '')} SOL`;
 
 async function main() {
   const apikey = await anonKey();
@@ -261,6 +267,8 @@ async function main() {
   }
   const publicShop = await anonymous('shop-items', { method: 'GET', query: '?lang=en' });
   check('shop-items: public, 7 active items, nothing owned', publicShop.status === 200 && publicShop.body.length === 7 && publicShop.body.every((item) => !item.owned && !item.equipped), publicShop.body.map?.((item) => item.kind).join(','));
+  const mispriced = (publicShop.body ?? []).filter((item) => item.price_lamports !== item.price_usd_cents * LAMPORTS_PER_CENT || item.price_label !== priceLabel(item.price_usd_cents));
+  check('shop-items: cents, lamports and label agree at one pinned rate for every item', publicShop.body.length === 7 && mispriced.length === 0, mispriced.map((item) => `${item.key}: ${item.price_label}`).join('; '));
 
   // --- a wallet learner -----------------------------------------------------------------------
   const wallet = newWallet();
@@ -310,17 +318,26 @@ async function main() {
   // --- lives ----------------------------------------------------------------------------------
   const run = randomBytes(4).toString('hex');
   let lives;
-  for (let index = 0; index < 5; index += 1) {
+  const quietLosses = [];
+  for (let index = 0; index < 4; index += 1) {
     lives = await call('lives', { body: { action: 'lose', attempt_id: `e2e-${run}-${index}`, activity_id: day2.activities[0] } });
+    quietLosses.push(lives);
   }
+  verify = await verifyAsset(companion.asset_address);
+  check('lives: an ordinary mistake is not written on chain and carries no `chain`', lives.body.lives.current === 1 && quietLosses.every((response) => !('chain' in response.body)) && attributesOf(verify).lives === '5', `chain lives ${attributesOf(verify).lives}`);
+  lives = await call('lives', { body: { action: 'lose', attempt_id: `e2e-${run}-4`, activity_id: day2.activities[0] } });
+  livesTimings.mirrored = lives.ms;
+  livesTimings.quiet = median(quietLosses.map((response) => response.ms));
   check('lives: five wrong answers with distinct attempt ids -> 0', lives.body.lives.current === 0 && lives.body.lives.regen_seconds > 1100 && lives.body.lives.next_regen_at !== null, JSON.stringify(lives.body.lives));
+  check('lives: losing the last life returns `chain` (signature, explorer url, lives 0, time)', isSignatureText(lives.body.chain?.tx_signature) && lives.body.chain.explorer_url.includes(lives.body.chain.tx_signature) && lives.body.chain.lives === 0 && !Number.isNaN(Date.parse(lives.body.chain.mirrored_at)), `${lives.ms} ms ${JSON.stringify(lives.body.chain ?? null)}`);
+  verify = await verifyUntil(companion.asset_address, (current) => current.lives === '0');
+  check('lives: credential-verify shows lives 0 on chain', attributesOf(verify).lives === '0', attributesOf(verify).lives);
+  check('credential-verify: `companion` parsed from the chain (numbers, outfit null, urls)', verify.body.companion?.lives === 0 && verify.body.companion.max_lives === 5 && verify.body.companion.outfit === null && verify.body.companion.level === 1 && verify.body.companion.xp === 0 && verify.body.companion.streak === 0 && verify.body.companion.image_url?.includes(companion.id) && verify.body.companion.metadata_url?.includes(companion.id) && verify.body.achievement?.key === 'companion', JSON.stringify(verify.body.companion ?? null));
   const replay = await call('lives', { body: { action: 'lose', attempt_id: `e2e-${run}-0`, activity_id: day2.activities[0] } });
   const floor = await call('lives', { body: { action: 'lose', attempt_id: `e2e-${run}-floor`, activity_id: day2.activities[0] } });
-  check('lives: a replayed attempt id changes nothing, and lives never go below 0', replay.body.lives.current === 0 && floor.body.lives.current === 0);
+  check('lives: a replayed attempt id changes nothing, and lives never go below 0 (no second `chain`)', replay.body.lives.current === 0 && floor.body.lives.current === 0 && !('chain' in replay.body) && !('chain' in floor.body));
   const loseEvents = psql(`select count(*) from itera.life_events where user_id = :'user_id'::uuid and kind = 'lose';`, { user_id: userId });
   check('lives: one event per attempt id', loseEvents === '6', loseEvents);
-  verify = await verifyAsset(companion.asset_address);
-  check('lives: mistakes are not written on chain', attributesOf(verify).lives === '5', attributesOf(verify).lives);
 
   // --- life_refill: pay, confirm, idempotency, reuse ------------------------------------------
   const treasuryBeforeRefill = await balance(treasury);
@@ -328,10 +345,12 @@ async function main() {
   check('purchase-intent: flat contract fields', ['intent_id', 'message_base58', 'transaction_base58', 'transaction_base64', 'price_lamports', 'price_usd_cents', 'price_label', 'last_valid_block_height', 'expires_at', 'treasury', 'memo', 'cluster'].every((field) => field in (refill.intent.body ?? {})) && refill.intent.body.memo === refill.intent.body.intent_id && refill.intent.body.price_lamports === 550000, JSON.stringify(Object.keys(refill.intent.body ?? {})));
   check('life_refill: confirm -> paid, lives 5/5', refill.confirm?.status === 200 && refill.confirm.body.status === 'paid' && refill.confirm.body.lives?.current === 5 && refill.confirm.body.item.key === 'life_refill', JSON.stringify(refill.confirm?.body).slice(0, 200));
   check('life_refill: the treasury received exactly the price', (await balance(treasury)) - treasuryBeforeRefill === 550_000n);
+  const refillBody = refill.confirm?.body ?? {};
+  check('life_refill: confirm carries `chain` (lives 5) and `written` for the companion asset', isSignatureText(refillBody.chain?.tx_signature) && refillBody.chain.lives === 5 && refillBody.chain.explorer_url.includes(refillBody.chain.tx_signature) && refillBody.written?.some((entry) => entry.asset === companion.asset_address && entry.attribute === 'lives' && entry.value === '5') && refillBody.companion?.image_url?.includes('?v='), JSON.stringify({ chain: refillBody.chain, written: refillBody.written }));
   verify = await verifyUntil(companion.asset_address, (current) => current.lives === '5');
-  check('life_refill: attribute lives = 5 on chain', attributesOf(verify).lives === '5');
+  check('life_refill: attribute lives = 5 on chain', attributesOf(verify).lives === '5' && verify.body.companion?.lives === 5);
   const refillAgain = await call('purchase-confirm', { body: { intent_id: refill.intent.body.intent_id, signature: refill.signature, lang: 'en' } });
-  check('purchase-confirm: same intent + signature twice -> same paid result', refillAgain.status === 200 && refillAgain.body.status === 'paid' && refillAgain.body.lives.current === 5 && refillAgain.body.explorer_url === refill.confirm.body.explorer_url);
+  check('purchase-confirm: same intent + signature twice -> same paid result', refillAgain.status === 200 && refillAgain.body.status === 'paid' && refillAgain.body.lives.current === 5 && refillAgain.body.explorer_url === refill.confirm.body.explorer_url && !('chain' in refillAgain.body) && !('written' in refillAgain.body));
   const notNeeded = await call('purchase-intent', { body: { item_key: 'life_refill' } });
   check('life_refill: at full lives -> not_needed', notNeeded.status === 409 && notNeeded.body.error === 'not_needed', JSON.stringify(notNeeded.body));
   const crownIntent = await call('purchase-intent', { body: { item_key: 'outfit_crown' } });
@@ -369,7 +388,7 @@ async function main() {
   const equipped = await call('companion', { body: { equip: { outfit: 'outfit_crown' } } });
   check('companion: equip the crown', equipped.status === 200 && equipped.body.companion.outfit === 'outfit_crown' && equipped.body.inventory.some((entry) => entry.item_key === 'outfit_crown' && entry.equipped));
   verify = await verifyUntil(companion.asset_address, (current) => current.outfit === 'outfit_crown');
-  check('companion: attribute outfit = outfit_crown on chain', attributesOf(verify).outfit === 'outfit_crown', attributesOf(verify).outfit);
+  check('companion: attribute outfit = outfit_crown on chain', attributesOf(verify).outfit === 'outfit_crown' && verify.body.companion?.outfit === 'outfit_crown', attributesOf(verify).outfit);
   // The art is cached for a minute per URL; `image_url` carries a version for that reason.
   const crownArt = (await publicGet(equipped.body.companion.image_url.replace(`${FUNCTIONS}/`, ''))).text;
   check('companion art: differs once the crown is on', crownArt !== bareArt && crownArt.includes('data-outfit="outfit_crown"'));
@@ -410,7 +429,8 @@ async function main() {
   verify = await verifyAsset(passAsset);
   check('ink_emerald: attribute ink = emerald on chain, the others kept', attributesOf(verify).ink === 'emerald' && attributesOf(verify).days_done === '1' && attributesOf(verify).kind === 'trail_passport', JSON.stringify(attributesOf(verify)));
   const emeraldArt = (await publicGet(emerald.confirm.body.image_url.replace(`${FUNCTIONS}/`, ''))).text;
-  check('ink_emerald: the art changed and uses the ink', emeraldArt !== plainArt && emeraldArt.includes('#34D399') && !plainArt.includes('#34D399'));
+  check('ink_emerald: confirm carries `chain` and `written` for the certification asset', isSignatureText(emerald.confirm.body.chain?.tx_signature) && !('lives' in emerald.confirm.body.chain) && emerald.confirm.body.written?.length === 1 && emerald.confirm.body.written[0].asset === passAsset && emerald.confirm.body.written[0].attribute === 'ink' && emerald.confirm.body.written[0].value === 'emerald', JSON.stringify(emerald.confirm.body.written ?? null));
+  check('art: the default page is Itera green; emerald is the jewel ink', plainArt.includes('data-ink="default"') && plainArt.includes('stroke="#3FD17F" stroke-width="3.5"') && !plainArt.includes('hsl(') && emeraldArt !== plainArt && emeraldArt.includes('data-ink="emerald"') && emeraldArt.includes('url(#emerald)'));
   const emeraldMeta = await publicGet(`credential-meta/${passId}`);
   check('credential-meta: attributes gain Ink', emeraldMeta.body.attributes.some((entry) => entry.trait_type === 'Ink' && entry.value === 'emerald') && !emeraldMeta.body.attributes.some((entry) => entry.trait_type === 'Frame'));
 
@@ -424,13 +444,56 @@ async function main() {
   const inkAgain = await call('purchase-intent', { body: { item_key: 'ink_violet', ref_id: trail.unitId } });
   check('ink_violet: second purchase for the same trail -> already_owned', inkAgain.body.error === 'already_owned');
 
+  // The known race, made deterministic: the row loses `state.cosmetics` (as a concurrent `passport` write did).
+  psql(`update itera.user_achievements set state = state - 'cosmetics' where id = :'id'::uuid;`, { id: passId });
+  const wipedMeta = await publicGet(`credential-meta/${passId}?t=${Date.now()}`);
+  const wipedArt = (await publicGet(`${artUrl}?v=wiped-${Date.now()}`)).text;
+  const traitsOf = (meta) => Object.fromEntries((meta.body?.attributes ?? []).map((entry) => [entry.trait_type, entry.value]));
+  check('race: a row without state.cosmetics still shows the paid ink and frame (metadata and art)', traitsOf(wipedMeta).Ink === 'violet' && traitsOf(wipedMeta).Frame === 'gold-leaf' && wipedArt.includes('data-ink="violet"') && wipedArt.includes('data-frame="gold-leaf"'), JSON.stringify(traitsOf(wipedMeta)));
+  const wipedShop = await call('shop-items', { method: 'GET', query: '?lang=en' });
+  check('race: the shop still marks the paid ink and frame as equipped', wipedShop.body.find?.((item) => item.key === 'ink_violet')?.equipped === true && wipedShop.body.find((item) => item.key === 'frame_gold_leaf')?.equipped === true && wipedShop.body.find((item) => item.key === 'ink_emerald')?.equipped === false);
+
   completeLessons(userId, trail.days.slice(1).map((day) => day.lessonId));
-  const gold = await until(() => call('passport', { body: { lang: 'en' } }), (response) => response.status !== 200 || response.body.remaining === 0, 6, 1000);
+  const goldViews = [];
+  const gold = await until(
+    async () => {
+      const response = await call('passport', { body: { lang: 'en' } });
+      goldViews.push(...(response.body.awards ?? []), ...(response.body.updated ?? []));
+      return response;
+    },
+    (response) => response.status !== 200 || response.body.remaining === 0,
+    6,
+    1000,
+  );
   verify = await verifyUntil(passAsset, (current) => current.tier === 'gold');
   attributes = attributesOf(verify);
   check('passport: days 2-5 stamp to gold and the cosmetics survive the stamp update', gold.status === 200 && attributes.tier === 'gold' && attributes.days_done === String(trail.days.length) && attributes.ink === 'violet' && attributes.frame === 'gold-leaf', JSON.stringify(attributes));
   const goldArt = (await publicGet(`${artUrl}?v=gold`)).text;
-  check('passport art: gold page still wears ink and frame', goldArt.includes('CERTIFIED') && goldArt.includes('#A78BFA') && goldArt.includes('data-frame="gold-leaf"'));
+  check('passport art: gold page still wears ink and frame', goldArt.includes('CERTIFIED') && goldArt.includes('data-ink="violet"') && goldArt.includes('#A78BFA') && goldArt.includes('data-frame="gold-leaf"'));
+  const healed = psql(`select state->'cosmetics'->>'ink' || '/' || (state->'cosmetics'->>'frame') from itera.user_achievements where id = :'id'::uuid;`, { id: passId });
+  const goldView = goldViews.findLast((award) => award.key === 'trail_pass');
+  check('race: the stamp wrote the cosmetics back to the row and `passport` returns them', healed === 'violet/gold-leaf' && goldView?.state?.cosmetics?.ink === 'violet' && goldView.state.cosmetics.frame === 'gold-leaf', healed);
+
+  // --- public profile -------------------------------------------------------------------------
+  const profileSamples = [];
+  let profile;
+  for (let index = 0; index < 5; index += 1) {
+    const startedAt = Date.now();
+    profile = await publicGet(`learner-profile/${wallet.address}?lang=en&t=${Date.now()}`);
+    profileSamples.push(Date.now() - startedAt);
+  }
+  timings.set('learner-profile', profileSamples);
+  const certification = profile.body?.certifications?.[0];
+  check('learner-profile: lists the companion, verified, as the chain has it', profile.status === 200 && profile.body.wallet === wallet.address && profile.body.cluster === 'devnet' && profile.body.companion?.asset === companion.asset_address && profile.body.companion.verified === true && profile.body.companion.outfit === 'outfit_crown' && profile.body.companion.lives === 4 && profile.body.companion.max_lives === 5 && Number.isInteger(profile.body.companion.level) && profile.body.companion.image_url.includes(companion.id), JSON.stringify(profile.body?.companion ?? profile.body));
+  check('learner-profile: lists the certification with ink and frame, verified, gold', profile.body.certifications?.length === 1 && certification.asset === passAsset && certification.verified === true && certification.ink === 'violet' && certification.frame === 'gold-leaf' && certification.tier === 'gold' && certification.days_done === trail.days.length && certification.total_days === trail.days.length && certification.trail_title?.pt && certification.trail_title.en === certification.trail && typeof certification.completed_at === 'string' && certification.page_url.endsWith(`/c/${passAsset}`) && certification.image_url.includes(passId), JSON.stringify(certification ?? null));
+  const medals = profile.body.medals ?? [];
+  check('learner-profile: lists the medals, all verified', medals.length >= 1 && medals.every((medal) => medal.verified === true && medal.asset && medal.key && medal.title && medal.image_url) && medals.some((medal) => medal.key === 'first_stamp') && profile.body.verified_count === medals.length + 2, medals.map((medal) => medal.key).join(','));
+  const profileArt = (await publicGet(certification.image_url.replace(`${FUNCTIONS}/`, ''))).text;
+  check('learner-profile: issuer, working image url, and no user id anywhere', profile.body.issuer?.authority === authority.address && profile.body.issuer.collections.length === 3 && profileArt.includes('data-ink="violet"') && !profile.text.includes(userId) && !profile.text.includes(session.user.id), JSON.stringify(profile.body.issuer ?? null));
+  const nobody = await publicGet(`learner-profile/${newWallet().address}`);
+  check('learner-profile: a wallet with nothing -> 200 with empty lists', nobody.status === 200 && nobody.body.companion === null && nobody.body.certifications.length === 0 && nobody.body.medals.length === 0 && nobody.body.verified_count === 0, JSON.stringify(nobody.body).slice(0, 110));
+  const malformed = await publicGet('learner-profile/not-a-wallet');
+  check('learner-profile: malformed address -> 400 invalid_address', malformed.status === 400 && malformed.body.error === 'invalid_address', malformed.status);
 
   // --- expired intents ------------------------------------------------------------------------
   const glasses = await call('purchase-intent', { body: { item_key: 'outfit_glasses' } });
@@ -450,24 +513,17 @@ async function main() {
     const demo = await token(apikey, 'password', { email: process.env.HACKATHON_DEMO_EMAIL, password: process.env.HACKATHON_DEMO_PASSWORD });
     const demoUserId = iteraUserId(demo.user.id);
     const demoCall = client(apikey, demo.access_token);
-    try {
-      const demoCompanion = await demoCall('companion');
-      check('email user: companion works off chain (no asset, no wallet)', demoCompanion.status === 200 && demoCompanion.body.wallet === null && demoCompanion.body.companion.asset_address === null && demoCompanion.body.companion.mint_status === 'unclaimed' && demoCompanion.body.companion.xp > 0, JSON.stringify(demoCompanion.body.companion));
-      const demoLives = await demoCall('lives', { body: { action: 'lose', attempt_id: `e2e-${run}-demo`, activity_id: day1.activities[0] } });
-      check('email user: lives work off chain', demoLives.status === 200 && demoLives.body.lives.current === demoCompanion.body.lives.current - 1, JSON.stringify(demoLives.body.lives));
-      const demoIntent = await demoCall('purchase-intent', { body: { item_key: 'life_refill' } });
-      check('email user: purchase-intent -> no_wallet', demoIntent.status === 403 && demoIntent.body.error === 'no_wallet');
-      const demoFaucet = await demoCall('wallet-faucet');
-      check('email user: wallet-faucet -> blocked no_wallet', demoFaucet.body.blocked === 'no_wallet');
-    } finally {
-      psql(
-        `update itera.companions set lives = max_lives, last_regen_at = now() where user_id = :'user_id'::uuid;
-         delete from itera.life_events where user_id = :'user_id'::uuid and attempt_id like 'lose:e2e-%';`,
-        { user_id: demoUserId },
-      );
-    }
-    const restored = psql(`select lives || '/' || max_lives from itera.companions where user_id = :'user_id'::uuid;`, { user_id: demoUserId });
-    check('email user: lives restored to max after the test', restored === '5/5', restored);
+    const demoBefore = psql(`select lives || '/' || max_lives || '/' || version from itera.companions where user_id = :'user_id'::uuid;`, { user_id: demoUserId });
+    const demoCompanion = await demoCall('companion');
+    check('email user: companion works off chain (no asset, no wallet)', demoCompanion.status === 200 && demoCompanion.body.wallet === null && demoCompanion.body.companion.asset_address === null && demoCompanion.body.companion.mint_status === 'unclaimed' && demoCompanion.body.companion.xp > 0, JSON.stringify(demoCompanion.body.companion));
+    const demoLives = await demoCall('lives', { body: { action: 'lesson_end', lesson_id: '00000000-0000-4000-8000-000000000000', mistakes: 0 } });
+    check('email user: lives answer off chain, with no `chain` and nothing changed', demoLives.status === 200 && demoLives.body.bonus === 'lesson_incomplete' && demoLives.body.lives.current === demoCompanion.body.lives.current && !('chain' in demoLives.body), `${demoLives.ms} ms ${JSON.stringify(demoLives.body.lives)}`);
+    const demoIntent = await demoCall('purchase-intent', { body: { item_key: 'life_refill' } });
+    check('email user: purchase-intent -> no_wallet', demoIntent.status === 403 && demoIntent.body.error === 'no_wallet');
+    const demoFaucet = await demoCall('wallet-faucet');
+    check('email user: wallet-faucet -> blocked no_wallet', demoFaucet.body.blocked === 'no_wallet');
+    const demoAfter = psql(`select lives || '/' || max_lives || '/' || version from itera.companions where user_id = :'user_id'::uuid;`, { user_id: demoUserId });
+    check('email user: the companion row was not touched', demoAfter === demoBefore, `${demoBefore} -> ${demoAfter}`);
   }
 
   // --- report ---------------------------------------------------------------------------------
@@ -476,6 +532,7 @@ async function main() {
   for (const { name, pass } of results) console.log(`| ${name} | ${pass ? 'pass' : 'FAIL'} |`);
   console.log('\n| function | calls | median ms | max ms |\n|---|---|---|---|');
   for (const [name, values] of [...timings].sort()) console.log(`| ${name} | ${values.length} | ${median(values)} | ${Math.max(...values)} |`);
+  console.log(`\nlives: ${livesTimings.mirrored} ms when it mirrors (last life) · ${livesTimings.quiet} ms median when it does not`);
   console.log(`\nauthority: ${sol(before.authority)} -> ${sol(after.authority)} SOL (${sol(after.authority - before.authority)})`);
   console.log(`treasury:  ${sol(before.treasury)} -> ${sol(after.treasury)} SOL (${sol(after.treasury - before.treasury)})`);
   console.log(`wallet:    ${sol(after.wallet)} SOL left in ${wallet.address}`);

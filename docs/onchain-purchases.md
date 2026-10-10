@@ -25,12 +25,16 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 - **Companion.** One soulbound Core asset per wallet learner in the collection "Itera Companions"
   (`onchain_config.collection_companions`). The database is the source of truth; the asset's
   `Attributes` (`kind`, `lives`, `max_lives`, `outfit`, `level`, `xp`, `streak`, `learner`) are a
-  mirror written on purchase, equip and lesson end, never on a mistake. Email learners get the same
-  rules off chain: no asset, no purchases.
-- **Passport cosmetics.** `ink` and `frame` are stored in the `trail_pass` row
-  (`state.cosmetics = { ink, frame }`) and written to the passport asset as attributes `ink` /
-  `frame`. `onchainAttributes` (`_shared/credential.ts`) reads them from the row, so every later
-  stamp update re-sends them: nothing is wiped.
+  mirror written on purchase, equip, lesson end and when the **last life** is lost, never on an
+  ordinary mistake. Email learners get the same rules off chain: no asset, no purchases.
+- **Passport cosmetics.** The paid purchases are the truth: `ink` and `frame` are derived from them
+  (`cosmeticsFromPurchases`, the latest ink wins) and written to the passport asset as attributes
+  `ink` / `frame`. `state.cosmetics = { ink, frame }` on the `trail_pass` row is a copy. Every reader
+  (art, metadata, the on-chain attributes of a stamp, inventory `equipped`, the `passport` response,
+  `learner-profile`) loads rows through `restoreCosmetics` (`_shared/cosmetics-store.ts`), which puts
+  the purchased values back into the row it hands out. A row whose copy was overwritten by a
+  concurrent write still shows them, a stamp still sends them to chain, and the next `passport`
+  write stores them again.
 - Wallet and user always come from the verified token (`auth.identities` custom claims), never from
   the request body. Lamports are integers end to end (`bigint` in code, `bigint` columns).
 
@@ -45,7 +49,8 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 | `life_events` | idempotency: unique `(user_id, attempt_id)` | own rows |
 | `devnet_airdrops` | one faucet claim per wallet | nobody |
 
-Migrations `0115_purchase_rail.sql`, `0116_companion_lives.sql`, `0117_certification_naming.sql`.
+Migrations `0115_purchase_rail.sql`, `0116_companion_lives.sql`, `0117_certification_naming.sql`,
+`0118_price_labels_profile_indexes.sql`.
 
 ## Items
 
@@ -58,8 +63,20 @@ Migrations `0115_purchase_rail.sql`, `0116_companion_lives.sql`, `0117_certifica
 | `ink_emerald`, `ink_violet` | `ink` | US$ 0.20 · 1 100 000 | unit id (trail) | a **minted** `trail_pass` for that trail (`passport_required`), one per item and trail | attribute `ink`; the latest ink bought replaces the previous one |
 | `frame_gold_leaf` | `frame` | US$ 0.50 · 2 750 000 | unit id (trail) | same | attribute `frame = gold-leaf` |
 
-Prices are pinned in the table at US$ 0.20 = 1 100 000 lamports; `price_label` is a fixed string
-(`US$ 0.20 ≈ 0.0011 SOL`). No price feed is read. All seven are `active = true`.
+Prices have one source, the `shop_items` table, at one pinned rate: **1 US cent = 55 000 lamports**
+(US$ 0.20 = 1 100 000 lamports = 0.0011 SOL). `price_lamports = price_usd_cents × 55 000` and
+`price_label` shows the exact SOL amount, never rounded (migration 0118 derives both from the
+cents). No price feed is read. All seven are `active = true`.
+
+| key | kind | cents | lamports | label | sort |
+|---|---|---|---|---|---|
+| `ink_emerald` | `ink` | 20 | 1 100 000 | `US$ 0.20 ≈ 0.0011 SOL` | 10 |
+| `ink_violet` | `ink` | 20 | 1 100 000 | `US$ 0.20 ≈ 0.0011 SOL` | 20 |
+| `frame_gold_leaf` | `frame` | 50 | 2 750 000 | `US$ 0.50 ≈ 0.00275 SOL` | 30 |
+| `outfit_glasses` | `outfit` | 20 | 1 100 000 | `US$ 0.20 ≈ 0.0011 SOL` | 40 |
+| `outfit_crown` | `outfit` | 30 | 1 650 000 | `US$ 0.30 ≈ 0.00165 SOL` | 50 |
+| `outfit_headphones` | `outfit` | 20 | 1 100 000 | `US$ 0.20 ≈ 0.0011 SOL` | 60 |
+| `life_refill` | `life` | 10 | 550 000 | `US$ 0.10 ≈ 0.00055 SOL` | 90 |
 
 ```sql
 -- take an item off sale / put it back
@@ -141,7 +158,16 @@ Body `{ "intent_id": "…", "signature": "<base58>", "lang": "pt" | "en" }`.
 
 - `lives` and `companion` (shapes below) are present for `life` and `outfit`; `passport` (else
   `null`) and `image_url` for `ink` and `frame`. Use `image_url` as given: art is cached for a
-  minute per URL and the `v` parameter is what makes it fresh.
+  minute per URL and the `v` parameter is what makes it fresh. `companion.image_url` is already the
+  refreshed one.
+- Optional, present only when this call wrote an asset:
+  `"chain": { "tx_signature": "…", "explorer_url": "…", "lives": 5, "mirrored_at": "…" }` and
+  `"written": [{ "asset": "<address>", "attribute": "lives", "value": "5" }]`. A `life_refill` writes
+  the companion (`chain.lives` is the lives now on chain); an ink or a frame writes the certification
+  (`written` holds the `ink` / `frame` attribute, `chain` has no `lives`). `written` lists the
+  attributes the transaction changed, `value` being the on-chain string. An outfit writes nothing at
+  purchase (it is written on equip), and a repeated confirm of an applied intent sends no
+  transaction: both answer without `chain` and `written`.
 - All of these must hold: the intent is the caller's and not expired; the signature is on no other
   purchase; the transaction is confirmed with no error; its fee payer and the source of the transfer
   are the caller's wallet; a System transfer to the treasury of at least the intent's lamports; a
@@ -187,6 +213,14 @@ or `{ "action": "lesson_end", "lesson_id": "<uuid>", "mistakes": 0 }` → `{ liv
 (same blocks), plus `bonus` on `lesson_end`.
 
 - `lose`: one life, once per `attempt_id`; a replay returns the current state. Never below 0.
+- The `lose` that takes the **last** life writes `lives = 0` to the companion asset and the answer
+  gains `"chain": { "tx_signature", "explorer_url", "lives": 0, "mirrored_at" }`. The field is absent
+  whenever this call wrote nothing: an ordinary mistake, a replayed `attempt_id`, a learner without a
+  wallet or without a minted companion. The call waits at most 5 s for the chain (about 3 s in
+  practice against 1.5 s for an ordinary `lose`); past that it answers without `chain`, the write
+  finishes in the background, the row is flagged `mirror_due` and the next `lives` or `companion`
+  call retries it. With two lives or fewer left the Solana SDK is loaded ahead of time so that write
+  starts warm.
 - Regeneration: +1 every 20 minutes up to 5, computed on read.
 - `lesson_end` grants +1 when `bonus` is `granted`. Otherwise `bonus` says why not: `mistakes`
   (client count, or any life lost today in that lesson's activities), `lesson_incomplete` (not every
@@ -204,7 +238,11 @@ authority; capped at 200 claims and refused (`503 faucet_unavailable`) when the 
 ### Companion in the public functions
 
 - `GET /credential-verify/<asset>`: same shape; `achievement.key = "companion"`,
-  `achievement.state = { lives, max_lives, outfit, level, xp, streak }`.
+  `achievement.state = { lives, max_lives, outfit, level, xp, streak }` (the database), plus
+  `companion: { lives, max_lives, outfit, level, xp, streak, image_url, metadata_url }` parsed from
+  the on-chain attributes.
+- `GET /learner-profile/<wallet>` lists the companion with the wallet's certifications and medals
+  (contract in [`onchain-passport.md`](onchain-passport.md)).
 - `GET /credential-meta/companion/<companion id>` and `…/image.svg` (`?lang=pt|en`): metadata and
   art (Tera, a hearts row, the outfit, the level). Keyed by the companion id; no name or email.
 - `GET /credential-meta/<row id>` gains `Ink` / `Frame` in `attributes` when set.
@@ -247,7 +285,7 @@ Secrets (project-wide): `SOLANA_TREASURY_SECRET` (read only by `wallet-faucet`),
 `~/.config/itera-hackathon/devnet-treasury.json`.
 
 ```bash
-for f in shop-items purchase-intent purchase-confirm companion lives wallet-faucet credential-meta credential-verify passport; do
+for f in shop-items purchase-intent purchase-confirm companion lives wallet-faucet credential-meta credential-verify learner-profile passport; do
   supabase functions deploy $f --project-ref nyzcbnnbffsizshiolbh --use-api
 done
 ```
@@ -260,13 +298,19 @@ source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN HA
 node scripts/hackathon/purchase-e2e.mjs               # devnet, a throwaway keypair plays the wallet (~0.03 SOL)
 ```
 
+The script only **reads** the demo e-mail user (companion, a `lesson_end` for a lesson that does not
+exist, the two wallet-only refusals) and checks its companion row is unchanged afterwards.
+
 ## Verified vs not (2026-10-09)
 
 Verified on devnet by `purchase-e2e.mjs` with a synthetic wallet: the whole table it prints
 (companion mint and verification, lives, every item kind, idempotency, reused signature, three
 tampered payments, expiry, faucet, the email learner, and that a passport stamped to gold after the
 purchases keeps `ink` and `frame`). The server-built message was compared byte for byte with
-`@solana/web3.js`.
+`@solana/web3.js`. Since 2026-10-10 also: the last life reaching the chain with `chain` in the
+answer, `chain` / `written` on a refill and on an ink, the parsed `companion` of
+`credential-verify`, the price rule on all seven items, a row stripped of `state.cosmetics` that
+still shows, stamps and gets back its ink and frame, and `learner-profile` (84 checks).
 
 Not verified:
 
@@ -278,9 +322,17 @@ Not verified:
 
 ## Known limits
 
-- A `passport` call and a cosmetic purchase racing on the same row can drop `state.cosmetics`
-  (`passport` writes the state it read at the start). Calling `purchase-confirm` again for the paid
-  intent restores it.
+- A `passport` call and a cosmetic purchase racing on the same row can still drop the
+  `state.cosmetics` **copy** (`passport` writes the state it read at the start). Nothing reads the
+  copy alone any more, so the page, the metadata and the chain keep the cosmetics, and the next
+  `passport` write puts the copy back. What remains is two attribute writes for the same asset sent
+  within the same second (a stamp computed just before a purchase, landing just after it): the stamp
+  re-reads the purchases immediately before sending, which leaves a window of one database round
+  trip. `purchase-confirm` again, or any later stamp, rewrites the attributes.
+- `lives.chain` depends on devnet answering inside the 5 s budget; when it does not, the write still
+  lands but that response has no `chain`.
+- A companion's on-chain `lives` only moves at the mirror moments, so it can lag the database while
+  lives regenerate.
 - `apply` for a life refill is at-least-once: a crash between the refill and its bookkeeping can
   refill twice.
 - The faucet is one claim per wallet, and wallets are free: the cap and the treasury balance are the

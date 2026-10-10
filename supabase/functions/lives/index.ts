@@ -9,7 +9,9 @@ import { localParts } from '../_shared/awards.ts';
 const MAX_MISTAKES = 10_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long the answer waits for the chain when the last life is lost. */
-const MIRROR_BUDGET_MS = 4_000;
+const MIRROR_BUDGET_MS = 5_000;
+/** With this many lives left the Solana SDK is loaded ahead, so the write of the last life starts warm. */
+const WARM_UP_LIVES = 2;
 
 /** Records the event once per (learner, attempt id). False when it was already there. */
 async function recordOnce(db: IteraClient, event: { user_id: string; attempt_id: string; kind: string; activity_id?: string }): Promise<boolean> {
@@ -84,18 +86,22 @@ Deno.serve(async (request) => {
       if (typeof attemptId !== 'string' || !/^[\w.:-]{1,120}$/.test(attemptId) || typeof activityId !== 'string' || !isUuid(activityId)) {
         return json({ error: 'invalid_body' }, 400, cors);
       }
-      let lostTheLast = false;
+      let livesBefore = 0;
+      let livesLeft = 0;
       const applied = await once(db, userId, `lose:${attemptId}`, 'lose', activityId, () =>
         changeLives(db, userId, (state, now) => {
           const next = loseLife(state, now);
-          lostTheLast = next.lives === 0 && regenerate(state, now).lives > 0;
+          livesBefore = regenerate(state, now).lives;
+          livesLeft = next.lives;
           return next;
         }),
       );
       // Running out of lives is written to the asset; an ordinary mistake is not.
-      if (applied && lostTheLast && caller.wallet) {
+      if (applied && caller.wallet && livesBefore > 0 && livesLeft === 0) {
         mirrorStarted = true;
         chain = await mirrorWithin(db, userId, MIRROR_BUDGET_MS);
+      } else if (applied && caller.wallet && livesLeft <= WARM_UP_LIVES) {
+        inBackground(import('../_shared/chain.ts'));
       }
     } else if (body.action === 'lesson_end') {
       const { lesson_id: lessonId, mistakes } = body;
