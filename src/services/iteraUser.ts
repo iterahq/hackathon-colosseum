@@ -15,10 +15,19 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { rememberStorageScope } from '@/utils/storageScope';
 
 let _cached: string | null | undefined;
+let _pending: Promise<string | null> | null = null;
 
 export async function getIteraUserId(): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
   if (_cached !== undefined) return _cached;
+  // Callers race at boot (guards, header, page): they share one lookup instead of one RPC each.
+  _pending ??= resolveIteraUserId().finally(() => {
+    _pending = null;
+  });
+  return _pending;
+}
+
+async function resolveIteraUserId(): Promise<string | null> {
 
   const sb = getSupabase();
   try {
@@ -54,4 +63,5 @@ export async function getIteraUserId(): Promise<string | null> {
 /** Test/embed hook: clear the memoized id (e.g. after a session change). */
 export function resetIteraUserIdCache(): void {
   _cached = undefined;
+  _pending = null;
 }
