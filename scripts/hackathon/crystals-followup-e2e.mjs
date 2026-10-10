@@ -18,9 +18,10 @@ console.log('\n== refunded purchase is not re-applied ==');
 psql(
   `select itera.crystal_grant(:'u'::uuid, 150, 'e2e_seed', 'fu-1');
    insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, -150, 'spend', 'base_criativo:${ZERO}');
-   insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, 150, 'refund', gen_random_uuid()::text);
-   insert into itera.purchases (user_id, item_key, ref_id, lamports, price_usd_cents, status, source, wallet, memo, expires_at, paid_at, refunded_at, error)
-   values (:'u'::uuid, 'base_criativo', '${ZERO}', 0, 0, 'refunded', 'crystals', :'w', 'base_criativo:${ZERO}', now(), now(), now(), 'sold_out_after_payment');
+   with refunded as (
+     insert into itera.purchases (user_id, item_key, ref_id, lamports, price_usd_cents, status, source, wallet, memo, expires_at, paid_at, refunded_at, error)
+     values (:'u'::uuid, 'base_criativo', '${ZERO}', 0, 0, 'refunded', 'crystals', :'w', 'base_criativo:${ZERO}', now(), now(), now(), 'sold_out_after_payment') returning id)
+   insert into itera.crystal_ledger (user_id, delta, reason, ref_id) select :'u'::uuid, 150, 'refund', id::text from refunded;
    update itera.crystal_accounts set balance = 150 where user_id = :'u'::uuid;`,
   { u: mia.userId, w: mia.address },
 );
