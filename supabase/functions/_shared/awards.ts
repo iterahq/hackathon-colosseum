@@ -129,14 +129,34 @@ function nextDate(date: string): string {
   return next.toISOString().slice(0, 10);
 }
 
-/** A lesson is done when every counted activity is completed; it happened when the last one was. */
-function completedLessons(input: AwardsInput): CompletedLesson[] {
+function completedAtOf(progress: AwardsInput['progress']): Map<string, string> {
   const completedAtByActivity = new Map<string, string>();
-  for (const row of input.progress) {
+  for (const row of progress) {
     if (row.status === 'completed' && row.completed_at) {
       completedAtByActivity.set(row.activity_id, new Date(row.completed_at).toISOString());
     }
   }
+  return completedAtByActivity;
+}
+
+export interface DayIncomplete {
+  lesson_id: string;
+  done: number;
+  total: number;
+}
+
+/** `null` when the lesson is complete or has no counted activities; otherwise how far the learner got. */
+export function dayIncomplete(input: Pick<AwardsInput, 'activities' | 'progress'>, lessonId: string): DayIncomplete | null {
+  const counted = input.activities.filter((activity) => activity.lesson_id === lessonId);
+  if (counted.length === 0) return null;
+  const completedAt = completedAtOf(input.progress);
+  const done = counted.filter((activity) => completedAt.has(activity.id)).length;
+  return done === counted.length ? null : { lesson_id: lessonId, done, total: counted.length };
+}
+
+/** A lesson is done when every counted activity is completed; it happened when the last one was. */
+function completedLessons(input: AwardsInput): CompletedLesson[] {
+  const completedAtByActivity = completedAtOf(input.progress);
   const activitiesByLesson = groupBy(input.activities, (activity) => activity.lesson_id);
   const done: CompletedLesson[] = [];
   for (const lesson of input.lessons) {
