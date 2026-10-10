@@ -183,6 +183,21 @@ describe('catalog and tiers', () => {
     expect(paid).toMatchObject({ free: false, owned: false, sold_out: false, price_lamports: 5_500_000_000, price_label: 'US$ 1,000.00 ≈ 5.5 SOL', rarity: 'mythic', rarity_label: 'Impossível', tier_name: 'Tera Mítico', allows_outfit: false, supply: { minted: 2, max: 5 } });
   });
 
+  it('carries the season of a seasonal avatar and null for the others', () => {
+    const season = { key: 'natal', from: '12-01', to: '12-31', label: { pt: 'Natal', en: 'Christmas' } };
+    const seasonal = item('event_natal', { effect: { season } });
+    const base = { supply: undefined, own: null, equippedKey: null };
+    expect(shopAvatarFields(catalog, seasonal, 'en', SUPABASE, { ...base, now: new Date('2026-10-10T00:00:00Z') }).season).toEqual({
+      key: 'natal',
+      label: 'Christmas',
+      starts_at: '2026-12-01T00:00:00.000Z',
+      ends_at: '2026-12-31T23:59:59.999Z',
+      available: false,
+    });
+    expect(shopAvatarFields(catalog, seasonal, 'pt', SUPABASE, { ...base, now: new Date('2026-12-24T00:00:00Z') }).season).toMatchObject({ label: 'Natal', available: true });
+    expect(shopAvatarFields(catalog, LEADER, 'pt', SUPABASE, base).season).toBeNull();
+  });
+
   it('is sold out when every unit is paid or held, except for the learner holding one', () => {
     expect(isSoldOut(MYTHIC, { minted: 4, held: 5 })).toBe(true);
     expect(isSoldOut(MYTHIC, { minted: 4, held: 4 })).toBe(false);

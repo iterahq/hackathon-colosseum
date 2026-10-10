@@ -22,6 +22,7 @@ const INELIGIBLE_STATUS: Record<IneligibleCode, number> = {
   free_item: 409,
   sold_out: 409,
   reservation_limit: 429,
+  out_of_season: 409,
 };
 const UNIQUE_VIOLATION = '23505';
 

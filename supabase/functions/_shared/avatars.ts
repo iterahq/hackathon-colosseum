@@ -1,6 +1,7 @@
 import type { Lang } from './art.ts';
 import { APP_URL, pickText, type OnchainAttribute } from './credential.ts';
 import { loreOf, loreText, loreView } from './lore.ts';
+import { seasonData, seasonView } from './seasons.ts';
 
 /** The avatar every learner wears until they pick another one. Never minted, never sold. */
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
@@ -28,6 +29,8 @@ export interface AvatarItem {
   avatar_group: string;
   supply_cap: number | null;
   image_key: string | null;
+  /** Data of the row: `season` (a buying window) and `includes` (keys granted with it). */
+  effect?: Record<string, unknown>;
   active: boolean;
   sort: number;
 }
@@ -160,7 +163,7 @@ export function shopAvatarFields(
   item: AvatarItem,
   lang: Lang,
   supabaseUrl: string,
-  facts: { supply: AvatarSupply | undefined; own: AvatarAssetRow | null; equippedKey: string | null },
+  facts: { supply: AvatarSupply | undefined; own: AvatarAssetRow | null; equippedKey: string | null; now?: Date },
 ) {
   const free = isFreeAvatar(item);
   const owned = free || isOwnedRow(facts.own);
@@ -189,6 +192,7 @@ export function shopAvatarFields(
     asset_address: facts.own?.asset_address ?? null,
     allows_outfit: allowsOutfit(item.avatar_group),
     lore: loreView(item.key, lang),
+    season: seasonView(seasonData(item.effect), lang, facts.now ?? new Date()),
     sort: item.sort,
   };
 }

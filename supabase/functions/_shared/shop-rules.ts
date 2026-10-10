@@ -13,7 +13,8 @@ export type IneligibleCode =
   | 'gift_limit'
   | 'free_item'
   | 'sold_out'
-  | 'reservation_limit';
+  | 'reservation_limit'
+  | 'out_of_season';
 
 /** A learner receives at most this many gifts in any 24 hours. */
 export const GIFT_DAILY_LIMIT = 5;
@@ -35,6 +36,8 @@ export interface EligibilityFacts {
   /** Only read for an avatar: it has no price, or its limited supply is all taken. */
   free?: boolean;
   soldOut?: boolean;
+  /** Only read for an avatar that is sold in a season: the window is closed now. */
+  outOfSeason?: boolean;
 }
 
 export function isItemKind(kind: string): kind is ItemKind {
@@ -68,6 +71,7 @@ export function eligibility(kind: ItemKind, facts: EligibilityFacts): Eligibilit
       if (!isGlobal) return refuse('invalid_ref');
       if (facts.free) return refuse('free_item');
       if (facts.owned) return refuse('already_owned');
+      if (facts.outOfSeason) return refuse('out_of_season');
       return facts.soldOut ? refuse('sold_out') : { ok: true };
   }
 }

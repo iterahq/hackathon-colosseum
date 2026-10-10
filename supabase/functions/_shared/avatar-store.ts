@@ -23,7 +23,7 @@ import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 
 export const AVATAR_ITEM_COLUMNS =
-  'key,title_i18n,description_i18n,price_lamports,price_usd_cents,price_label,rarity,avatar_group,supply_cap,image_key,active,sort';
+  'key,title_i18n,description_i18n,price_lamports,price_usd_cents,price_label,rarity,avatar_group,supply_cap,image_key,effect,active,sort';
 export const AVATAR_ASSET_COLUMNS = 'id,user_id,item_key,serial,purchase_id,mint_status,reserved_until,wallet,asset_address,tx_signature,minted_at';
 const CATALOG_TTL_MS = 60_000;
 const UNIQUE_VIOLATION = '23505';

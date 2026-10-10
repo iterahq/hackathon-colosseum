@@ -8,6 +8,7 @@ import { changedAttributes, explorerUrl, onchainAttributes, pickText, type Achie
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { deliverGift, loadGift, recipientFacts, type GiftRow } from './gift-store.ts';
 import { refillLives, regenerate } from './lives.ts';
+import { inSeason, seasonData } from './seasons.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
 
 export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort';
@@ -237,7 +238,7 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       if (!avatar || isFreeAvatar(avatar)) return eligibility('avatar', { ...NO_FACTS, refId, free: true });
       const [own, supply] = await Promise.all([loadAvatarRow(db, userId, item.key), loadSupply(db)]);
       const holding = own?.mint_status === 'reserved' && own.reserved_until !== null && Date.parse(own.reserved_until) > Date.now();
-      return eligibility('avatar', { ...NO_FACTS, refId, owned: isOwnedRow(own), soldOut: !holding && isSoldOut(avatar, supply.get(item.key)) });
+      return eligibility('avatar', { ...NO_FACTS, refId, owned: isOwnedRow(own), outOfSeason: !inSeason(seasonData(avatar.effect), new Date()), soldOut: !holding && isSoldOut(avatar, supply.get(item.key)) });
     },
     // The serial is held from here until the intent's window ends (plus a grace), so the buyer who pays gets a unit.
     async afterIntent({ db, userId, item }, intent) {
