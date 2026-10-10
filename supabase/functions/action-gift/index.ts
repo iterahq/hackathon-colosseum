@@ -1,4 +1,4 @@
-import { isSolanaAddress } from '../_shared/address.ts';
+import { isEd25519Address, isSolanaAddress } from '../_shared/address.ts';
 import { companionImageUrl } from '../_shared/companion.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { reconcileGifts } from '../_shared/gift-reconcile.ts';
@@ -15,8 +15,12 @@ import {
   type RecipientFacts,
 } from '../_shared/gift-store.ts';
 import {
+  BLIND_EXPIRY_MS,
+  SLOT_HOLD_MS,
   actionError,
   actionHeaders,
+  actionSlot,
+  occupiesSlot,
   giftActionCompleted,
   giftActionGet,
   giftActionPost,
@@ -36,6 +40,9 @@ const FUNCTION = 'action-gift';
 const ITEM_KEY = 'life_gift';
 /** How long the callback waits for the recipient's companion to be written before answering. */
 const MIRROR_WAIT_MS = 6_000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** More than the daily cap, so the count of unpaid intents is exact up to it. */
+const RECIPIENT_SCAN = 200;
 const FAILURE_STATUS: Record<GiftFailure, number> = {
   gift_not_found: 404,
   gift_expired: 410,
@@ -120,20 +127,81 @@ async function openGiftOf(db: IteraClient, account: string, toUserId: string): P
   return data as GiftRow | null;
 }
 
+/**
+ * How many Action intents stand open for a recipient from OTHER payers, and how
+ * many unpaid ones were opened for them in the last 24 hours. Database only.
+ * Rows nobody can pay any more (past the callback's grace window) are closed here.
+ */
+async function recipientLoad(db: IteraClient, toUserId: string, account: string, now: Date): Promise<{ openOthers: number; unpaidToday: number }> {
+  await db
+    .from('gifts')
+    .update({ status: 'expired' })
+    .eq('source', 'action')
+    .eq('to_user_id', toUserId)
+    .eq('status', 'pending')
+    .lt('expires_at', new Date(now.getTime() - BLIND_EXPIRY_MS).toISOString());
+  const { data, error } = await db
+    .from('gifts')
+    .select('from_wallet,status,expires_at')
+    .eq('source', 'action')
+    .eq('to_user_id', toUserId)
+    .in('status', ['pending', 'expired'])
+    .gte('created_at', new Date(now.getTime() - DAY_MS).toISOString())
+    .limit(RECIPIENT_SCAN);
+  if (error) throw new Error(`gifts load: ${error.message}`);
+  const rows = (data ?? []) as Array<{ from_wallet: string; status: string; expires_at: string }>;
+  return {
+    openOthers: rows.filter((row) => row.from_wallet !== account && occupiesSlot(row, now)).length,
+    unpaidToday: rows.length,
+  };
+}
+
+function transactionAnswer(lang: Lang, recipient: Recipient, account: string, treasury: string, gift: GiftRow, blockhash: string): Response {
+  const message = buildTransferMessage({ payer: account, recipient: treasury, lamports: BigInt(gift.lamports), memo: gift.id, recentBlockhash: blockhash });
+  return answer(
+    giftActionPost({
+      lang,
+      who: recipient.who,
+      transactionBase64: base64Encode(serializeTransaction(message)),
+      callbackHref: `${functionsBase()}/${FUNCTION}/confirm?gift=${gift.id}&lang=${lang}`,
+    }),
+  );
+}
+
 async function build(db: IteraClient, wallet: string, request: Request, lang: Lang): Promise<Response> {
   const body = await readJsonObject(request);
   const account = body?.account;
-  if (!isSolanaAddress(account)) return refuse('invalid_account', lang, 400);
+  // A payer must be able to sign: an address that is not a real ed25519 public key is refused outright.
+  if (!isEd25519Address(account)) return refuse('invalid_account', lang, 400);
   if (account === wallet) return refuse('self_gift', lang, 400);
 
-  // A payment whose callback never came is settled first, so this wallet never pays twice for one gift.
-  await reconcileGifts(db, { fromWallet: account }, 0);
-
+  // Everything down to the slot decision reads the database only: the Solana node is not asked yet.
   const [recipient, item, payer, config] = await Promise.all([loadRecipient(db, wallet, lang), loadItem(db), walletUser(db, account), loadConfig(db)]);
   if (!recipient) return refuse('recipient_not_found', lang, 404);
   if (!item || !isSolanaAddress(config.treasury) || config.treasury === account) return refuse('unavailable', lang, 503);
   const blocked = blockedBy(recipient, payer?.userId ?? null);
   if (blocked) return refuse(blocked, lang, blocked === 'gift_limit' ? 429 : 400);
+
+  const now = new Date();
+  const [own, load] = await Promise.all([openGiftOf(db, account, recipient.userId), recipientLoad(db, recipient.userId, account, now)]);
+  const slot = actionSlot({ own, ...load, now });
+  if (slot === 'too_many') return refuse('too_many_pending', lang, 429);
+  // The payer asked again inside the window of the transaction they already hold: the same one, no node call.
+  if (slot === 'reuse' && own?.blockhash) return transactionAnswer(lang, recipient, account, config.treasury, own, own.blockhash);
+  // Seconds after an attempt that gave no transaction: the same answer, no node call.
+  if (slot === 'wait') return own?.error === 'insufficient_funds' ? refuse('insufficient_funds', lang, 400) : refuse('unavailable', lang, 503);
+
+  // A payment of this wallet whose callback never came is settled first, so it never pays twice for one gift.
+  let current = own;
+  if (current) {
+    await reconcileGifts(db, { fromWallet: account }, 0);
+    current = await openGiftOf(db, account, recipient.userId);
+  }
+  // The intent takes (or keeps) its slot BEFORE the node is asked for anything else, so every node call
+  // below belongs to one of the recipient's few open intents, whatever the payer's balance turns out to be.
+  const terms = { source: 'action' as const, fromWallet: account, fromUserId: payer?.userId ?? null, toUserId: recipient.userId, toWallet: wallet, lamports: item.price_lamports };
+  const held = await openGift(db, { ...terms, id: current?.id, lastValidBlockHeight: null, expiresAt: new Date(now.getTime() + SLOT_HOLD_MS).toISOString() });
+  if (held.status !== 'pending') return refuse('unavailable', lang, 503);
 
   let chain: { balance: bigint; blockhash: string; lastValidBlockHeight: number; height: number };
   try {
@@ -144,29 +212,20 @@ async function build(db: IteraClient, wallet: string, request: Request, lang: La
     console.error('action-gift rpc failed', error.message);
     return refuse('unavailable', lang, 503);
   }
-  const price = BigInt(item.price_lamports);
-  if (!fundsCheck(chain.balance, price).ok) return refuse('insufficient_funds', lang, 400);
+  if (!fundsCheck(chain.balance, BigInt(item.price_lamports)).ok) {
+    await db.from('gifts').update({ error: 'insufficient_funds' }).eq('id', held.id).eq('status', 'pending');
+    return refuse('insufficient_funds', lang, 400);
+  }
 
   const gift = await openGift(db, {
-    id: (await openGiftOf(db, account, recipient.userId))?.id,
-    source: 'action',
-    fromWallet: account,
-    fromUserId: payer?.userId ?? null,
-    toUserId: recipient.userId,
-    toWallet: wallet,
-    lamports: item.price_lamports,
+    ...terms,
+    id: held.id,
     lastValidBlockHeight: chain.lastValidBlockHeight,
     expiresAt: expiresAt(new Date(), chain.height, chain.lastValidBlockHeight),
+    blockhash: chain.blockhash,
   });
-  const message = buildTransferMessage({ payer: account, recipient: config.treasury, lamports: price, memo: gift.id, recentBlockhash: chain.blockhash });
-  return answer(
-    giftActionPost({
-      lang,
-      who: recipient.who,
-      transactionBase64: base64Encode(serializeTransaction(message)),
-      callbackHref: `${functionsBase()}/${FUNCTION}/confirm?gift=${gift.id}&lang=${lang}`,
-    }),
-  );
+  if (gift.status !== 'pending') return refuse('unavailable', lang, 503);
+  return transactionAnswer(lang, recipient, account, config.treasury, gift, chain.blockhash);
 }
 
 /** Action chaining: the client posts the signature here once the wallet sent the transaction. */

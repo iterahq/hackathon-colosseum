@@ -15,6 +15,7 @@
 import { createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { isEd25519Address, isSolanaAddress } from '../../supabase/functions/_shared/address.ts';
 import { compactU16, base58Decode, base58Encode, buildTransferMessage, transferData, MEMO_PROGRAM, SYSTEM_PROGRAM } from '../../supabase/functions/_shared/solana-tx.ts';
 import { FUNCTIONS, PROJECT_REF, PROTECTED_WALLET, SUPABASE_URL, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sleep, sol, summary, until } from './social-e2e.lib.mjs';
 
@@ -513,6 +514,64 @@ async function referralFarming(context) {
   await dropEmailLearners(context);
 }
 
+const freshAddress = () => base58Encode(generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'der' }).subarray(-32));
+const actionRows = (recipientId, where = '') => Number(psql(`select count(*) from itera.gifts where source = 'action' and to_user_id = :'id'::uuid ${where};`, { id: recipientId }));
+async function timedAction(url, body) {
+  const startedAt = Date.now();
+  const answer = await action(url, body);
+  return { ...answer, ms: Date.now() - startedAt };
+}
+
+// --- F. Finding 6: the public Action endpoint -----------------------------------------------------------
+// Spends: two network fees (a throwaway payer is funded from the treasury and swept back; it never pays).
+async function actionEndpoint(context) {
+  const recipient = await newLearner(context.apikey, 'F recipient');
+  const url = `${FUNCTIONS}/action-gift?to=${recipient.address}`;
+
+  // 1. An `account` that cannot sign.
+  let offCurve;
+  do offCurve = base58Encode(randomBytes(32));
+  while (isEd25519Address(offCurve) || !isSolanaAddress(offCurve));
+  const refusals = [await timedAction(url, { account: '11111111111111111111111111111111' }), await timedAction(url, { account: offCurve }), await timedAction(url, { account: 'not-an-address' })];
+  check('F an account that is not a real ed25519 public key (System address, off-curve bytes, junk): 400, no row', refusals.every((answer) => answer.status === 400 && typeof answer.body.message === 'string') && actionRows(recipient.userId) === 0, refusals.map((answer) => `${answer.status} ${answer.ms}ms`).join(' · '));
+
+  // 2. The flood of the review: a fresh real key per request.
+  const flood = [];
+  for (let index = 0; index < 13; index += 1) flood.push(await timedAction(url, { account: freshAddress() }));
+  const held = flood.slice(0, 10);
+  const refused = flood.slice(10);
+  check('F thirteen fresh payers: ten take the recipient\'s slots, the rest are refused with 429 and leave no row', held.every((answer) => answer.status === 400) && refused.every((answer) => answer.status === 429 && typeof answer.body.message === 'string') && actionRows(recipient.userId) === 10, `${flood.map((answer) => answer.status).join(',')} rows ${actionRows(recipient.userId)}`);
+  const median = (values) => [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) / 2)];
+  console.log(`F answer time: ${median(held.map((answer) => answer.ms))} ms median when the node is asked (slot taken) · ${median(refused.map((answer) => answer.ms))} ms median when refused before any node call`);
+  const get = await fetch(url);
+  const getBody = await get.json();
+  check('F the Action still answers a valid GET with the spec headers while its slots are full', get.status === 200 && getBody.type === 'action' && Array.isArray(getBody.links?.actions) && get.headers.get('access-control-allow-origin') === '*' && Boolean(get.headers.get('x-action-version')) && Boolean(get.headers.get('x-blockchain-ids')), `${get.status} ${getBody.type}`);
+
+  // 3. A payer that keeps asking: one row, and the same transaction while its blockhash lives.
+  psql(`update itera.gifts set expires_at = now() - interval '10 minutes' where source = 'action' and to_user_id = :'id'::uuid and status = 'pending';`, { id: recipient.userId });
+  const payer = await keptLearner(context.apikey, 'F payer', 'f-payer');
+  const need = 555_000n + 890_880n - (await balance(payer.address));
+  if (need > 0n) await fundFromTreasury(context, payer.address, need);
+  const first = await timedAction(url, { account: payer.address });
+  const repeats = [];
+  for (let index = 0; index < 5; index += 1) repeats.push(await timedAction(url, { account: payer.address }));
+  const giftIdOf = (answer) => (answer.status === 200 ? new URL(answer.body.links.next.href).searchParams.get('gift') : null);
+  check('F the same payer six times in a row: ONE intent, the SAME transaction every time', first.status === 200 && repeats.every((answer) => answer.status === 200 && answer.body.transaction === first.body.transaction && giftIdOf(answer) === giftIdOf(first)) && actionRows(recipient.userId, `and from_wallet = '${payer.address}'`) === 1, `${first.ms} ms then ${repeats.map((answer) => answer.ms).join('/')} ms`);
+
+  // 4. An unfunded payer that keeps asking is answered from the database for a while.
+  const poor = freshAddress();
+  const poorFirst = await timedAction(url, { account: poor });
+  const poorAgain = await timedAction(url, { account: poor });
+  check('F an unfunded payer asking twice: 400 both times, one row', poorFirst.status === 400 && poorAgain.status === 400 && poorAgain.body.message === poorFirst.body.message && actionRows(recipient.userId, `and from_wallet = '${poor}'`) === 1, `${poorFirst.ms} ms then ${poorAgain.ms} ms`);
+
+  // 5. A row nobody can pay any more (past the callback's grace window) is closed.
+  psql(`update itera.gifts set expires_at = now() - interval '26 hours' where source = 'action' and to_user_id = :'id'::uuid and from_wallet = :'wallet';`, { id: recipient.userId, wallet: poor });
+  await action(url, { account: payer.address });
+  check('F an unpaid intent older than the grace window is expired', psql(`select status from itera.gifts where source = 'action' and to_user_id = :'id'::uuid and from_wallet = :'wallet';`, { id: recipient.userId, wallet: poor }) === 'expired');
+  check('F nothing was given to the recipient by any of this', livesOf(recipient.userId) === '5' && actionRows(recipient.userId, `and status in ('paid', 'delivered')`) === 0);
+  await sweepToTreasury(context, payer);
+}
+
 function json(sql, variables = {}) {
   return JSON.parse(psql(sql, variables) || 'null') ?? [];
 }
@@ -568,6 +627,7 @@ const SECTIONS = {
   j: ['J. Circuito off the response path + idempotent retry', circuitRobustness],
   d: ['D. unbounded authority-paid writes (finding 4)', mirrorBounds],
   e: ['E. referral farming (finding 5)', referralFarming],
+  f: ['F. public Action endpoint cost (finding 6)', actionEndpoint],
   owner: ['Owner account, read-only dry check', ownerDryCheck],
 };
 

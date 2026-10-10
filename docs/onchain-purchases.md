@@ -479,7 +479,7 @@ X-Accept-Action-Version, X-Accept-Blockchain-Ids`) on **every** answer, `OPTIONS
 | Call | Answer |
 |---|---|
 | `GET /action-gift?to=<wallet>` or `GET /action-gift/<wallet>` | `ActionGetResponse`: `{ type: "action", icon: <the recipient's companion art>, title: "Give <name>'s Tera a life", description, label: "Gift a life", links: { actions: [{ type: "transaction", label: "Gift a life · 0.00055 SOL", href: <this url> }] } }`; `disabled: true` + `error` while the recipient is full or over the daily limit. `400` malformed wallet, `404` unknown wallet |
-| `POST` (same url) `{ "account": "<payer wallet>" }` | `ActionPostResponse`: `{ type: "transaction", transaction: <base64 unsigned legacy transaction: System transfer account -> treasury of 550 000 lamports + Memo(gift id)>, message, links: { next: { type: "post", href: "…/action-gift/confirm?gift=<id>&lang=…" } } }`. `400` bad account, self-gift, recipient full, insufficient funds; `429` daily limit; `503` node down |
+| `POST` (same url) `{ "account": "<payer wallet>" }` | `ActionPostResponse`: `{ type: "transaction", transaction: <base64 unsigned legacy transaction: System transfer account -> treasury of 550 000 lamports + Memo(gift id)>, message, links: { next: { type: "post", href: "…/action-gift/confirm?gift=<id>&lang=…" } } }`. `400` bad account (not a real ed25519 public key), self-gift, recipient full, insufficient funds; `429` daily limit, or too many open intents for this recipient; `503` node down |
 | `POST /action-gift/confirm?gift=<id>` `{ "account", "signature" }` | `CompletedAction`: `{ type: "completed", icon, title: "Life delivered ✓", description, label }`. Same checks as `purchase-confirm` (payer, treasury, amount, memo, read from chain). `404` gift / transaction not visible yet (call again), `410` expired, `422` wrong payer or payment, `409` signature reused. Idempotent |
 
 - The payer needs no Itera account. A repeated `POST` for the same payer and recipient refreshes
@@ -530,7 +530,21 @@ intent. An unpaid gift is marked `expired` two minutes after its blockhash died.
 
 - Two payers racing for the last free slot can both pay; the second life is lost at the cap (6).
   The daily limit counts paid gifts, so the same race can go one over it.
-- Anyone can open pending Action gifts for any pair of wallets: one row per (payer, recipient).
+- The Action takes no token, so its cost is bounded per recipient, not per caller (migration `0139`,
+  `actionSlot` in `_shared/gift.ts`; security review finding 6). Everything below is decided from the
+  database, before the Solana node is asked anything:
+  - `account` must be a real ed25519 public key (on the curve, not a small-order point): the System
+    address, off-curve bytes and program-derived addresses answer `400`.
+  - at most **10** open Action intents per recipient and **60** unpaid ones in 24 hours; past either
+    a new payer gets `429` with an `ActionError` ("Too many gifts are open for this learner right
+    now…") and no row is written. An intent takes its slot before the node is asked, so an unfunded
+    payer also uses one (and frees it when its window ends, about 3.5 minutes).
+  - the same payer asking again gets the **same transaction** while its blockhash has 20 s or more to
+    live (no node call, one row); an attempt that gave no transaction is answered from the database
+    for 15 s.
+  - an unpaid intent older than the callback's grace window (24 h) is marked `expired`.
+  There is still no per-IP limit: someone can keep one recipient's ten slots taken and stop blinks to
+  that learner (the in-app gift is not affected). Proof: `node scripts/hackathon/security-attacks.mjs f`.
 - `learner-profile` is cached for 20 s, so a profile can show the lives from before a gift for that long.
 - The invite reward needs the invited learner's `passport` call (the app makes it at lesson end).
 
