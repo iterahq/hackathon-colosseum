@@ -26,6 +26,8 @@ const MAX_JOBS_PER_CALL = 3;
 const MAX_OPERATOR_JOBS = 10;
 const MINT_BUDGET_MS = 90_000;
 const STALE_CLAIM_MS = 3 * 60_000;
+const INVITER_MINT_ATTEMPTS = 3;
+const INVITER_MINT_PAUSE_MS = 3_000;
 const PAGE_SIZE = 1000;
 const ROW_KEY = 'user_id,achievement_key,ref_id';
 
@@ -361,7 +363,12 @@ async function mintPending(
 async function settleInviter(db: IteraClient, inviterId: string, catalog: Map<string, CatalogEntry>): Promise<void> {
   const inviter = await resolveNamedUser(db, inviterId);
   if (!inviter?.wallet) return;
-  await mintPending(db, inviter, await loadRows(db, inviterId), catalog, MAX_JOBS_PER_CALL);
+  // The public devnet node throttles bursts: a failed mint is tried again here instead of waiting for the inviter's next visit.
+  for (let attempt = 0; attempt < INVITER_MINT_ATTEMPTS; attempt += 1) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, INVITER_MINT_PAUSE_MS));
+    const outcome = await mintPending(db, inviter, await loadRows(db, inviterId), catalog, MAX_JOBS_PER_CALL);
+    if (outcome.remaining === 0) break;
+  }
   await syncMirror(db, inviterId);
 }
 
@@ -458,17 +465,20 @@ Deno.serve(async (request) => {
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
 
     // The invite reward is paid on the invited learner's first completed day, and only then.
+    let inviterToSettle: string | null = null;
     if (rows.some((row) => row.achievement_key === 'first_stamp')) {
       const reward = await rewardReferral(db, caller.iteraUserId);
       if (reward) {
         for (const id of reward.createdRowIds) stored.created.add(id);
         rows = await loadRows(db, caller.iteraUserId);
-        inBackground(settleInviter(db, reward.inviterUserId, catalog));
+        inviterToSettle = reward.inviterUserId;
         if (caller.wallet) inBackground(syncMirror(db, caller.iteraUserId));
       }
     }
 
     const mint = await mintPending(db, caller, rows, catalog, maxJobs);
+    // After this learner's own mints, so the two do not compete for the node.
+    if (inviterToSettle) inBackground(settleInviter(db, inviterToSettle, catalog));
     if (mint.touched.size > 0) rows = await loadRows(db, caller.iteraUserId);
 
     const updatedIds = new Set([...stored.changed, ...mint.touched].filter((id) => !stored.created.has(id)));

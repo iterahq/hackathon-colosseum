@@ -15,6 +15,7 @@ vi.mock('@/auth/AuthContext', () => ({ useAuth: () => auth() }));
 vi.mock('@/hooks/useCompanion', () => ({ useCompanion: () => companion() }));
 vi.mock('@/hooks/useGift', () => ({ useGiftPrice: () => ({ data: { priceLabel: 'US$ 0.10 ≈ 0.00055 SOL', priceLamports: 550000 } }) }));
 vi.mock('@/hooks/usePurchase', () => ({ usePurchase: () => ({ state: PURCHASE_IDLE, busy: false, buy, fund: vi.fn(), retry: vi.fn(), reset: vi.fn() }) }));
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock('@/hooks/usePassportSound', () => ({ usePassportSound: () => vi.fn() }));
 
 const show = (wallet = RECIPIENT) =>

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
@@ -7,6 +8,7 @@ import { useCompanion } from '@/hooks/useCompanion';
 import { useGiftPrice } from '@/hooks/useGift';
 import { usePurchase } from '@/hooks/usePurchase';
 import { useI18n } from '@/i18n';
+import { queryKeys } from '@/lib/queryKeys';
 import { GIFT_ITEM_KEY } from '@/services/gift.service';
 import { giftBlinkUrl } from '@/utils/gift';
 
@@ -21,11 +23,13 @@ const LINK = `rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underl
 
 /** "Gift a life" for one recipient: the paid button for a signed-in wallet, and the shareable blink link for everyone. */
 export function GiftLifePanel({ wallet, className = '' }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { session } = useAuth();
   const companion = useCompanion();
   const price = useGiftPrice();
-  const purchase = usePurchase();
+  const queryClient = useQueryClient();
+  // The recipient's public numbers moved: read the profile again instead of showing the old snapshot.
+  const purchase = usePurchase({ onPaid: () => void queryClient.invalidateQueries({ queryKey: queryKeys.achievements.profile(wallet, locale) }) });
   const mine = companion.wallet;
   const own = Boolean(mine) && mine === wallet;
   const blink = giftBlinkUrl(SUPABASE_URL, wallet);

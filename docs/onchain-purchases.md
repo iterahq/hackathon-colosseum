@@ -82,6 +82,8 @@ cents). No price feed is read. All seven are `active = true`.
 | `outfit_glasses` | `outfit` | 20 | 1 100 000 | `US$ 0.20 ≈ 0.0011 SOL` | 40 |
 | `outfit_crown` | `outfit` | 30 | 1 650 000 | `US$ 0.30 ≈ 0.00165 SOL` | 50 |
 | `outfit_headphones` | `outfit` | 20 | 1 100 000 | `US$ 0.20 ≈ 0.0011 SOL` | 60 |
+| `outfit_laurel` | `outfit` | 50 | 2 750 000 | `US$ 0.50 ≈ 0.00275 SOL` | 65 |
+| `life_gift` | `gift` | 10 | 550 000 | `US$ 0.10 ≈ 0.00055 SOL` | 95 (listed only with `?with=gift`) |
 | `life_refill` | `life` | 10 | 550 000 | `US$ 0.10 ≈ 0.00055 SOL` | 90 |
 
 ```sql
@@ -392,6 +394,113 @@ response. The key is compared in constant time. Any other request behaves exactl
 node scripts/hackathon/passport-sync.mjs <wallet address | itera user id> [--lang pt|en]
 ```
 
+## Gift a life and the invite reward
+
+Migrations `0123_gift_referral.sql`, `0124_gift_referral_user_read.sql`, `0125_outfit_laurel_item.sql`.
+Functions `action-gift`, `gifts`, `referral` (new) and additive changes to `purchase-intent`,
+`purchase-confirm` / `purchase-submit`, `shop-items`, `companion`, `lives`, `passport`.
+
+| Table | What | Learner can read |
+|---|---|---|
+| `gifts` | one row per gift intent: `id` (= the memo of the payment; the in-app path shares it with its `purchases` row), `source` (`app` / `action`), `from_wallet`, `from_user_id` (null when the payer is not a learner), `to_user_id`, `to_wallet`, `lamports`, `status` (`pending` / `paid` / `delivered` / `expired`), `tx_signature` (unique), `mirror_signature`, `created_at`, `paid_at`, `delivered_at`, `seen_at` | rows they received or sent |
+| `referral_codes` | `user_id` -> `code` (8 characters, random, stable) | own row |
+| `referrals` | `invited_user_id` (pk) -> `inviter_user_id`, `code`, `status` (`pending` / `rewarded`), `claimed_at`, `rewarded_at` | rows they are part of |
+
+### The bonus life
+
+A gift or an invite reward may put **one** life above the maximum (`companions.lives <= max_lives + 1`),
+so it is never wasted. Every `lives` block gains `bonus` (0 or 1): `{ current: 6, max: 5, bonus: 1,
+next_regen_at: null, regen_seconds: 0, … }`. A bonus life never regenerates, is the first one a
+mistake takes, and survives a refill and a lesson bonus. On chain the companion says `lives = 6`,
+`max_lives = 5`; the companion art draws a sixth heart in gold and `6/5`. A client that clamps
+`current` to `max` (the front end before this change) simply shows 5/5.
+
+### Item `life_gift` (kind `gift`, US$ 0.10 · 550 000 lamports · `US$ 0.10 ≈ 0.00055 SOL`)
+
+- `GET /shop-items` lists it **only** with `?with=gift` (it is bought on a profile, not in the shop).
+- `POST /purchase-intent` `{ "item_key": "life_gift", "recipient": "<wallet address>" }`: same answer
+  as any intent, plus `recipient: { wallet }`. The purchase's `ref_id` is the recipient's user id.
+  Errors on top of the usual ones: `400 invalid_ref` (no or malformed `recipient`),
+  `404 recipient_not_found` (the wallet is nobody's sign-in or linked wallet), `409 self_gift`,
+  `409 recipient_full` (already at max + 1), `429 gift_limit` (the recipient received 5 gifts in the
+  last 24 hours; counted on paid gifts).
+- `POST /purchase-confirm` / `-submit`: the usual paid answer (`passport: null`, no `lives` /
+  `companion` of the payer) plus
+  `gift: { id, source, status, from: { wallet, name }, to: { wallet, name }, recipient: { lives, max_lives, companion_asset, companion_explorer_url }, payment_explorer_url, mirror_tx_signature, mirror_explorer_url, delivered_at, seen_at }`.
+  `chain` / `written` describe the write of the **recipient's** companion when this call made it;
+  a repeated confirm has no `chain` but keeps `gift.mirror_explorer_url`. `name` is the nickname of
+  a wallet learner, `null` for anyone else (an e-mail account's name is never returned).
+- The life is given exactly once per intent (`life_events`, attempt `gift:<intent id>`), and one
+  payment settles one gift (`tx_signature` unique on both tables).
+
+### `POST /gifts` (Bearer user token, app CORS)
+
+- `{ "action": "inbox" }` -> `{ gifts: [<gift as above>] }`: delivered gifts the caller has not seen
+  (at most 5, oldest first). Runs the reconcile below first.
+- `{ "action": "seen", "ids": ["<gift id>", …] }` -> `{ seen: <rows marked> }` (only the caller's).
+
+### Solana Action `action-gift` (public, no token; the blink)
+
+`X-Action-Version: 2.4`, `X-Blockchain-Ids: solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` and open CORS
+(`Access-Control-Allow-Origin: *`, methods `GET,POST,PUT,OPTIONS`, headers `Content-Type,
+Authorization, Content-Encoding, Accept-Encoding, X-Action-Version, X-Blockchain-Ids,
+X-Accept-Action-Version, X-Accept-Blockchain-Ids`) on **every** answer, `OPTIONS` included (204).
+`?lang=pt|en` (default `en`). Errors are `ActionError` bodies, `{ "message": "…" }`.
+
+| Call | Answer |
+|---|---|
+| `GET /action-gift?to=<wallet>` or `GET /action-gift/<wallet>` | `ActionGetResponse`: `{ type: "action", icon: <the recipient's companion art>, title: "Give <name>'s Tera a life", description, label: "Gift a life", links: { actions: [{ type: "transaction", label: "Gift a life · 0.00055 SOL", href: <this url> }] } }`; `disabled: true` + `error` while the recipient is full or over the daily limit. `400` malformed wallet, `404` unknown wallet |
+| `POST` (same url) `{ "account": "<payer wallet>" }` | `ActionPostResponse`: `{ type: "transaction", transaction: <base64 unsigned legacy transaction: System transfer account -> treasury of 550 000 lamports + Memo(gift id)>, message, links: { next: { type: "post", href: "…/action-gift/confirm?gift=<id>&lang=…" } } }`. `400` bad account, self-gift, recipient full, insufficient funds; `429` daily limit; `503` node down |
+| `POST /action-gift/confirm?gift=<id>` `{ "account", "signature" }` | `CompletedAction`: `{ type: "completed", icon, title: "Life delivered ✓", description, label }`. Same checks as `purchase-confirm` (payer, treasury, amount, memo, read from chain). `404` gift / transaction not visible yet (call again), `410` expired, `422` wrong payer or payment, `409` signature reused. Idempotent |
+
+- The payer needs no Itera account. A repeated `POST` for the same payer and recipient refreshes
+  one pending row; before it, a payment of that payer whose callback never came is settled.
+- Shareable link: `https://dial.to/?action=<encodeURIComponent("solana-action:" + action url)>&cluster=devnet`.
+- `public/actions.json` maps `/gift/*` on the web app to `…/functions/v1/action-gift/*`; nginx serves
+  it with `Access-Control-Allow-Origin: *` (`location = /actions.json` in `Dockerfile`). The app's
+  own `/gift/<wallet>` page shows the recipient's Tera and the same gift button.
+
+### The callback that never arrives (reconcile)
+
+`_shared/gift-reconcile.ts`. A gift that is `pending` for more than 15 s is looked up on chain:
+`getSignaturesForAddress(<payer>, limit 25)` returns each transaction's memo, and the one carrying
+the gift id is settled through the normal path (`purchase-confirm`'s settlement for the in-app
+path, the Action settlement otherwise). A `paid` gift whose life is still due is delivered too.
+It runs when the recipient calls `companion` (waited up to 4 s) or `gifts` inbox, in the background
+of `lives`, and for the payer on the next Action `POST`. Idempotent on the signature and on the
+intent. An unpaid gift is marked `expired` two minutes after its blockhash died.
+
+### `POST /referral` (Bearer user token, app CORS)
+
+- `{ "action": "status" }` -> `{ code, link: "<site>/?ref=<code>", invited: [{ status: "pending" | "rewarded", at }], rewarded_count, pending_count }`.
+  No name, e-mail, wallet or id of anyone else. The code is created on first use.
+- `{ "action": "claim", "code" }` -> `200 { claimed: true }` or `200 { claimed: false, reason }` with
+  `reason`: `unknown_code`, `self_referral`, `already_claimed` (one invite per learner, for ever),
+  `account_too_old` (`itera.users.created_at` more than 10 minutes ago).
+- **Reward.** Paid inside `passport`, on the call that finds the invited learner holding
+  `first_stamp` while their referral is `pending`: the invited learner gets the medal `invited`
+  (it is in that call's `awards` and minted with the others) and +1 life; the inviter gets a medal
+  `friend_brought` (one per invited friend, `ref_id` = the invited learner's id) and +1 life. Both
+  lives may be the bonus life and both companions are mirrored. The inviter's medal is minted in
+  the background of the same call, after the caller's own mints, with up to three attempts; a
+  `failed` row is retried by the inviter's next `passport` call, as any medal. Every step is
+  idempotent and `rewarded` is written last.
+
+### Known limits (gift and referral)
+
+- Two payers racing for the last free slot can both pay; the second life is lost at the cap (6).
+  The daily limit counts paid gifts, so the same race can go one over it.
+- Anyone can open pending Action gifts for any pair of wallets: one row per (payer, recipient).
+- `learner-profile` is cached for 20 s, so a profile can show the lives from before a gift for that long.
+- The invite reward needs the invited learner's `passport` call (the app makes it at lesson end).
+
+### Tests
+
+```bash
+node scripts/hackathon/gift-e2e.mjs                                         # devnet, ~0.04 SOL of the authority, 72 checks
+node scripts/hackathon/gift-browser.mjs --base http://localhost:8080 --out /tmp/hk-gift   # two wallets, fake Phantom, local dev server
+```
+
 ## Adding an item kind
 
 1. Add the kind to `ITEM_KINDS` and its rule to `eligibility` in `_shared/shop-rules.ts` (pure, with
@@ -419,7 +528,7 @@ Secrets (project-wide): `SOLANA_TREASURY_SECRET` (read only by `wallet-faucet`),
 `~/.config/itera-hackathon/devnet-treasury.json`.
 
 ```bash
-for f in shop-items purchase-intent purchase-confirm purchase-submit link-wallet companion lives wallet-faucet credential-meta credential-verify learner-profile passport; do
+for f in shop-items purchase-intent purchase-confirm purchase-submit link-wallet companion lives wallet-faucet credential-meta credential-verify learner-profile passport action-gift gifts referral; do
   supabase functions deploy $f --project-ref nyzcbnnbffsizshiolbh --use-api
 done
 ```

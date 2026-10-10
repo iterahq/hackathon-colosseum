@@ -381,7 +381,8 @@ async function main() {
   const lostApp = await giftInApp(invited, inviter.address, { confirm: false });
   await sleep(RECONCILE_WAIT_MS);
   const inboxAfter = await until(() => inviter.call('gifts', { action: 'inbox' }), (answer) => answer.body.gifts?.length === 3, 4, 2000);
-  const purchaseState = psql(`select status || '|' || (applied_at is not null) from itera.purchases where id = :'id'::uuid;`, { id: lostApp.intent.body.intent_id });
+  // The purchase is marked applied once the chain write it waits for is over, a few seconds after the life landed.
+  const purchaseState = await until(async () => psql(`select status || '|' || (applied_at is not null) from itera.purchases where id = :'id'::uuid;`, { id: lostApp.intent.body.intent_id }), (value) => value === 'paid|true', 10, 1500);
   check('reconcile (in-app): a payment never confirmed lands when the recipient opens the app', dbLives(inviter.userId) === 5 && giftRow(lostApp.intent.body.intent_id)[0] === 'delivered' && purchaseState === 'paid|true' && inboxAfter.body.gifts.length === 3, `${dbLives(inviter.userId)} ${purchaseState} inbox ${inboxAfter.body.gifts?.length}`);
   const late = await invited.call('purchase-confirm', { intent_id: lostApp.intent.body.intent_id, signature: lostApp.signature, lang: 'en' });
   check('idempotency: the payer confirming after the reconcile -> paid, no second life', late.status === 200 && late.body.status === 'paid' && dbLives(inviter.userId) === 5);
