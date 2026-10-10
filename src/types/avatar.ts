@@ -12,6 +12,8 @@ export interface LearnerAvatar {
   thumbUrl: string;
   /** Set when the avatar is an NFT the learner owns. */
   assetAddress: string | null;
+  /** Only the free expression icons take the outfit layer on top; a painted avatar is shown as it is. */
+  allowsOutfit: boolean;
 }
 
 /** The avatar fields a shop item of kind `avatar` carries on top of the common ones. */
@@ -25,6 +27,7 @@ export interface AvatarOffer {
   thumbUrl: string;
   supply: { minted: number; max: number | null };
   assetAddress: string | null;
+  allowsOutfit: boolean;
 }
 
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
@@ -38,4 +41,5 @@ export const DEFAULT_AVATAR: LearnerAvatar = {
   imageUrl: '/mascot/tera-happy.webp',
   thumbUrl: '/mascot/tera-happy.webp',
   assetAddress: null,
+  allowsOutfit: true,
 };
