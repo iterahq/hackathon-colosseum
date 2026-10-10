@@ -45,3 +45,11 @@ describe('normalizeNickname', () => {
     expect(normalizeNickname('me@site.io')).toEqual({ ok: false, reason: 'email' });
   });
 });
+
+describe('shouldShowNicknameGate, generated names', () => {
+  it('asks a wallet user whose name is the generated "Tera <Word> <3 digits>"', () => {
+    expect(shouldShowNicknameGate({ user: wallet as never, profile: { displayName: 'Tera Curioso 482' }, skipped: false })).toBe(true);
+    expect(shouldShowNicknameGate({ user: wallet as never, profile: { displayName: 'Tera Curioso 482' }, skipped: true })).toBe(false);
+    expect(shouldShowNicknameGate({ user: wallet as never, profile: { displayName: 'Marina' }, skipped: false })).toBe(false);
+  });
+});

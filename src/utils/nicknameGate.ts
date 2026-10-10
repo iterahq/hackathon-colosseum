@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js';
+import { isGeneratedTeraName } from '@/utils/crystals';
 
 const ADDRESS_LIKE = /^.{4}…[A-Za-z0-9]{4}$/;
 const SKIP_PREFIX = 'itera.nickname.skipped:';
@@ -14,7 +15,8 @@ export function isWalletUser(user: Pick<User, 'app_metadata' | 'identities'> | n
 
 export function isAddressLikeName(displayName: string | null | undefined): boolean {
   const name = (displayName ?? '').trim();
-  return name === '' || ADDRESS_LIKE.test(name);
+  // Provisioning gives a wallet learner "Tera <Word> <3 digits>": friendly, but not a name they chose.
+  return name === '' || ADDRESS_LIKE.test(name) || isGeneratedTeraName(name);
 }
 
 export interface NicknameGateInput {

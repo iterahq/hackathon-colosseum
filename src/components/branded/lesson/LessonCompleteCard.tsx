@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
+import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
 import { useLessonCompanion } from '@/components/lives/lessonCompanion';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
@@ -102,7 +103,7 @@ function LessonIncompleteActions({ nextLessonId, onRedoMissing }: { nextLessonId
  */
 export function LessonCompleteActions({ nextLessonId, onReview, gold = false }: { nextLessonId?: string; onReview?: () => void; gold?: boolean }) {
   const { t } = useI18n();
-  const { bonus } = useLessonCompanion();
+  const { bonus, crystals = 0 } = useLessonCompanion();
   const onward = `flex w-full h-12 px-6 rounded-full items-center justify-center ${gold ? `mt-3 ${TACTILE_SECONDARY}` : `mt-6 ${TACTILE_CTA}`}`;
   return (
     <>
@@ -110,6 +111,12 @@ export function LessonCompleteActions({ nextLessonId, onReview, gold = false }: 
         <p className="mt-4 flex items-center justify-center gap-1.5 font-mono text-sm font-semibold text-foreground" data-testid="lesson-lives-bonus">
           <Heart aria-hidden className="h-4 w-4 fill-clay text-clay" />
           {t('lives.bonus', { n: bonus })}
+        </p>
+      )}
+      {crystals > 0 && (
+        <p className="mt-3 flex items-center justify-center gap-1.5 font-mono text-sm font-semibold text-foreground" data-testid="lesson-crystals-earned">
+          <CrystalGlyph size={16} className="text-evergreen-hi" />
+          {crystals === 1 ? t('crystals.earned.one') : t('crystals.earned', { n: crystals })}
         </p>
       )}
       {gold && (

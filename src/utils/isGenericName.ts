@@ -1,3 +1,5 @@
+import { isGeneratedTeraName } from '@/utils/crystals';
+
 /**
  * A learner's name is "generic" (so the pre-class name+avatar gate should show)
  * when it isn't a real name the person chose: empty, the default placeholder,
@@ -19,6 +21,8 @@ export function isGenericName(name: string | null | undefined, email?: string | 
   // A wallet address, full or shortened (`CQzi…DAhW`, `2rAa...nqA`), is never a name.
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(n)) return true;
   if (/^[1-9A-HJ-NP-Za-km-z]{3,8}(…|\.{2,3})[1-9A-HJ-NP-Za-km-z]{3,8}$/.test(n)) return true;
+  // The name provisioning generates for a wallet learner, "Tera Curioso 482".
+  if (isGeneratedTeraName(n)) return true;
   const localRaw = (email ?? '').split('@')[0].trim();
   if (localRaw && n === localRaw) return true;
   return false;

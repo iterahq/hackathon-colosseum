@@ -41,3 +41,10 @@ describe('isGenericName', () => {
     expect(isGenericName('Ana...Clara!')).toBe(false);
   });
 });
+
+describe('isGenericName, generated wallet names', () => {
+  it('treats "Tera <Word> <3 digits>" as generic', () => {
+    expect(isGenericName('Tera Curioso 482')).toBe(true);
+    expect(isGenericName('Tera Curioso')).toBe(false);
+  });
+});
