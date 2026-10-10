@@ -47,6 +47,7 @@ export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, 
           </p>
         </div>
         {lives && (
+        <div className="flex flex-col gap-2 max-sm:items-center">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 max-sm:justify-center">
             <LivesHearts current={lives.current} max={lives.max} size={22} label={t('lives.chrome', { current: lives.current, max: lives.max })} className="gap-1" />
             <span className="[font:700_16px_JetBrains_Mono] tabular-nums text-[#F4EDE2]" data-testid="shop-lives-count" title={lives.current >= lives.max ? t('shop.lives.full') : t('shop.lives.next', { time: formatCountdown(secondsToNext) })}>
@@ -57,7 +58,8 @@ export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, 
                 {t('shop.lives.next', { time: formatCountdown(secondsToNext) })}
               </span>
             )}
-            <LivesRule className="basis-full max-sm:text-center" />
+          </div>
+          <LivesRule className="max-sm:text-center" />
           </div>
         )}
         {companion && (

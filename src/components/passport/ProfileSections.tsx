@@ -67,7 +67,7 @@ export function MedalsSection({ items }: { items: ProfileMedal[] }) {
         return (
           <li key={m.asset}>
             <Link to={`/c/${m.asset}`} className={`flex w-[96px] flex-col items-center gap-1.5 text-center ${LINK}`} data-testid="profile-medal">
-              {art ? <img src={art} alt="" loading="lazy" width={96} height={96} className="h-24 w-24 rounded-full" /> : <span className="h-24 w-24 rounded-full border border-[#2E2A25]" />}
+              {art ? <img src={art} alt="" loading="lazy" width={96} height={96} className="h-24 w-24" /> : <span className="h-24 w-24 rounded-xl border border-[#2E2A25]" />}
               <span className="[font:500_11px_JetBrains_Mono] text-[#C9BFB0]">{m.title}</span>
             </Link>
           </li>

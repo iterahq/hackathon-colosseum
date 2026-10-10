@@ -139,7 +139,7 @@ export default function AuthPage() {
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 w-full"
+          className="h-auto min-h-11 w-full whitespace-normal py-2.5 text-center leading-snug"
           disabled={busy}
           onClick={onSolana}
           data-testid="web3-solana"
