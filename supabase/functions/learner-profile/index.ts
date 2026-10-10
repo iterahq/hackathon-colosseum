@@ -9,7 +9,7 @@ import { regenerate } from '../_shared/lives.ts';
 import { PROFILE_ASSET_LIMIT, buildProfile, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
 
-const COMPANION_COLUMNS = 'id,user_id,asset_address,lives,max_lives,last_regen_at,outfit,version';
+const COMPANION_COLUMNS = 'id,user_id,asset_address,lives,max_lives,last_regen_at,outfit,version,mirrored_at';
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
@@ -70,6 +70,7 @@ Deno.serve(async (request) => {
           id: companionRow.id,
           asset_address: companionRow.asset_address,
           version: companionRow.version,
+          mirrored_at: companionRow.mirrored_at,
           stored: { lives: lives.lives, max_lives: companionRow.max_lives, outfit: companionRow.outfit, ...stats },
         };
       }

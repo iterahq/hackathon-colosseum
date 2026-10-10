@@ -1,7 +1,7 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { readCredential, readOnlyUmi } from '../_shared/chain.ts';
 import { COLLECTIONS } from '../_shared/chain-names.ts';
-import { companionFromAttributes, companionImageUrl, companionMetadataUrl, companionText } from '../_shared/companion.ts';
+import { companionChainImageUrl, companionFromAttributes, companionMetadataUrl, companionText, type CompanionValues } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
 import {
   APP_URL,
@@ -81,15 +81,18 @@ async function loadAchievement(db: IteraClient, assetAddress: string, lang: 'pt'
   };
 }
 
-/** The companion behind an asset, in the shape of an achievement. No user id, name or email. */
-async function loadCompanionAchievement(db: IteraClient, assetAddress: string, lang: 'pt' | 'en') {
+/**
+ * The companion behind an asset, in the shape of an achievement. No user id, name or email.
+ * Its image draws `onchain`, the values this response reports, not the live row.
+ */
+async function loadCompanionAchievement(db: IteraClient, assetAddress: string, lang: 'pt' | 'en', onchain: CompanionValues) {
   const snapshot = await loadCompanionSnapshot(db, assetAddress, 'asset_address');
   if (!snapshot) return null;
   const { data, error } = await db.from('companions').select('created_at,minted_at').eq('id', snapshot.id).single();
   if (error) throw new Error(`companions: ${error.message}`);
   const text = companionText(lang);
   const base = functionsBase();
-  return {
+  const achievement = {
     key: 'companion',
     kind: 'companion',
     tier: 'bronze',
@@ -108,9 +111,10 @@ async function loadCompanionAchievement(db: IteraClient, assetAddress: string, l
       streak: snapshot.stats.streak,
     },
     metadata_url: companionMetadataUrl(base, snapshot.id),
-    image_url: companionImageUrl(base, snapshot.id),
+    image_url: companionChainImageUrl(base, snapshot.id, onchain),
     stamps: [],
   };
+  return { achievement, mirroredAt: snapshot.mirroredAt };
 }
 
 Deno.serve(async (request) => {
@@ -139,18 +143,12 @@ Deno.serve(async (request) => {
     // Catalog data is only attached to an asset we issued: an address alone proves nothing.
     const lang = langOf(request, 'pt');
     const isCompanion = verified && onchain.collection === config[COLLECTIONS.companions.configKey];
-    const achievement = !verified
-      ? null
-      : isCompanion
-        ? await loadCompanionAchievement(db, address, lang)
-        : await loadAchievement(db, address, lang);
+    const chainValues = isCompanion ? companionFromAttributes(onchain.attributes) : null;
+    const companionRow = chainValues ? await loadCompanionAchievement(db, address, lang, chainValues) : null;
+    const achievement = !verified ? null : chainValues ? (companionRow?.achievement ?? null) : await loadAchievement(db, address, lang);
     // What the chain says about a companion, parsed; `achievement.state` is the database's view.
-    const companion = isCompanion
-      ? {
-          ...companionFromAttributes(onchain.attributes),
-          image_url: achievement?.image_url ?? null,
-          metadata_url: achievement?.metadata_url ?? null,
-        }
+    const companion = chainValues
+      ? { ...chainValues, image_url: achievement?.image_url ?? null, metadata_url: achievement?.metadata_url ?? null }
       : undefined;
     return json(
       {
@@ -166,7 +164,7 @@ Deno.serve(async (request) => {
         update_authority: onchain.update_authority,
         attributes: onchain.attributes,
         achievement,
-        ...(companion ? { companion } : {}),
+        ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
         minted_at: achievement?.minted_at ?? null,
         explorer_url: explorerUrl('address', address),
         owner_explorer_url: explorerUrl('address', onchain.owner),

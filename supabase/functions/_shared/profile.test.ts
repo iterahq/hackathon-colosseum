@@ -135,7 +135,7 @@ describe('buildProfile', () => {
   });
 
   it('reads the companion from its on-chain attributes, and from the database only when the asset is unreadable', () => {
-    const companion = { id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', asset_address: COMPANION, version: 7, stored: { lives: 3, max_lives: 5, outfit: null, level: 2, xp: 250, streak: 1 } };
+    const companion = { id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', asset_address: COMPANION, version: 7, mirrored_at: '2026-10-10T01:02:03.000Z', stored: { lives: 3, max_lives: 5, outfit: null, level: 2, xp: 250, streak: 1 } };
     const attributes = [
       { key: 'kind', value: 'companion' },
       { key: 'lives', value: '0' },
@@ -157,11 +157,20 @@ describe('buildProfile', () => {
       level: 4,
       xp: 780,
       streak: 2,
-      image_url: `${BASE}/credential-meta/companion/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/image.svg?lang=pt&v=7-outfit_crown`,
+      image_url: `${BASE}/credential-meta/companion/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/image.svg?source=chain&lang=pt&v=0-5-4-outfit_crown`,
+      mirrored_at: '2026-10-10T01:02:03.000Z',
       explorer_url: `https://explorer.solana.com/address/${COMPANION}?cluster=devnet`,
     });
     expect(profile.verified_count).toBe(3);
-    expect(buildProfile(input({ companion }))).toMatchObject({ companion: { verified: false, lives: 3, level: 2, outfit: null } });
+    expect(buildProfile(input({ companion }))).toMatchObject({
+      companion: {
+        verified: false,
+        lives: 3,
+        level: 2,
+        outfit: null,
+        image_url: `${BASE}/credential-meta/companion/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/image.svg?lang=pt&v=7-none`,
+      },
+    });
   });
 
   it('carries no itera user id, even when the chain attributes hold one', () => {

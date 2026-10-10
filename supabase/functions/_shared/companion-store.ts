@@ -19,7 +19,7 @@ const STALE_CLAIM_MS = 3 * 60_000;
 const CAS_ATTEMPTS = 5;
 const XP_PAGE = 1000;
 const COLUMNS =
-  'user_id,id,lives,max_lives,last_regen_at,outfit,wallet_address,asset_address,mint_status,mint_claimed_at,tx_signature,minted_at,mirrored,mirror_due,version';
+  'user_id,id,lives,max_lives,last_regen_at,outfit,wallet_address,asset_address,mint_status,mint_claimed_at,tx_signature,minted_at,mirrored,mirrored_at,mirror_due,version';
 
 export interface CompanionRow {
   user_id: string;
@@ -35,6 +35,7 @@ export interface CompanionRow {
   tx_signature: string | null;
   minted_at: string | null;
   mirrored: OnchainAttribute[] | null;
+  mirrored_at: string | null;
   mirror_due: boolean;
   version: number;
 }
@@ -128,6 +129,8 @@ export function snapshotOf(row: CompanionRow, stats: CompanionStats, now: Date):
     outfit: row.outfit,
     stats,
     assetAddress: row.asset_address,
+    mirrored: row.mirrored,
+    mirroredAt: row.mirrored_at,
   };
 }
 
@@ -263,6 +266,7 @@ export async function mintCompanion(db: IteraClient, userId: string, wallet: str
         minted_at: now.toISOString(),
         mint_error: null,
         mirrored: attributes,
+        mirrored_at: new Date().toISOString(),
         mirror_due: false,
       })
       .eq('user_id', userId);
@@ -310,7 +314,7 @@ export async function syncMirror(db: IteraClient, userId: string): Promise<Mirro
     }
     const { error } = await db
       .from('companions')
-      .update({ mirrored: attributes, mirror_due: false, mirror_error: null })
+      .update({ mirrored: attributes, mirror_due: false, mirror_error: null, ...(write ? { mirrored_at: write.at } : {}) })
       .eq('user_id', userId);
     if (error) throw new Error(`companions mirror: ${error.message}`);
     return { synced: true, write };
