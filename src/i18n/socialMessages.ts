@@ -1,0 +1,33 @@
+/** Strings of the social on-chain features: live-class podium medals, teacher endorsements and the Circuito counter. */
+export const SOCIAL_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
+  pt: {
+    'live.report.chain.title': 'Pódio on-chain',
+    'live.report.chain.body': 'Os três primeiros alunos ganham uma medalha intransferível na Solana. Convidados não entram. Vale uma vez por aula.',
+    'live.report.chain.notEnded': 'Encerre a aula para gravar o pódio.',
+    'live.report.chain.record': 'Gravar pódio na Solana',
+    'live.report.chain.recording': 'Gravando…',
+    'live.report.chain.again': 'Atualizar status',
+    'live.report.chain.error': 'Não deu pra gravar agora. Tente de novo.',
+    'live.report.chain.empty': 'Nenhum aluno respondeu nesta aula: não há pódio para gravar.',
+    'live.report.chain.learner': 'Aluno',
+    'live.report.chain.minted': 'Medalha na Solana',
+    'live.report.chain.pending': 'Medalha a caminho',
+    'live.report.chain.noWallet': 'Sem carteira: a medalha espera o aluno conectar uma',
+    'live.podium.onChain': 'medalha on-chain',
+  },
+  en: {
+    'live.report.chain.title': 'On-chain podium',
+    'live.report.chain.body': 'The top three learners get a soulbound medal on Solana. Guests are left out. Once per class.',
+    'live.report.chain.notEnded': 'End the class to record the podium.',
+    'live.report.chain.record': 'Record podium on Solana',
+    'live.report.chain.recording': 'Recording…',
+    'live.report.chain.again': 'Refresh status',
+    'live.report.chain.error': 'Could not record it right now. Try again.',
+    'live.report.chain.empty': 'No learner answered in this class: there is no podium to record.',
+    'live.report.chain.learner': 'Learner',
+    'live.report.chain.minted': 'Medal on Solana',
+    'live.report.chain.pending': 'Medal on its way',
+    'live.report.chain.noWallet': 'No wallet: the medal waits for the learner to connect one',
+    'live.podium.onChain': 'on-chain medal',
+  },
+};

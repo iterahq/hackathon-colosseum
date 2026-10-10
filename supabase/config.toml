@@ -63,3 +63,8 @@ verify_jwt = false
 # Takes an item the learner earned (level unlock) without payment. Token checked in code.
 [functions.shop-claim]
 verify_jwt = false
+
+# Live-class podium medals: an instructor/owner of the session's tenant records the top three.
+# The token and the caller's memberships are checked in code.
+[functions.class-podium]
+verify_jwt = false

@@ -1,3 +1,4 @@
+import { podiumEmblem } from './art-podium.ts';
 import type { Frame, Ink } from './cosmetics.ts';
 import { MASCOT_DATA_URI } from './mascot.ts';
 import { OUTFIT_LAYERS, TERA_FACE, TERA_FACE_DATA_URI } from './outfit-art.ts';
@@ -24,6 +25,8 @@ export interface ArtInput {
   /** Passport cosmetics. Unset draws the default page. */
   ink?: Ink | null;
   frame?: Frame | null;
+  /** A live-class podium medal: the place (1 to 3) drawn instead of the glyph. */
+  podium?: number | null;
   /** Only read by the `companion` shape. */
   companion?: { lives: number; maxLives: number; level: number; outfit: string | null };
 }
@@ -324,6 +327,9 @@ function medalSvg(input: ArtInput): string {
     .map((line, index) => `<text x="256" y="${subtitleY + index * 17}" text-anchor="middle" font-family="${SANS}" font-size="13" fill="${CREAM}" fill-opacity="0.66">${escapeXml(line)}</text>`)
     .join('\n');
   const glyph = [...input.glyph].slice(0, 2).join('') || '★';
+  const emblem = input.podium
+    ? podiumEmblem(input.podium, accent, CREAM)
+    : `<text x="256" y="274" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="84" fill="${accent}">${escapeXml(glyph)}</text>`;
   const rays = Array.from({ length: 24 }, (_, index) => `<path d="M256 153v12" stroke="${metal.dark}" stroke-width="3" stroke-linecap="round" transform="rotate(${index * 15} 256 244)"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="${escapeXml(input.title)}">
 ${defs(input.tier, accent)}
@@ -337,7 +343,7 @@ ${frame('url(#metal)')}
 ${rays}
 <circle cx="256" cy="244" r="71" fill="${PAGE}" stroke="${metal.dark}" stroke-width="3"/>
 <circle cx="256" cy="244" r="63" fill="none" stroke="${accent}" stroke-width="1.5" stroke-dasharray="2 5"/>
-<text x="256" y="274" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="84" fill="${accent}">${escapeXml(glyph)}</text>
+${emblem}
 ${title}
 ${subtitle}
 ${mascot(400, 40, 62)}

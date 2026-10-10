@@ -17,7 +17,7 @@ import {
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
 
-const ASSET_KEYS = ['trail_pass', 'first_stamp', 'streak_3', 'streak_7', 'program_complete', 'early_bird', 'night_owl'];
+const ASSET_KEYS = ['trail_pass', 'first_stamp', 'streak_3', 'streak_7', 'program_complete', 'early_bird', 'night_owl', 'podium_1', 'podium_2', 'podium_3', 'weekly_goal'];
 const PUBLIC_STATE_FIELDS = [
   'trail_title',
   'program_slug',
@@ -29,6 +29,10 @@ const PUBLIC_STATE_FIELDS = [
   'completed_at',
   'day',
   'lesson_title',
+  'position',
+  'class_title',
+  'class_date',
+  'week',
 ];
 
 function publicState(state: Record<string, unknown>): Record<string, unknown> {

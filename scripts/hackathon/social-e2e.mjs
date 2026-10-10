@@ -13,8 +13,9 @@
 // Never touches the owner's wallet account or the demo e-mail user.
 import { anonKey, balance, loadAuthority, psql, sol, summary } from './social-e2e.lib.mjs';
 import { laurel } from './social-e2e.laurel.mjs';
+import { podium } from './social-e2e.podium.mjs';
 
-const FEATURES = { laurel };
+const FEATURES = { laurel, podium };
 
 async function main() {
   const flag = process.argv.indexOf('--only');

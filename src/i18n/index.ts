@@ -19,6 +19,7 @@ import { SHOP_MESSAGES } from './shopMessages';
 import { UX_MESSAGES } from './uxMessages';
 import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
+import { SOCIAL_MESSAGES } from './socialMessages';
 import { TERA_MESSAGES } from './teraMessages';
 import { CATALOG_MESSAGES } from '@iterahq/screens/catalog/messages';
 import { HOME_MESSAGES } from '@iterahq/screens/home/messages';
@@ -1227,6 +1228,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...UX_MESSAGES.pt,
     ...LINK_MESSAGES.pt,
     ...GIFT_MESSAGES.pt,
+    ...SOCIAL_MESSAGES.pt,
     'header.search.open': 'Abrir a busca',
     'header.search.trigger': 'Buscar…',
     'header.lang.aria': 'Idioma',
@@ -2413,6 +2415,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...UX_MESSAGES.en,
     ...LINK_MESSAGES.en,
     ...GIFT_MESSAGES.en,
+    ...SOCIAL_MESSAGES.en,
     'header.search.open': 'Open search',
     'header.search.trigger': 'Search…',
     'header.lang.aria': 'Language',

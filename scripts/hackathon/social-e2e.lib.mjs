@@ -134,3 +134,31 @@ export function seedXp(userId, amount) {
     { user_id: userId, amount },
   );
 }
+
+/** A test tenant with `staff` as its instructor and `learners` as learners. Left behind, flagged `is_test`. */
+export function makeTenant(label, staff, learners = []) {
+  const slug = `social-e2e-${label}-${Date.now().toString(36)}`;
+  const tenantId = psql(`insert into itera.tenants (slug, name, is_test, live_class_enabled) values (:'slug', :'slug', true, true) returning id;`, { slug }).split('\n')[0];
+  psql(`insert into itera.memberships (user_id, tenant_id, role) values (:'user_id'::uuid, :'tenant'::uuid, 'instructor');`, { user_id: staff.userId, tenant: tenantId });
+  for (const learner of learners) {
+    psql(`insert into itera.memberships (user_id, tenant_id, role) values (:'user_id'::uuid, :'tenant'::uuid, 'learner');`, { user_id: learner.userId, tenant: tenantId });
+  }
+  return tenantId;
+}
+
+/**
+ * The cast every teacher feature shares, created once per run: an instructor and four learners in
+ * one test tenant, and an instructor of ANOTHER tenant who is only a learner in the shared one.
+ */
+export async function cast(context) {
+  if (context.cast) return context.cast;
+  const { apikey } = context;
+  const instructor = await newLearner(apikey, 'instructor');
+  const learners = [];
+  for (const name of ['learner 1', 'learner 2', 'learner 3', 'learner 4']) learners.push(await newLearner(apikey, name));
+  const outsider = await newLearner(apikey, 'instructor of another tenant');
+  const tenantId = makeTenant('class', instructor, learners);
+  const otherTenantId = makeTenant('other', outsider);
+  context.cast = { instructor, learners, outsider, tenantId, otherTenantId };
+  return context.cast;
+}

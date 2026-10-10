@@ -224,3 +224,31 @@ describe('dayIncomplete', () => {
     expect(dayIncomplete(input([]), 'nope')).toBeNull();
   });
 });
+
+describe('weekly_goal', () => {
+  const loose = (count: number, start: string): ProgressRow[] =>
+    Array.from({ length: count }, (_, index) => ({
+      activity_id: `loose-${index}`,
+      status: 'completed',
+      completed_at: new Date(new Date(start).getTime() + index * 60_000).toISOString(),
+    }));
+
+  it('is awarded at 20 activities in seven days, even with no whole day finished', () => {
+    const awards = run(loose(20, '2026-10-07T15:00:00Z'));
+    expect(keys(awards)).toEqual(['insert:weekly_goal']);
+    expect(awards[0]).toMatchObject({ ref_id: '7765656b-2026-4041-8000-000000000000', earned_at: '2026-10-07T15:19:00.000Z', state: { week: '2026-W41', count: 20, goal: 20 } });
+  });
+
+  it('is not awarded at 19, and not twice for the same week', () => {
+    expect(run(loose(19, '2026-10-07T15:00:00Z'))).toEqual([]);
+    const first = run(loose(20, '2026-10-07T15:00:00Z'));
+    expect(run(loose(30, '2026-10-07T15:00:00Z'), first)).toEqual([]);
+  });
+
+  it('comes with the other awards and leaves them unchanged', () => {
+    const progress = [...finish('l1', '2026-10-07T15:00:00Z'), ...loose(18, '2026-10-07T15:01:00Z')];
+    const awards = run(progress);
+    expect(keys(awards)).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass', 'insert:weekly_goal']);
+    expect(keys(run(finish('l1', '2026-10-07T15:00:00Z')))).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
+  });
+});
