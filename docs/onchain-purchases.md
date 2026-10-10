@@ -1231,3 +1231,8 @@ Six tiers (`itera.avatar_tiers`): common (Tera) US$ 0.20 / 150 crystals, open ·
 
 ### Tests
 `seasons.test.ts`, `shop-accept.test.ts`, extended `lives.test.ts`, `crystals.test.ts`, `avatars.test.ts`, `shop-rules.test.ts`; live: `node scripts/hackathon/crystals-e2e.mjs`.
+
+### Limits (review of PR #43)
+- Crystal-paid avatar mints are paid by the AUTHORITY (the rent of one Core asset per mint, and one token account per learner's first crystal mirror); unlike the SOL rail, the Circuito sends nothing back. What bounds it: the per-tier supply caps (rare 500, epic 100, legendary 25, mythic 5, primordial 1) and the unpaid-hold rule (2 open holds per learner), plus the crystal price itself: crystals are only earned (never sold), the lesson earns are capped at 40 per learner per UTC day inside `itera.crystal_grant`, and every other earn is once per award.
+- Earns are paid from the server's own award rows, never from a request body: `passport` reconciles on every call (`reconcileCrystals`): every `day_stamp`, `trail_complete`, `streak_7`, podium, `friend_brought` and `invited` row with no ledger row is paid (ledger key `(user, reason, ref)`), so a grant that failed once is paid by the next call. `lesson_clean` is derived from `life_events` (no `lose` event on that lesson's activities on the stamp's day). `lives` pays nothing.
+- A refunded crystal purchase is terminal: a later purchase of the same item uses a new ledger key (`<item>:<ref>:r<n>`, n = refunded attempts) and a new `purchases` row.

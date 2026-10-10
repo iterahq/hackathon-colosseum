@@ -8,6 +8,7 @@ import { includedWithMap } from '../_shared/avatars.ts';
 import { CRYSTAL_HANDLERS } from '../_shared/crystals-items.ts';
 import { crystalMetadataUrl, mirrorCrystals, tokenView } from '../_shared/crystals-mirror.ts';
 import {
+  countRefundedCrystalPurchases,
   grantCrystals,
   loadAccount,
   loadCrystalItem,
@@ -176,11 +177,13 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
   const handler = CRYSTAL_HANDLERS[item.kind];
   if (!handler) return { status: 400, body: { error: 'not_for_crystals' } };
   const context = { db, userId, item, refId };
-  const ref = spendRef(item.key, refId, false, '');
+  const ref = spendRef(item.key, refId, false, '', await countRefundedCrystalPurchases(db, userId, item.key, refId));
   // The collectible is minted to a wallet: a learner without one is told before anything is charged.
   if (item.kind === 'avatar' && !caller.wallet) return { status: 403, body: { error: 'no_wallet' } };
 
   let purchase = await loadCrystalPurchase(db, userId, ref);
+  // A refunded purchase is terminal: it is never applied again (the generation in `ref` already points past it).
+  if (purchase?.status === 'refunded') return { status: 409, body: { error: 'refunded' } };
   if (!purchase || purchase.applied_at) {
     const verdict = await handler.canBuy(context);
     if (!verdict.ok) return { status: INELIGIBLE_STATUS[verdict.error] ?? 409, body: { error: verdict.error } };

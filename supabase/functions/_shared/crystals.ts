@@ -1,4 +1,4 @@
-import type { AchievementKey } from './awards.ts';
+import { GLOBAL_REF, localParts, type AchievementKey } from './awards.ts';
 
 /** The single life sold for crystals. Not a `shop_items` row: its price lives here. */
 export const LIFE_KEY = 'life';
@@ -64,6 +64,73 @@ export function earnsForAward(key: AchievementKey | string): EarnReason[] {
   }
 }
 
+/** An earning named by its ledger key. */
+export interface EarningKey {
+  reason: EarnReason;
+  refId: string;
+}
+
+/** The lesson earns that share the per-day cap in the database (`itera.crystal_grant`). */
+export const LESSON_REASONS: readonly EarnReason[] = ['lesson_completed', 'lesson_clean'];
+export const LESSON_DAILY_CAP = 40;
+
+/**
+ * Lessons whose stamp day cost no life: no `lose` event of the learner on any
+ * activity of the lesson, on the local day of the stamp. Derived from the
+ * server's own event log (`life_events`), never from what a request said.
+ */
+export function cleanLessonIds(
+  stamps: ReadonlyArray<{ lessonId: string; earnedAt: string }>,
+  activities: ReadonlyArray<{ id: string; lesson_id: string }>,
+  losses: ReadonlyArray<{ activity_id: string | null; created_at: string }>,
+  timeZone: string,
+): Set<string> {
+  const lessonOf = new Map(activities.map((activity) => [activity.id, activity.lesson_id]));
+  const lossDays = new Map<string, Set<string>>();
+  for (const loss of losses) {
+    const lesson = loss.activity_id ? lessonOf.get(loss.activity_id) : undefined;
+    if (!lesson) continue;
+    const days = lossDays.get(lesson) ?? new Set<string>();
+    days.add(localParts(loss.created_at, timeZone).date);
+    lossDays.set(lesson, days);
+  }
+  return new Set(stamps.filter((stamp) => !lossDays.get(stamp.lessonId)?.has(localParts(stamp.earnedAt, timeZone).date)).map((stamp) => stamp.lessonId));
+}
+
+/**
+ * Every earning the learner's stored award rows entitle them to. The rows are
+ * the server's own (stamps are written only after the plausibility floor), so
+ * paying from them, every call, is safe: the ledger key makes it idempotent and
+ * a payment that failed once is simply found missing the next time.
+ */
+export function earningsOfRows(rows: ReadonlyArray<{ achievement_key: string; ref_id: string; earned_at?: string }>, cleanLessons: ReadonlySet<string>): EarningKey[] {
+  const keys: EarningKey[] = [];
+  for (const row of rows) {
+    for (const reason of earnsForAward(row.achievement_key)) keys.push({ reason, refId: row.ref_id });
+    if (row.achievement_key === 'day_stamp' && cleanLessons.has(row.ref_id)) keys.push({ reason: 'lesson_clean', refId: row.ref_id });
+    const place = podiumPositionOfKey(row.achievement_key);
+    if (place) keys.push({ reason: place, refId: row.ref_id });
+    if (row.achievement_key === 'friend_brought') keys.push({ reason: 'invite_friend', refId: row.ref_id });
+    if (row.achievement_key === 'invited') keys.push({ reason: 'invited', refId: GLOBAL_REF });
+  }
+  return keys;
+}
+
+function podiumPositionOfKey(key: string): EarnReason | null {
+  return key === 'podium_1' ? 'podium_1' : key === 'podium_2' ? 'podium_2' : key === 'podium_3' ? 'podium_3' : null;
+}
+
+/** What is still unpaid: the entitled earnings with no ledger row yet (`reason|ref` keys). */
+export function missingEarnings(entitled: readonly EarningKey[], paid: ReadonlySet<string>): EarningKey[] {
+  const seen = new Set<string>();
+  return entitled.filter((earning) => {
+    const key = `${earning.reason}|${earning.refId}`;
+    if (paid.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function podiumReason(position: number): EarnReason | null {
   return position === 1 ? 'podium_1' : position === 2 ? 'podium_2' : position === 3 ? 'podium_3' : null;
 }
@@ -116,8 +183,10 @@ export function spendVerdict(price: number | null, balance: number): SpendVerdic
  * The ledger key of a debit. Something owned once is keyed by what it is, so
  * two requests for it are one debit; something consumed gets a fresh key each time.
  */
-export function spendRef(itemKey: string, refId: string, consumable: boolean, nonce: string): string {
-  return consumable ? `${itemKey}:${nonce}` : `${itemKey}:${refId}`;
+export function spendRef(itemKey: string, refId: string, consumable: boolean, nonce: string, refunded = 0): string {
+  if (consumable) return `${itemKey}:${nonce}`;
+  // A purchase that was refunded is over for good: the next attempt at the same item is a new debit with its own key.
+  return refunded > 0 ? `${itemKey}:${refId}:r${refunded}` : `${itemKey}:${refId}`;
 }
 
 export const THEME_SLOTS = { background: 'background', icon: 'app_icon', border: 'border' } as const;

@@ -7,6 +7,9 @@ import {
   earnsForAward,
   equipRequest,
   borderOf,
+  cleanLessonIds,
+  earningsOfRows,
+  missingEarnings,
   equipVerdict,
   isThemeEntry,
   lifePurchase,
@@ -189,5 +192,81 @@ describe('token mirror', () => {
     expect(mirrorCooldownLeftMs(null, now)).toBe(0);
     expect(mirrorCooldownLeftMs('2026-10-10T12:00:00Z', now)).toBe(5_000);
     expect(mirrorCooldownLeftMs('2026-10-10T11:59:00Z', now)).toBe(0);
+  });
+});
+
+describe('reconcile by award', () => {
+  const LESSON = '11111111-1111-4111-8111-111111111111';
+  const OTHER = '22222222-2222-4222-8222-222222222222';
+  const ACTIVITIES = [
+    { id: 'a1', lesson_id: LESSON },
+    { id: 'a2', lesson_id: LESSON },
+    { id: 'b1', lesson_id: OTHER },
+  ];
+  const ZONE = 'America/Sao_Paulo';
+
+  it('a lesson with no lost life that day is clean; a loss on the day of the stamp is not', () => {
+    const stamps = [
+      { lessonId: LESSON, earnedAt: '2026-10-10T15:00:00Z' },
+      { lessonId: OTHER, earnedAt: '2026-10-10T15:00:00Z' },
+    ];
+    expect(cleanLessonIds(stamps, ACTIVITIES, [], ZONE)).toEqual(new Set([LESSON, OTHER]));
+    expect(cleanLessonIds(stamps, ACTIVITIES, [{ activity_id: 'a2', created_at: '2026-10-10T14:00:00Z' }], ZONE)).toEqual(new Set([OTHER]));
+    // A loss on another day, or on an activity of another lesson, does not count against this stamp.
+    expect(cleanLessonIds(stamps, ACTIVITIES, [{ activity_id: 'a1', created_at: '2026-10-08T14:00:00Z' }, { activity_id: null, created_at: '2026-10-10T14:00:00Z' }], ZONE)).toEqual(new Set([LESSON, OTHER]));
+  });
+
+  it('an honest day entitles day, lesson and clean-lesson once, keyed by the stamp', () => {
+    const rows = [{ achievement_key: 'day_stamp', ref_id: LESSON }];
+    expect(earningsOfRows(rows, new Set([LESSON]))).toEqual([
+      { reason: 'lesson_completed', refId: LESSON },
+      { reason: 'day_completed', refId: LESSON },
+      { reason: 'lesson_clean', refId: LESSON },
+    ]);
+    expect(earningsOfRows(rows, new Set())).toHaveLength(2);
+  });
+
+  it('forged input earns nothing: no award rows, no earnings, whatever a body said', () => {
+    expect(earningsOfRows([], new Set([LESSON]))).toEqual([]);
+    expect(earningsOfRows([{ achievement_key: 'trail_pass', ref_id: LESSON }, { achievement_key: 'weekly_goal', ref_id: LESSON }], new Set([LESSON]))).toEqual([]);
+  });
+
+  it('covers trails, streak, invites and podium places', () => {
+    const GLOBAL = '00000000-0000-0000-0000-000000000000';
+    const rows = [
+      { achievement_key: 'trail_complete', ref_id: 'u1' },
+      { achievement_key: 'streak_7', ref_id: GLOBAL },
+      { achievement_key: 'friend_brought', ref_id: 'friend' },
+      { achievement_key: 'invited', ref_id: GLOBAL },
+      { achievement_key: 'podium_2', ref_id: 'class1' },
+    ];
+    expect(earningsOfRows(rows, new Set())).toEqual([
+      { reason: 'trail_completed', refId: 'u1' },
+      { reason: 'streak_7', refId: GLOBAL },
+      { reason: 'invite_friend', refId: 'friend' },
+      { reason: 'invited', refId: GLOBAL },
+      { reason: 'podium_2', refId: 'class1' },
+    ]);
+  });
+
+  it('pays what is missing, once: a second pass over the same awards has nothing to pay', () => {
+    const entitled = earningsOfRows([{ achievement_key: 'day_stamp', ref_id: LESSON }], new Set([LESSON]));
+    expect(missingEarnings(entitled, new Set())).toHaveLength(3);
+    expect(missingEarnings(entitled, new Set([`lesson_completed|${LESSON}`, `day_completed|${LESSON}`]))).toEqual([{ reason: 'lesson_clean', refId: LESSON }]);
+    expect(missingEarnings(entitled, new Set(entitled.map((entry) => `${entry.reason}|${entry.refId}`)))).toEqual([]);
+    expect(missingEarnings([...entitled, ...entitled], new Set())).toHaveLength(3);
+  });
+});
+
+describe('refunded crystal purchases', () => {
+  it('the first attempt keeps the plain key; after a refund the next attempt is a new debit with its own key', () => {
+    expect(spendRef('base_estudioso', 'ref', false, '')).toBe('base_estudioso:ref');
+    expect(spendRef('base_estudioso', 'ref', false, '', 0)).toBe('base_estudioso:ref');
+    const afterRefund = spendRef('base_estudioso', 'ref', false, '', 1);
+    expect(afterRefund).not.toBe(spendRef('base_estudioso', 'ref', false, ''));
+    expect(spendRef('base_estudioso', 'ref', false, '', 2)).not.toBe(afterRefund);
+  });
+  it('a consumable never uses the generation', () => {
+    expect(spendRef('life', 'ref', true, 'n1', 3)).toBe('life:n1');
   });
 });

@@ -1,10 +1,13 @@
-import { inBackground } from './companion-store.ts';
+import { TIME_ZONE, inBackground } from './companion-store.ts';
 import {
   LEDGER_PAGE,
   SPEND_REASON,
   THEME_KINDS,
   earnAmount,
-  earnsForAward,
+  LESSON_REASONS,
+  cleanLessonIds,
+  earningsOfRows,
+  missingEarnings,
   podiumReason,
   themeOf,
   type EarnReason,
@@ -101,9 +104,50 @@ export async function earnCrystals(db: IteraClient, earnings: Earning[]): Promis
   for (const userId of paid) inBackground(import('./crystals-mirror.ts').then((mirror) => mirror.mirrorCrystals(db, userId)));
 }
 
-/** The earnings of award rows a call has just created. */
-export function earningsOfAwards(userId: string, rows: Array<{ achievement_key: string; ref_id: string }>): Earning[] {
-  return rows.flatMap((row) => earnsForAward(row.achievement_key).map((reason) => ({ userId, reason, refId: row.ref_id })));
+/** Most grants one reconcile makes; the rest wait for the next call. */
+const RECONCILE_BATCH = 40;
+
+/**
+ * Pays every earning the learner's award rows entitle them to and the ledger
+ * does not show yet (stamped days, trails, streak, invites, podium places, and
+ * the clean-lesson bonus derived from `life_events`). Safe to run on every
+ * call: the ledger key makes a second payment a no-op, and a grant that failed
+ * is found missing next time. Never throws.
+ */
+export async function reconcileCrystals(
+  db: IteraClient,
+  userId: string,
+  rows: ReadonlyArray<{ achievement_key: string; ref_id: string; earned_at: string }>,
+  activities: ReadonlyArray<{ id: string; lesson_id: string }>,
+): Promise<number> {
+  try {
+    const stamps = rows.filter((row) => row.achievement_key === 'day_stamp').map((row) => ({ lessonId: row.ref_id, earnedAt: row.earned_at }));
+    let clean = new Set<string>();
+    if (stamps.length > 0) {
+      const { data, error } = await db.from('life_events').select('activity_id,created_at').eq('user_id', userId).eq('kind', 'lose').limit(10_000);
+      if (error) throw new Error(`life_events: ${error.message}`);
+      clean = cleanLessonIds(stamps, activities, (data ?? []) as Array<{ activity_id: string | null; created_at: string }>, TIME_ZONE);
+    }
+    const entitled = earningsOfRows(rows, clean);
+    if (entitled.length === 0) return 0;
+    const { data: ledger, error: ledgerError } = await db.from('crystal_ledger').select('reason,ref_id').eq('user_id', userId).limit(50_000);
+    if (ledgerError) throw new Error(`crystal_ledger: ${ledgerError.message}`);
+    const paid = new Set((ledger ?? []).map((entry) => `${entry.reason}|${entry.ref_id}`));
+    let granted = 0;
+    let capped = false;
+    for (const earning of missingEarnings(entitled, paid).slice(0, RECONCILE_BATCH)) {
+      // The database refuses a lesson earn past the day's cap: stop asking for lesson earns this call.
+      if (capped && LESSON_REASONS.includes(earning.reason)) continue;
+      const { isNew } = await grantCrystals(db, userId, earnAmount(earning.reason), earning.reason, earning.refId);
+      if (isNew) granted += 1;
+      else if (LESSON_REASONS.includes(earning.reason)) capped = true;
+    }
+    if (granted > 0) inBackground(import('./crystals-mirror.ts').then((mirror) => mirror.mirrorCrystals(db, userId)));
+    return granted;
+  } catch (error) {
+    console.error(`crystals: reconcile for ${userId} failed`, error);
+    return 0;
+  }
 }
 
 export function earningsOfPodium(sessionId: string, places: Array<{ user_id: string; position: number }>): Earning[] {
@@ -147,6 +191,20 @@ export async function loadCrystalPurchase(db: IteraClient, userId: string, ref: 
   const { data, error } = await db.from('purchases').select(PURCHASE_COLUMNS).eq('user_id', userId).eq('source', 'crystals').eq('memo', ref).maybeSingle();
   if (error) throw new Error(`purchases crystals: ${error.message}`);
   return data as PurchaseRow | null;
+}
+
+/** How many crystal purchases of this item (and ref) were refunded: each one is over for good and burns its ledger key. */
+export async function countRefundedCrystalPurchases(db: IteraClient, userId: string, itemKey: string, refId: string): Promise<number> {
+  const { count, error } = await db
+    .from('purchases')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('source', 'crystals')
+    .eq('item_key', itemKey)
+    .eq('ref_id', refId)
+    .eq('status', 'refunded');
+  if (error) throw new Error(`purchases refunded: ${error.message}`);
+  return count ?? 0;
 }
 
 export async function loadCrystalItems(db: IteraClient): Promise<CrystalItem[]> {

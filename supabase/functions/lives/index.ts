@@ -4,7 +4,6 @@ import { chainBlock, type ChainWrite } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { reconcileGifts } from '../_shared/gift-reconcile.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
-import { earnCrystals } from '../_shared/crystals-store.ts';
 import { grantLife, lessonBonus, lessonBonusAttemptId, loseLife, regenerate, type LessonBonus } from '../_shared/lives.ts';
 import { localParts } from '../_shared/awards.ts';
 
@@ -128,10 +127,6 @@ Deno.serve(async (request) => {
       });
       if (bonus === 'granted' && !(await once(db, userId, attemptId, 'lesson_bonus', undefined, () => changeLives(db, userId, grantLife)))) {
         bonus = 'already_granted';
-      }
-      // Phoenix Crystals: a completed lesson that cost no life pays once per lesson. Never fails the call.
-      if (facts.lessonComplete && Math.max(mistakes as number, facts.lossesToday) === 0) {
-        await earnCrystals(db, [{ userId, reason: 'lesson_clean', refId: lessonId.toLowerCase() }]);
       }
       // The lesson end is one of the moments the asset catches up with the database.
       if (caller.wallet) {

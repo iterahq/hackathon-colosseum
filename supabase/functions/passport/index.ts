@@ -19,7 +19,7 @@ import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClie
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
-import { earnCrystals, earningsOfAwards } from '../_shared/crystals-store.ts';
+import { reconcileCrystals } from '../_shared/crystals-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
 import { referralNote } from '../_shared/referral.ts';
 
@@ -476,8 +476,9 @@ Deno.serve(async (request) => {
     const pendingReview = dayPendingReview({ ...learning, existing }, body.lessonId);
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
-    // Phoenix Crystals: what the stamps this call created pay. Never fails the call.
-    await earnCrystals(db, earningsOfAwards(caller.iteraUserId, rows.filter((row) => stored.created.has(row.id))));
+    // Phoenix Crystals: every award the server holds for this learner pays once; what an earlier call or deploy
+    // missed is paid now. Awards exist only after the plausibility floor, so nothing here trusts the request.
+    // (Moved below the invite reward so the medals it creates are paid in the same call.)
 
     // The invite reward is paid on the invited learner's first completed day, and only then.
     let inviterToSettle: string | null = null;
@@ -492,6 +493,8 @@ Deno.serve(async (request) => {
         if (caller.wallet) inBackground(syncMirror(db, caller.iteraUserId));
       }
     }
+
+    await reconcileCrystals(db, caller.iteraUserId, rows, learning.activities);
 
     const mint = await mintPending(db, caller, rows, catalog, maxJobs);
     // After this learner's own mints, so the two do not compete for the node.
