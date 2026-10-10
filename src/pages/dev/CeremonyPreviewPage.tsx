@@ -6,14 +6,16 @@ import type { CeremonyModel } from '@/utils/ceremony';
 
 const STATES: readonly CeremonyStatus[] = ['minting', 'minted', 'failed', 'no_wallet', 'pending'];
 
-/** Dev-only: every ceremony state from fixtures, no backend. `?state=minting|minted|failed|no_wallet|pending&last=0|1`. */
+/** Dev-only: every ceremony state from fixtures, no backend. `?state=minting|minted|failed|no_wallet|pending&last=0|1&preparing=0|1`. */
 export default function CeremonyPreviewPage() {
   const [params] = useSearchParams();
   const asked = params.get('state') as CeremonyStatus | null;
   const status = asked && STATES.includes(asked) ? asked : 'minting';
   const last = params.get('last') === '1';
+  const preparing = params.get('preparing') === '1';
   const model: CeremonyModel = {
     day: last ? 5 : 3,
+    daysDone: last ? 5 : 3,
     totalDays: 5,
     trailTitle: 'HTML',
     status,
@@ -22,5 +24,5 @@ export default function CeremonyPreviewPage() {
     txSignature: status === 'minted' ? '5fixtureSignature' : null,
     assetAddress: status === 'minted' ? 'FixtureAsset1111' : null,
   };
-  return <StampCeremony key={`${status}-${last}`} model={model} colorIndex={1} actions={<LessonCompleteActions nextLessonId="preview" />} />;
+  return <StampCeremony key={`${status}-${last}-${preparing}`} model={model} preparing={preparing} colorIndex={1} actions={<LessonCompleteActions nextLessonId="preview" gold={last && !preparing} />} />;
 }

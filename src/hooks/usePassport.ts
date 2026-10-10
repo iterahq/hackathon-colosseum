@@ -1,61 +1,132 @@
 /**
- * Runs the `passport` function once a lesson is finished and turns the answer into a ceremony.
- * Best effort: a missing, unauthorised or broken function leaves the lesson screen exactly as it was.
+ * The end of a lesson for the certification: runs the `passport` function once the lesson is whole and
+ * says what to show (`utils/lessonEnd`). Nothing here claims a stamp before the server confirms it.
+ * Best effort: a missing, unauthorised or broken function leaves the plain completion card.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
+import { isGuestAccessToken } from '@/services/guestSession.service';
 import { PassportCallError, callPassport } from '@/services/passport.service';
 import type { PassportResult } from '@/types/achievements';
+import type { PassportCall, TrailKnowledge } from '@/types/lessonEnd';
 import { ceremonyFromResult, mergeResults, shouldContinue, type CeremonyModel } from '@/utils/ceremony';
+import { lessonEndView, shouldCallPassport } from '@/utils/lessonEnd';
 import { trailName } from '@/utils/trailDashboard';
 
 const MAX_CALLS = 3;
+/** Past this the learner gets the plain card and the stamp arrives on a later visit. */
+export const PASSPORT_TIMEOUT_MS = 20_000;
+/** How long the end of the lesson may wait for the trails before deciding without them. */
+export const TRAIL_HOLD_MS = 1_500;
 /** Statuses that mean "not for you / not there": nothing to say to the learner. */
 const SILENT = new Set([401, 403, 404]);
 
-export function usePassport({ lessonId, active }: { lessonId: string | undefined; active: boolean }) {
+class PassportTimeout extends Error {}
+
+interface Options {
+  lessonId: string | undefined;
+  /** The lesson was finished in this visit, just now. */
+  fresh: boolean;
+  /** Activities of the lesson the player knows as completed, and how many the lesson has. */
+  done: number;
+  total: number;
+}
+
+async function callAll(locale: string, lessonId: string): Promise<PassportResult> {
+  const results: PassportResult[] = [];
+  do results.push(await callPassport(locale, lessonId));
+  while (results.length < MAX_CALLS && shouldContinue(results[results.length - 1]));
+  return mergeResults(results);
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = window.setTimeout(() => reject(new PassportTimeout()), ms);
+    work.then(resolve, reject).finally(() => window.clearTimeout(id));
+  });
+}
+
+export function usePassport({ lessonId, fresh, done, total }: Options) {
   const { session, signInWithSolana } = useAuth();
   const { locale, tText } = useI18n();
-  const { trails } = useTrailDashboard({ enabled: active && Boolean(session) });
-  const [model, setModel] = useState<CeremonyModel | null>(null);
-  const [colorIndex, setColorIndex] = useState(1);
+  const guest = isGuestAccessToken(session?.access_token);
+  const learner = Boolean(session) && !guest;
+  const dashboard = useTrailDashboard({ enabled: learner });
+  const [call, setCall] = useState<PassportCall>({ state: 'idle' });
+  const [dismissed, setDismissed] = useState(false);
+  const [holdOver, setHoldOver] = useState(false);
+  /** The last ceremony the server confirmed: a retry that brings nothing new keeps it. */
+  const confirmed = useRef<CeremonyModel | null>(null);
   const startedFor = useRef<string | null>(null);
+  const runId = useRef(0);
   const alive = useRef(true);
-  useEffect(() => () => void (alive.current = false), []);
-
-  const run = useCallback(async () => {
-    if (!lessonId) return;
-    const trail = trails.find((t) => t.days.some((d) => d.id === lessonId));
-    const day = trail ? trail.days.findIndex((d) => d.id === lessonId) + 1 : 0;
-    if (trail) {
-      setColorIndex(trail.colorIndex);
-      setModel({ day, totalDays: trail.days.length, trailTitle: tText(trailName(trail.title)), status: 'minting', last: day === trail.days.length, newMedals: [], txSignature: null, assetAddress: null });
-    }
-    try {
-      const results: PassportResult[] = [];
-      do results.push(await callPassport(locale));
-      while (results.length < MAX_CALLS && shouldContinue(results[results.length - 1]));
-      if (!alive.current) return;
-      setModel(ceremonyFromResult(mergeResults(results), lessonId, locale));
-    } catch (e) {
-      if (!alive.current) return;
-      const status = e instanceof PassportCallError ? e.status : null;
-      setModel((m) => (m && !(status != null && SILENT.has(status)) ? { ...m, status: 'failed' } : null));
-    }
-  }, [lessonId, locale, tText, trails]);
-
   useEffect(() => {
-    if (!active || !lessonId || !session || startedFor.current === lessonId) return;
+    alive.current = true;
+    return () => void (alive.current = false);
+  }, []);
+
+  const { trail, colorIndex } = useMemo((): { trail: TrailKnowledge; colorIndex: number } => {
+    const found = lessonId ? dashboard.trails.find((t) => t.days.some((d) => d.id === lessonId)) : undefined;
+    if (!found) return { trail: dashboard.isPending && !holdOver ? 'loading' : 'none', colorIndex: 1 };
+    const at = found.days.findIndex((d) => d.id === lessonId);
+    const stampedBefore = found.days.filter((d, i) => i !== at && d.total > 0 && d.done >= d.total).length;
+    return {
+      trail: { day: at + 1, totalDays: found.days.length, stampedBefore, trailTitle: tText(trailName(found.title)), colorIndex: found.colorIndex },
+      colorIndex: found.colorIndex,
+    };
+  }, [dashboard.trails, dashboard.isPending, holdOver, lessonId, tText]);
+
+  const waitingForTrails = learner && dashboard.isPending;
+  useEffect(() => {
+    if (!waitingForTrails) return;
+    const id = window.setTimeout(() => setHoldOver(true), TRAIL_HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [waitingForTrails]);
+
+  /** `again`: a retry from inside a confirmed ceremony, which stays on screen while the call runs. */
+  const run = useCallback(
+    async (again: boolean) => {
+      if (!lessonId) return;
+      const id = ++runId.current;
+      const current = () => alive.current && runId.current === id;
+      const kept = again ? confirmed.current : null;
+      const keep = (status: CeremonyModel['status']): PassportCall | null => (kept ? { state: 'done', result: {}, model: { ...kept, status } } : null);
+      setCall(keep('minting') ?? { state: 'pending' });
+      try {
+        const result = await withTimeout(callAll(locale, lessonId), PASSPORT_TIMEOUT_MS);
+        if (!current()) return;
+        const model = ceremonyFromResult(result, lessonId, locale);
+        if (model) confirmed.current = model;
+        setCall(model || !kept ? { state: 'done', result, model } : keep('failed')!);
+      } catch (e) {
+        if (!current()) return;
+        const status = e instanceof PassportCallError ? e.status : null;
+        setCall(keep('failed') ?? (e instanceof PassportTimeout ? { state: 'timeout' } : { state: 'error', silent: status != null && SILENT.has(status) }));
+      }
+    },
+    [lessonId, locale]
+  );
+
+  const due = shouldCallPassport({ done, total });
+  useEffect(() => {
+    if (!due || !lessonId || !session || startedFor.current === lessonId) return;
     startedFor.current = lessonId;
-    void run();
-  }, [active, lessonId, session, run]);
+    void run(false);
+  }, [due, lessonId, session, run]);
 
   const connect = useCallback(async () => {
     const { error } = await signInWithSolana();
-    if (!error) void run();
+    if (!error) void run(true);
   }, [signInWithSolana, run]);
 
-  return { model, colorIndex, retry: () => void run(), connect: () => void connect(), dismiss: () => setModel(null) };
+  const view = lessonEndView({ learner, done, total, fresh: fresh && learner, trail, call, dismissed });
+  return { view, colorIndex, retry: () => void run(true), connect: () => void connect(), dismiss: () => setDismissed(true) };
+}
+
+/** Reads the trails while the lesson runs, so its end already knows which day this is. Renders nothing. */
+export function usePassportPrefetch(): void {
+  const { session } = useAuth();
+  useTrailDashboard({ enabled: Boolean(session) && !isGuestAccessToken(session?.access_token) });
 }

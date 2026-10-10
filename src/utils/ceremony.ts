@@ -1,6 +1,7 @@
 /** Pure model of the stamp ceremony: what a `passport` response means for the lesson just finished. */
 import type { AchievementKind, CeremonyStatus, PassportAward, PassportResult } from '@/types/achievements';
 import type { I18nText } from '@/types/content';
+import { trailName } from '@/utils/trailDashboard';
 
 export interface CeremonyMedal {
   key: string;
@@ -13,9 +14,12 @@ export interface CeremonyMedal {
 
 export interface CeremonyModel {
   day: number;
+  /** Stamps on the page once this one landed, as the server counts them. */
+  daysDone: number;
   totalDays: number;
   trailTitle: string;
   status: CeremonyStatus;
+  /** The server turned the certification gold. Never inferred from the day's position alone. */
   last: boolean;
   newMedals: CeremonyMedal[];
   txSignature: string | null;
@@ -28,6 +32,12 @@ const text = (v: string | I18nText | undefined | null, lang: string): string => 
   if (!v) return '';
   if (typeof v === 'string') return v;
   return v[lang] ?? v.pt ?? v.en ?? Object.values(v)[0] ?? '';
+};
+
+/** The trail as the page header prints it: "Semana 1 · HTML" -> "HTML", the same name the dashboard uses. */
+const shortTitle = (v: unknown, lang: string): string => {
+  if (!v) return '';
+  return text(trailName(typeof v === 'string' ? { [lang]: v } : (v as I18nText)), lang);
 };
 
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -46,6 +56,7 @@ export function mergeResults(results: readonly PassportResult[]): PassportResult
     updated: all.filter((x) => !x.fresh).map((x) => x.row),
     remaining: last?.remaining ?? 0,
     mint: last?.mint,
+    day_incomplete: last?.day_incomplete,
   };
 }
 
@@ -71,13 +82,14 @@ export function ceremonyFromResult(result: PassportResult, lessonId: string, lan
   const source = pass ?? stamp;
   const totalDays = num(source.state.total_days) || num(stamp.state.total_days);
   const day = num(stamp.state.day) || num(source.state.days_done);
-  const trailTitle = text(source.state.trail_title as I18nText | undefined, lang) || String(source.state.trail ?? '');
+  const daysDone = num(source.state.days_done) || day;
   return {
     day,
+    daysDone,
     totalDays,
-    trailTitle,
+    trailTitle: shortTitle(source.state.trail_title, lang) || String(source.state.trail ?? ''),
     status: statusOf(pass, result),
-    last: totalDays > 0 && num(source.state.days_done) >= totalDays,
+    last: totalDays > 0 && (daysDone >= totalDays || source.state.tier === 'gold' || pass?.tier === 'gold'),
     newMedals: (result.awards ?? [])
       .filter((r) => MEDAL_KINDS.has(r.kind))
       .map((r) => ({ key: r.key, kind: r.kind, credentialId: r.id || null, title: text(r.title, lang), glyph: text(r.title, lang).slice(0, 3).toUpperCase() })),

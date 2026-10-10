@@ -66,6 +66,17 @@ export interface PassportResult {
   updated: PassportAward[];
   remaining: number;
   mint?: { wallet: string | null; cluster: string; attempted: number; blocked?: MintBlocked | null };
+  /**
+   * Answer to the `lesson_id` sent with the call: an object when that lesson still has unfinished
+   * activities (nothing was stamped for it), null when it is whole. Absent on an older backend.
+   */
+  day_incomplete?: DayIncomplete | null;
+}
+
+export interface DayIncomplete {
+  lesson_id: string;
+  done: number;
+  total: number;
 }
 
 export type CeremonyStatus = 'minting' | 'minted' | 'failed' | 'no_wallet' | 'pending';

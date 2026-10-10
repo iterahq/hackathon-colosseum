@@ -31,8 +31,7 @@ import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
 import { LessonStepActions } from '@/components/branded/lesson/LessonStepActions';
-import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
-import { PassportCeremonyGate } from '@/components/passport/PassportCeremonyGate';
+import { PassportCeremonyGate, PassportPrefetch } from '@/components/passport/PassportCeremonyGate';
 import { LessonTitle } from '@/components/branded/lesson/LessonTitle';
 import { LessonLives, type LessonLivesHandle, type LessonLivesView } from '@/components/lives/LessonLives';
 import { LessonCompanionContext } from '@/components/lives/lessonCompanion';
@@ -73,6 +72,7 @@ import {
   stepBack,
   stepForward,
 } from '@/utils/lessonNavigation';
+import { firstUnfinishedIndex } from '@/utils/lessonEnd';
 import { lessonExitPath } from '@/utils/lessonExitPath';
 import { trackFunnelOnce } from '@/lib/analytics';
 import { upcomingImageUrls } from '@/lib/lessonMediaPreload';
@@ -119,6 +119,12 @@ export default function LessonPlayer() {
   // The learner has been past the last activity (this session or a resumed one),
   // so forward from the last activity may reach the completion screen again.
   const [finished, setFinished] = useState(false);
+  // The lesson became whole in THIS visit, just now: its end opens straight into
+  // the stamp ceremony. Reopening a lesson that was already whole does not.
+  const [freshFinish, setFreshFinish] = useState(false);
+  // The learner came back from the end card to redo what was missed: each answer
+  // then leads to the next unfinished activity instead of the next in order.
+  const redoingMissingRef = useRef(false);
   // True when the last persistProgress write FAILED — we surface a retry instead
   // of a false success trophy (round-2 nit: never celebrate an unsaved completion).
   const [saveErrorFor, setSaveErrorFor] = useState<string | null>(null);
@@ -177,6 +183,8 @@ export default function LessonPlayer() {
     setIndex(0);
     setFurthest(0);
     setFinished(false);
+    setFreshFinish(false);
+    redoingMissingRef.current = false;
     setDoneIds(new Set());
     setCompleted(false);
     setSaveErrorFor(null);
@@ -706,14 +714,22 @@ export default function LessonPlayer() {
     }
 
     setPending(null);
-    if (!isLast) {
+    // Whole now: this pass was the last one missing, wherever in the lesson it sits.
+    const whole = correct && activities.every((a) => a.id === current.id || doneIds.has(a.id));
+    // Redoing the missed ones: on to the next activity still open, or back to the end.
+    const nextOpen = redoingMissingRef.current
+      ? activities.findIndex((a, i) => i > index && !doneIds.has(a.id))
+      : index + 1;
+    if (!whole && !isLast && nextOpen >= 0) {
       onAdvance();
-      setIndex((i) => i + 1);
-      setFurthest((f) => Math.max(f, index + 1));
+      setIndex(nextOpen);
+      setFurthest((f) => Math.max(f, nextOpen));
     } else {
       onFinish();
       livesRef.current?.endLesson();
       trackFunnelOnce('first_lesson_completed');
+      redoingMissingRef.current = false;
+      setFreshFinish(whole);
       setCompleted(true);
       setFinished(true);
     }
@@ -741,6 +757,8 @@ export default function LessonPlayer() {
    * the learner with no way out.
    */
   function applyPosition({ index: nextIndex, completed: nextCompleted }: LessonPosition) {
+    setFreshFinish(false);
+    redoingMissingRef.current = false;
     setIndex(nextIndex);
     setCompleted(nextCompleted);
   }
@@ -750,6 +768,14 @@ export default function LessonPlayer() {
   const goForward = () => applyPosition(stepForward(position, activities.length));
   const goToStart = () => applyPosition({ index: 0, completed: false });
   const conceptContinue = () => handleComplete(true);
+  /** From the end card of an unfinished day: straight to the first activity still open, ready to answer. */
+  function redoMissing() {
+    const at = firstUnfinishedIndex(activities.map((a) => a.id), doneIds);
+    applyPosition({ index: at, completed: false });
+    redoingMissingRef.current = true;
+    const target = activities[at];
+    if (target && !doneIds.has(target.id) && answers[target.id]?.correct === false) retryAnswer(target.id);
+  }
 
   /** A miss stands until the learner chooses to try again — never by reload. */
   function retryMissed() {
@@ -859,14 +885,10 @@ export default function LessonPlayer() {
                 lessonId={lessonId}
                 nextLessonId={nextLesson?.id}
                 onReview={goToStart}
-                card={
-                  <LessonCompleteCard
-                    doneCount={doneIds.size}
-                    total={activities.length}
-                    nextLessonId={nextLesson?.id}
-                    onReview={goToStart}
-                  />
-                }
+                doneCount={activities.filter((a) => doneIds.has(a.id)).length}
+                total={activities.length}
+                fresh={freshFinish}
+                onRedoMissing={redoMissing}
               />
             </LessonCompanionContext.Provider>
           ) : (
@@ -958,6 +980,7 @@ export default function LessonPlayer() {
         />
       )}
 
+      <PassportPrefetch />
       <LessonLives
         ref={livesRef}
         lessonId={lessonId}

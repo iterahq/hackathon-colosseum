@@ -258,3 +258,20 @@ exercised from the app: sign in with a wallet, complete a day, complete another.
 - The public devnet RPC is rate limited; a provider URL in `SOLANA_RPC_URL` is advisable for a demo.
 - `earned_at` is set when a row is first written and does not move if progress is edited later.
 - A row stuck in `pending` (invocation killed mid-mint) is retaken after 3 minutes.
+
+## End of a lesson (UI)
+
+`src/utils/lessonEnd.ts` decides the screen from two facts, in this order: what the player knows
+(are all activities of this lesson completed?) and what `passport` answered. The call carries
+`{ lesson_id, lang }`; the answer's optional `day_incomplete` (`null` or `{ lesson_id, done, total }`)
+wins over the local count.
+
+| Situation | Screen |
+|---|---|
+| Day not whole (local count or `day_incomplete`) | completion card "Faltou N atividade(s) pra carimbar o dia" + "Refazer as que faltaram"; `passport` is not called for a locally unfinished day |
+| Day finished whole in this visit, lesson is a day of a trail | the ceremony at once in its minting state (previous stamps, nothing claimed), then what the server confirmed |
+| `passport` error or 20 s without an answer | plain card + "Seu dia está salvo; o carimbo on-chain entra na próxima vez." |
+| Lesson reopened already whole, lesson outside a trail, guest | plain card; a ceremony only if the server stamps the lesson in that call |
+
+Gold is shown only when the returned `trail_pass` says `days_done >= total_days` or tier `gold`.
+

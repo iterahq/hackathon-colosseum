@@ -10,6 +10,8 @@ interface Props {
   txSignature: string | null;
   assetAddress: string | null;
   medals: CeremonyMedal[];
+  /** Name of the trail whose certification just turned gold; null when it did not. */
+  goldTrail?: string | null;
   accent: string;
   accentDark: string;
   locked: boolean;
@@ -33,7 +35,7 @@ function Spinner() {
 }
 
 /** Under the page: what the chain is doing, and the one or two actions that fit that state. */
-export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, accent, accentDark, locked, onRetry, onLater, onConnect }: Props) {
+export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, goldTrail = null, accent, accentDark, locked, onRetry, onLater, onConnect }: Props) {
   const { t, locale } = useI18n();
   const reduce = useReducedMotion();
   const href = chainUrl(txSignature, assetAddress);
@@ -66,6 +68,11 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, a
             </a>
           )}
         </>
+      )}
+      {goldTrail && (
+        <span className="flex items-center gap-2 text-center [font:700_14px_JetBrains_Mono] text-[#F2C66D]" data-testid="ceremony-gold">
+          {t('passport.ceremony.gold', { trail: goldTrail })}
+        </span>
       )}
       {medals.map((m) => (
         <span key={m.key} className="flex items-center gap-2.5 [font:700_14px_JetBrains_Mono] text-[#F2C66D]" data-testid="ceremony-medal">
