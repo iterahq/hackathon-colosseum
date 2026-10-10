@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   REGEN_INTERVAL_SECONDS,
   deriveStats,
+  giftLife,
   grantLife,
   lessonBonus,
   lessonBonusAttemptId,
@@ -40,7 +41,7 @@ describe('regeneration', () => {
 
   it('survives a clock that went backwards and a stored value out of range', () => {
     expect(regenerate(state(2), after(-600)).lives).toBe(2);
-    expect(regenerate(state(9), T0).lives).toBe(5);
+    expect(regenerate(state(9), T0).lives).toBe(6);
     expect(regenerate(state(-3), T0).lives).toBe(0);
   });
 });
@@ -70,7 +71,7 @@ describe('losing and gaining', () => {
   });
 
   it('shows a full bar with no countdown', () => {
-    expect(livesView(state(5), T0)).toEqual({ current: 5, max: 5, next_regen_at: null, regen_seconds: 0, regen_interval_seconds: REGEN_INTERVAL_SECONDS });
+    expect(livesView(state(5), T0)).toEqual({ current: 5, max: 5, next_regen_at: null, regen_seconds: 0, regen_interval_seconds: REGEN_INTERVAL_SECONDS, bonus: 0 });
   });
 });
 
@@ -122,5 +123,29 @@ describe('deriveStats', () => {
     // 02:00 UTC on the 9th is still the 8th in São Paulo.
     expect(deriveStats([event('2026-10-09T02:00:00Z')], new Date('2026-10-09T02:30:00Z'), ZONE).streak).toBe(1);
     expect(deriveStats([event('2026-10-09T02:00:00Z'), event('2026-10-09T12:00:00Z')], now, ZONE).streak).toBe(2);
+  });
+});
+
+describe('bonus life', () => {
+  it('a gift goes one above the maximum and no further', () => {
+    expect(giftLife(state(3), T0).lives).toBe(4);
+    expect(giftLife(state(5), T0).lives).toBe(6);
+    expect(giftLife(state(6), T0).lives).toBe(6);
+  });
+
+  it('survives regeneration, a lesson bonus and a refill, and reports itself', () => {
+    expect(regenerate(state(6), after(REGEN_INTERVAL_SECONDS * 9)).lives).toBe(6);
+    expect(regenerate(state(9), T0).lives).toBe(6);
+    expect(grantLife(state(6), T0).lives).toBe(6);
+    expect(refillLives(state(6), T0).lives).toBe(6);
+    expect(refillLives(state(2), T0).lives).toBe(5);
+    expect(livesView(state(6), T0)).toMatchObject({ current: 6, max: 5, bonus: 1, regen_seconds: 0, next_regen_at: null });
+    expect(livesView(state(4), T0).bonus).toBe(0);
+  });
+
+  it('is the first life a mistake takes, and regeneration then stops at the maximum', () => {
+    const afterMistake = loseLife(state(6), T0);
+    expect(afterMistake.lives).toBe(5);
+    expect(regenerate(afterMistake, after(REGEN_INTERVAL_SECONDS * 3)).lives).toBe(5);
   });
 });

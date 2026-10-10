@@ -18,12 +18,16 @@ import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
+import { inBackground, syncMirror } from '../_shared/companion-store.ts';
+import { rewardReferral } from '../_shared/referral-store.ts';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const MAX_JOBS_PER_CALL = 3;
 const MAX_OPERATOR_JOBS = 10;
 const MINT_BUDGET_MS = 90_000;
 const STALE_CLAIM_MS = 3 * 60_000;
+const INVITER_MINT_ATTEMPTS = 3;
+const INVITER_MINT_PAUSE_MS = 3_000;
 const PAGE_SIZE = 1000;
 const ROW_KEY = 'user_id,achievement_key,ref_id';
 
@@ -351,6 +355,23 @@ async function mintPending(
   return outcome(attempted, done, null);
 }
 
+/**
+ * The inviter's half of an invite reward, off the response path of the invited
+ * learner's call: the new medal is minted to the inviter's wallet when there is
+ * one, and the life reaches the companion asset.
+ */
+async function settleInviter(db: IteraClient, inviterId: string, catalog: Map<string, CatalogEntry>): Promise<void> {
+  const inviter = await resolveNamedUser(db, inviterId);
+  if (!inviter?.wallet) return;
+  // The public devnet node throttles bursts: a failed mint is tried again here instead of waiting for the inviter's next visit.
+  for (let attempt = 0; attempt < INVITER_MINT_ATTEMPTS; attempt += 1) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, INVITER_MINT_PAUSE_MS));
+    const outcome = await mintPending(db, inviter, await loadRows(db, inviterId), catalog, MAX_JOBS_PER_CALL);
+    if (outcome.remaining === 0) break;
+  }
+  await syncMirror(db, inviterId);
+}
+
 function view(row: AchievementRow, catalog: Map<string, CatalogEntry>, lang: Lang) {
   const entry = catalog.get(row.achievement_key) as CatalogEntry;
   const base = functionsBase();
@@ -443,7 +464,21 @@ Deno.serve(async (request) => {
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
 
+    // The invite reward is paid on the invited learner's first completed day, and only then.
+    let inviterToSettle: string | null = null;
+    if (rows.some((row) => row.achievement_key === 'first_stamp')) {
+      const reward = await rewardReferral(db, caller.iteraUserId);
+      if (reward) {
+        for (const id of reward.createdRowIds) stored.created.add(id);
+        rows = await loadRows(db, caller.iteraUserId);
+        inviterToSettle = reward.inviterUserId;
+        if (caller.wallet) inBackground(syncMirror(db, caller.iteraUserId));
+      }
+    }
+
     const mint = await mintPending(db, caller, rows, catalog, maxJobs);
+    // After this learner's own mints, so the two do not compete for the node.
+    if (inviterToSettle) inBackground(settleInviter(db, inviterToSettle, catalog));
     if (mint.touched.size > 0) rows = await loadRows(db, caller.iteraUserId);
 
     const updatedIds = new Set([...stored.changed, ...mint.touched].filter((id) => !stored.created.has(id)));

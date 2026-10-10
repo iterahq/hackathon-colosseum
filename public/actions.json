@@ -1,0 +1,8 @@
+{
+  "rules": [
+    {
+      "pathPattern": "/gift/*",
+      "apiPath": "https://nyzcbnnbffsizshiolbh.supabase.co/functions/v1/action-gift/*"
+    }
+  ]
+}

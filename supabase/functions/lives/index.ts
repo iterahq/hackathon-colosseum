@@ -2,6 +2,7 @@ import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
 import { TIME_ZONE, changeLives, companionResponse, ensureCompanion, inBackground, loadStats, mirrorWithin, syncMirror } from '../_shared/companion-store.ts';
 import { chainBlock, type ChainWrite } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
+import { reconcileGifts } from '../_shared/gift-reconcile.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { grantLife, lessonBonus, lessonBonusAttemptId, loseLife, regenerate, type LessonBonus } from '../_shared/lives.ts';
 import { localParts } from '../_shared/awards.ts';
@@ -140,6 +141,8 @@ Deno.serve(async (request) => {
     const [row, stats] = await Promise.all([ensureCompanion(db, userId), loadStats(db, userId, now)]);
     // A mirror that failed or ran out of budget earlier is retried here, off the response path.
     if (caller.wallet && row.mirror_due && !mirrorStarted) inBackground(syncMirror(db, userId));
+    // A gift whose confirm never arrived is looked up off the response path.
+    inBackground(reconcileGifts(db, { toUserId: userId }));
     return json(
       { ...companionResponse(row, stats, now), ...(bonus ? { bonus } : {}), ...(chain ? { chain: chainBlock(chain) } : {}) },
       200,

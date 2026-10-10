@@ -27,8 +27,10 @@ Deno.serve(async (request) => {
       }
     }
 
+    // A gift is bought on someone's profile, not in the shop list: it is listed only when asked for (`?with=gift`).
+    const withGift = new URL(request.url).searchParams.get('with') === 'gift';
     const items = ((data ?? []) as ShopItem[])
-      .filter((item) => isItemKind(item.kind))
+      .filter((item) => isItemKind(item.kind) && (item.kind !== 'gift' || withGift))
       .map((item) => {
         const held = inventory.filter((entry) => entry.item_key === item.key);
         return {

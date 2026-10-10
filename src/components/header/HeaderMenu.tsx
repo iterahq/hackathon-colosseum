@@ -123,6 +123,9 @@ export function HeaderMenu({ name, email, wallet, roles, stats, onClose, onExpla
         <Link to="/passport" role="menuitem" className={MENU_ITEM} onClick={onClose}>
           {t('header.id.passport')}
         </Link>
+        <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
+          {t('invite.menu')}
+        </Link>
         <button type="button" role="menuitem" onClick={onExplainer} className={MENU_ITEM}>
           {t('header.id.howPassport')}
         </button>

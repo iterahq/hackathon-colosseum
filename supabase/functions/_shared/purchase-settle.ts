@@ -6,6 +6,7 @@ import { CATALOG_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 import { intentPhase, missingTransactionVerdict, verifyPayment, type ParsedTransaction, type PaymentExpectation, type PaymentVerdict } from './purchase-verify.ts';
 import { RpcError, blockHeight, rpc } from './rpc.ts';
+import { giftView } from './gift-store.ts';
 import { ITEM_COLUMNS, ITEM_HANDLERS, PURCHASE_COLUMNS, type ApplyOutcome, type PurchaseRow, type ShopItem } from './shop-items.ts';
 import { isItemKind } from './shop-rules.ts';
 
@@ -53,6 +54,7 @@ async function paidResponse(db: IteraClient, intent: PurchaseRow, item: ShopItem
     response.passport = view;
     response.image_url = `${view.image_url}?lang=${lang}&v=${now.getTime()}`;
   }
+  if (outcome.gift) response.gift = await giftView(db, outcome.gift);
   if (outcome.chain) {
     response.chain = chainBlock(outcome.chain);
     response.written = writtenList(outcome.chain);

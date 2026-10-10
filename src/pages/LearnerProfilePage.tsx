@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
+import { ProfileGift } from '@/components/gift/ProfileGift';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { useLearnerProfile } from '@/hooks/useLearnerProfile';
@@ -69,6 +70,7 @@ export default function LearnerProfilePage() {
                 <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
               </div>
             </section>
+            <ProfileGift wallet={profile.wallet} />
             {empty ? (
               <div data-testid="profile-empty">
                 <TeraNote mood="neutral" title={t('profile.emptyTitle')} body={t('profile.empty')} />

@@ -67,3 +67,12 @@ or refuse a legacy message through `request`. Only a manual run with the extensi
 - Each fresh run leaves one throwaway user behind and spends devnet SOL: about 0.01 SOL of the
   treasury (faucet) and the authority's fees for one companion, one certification, two medals and
   their updates.
+
+## Gift a life and the invite reward
+
+`scripts/hackathon/gift-browser.mjs --base http://localhost:8080 --out /tmp/hk-gift` drives the same
+fake Phantom in **two** browser contexts (two throwaway wallets) against a local dev server: user 1
+copies the invite link in the shop; user 2 lands with `?ref`, signs in, finishes a seeded first day
+(every activity of day 1 but the closing reveal is seeded) and both get the medal and the life (UI,
+database, chain); user 2 gifts a life on `/u/<user 1>` and user 1 sees the gift moment on the next
+load. Screenshots at 1440x900 and 390x844. The paying wallet is funded by the authority (0.004 SOL).

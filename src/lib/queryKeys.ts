@@ -145,6 +145,14 @@ export const queryKeys = {
   companion: {
     mine: (userId: string) => ['companion', userId] as const,
   },
+  // Gift a life and the invite reward: the gift's price per language, the learner's unseen gifts and invite status.
+  gift: {
+    price: (locale: string) => ['gift', 'price', { locale }] as const,
+    inbox: (userId: string) => ['gift', 'inbox', userId] as const,
+  },
+  referral: {
+    mine: (userId: string) => ['referral', userId] as const,
+  },
   shop: {
     all: ['shop'] as const,
     items: (userId: string, locale: string) => ['shop', 'items', userId, { locale }] as const,

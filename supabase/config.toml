@@ -46,3 +46,16 @@ verify_jwt = false
 # An e-mail account binds one Solana wallet by signing a challenge.
 [functions.link-wallet]
 verify_jwt = false
+
+# Gift a life: a Solana Action (blink). Public by specification: wallets and blink
+# clients call it with no session; the payment is verified on chain.
+[functions.action-gift]
+verify_jwt = false
+
+# The recipient's unseen gifts ("someone gave you a life").
+[functions.gifts]
+verify_jwt = false
+
+# Invite code, claim and status. Same rule as `passport`: the token is checked in code.
+[functions.referral]
+verify_jwt = false

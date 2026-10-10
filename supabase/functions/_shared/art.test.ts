@@ -185,6 +185,17 @@ describe('companion art', () => {
   };
   const draw = (patch: Partial<typeof snapshot> = {}, lang: 'pt' | 'en' = 'en') => renderArt(companionArtInput({ ...snapshot, ...patch }, lang));
 
+  it('draws a gifted bonus life as a sixth, gold heart', () => {
+    const full = draw({ lives: 5 });
+    const bonus = draw({ lives: 6 });
+    expect(full).toContain('5/5 LIVES');
+    expect(bonus).toContain('6/5 LIVES');
+    expect(bonus.match(/M12 21C5 15.5/g)).toHaveLength(6);
+    expect(full.match(/M12 21C5 15.5/g)).toHaveLength(5);
+    expect(bonus).toContain('fill="#E8B84A" stroke="#E8B84A"');
+    expect(full).not.toContain('fill="#E8B84A" stroke="#E8B84A"');
+  });
+
   it('draws the asset\'s values instead of the live row when asked for the chain snapshot', () => {
     const onchain = companionFromAttributes([
       { key: 'lives', value: '5' },

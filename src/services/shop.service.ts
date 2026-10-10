@@ -9,8 +9,9 @@ export async function getShopItems(lang: string): Promise<ShopItem[]> {
 }
 
 /** `refId` is the trail (unit id) whose certification an ink or frame is bought for. */
-export async function createPurchaseIntent(itemKey: string, refId?: string): Promise<PurchaseIntent> {
-  const { data } = await callShop('purchase-intent', { body: refId ? { item_key: itemKey, ref_id: refId } : { item_key: itemKey } });
+export async function createPurchaseIntent(itemKey: string, refId?: string, recipient?: string): Promise<PurchaseIntent> {
+  // `recipient` is the wallet a gift is for; the backend ignores it for every other item.
+  const { data } = await callShop('purchase-intent', { body: { item_key: itemKey, ...(refId ? { ref_id: refId } : {}), ...(recipient ? { recipient } : {}) } });
   return toIntent(data);
 }
 

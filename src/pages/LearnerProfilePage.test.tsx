@@ -7,6 +7,8 @@ import { parseProfile } from '@/services/learnerProfile.service';
 
 const useLearnerProfile = vi.fn();
 vi.mock('@/hooks/useLearnerProfile', () => ({ useLearnerProfile: (w: string, l: string) => useLearnerProfile(w, l) }));
+// The gift block reads the session and the shop: it has its own test.
+vi.mock('@/components/gift/ProfileGift', () => ({ ProfileGift: ({ wallet }: { wallet: string }) => <div data-testid="profile-gift" data-wallet={wallet} /> }));
 
 const WALLET = 'CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW';
 const ok = (body: object) => ({ isPending: false, isError: false, data: { status: 'ok', profile: parseProfile(body, WALLET, 'pt') } });

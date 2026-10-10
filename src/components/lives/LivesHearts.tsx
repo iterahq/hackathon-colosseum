@@ -13,6 +13,9 @@ interface Props {
   'data-testid'?: string;
 }
 
+/** A gifted life above the maximum: one more heart, in gold. */
+const BONUS = '#E8B84A';
+
 /** A row of hearts: full ones warm, lost ones hollow. The row shakes once when a life goes. */
 export function LivesHearts({ current, max, size = 16, label, className = '', 'data-testid': testId = 'lives-hearts' }: Props) {
   const reduced = useReducedMotion();
@@ -49,6 +52,7 @@ export function LivesHearts({ current, max, size = 16, label, className = '', 'd
           />
         );
       })}
+      {current > max && <Heart aria-hidden data-full data-bonus width={size} height={size} strokeWidth={2.25} style={{ color: BONUS, fill: BONUS }} />}
     </motion.span>
   );
 }
