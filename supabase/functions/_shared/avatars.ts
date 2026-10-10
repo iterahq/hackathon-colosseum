@@ -1,6 +1,8 @@
 import type { Lang } from './art.ts';
 import { APP_URL, pickText, type OnchainAttribute } from './credential.ts';
+import type { BorderSpec } from './crystals.ts';
 import { loreOf, loreText, loreView } from './lore.ts';
+import { seasonData, seasonView } from './seasons.ts';
 
 /** The avatar every learner wears until they pick another one. Never minted, never sold. */
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
@@ -28,6 +30,10 @@ export interface AvatarItem {
   avatar_group: string;
   supply_cap: number | null;
   image_key: string | null;
+  /** Data of the row: `season` (a buying window) and `includes` (keys granted with it). */
+  effect?: Record<string, unknown>;
+  /** What the avatar costs in crystals; `null`: not for crystals. */
+  price_crystals?: number | null;
   active: boolean;
   sort: number;
 }
@@ -54,9 +60,34 @@ export interface AvatarAssetRow {
   minted_at: string | null;
 }
 
+/** An item an avatar carries with it (`effect.includes`): enough to name it in a list. */
+export interface IncludedItem {
+  key: string;
+  kind: string;
+  title_i18n: I18n;
+}
+
 export interface AvatarCatalog {
   items: Map<string, AvatarItem>;
   tiers: Map<string, AvatarTier>;
+  /** The items named by some avatar's `includes` (borders, outfits), by key. Absent in older callers. */
+  included?: Map<string, IncludedItem>;
+}
+
+/** The keys an avatar grants with itself (`effect.includes`), checked. */
+export function includesOf(effect: Record<string, unknown> | null | undefined): string[] {
+  const raw = effect?.includes;
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter(isAvatarKey))];
+}
+
+/** Which avatar each included item comes with: `{ item key -> avatar key }` (the first avatar that names it). */
+export function includedWithMap(catalog: Pick<AvatarCatalog, 'items'>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const avatar of catalog.items.values()) {
+    for (const key of includesOf(avatar.effect)) if (!map.has(key)) map.set(key, avatar.key);
+  }
+  return map;
 }
 
 export function isAvatarKey(value: unknown): value is string {
@@ -109,7 +140,7 @@ export function equipVerdict(item: AvatarItem | undefined, ownedKeys: ReadonlySe
 }
 
 /** The `avatar` block of `companion`, `learner-profile` and the purchase answers. */
-export function avatarView(catalog: AvatarCatalog, item: AvatarItem, lang: Lang, supabaseUrl: string, assetAddress: string | null) {
+export function avatarView(catalog: AvatarCatalog, item: AvatarItem, lang: Lang, supabaseUrl: string, assetAddress: string | null, border: BorderSpec | null = null) {
   return {
     key: item.key,
     title: pickText(item.title_i18n, lang),
@@ -122,6 +153,8 @@ export function avatarView(catalog: AvatarCatalog, item: AvatarItem, lang: Lang,
     asset_address: assetAddress,
     allows_outfit: allowsOutfit(item.avatar_group),
     lore: loreView(item.key, lang),
+    /** The learner's profile border, drawn over the art's own ring; `null` = the ring as it is. */
+    border,
   };
 }
 
@@ -140,6 +173,7 @@ export function fallbackAvatarView(supabaseUrl: string) {
     asset_address: null,
     allows_outfit: true,
     lore: null,
+    border: null,
   };
 }
 
@@ -160,7 +194,7 @@ export function shopAvatarFields(
   item: AvatarItem,
   lang: Lang,
   supabaseUrl: string,
-  facts: { supply: AvatarSupply | undefined; own: AvatarAssetRow | null; equippedKey: string | null },
+  facts: { supply: AvatarSupply | undefined; own: AvatarAssetRow | null; equippedKey: string | null; now?: Date },
 ) {
   const free = isFreeAvatar(item);
   const owned = free || isOwnedRow(facts.own);
@@ -189,6 +223,12 @@ export function shopAvatarFields(
     asset_address: facts.own?.asset_address ?? null,
     allows_outfit: allowsOutfit(item.avatar_group),
     lore: loreView(item.key, lang),
+    price_crystals: free ? null : (item.price_crystals ?? null),
+    season: seasonView(seasonData(item.effect), lang, facts.now ?? new Date()),
+    includes: includesOf(item.effect).map((key) => {
+      const included = catalog.included?.get(key);
+      return { key, kind: included?.kind ?? 'unknown', title: pickText(included?.title_i18n, lang) || key };
+    }),
     sort: item.sort,
   };
 }

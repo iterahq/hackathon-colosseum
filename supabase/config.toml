@@ -77,3 +77,8 @@ verify_jwt = false
 # Public counter of the Circuito (treasury -> mint authority transfers). Read only, no token.
 [functions.circuit]
 verify_jwt = false
+
+# Phoenix Crystals: balance, spend, theme. Same rule as `passport`: the token is checked in code.
+# `GET /crystals/token.json` and `/token.svg` are the public metadata of the token.
+[functions.crystals]
+verify_jwt = false

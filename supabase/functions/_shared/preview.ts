@@ -4,7 +4,7 @@ import { isFrame, isInk, isOutfit, type Frame, type Ink } from './cosmetics.ts';
 
 export const PREVIEW_MAX_TRAIL = 40;
 export const PREVIEW_MAX_DAYS = 12;
-export const PREVIEW_MAX_LIVES = 5;
+export const PREVIEW_MAX_LIVES = 10;
 export const PREVIEW_MAX_LEVEL = 99;
 
 export interface CertificationPreview {

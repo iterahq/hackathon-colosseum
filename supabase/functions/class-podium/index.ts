@@ -1,4 +1,5 @@
 import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
+import { earnCrystals, earningsOfPodium } from '../_shared/crystals-store.ts';
 import { explorerUrl, imageUrl, pickText, type AchievementRow, type CatalogEntry } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, readJsonObject } from '../_shared/http.ts';
@@ -139,6 +140,8 @@ Deno.serve(async (request) => {
         { onConflict: 'user_id,achievement_key,ref_id', ignoreDuplicates: true },
       );
       if (error) throw new Error(`user_achievements podium: ${error.message}`);
+      // Phoenix Crystals for the three places, once per class. Never fails the call.
+      await earnCrystals(db, earningsOfPodium(sessionId, places));
     }
 
     // One learner at a time: the public devnet node throttles bursts. Only rows still off chain are tried.

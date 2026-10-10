@@ -321,6 +321,7 @@ function companionSvg(input: ArtInput): string {
   const gap = 46;
   // A gifted life sits one above the maximum: it gets a heart of its own, in gold, after the row.
   const bonus = Math.floor(lives) > total ? 1 : 0;
+  const shown = Math.max(current + bonus, Math.floor(lives));
   const slots = total + bonus;
   const hearts = Array.from({ length: slots }, (_, index) =>
     heart(256 - ((slots - 1) * gap) / 2 + index * gap, 392, 34, index < current + bonus, index >= total),
@@ -335,7 +336,7 @@ ${frame(GREEN)}
 <text x="412" y="72" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.2" fill="${GREEN}">${labels.level} ${Math.max(1, Math.floor(level))}</text>
 ${companionTera(256, 356, 168, outfit, avatar)}
 ${hearts}
-<text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${current + bonus}/${total} ${labels.lives}</text>
+<text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${shown}/${total} ${labels.lives}</text>
 <text x="256" y="474" text-anchor="middle" font-family="${MONO}" font-size="9" letter-spacing="1.8" fill="${CREAM}" fill-opacity="0.42">${labels.soulbound} · ${escapeXml(input.serial)}</text>
 </svg>`;
 }

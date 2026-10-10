@@ -21,6 +21,8 @@ import {
   type AvatarCatalog,
   type AvatarItem,
   type ReservationStore,
+  includedWithMap,
+  includesOf,
 } from './avatars';
 import { loreOf } from './lore';
 import { companionArtInput, companionAttributes, companionChainImageUrl, companionFromAttributes, type CompanionSnapshot } from './companion';
@@ -181,6 +183,41 @@ describe('catalog and tiers', () => {
     expect(free).toMatchObject({ kind: 'avatar', free: true, owned: true, equipped: false, sold_out: false, price_lamports: 0, price_usd_cents: 0, price_label: 'Grátis', group: 'expression', allows_outfit: true, supply: { minted: 0, max: null }, asset_address: null });
     const paid = shopAvatarFields(catalog, MYTHIC, 'pt', SUPABASE, { supply: { minted: 2, held: 3 }, own: null, equippedKey: 'tera_feliz' });
     expect(paid).toMatchObject({ free: false, owned: false, sold_out: false, price_lamports: 5_500_000_000, price_label: 'US$ 1,000.00 ≈ 5.5 SOL', rarity: 'mythic', rarity_label: 'Impossível', tier_name: 'Tera Mítico', allows_outfit: false, supply: { minted: 2, max: 5 } });
+  });
+
+  it('carries the season of a seasonal avatar and null for the others', () => {
+    const season = { key: 'natal', from: '12-01', to: '12-31', label: { pt: 'Natal', en: 'Christmas' } };
+    const seasonal = item('event_natal', { effect: { season } });
+    const base = { supply: undefined, own: null, equippedKey: null };
+    expect(shopAvatarFields(catalog, seasonal, 'en', SUPABASE, { ...base, now: new Date('2026-10-10T00:00:00Z') }).season).toEqual({
+      key: 'natal',
+      label: 'Christmas',
+      starts_at: '2026-12-01T00:00:00.000Z',
+      ends_at: '2026-12-31T23:59:59.999Z',
+      available: false,
+    });
+    expect(shopAvatarFields(catalog, seasonal, 'pt', SUPABASE, { ...base, now: new Date('2026-12-24T00:00:00Z') }).season).toMatchObject({ label: 'Natal', available: true });
+    expect(shopAvatarFields(catalog, LEADER, 'pt', SUPABASE, base).season).toBeNull();
+  });
+
+  it('lists what an avatar includes, with titles, and which avatar a border comes with', () => {
+    const caju = item('event_verao', { effect: { includes: ['border_caju', 'outfit_glasses', 'Not A Key', 'border_caju'] } });
+    const withIncluded: AvatarCatalog = {
+      ...catalog,
+      items: new Map([...catalog.items, [caju.key, caju]]),
+      included: new Map([
+        ['border_caju', { key: 'border_caju', kind: 'border', title_i18n: { pt: 'Borda Caju', en: 'Caju border' } }],
+        ['outfit_glasses', { key: 'outfit_glasses', kind: 'outfit', title_i18n: { pt: 'Óculos', en: 'Glasses' } }],
+      ]),
+    };
+    expect(includesOf(caju.effect)).toEqual(['border_caju', 'outfit_glasses']);
+    expect(shopAvatarFields(withIncluded, caju, 'pt', SUPABASE, { supply: undefined, own: null, equippedKey: null }).includes).toEqual([
+      { key: 'border_caju', kind: 'border', title: 'Borda Caju' },
+      { key: 'outfit_glasses', kind: 'outfit', title: 'Óculos' },
+    ]);
+    expect(shopAvatarFields(catalog, LEADER, 'pt', SUPABASE, { supply: undefined, own: null, equippedKey: null }).includes).toEqual([]);
+    expect(includedWithMap(withIncluded).get('border_caju')).toBe('event_verao');
+    expect(includedWithMap(withIncluded).get('border_bronze')).toBeUndefined();
   });
 
   it('is sold out when every unit is paid or held, except for the learner holding one', () => {

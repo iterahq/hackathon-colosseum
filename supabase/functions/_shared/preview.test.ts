@@ -11,7 +11,7 @@ describe('preview parameters', () => {
     expect(parse('')).toBeNull();
     expect(parse('type=medal')).toBeNull();
     expect(parse('type=certification')).toEqual({ type: 'certification', trail: 'Sua trilha', days: 5, total: 5, tier: 'gold', ink: null, frame: null, lang: 'pt' });
-    expect(parse('type=companion')).toEqual({ type: 'companion', avatar: DEFAULT_AVATAR_KEY, outfit: null, lives: 5, level: 1, lang: 'pt' });
+    expect(parse('type=companion')).toEqual({ type: 'companion', avatar: DEFAULT_AVATAR_KEY, outfit: null, lives: 10, level: 1, lang: 'pt' });
   });
 
   it('reads a full certification request', () => {
@@ -32,9 +32,9 @@ describe('preview parameters', () => {
     expect(parse('type=certification&total=0&days=-3')).toMatchObject({ total: 1, days: 0 });
     expect(parse('type=certification&total=abc&days=1e9')).toMatchObject({ total: 5, days: 5 });
     expect(parse('type=certification&total=3&days=7')).toMatchObject({ total: 3, days: 3 });
-    expect(parse('type=companion&lives=99&level=1000')).toMatchObject({ lives: 5, level: 99 });
+    expect(parse('type=companion&lives=99&level=1000')).toMatchObject({ lives: 10, level: 99 });
     expect(parse('type=companion&lives=-1&level=0')).toMatchObject({ lives: 0, level: 1 });
-    expect(parse('type=companion&lives=2.5&level=NaN')).toMatchObject({ lives: 5, level: 1 });
+    expect(parse('type=companion&lives=2.5&level=NaN')).toMatchObject({ lives: 10, level: 1 });
     expect(clampInt('12345678', 0, 9, 4)).toBe(4);
     expect(clampInt(' 3 ', 0, 9, 4)).toBe(3);
   });
@@ -77,7 +77,7 @@ describe('preview art', () => {
     const picture = 'data:image/webp;base64,UklGRg==';
     const plain = renderArt(previewArtInput(parse('type=companion&outfit=outfit_crown&lives=3&level=7')!));
     expect(plain).toContain('data-outfit="outfit_crown"');
-    expect(plain).toContain('3/5');
+    expect(plain).toContain('3/10');
     const painting = renderArt(previewArtInput(parse('type=companion&avatar=base_lider&outfit=outfit_crown')!, { key: 'base_lider', image: picture, allowsOutfit: false }));
     expect(painting).toContain('data-avatar="base_lider"');
     expect(painting).not.toContain('data-outfit');

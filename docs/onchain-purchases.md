@@ -1073,3 +1073,166 @@ memo `circuit:<purchase id>`.
 node scripts/hackathon/social-e2e.mjs [--only laurel,podium,endorse,circuit]   # devnet, < 0.04 SOL of the authority per pass, 101 checks
 node scripts/hackathon/social-browser.mjs --base http://localhost:8080 --out /tmp/hk-social   # fake Phantom, local dev server
 ```
+
+## Phoenix Crystals
+
+"Cristal de Fênix" (FENIX) is the currency a learner **earns**; it is never sold and never moves
+between learners. The database ledger is the truth; the chain holds a mirror written by the authority.
+
+### Ledger (migration 0161)
+
+- `itera.crystal_ledger (id, user_id, delta, reason, ref_id, created_at)`, unique on
+  `(user_id, reason, ref_id)`: an event pays once, a debit key debits once.
+- `itera.crystal_accounts`: `balance` (check `>= 0`) and the mirror state (`wallet`, `token_account`,
+  `mirrored_balance`, `mirrored_at`, `mirror_claimed_at`, `mirror_signature`, `mirror_error`).
+- RLS on both: a learner reads their own rows; only the service role writes, and only through
+  - `itera.crystal_grant(user, amount, reason, ref)` -> `(balance, is_new)`;
+  - `itera.crystal_spend(user, amount, reason, ref, purchase?, lives?)` -> `(status, balance)` with
+    `status`: `ok`, `duplicate` (key already debited), `insufficient`, `conflict` (companion moved).
+    It locks the account row and writes, in the same transaction as the debit, the paid `purchases`
+    row (`source = 'crystals'`, 0 lamports, `memo` = the ledger key) and, for lives, the companion
+    row by compare-and-swap on `version`.
+- Which item, which price and how many lives are TypeScript (`_shared/crystals.ts`, tested).
+- `shop_items.price_crystals` (null = not sold for crystals). It is its own number, not derived
+  from the SOL price, and no `price_usd_cents` / `price_lamports` was changed.
+
+| Item | Crystals |
+|---|---|
+| `life` (one life, not a row; `LIFE_PRICE`) | 5 |
+| `life_refill` | 20 |
+| `bg_midnight`, `bg_grape`, `bg_ember`, `bg_deep_sea`, `bg_graphite` | 75 |
+| `icon_gold`, `icon_violet`, `icon_cyan`, `icon_coral`, `icon_white` | 75 |
+| `outfit_glasses`, `outfit_headphones` | 100 |
+| `outfit_crown`, `outfit_laurel`, `ink_emerald`, `ink_violet` | 150 |
+| `frame_gold_leaf` | 400 |
+| `life_gift`, `bg_obsidian`, `icon_green` | not sold for crystals |
+
+### Earning
+
+| `reason` | Crystals | `ref_id` | Hook |
+|---|---|---|---|
+| `lesson_completed` | 2 | lesson id | `passport`, when the `day_stamp` row is created |
+| `day_completed` | 10 | lesson id | same |
+| `trail_completed` | 100 | unit id | `passport`, when `trail_complete` is created |
+| `streak_7` | 30 | the medal's ref | `passport`, when `streak_7` is created |
+| `lesson_clean` | 3 | lesson id | `lives` `lesson_end`: lesson complete, no life lost today |
+| `invite_friend` | 50 | invited learner id | `rewardReferral`, to the inviter (existing caps) |
+| `invited` | 20 | global ref | `rewardReferral`, to the invited learner |
+| `podium_1` / `_2` / `_3` | 30 / 20 / 10 | session id | `class-podium`, when the podium is recorded |
+
+A hook calls `earnCrystals` (`_shared/crystals-store.ts`), which never throws: a failed payment
+is logged and the request goes on.
+
+### `GET /crystals` (Bearer user token, app CORS)
+
+`{ balance, mint, token_account, mirrored, explorer_url, prices: { "<item_key>": n, "life": 5 },
+earn_rules: [{ reason, crystals, label }], ledger: [{ id, delta, reason, ref_id, created_at }] (last 20),
+theme: { background: { key, color }, icon: { key, color } }, theme_items: [{ key, slot, color, title,
+description, price_crystals, default, owned, equipped }] }`. `?lang=pt|en`. `theme` is always whole.
+`mirrored` is false for a learner with no wallet. A call that finds the chain behind starts the mirror.
+
+`GET /crystals/token.json` and `/crystals/token.svg` are public: the metadata the mint points at.
+
+### `POST /crystals/spend` `{ item_key, ref_id?, qty?, lang? }`
+
+- `item_key: "life"`: one life each, `qty` 1–5, up to the maximum (never the bonus slot). Only the
+  lives that fit are sold and charged; `item.qty` says how many. Full -> `409 not_needed`.
+- Any item with a `price_crystals`: the handler of its kind in `_shared/shop-items.ts`
+  (`canBuy` / `apply`), so the refusals are the paid ones (`not_needed`, `already_owned`,
+  `passport_required`, `400 invalid_ref`). `ref_id` is the trail for an ink or a frame.
+- `402 { error: "insufficient_crystals", balance, price }`, `400 not_for_crystals` (no crystal
+  price, or a gift), `404 item_not_found`, `409 item_inactive`, `400 invalid_body`.
+- `200 { balance, item: { key, kind, title, price } }` plus `lives` + `companion` (lives),
+  `lives` + `companion` + `inventory` (outfit), `ref_id` + `cosmetics` + `chain` (ink, frame),
+  `theme` (background, icon colour).
+- Something owned once is keyed `<item_key>:<ref_id>`: two requests at once are one debit and both
+  answer 200. If the effect fails after the debit the answer is `502 apply_failed` and the next
+  request for the same item finds the paid row and completes it at no further cost.
+- Lives are consumed, so each request has a fresh key; the account lock and the companion
+  compare-and-swap decide a race (one sold, the other `402` or `409 not_needed`), with no crystal lost.
+
+### `POST /crystals/equip` `{ background?: key, icon?: key }` (also under `equip`)
+
+Wears a background or an icon colour the learner owns; the defaults are everybody's.
+`200 { theme }`, `409 not_owned`, `404 item_not_found` (unknown key or wrong kind), `400 invalid_body`.
+The choice is `itera.learner_themes (user_id, background_key, icon_key)`; no row = the defaults.
+`companion` and `learner-profile` do not carry `theme`.
+
+Backgrounds and icon colours are `shop_items` rows of kind `background` / `app_icon` (migration
+0162), colour in `effect.background` / `effect.icon`, `effect.default = true` on the free one. They
+are not in `ITEM_KINDS`, so `shop-items` does not list them and `purchase-intent` answers
+`item_not_found`: for now they are bought with crystals only (their SOL price is on the row).
+
+### On chain
+
+One Token-2022 mint, created by the first mirror with the authority key at an address derived from
+it (`derivedSigner('crystal-mint')`), stored in `onchain_config.crystal_mint`: 0 decimals,
+`NonTransferable`, `PermanentDelegate` = the authority, `MetadataPointer` + `TokenMetadata` on the
+mint ("Cristal de Fênix", `FENIX`).
+
+`mirrorCrystals` (`_shared/crystals-mirror.ts`) brings a learner's associated token account to the
+ledger balance: it reads the token balance from the node, mints the difference or burns it as the
+permanent delegate, in one transaction the authority signs and pays. The learner signs nothing. It
+runs after the response of an earn, a spend or a `GET /crystals`, one invocation per account at a
+time, at most one write per 15 s per account (changes inside the window become one write), and it
+never throws. A learner with no wallet has a ledger only; the first `GET /crystals` after a wallet
+is linked mints the whole balance.
+
+Known limits: no daily cap on mirror writes per account (each is one fee of the authority, and a
+spend needs crystals); a payment that failed inside a hook is not retried by itself; `lesson_clean`
+trusts the same client-written progress as the lesson bonus life.
+
+### Tests
+
+```bash
+npx vitest run --config vitest.supabase.config.ts supabase/functions/_shared/crystals.test.ts supabase/functions/_shared/crystals-token.test.ts
+node scripts/hackathon/crystals-e2e.mjs            # devnet, two throwaway learners, about 0.005 SOL of the authority
+node scripts/hackathon/crystals-e2e.mjs --no-chain # the ledger and the routes only
+```
+
+## Shop v3 (migrations 0163-0168)
+
+Hackathon project only. Every price, window, include and switch below is a row, reversible by UPDATE.
+
+### The currency switch (data only)
+Every item is sold for SOL and for crystals. Which one prevails is decided later:
+- Global: `itera.onchain_config` key `shop_accept` = `both` (default) | `sol` | `crystals`.
+- Per item: `shop_items.sol_enabled` / `crystals_enabled` (default true; `life_gift` has crystals off; the free things and the signature borders have both off).
+- The rule is ONE function, `_shared/shop-accept.ts` `currencyOffered`: a currency is offered only if the global value allows it AND the item flag is true. `purchase-intent` answers `409 currency_disabled`; `POST /crystals/spend` answers `400 not_for_crystals`.
+- `GET /shop-items`: every item carries `sol_enabled` / `crystals_enabled`, already resolved with the global value. `GET /crystals` carries `accept` and only lists in `prices` what crystals can buy now.
+
+```sql
+-- the shop takes only SOL / only crystals
+update itera.onchain_config set value = 'sol'      where key = 'shop_accept';
+update itera.onchain_config set value = 'crystals' where key = 'shop_accept';
+-- back to both
+update itera.onchain_config set value = 'both'     where key = 'shop_accept';
+```
+
+### Rarity and prices (0163)
+Six tiers (`itera.avatar_tiers`): common (Tera) US$ 0.20 / 150 crystals, open · rare (Super Tera) US$ 1 / 600, cap 500 · epic (Mega Tera) US$ 10 / 2 500, cap 100 · legendary US$ 100 / 10 000, cap 25 · mythic US$ 1 000 / 100 000, cap 5 · primordial (one of one) US$ 5 000 / 500 000, cap 1. 1 crystal = 1 US cent of list price. Ígnio (`special_vermelho_lava`) is inactive (same picture as Ardo); `brand_phoenix_full` exists but is inactive until its art is published. Existing owners keep what they own.
+
+### Seasons (0164, `_shared/seasons.ts`)
+`effect.season = { key, from: "MM-DD", to: "MM-DD", label: { pt, en } }`, every year, UTC; a window may wrap the new year. `halloween` 1-31 Oct, `natal` 1-31 Dec, `verao` 21 Dec - 20 Mar. Out of the window an avatar is listed (`season.available: false`, with the next `starts_at` / `ends_at`) but `purchase-intent` and `POST /crystals/spend` answer `409 out_of_season`. Owners can still wear it.
+
+### Borders (0165) and includes (0166)
+- New kind `border`; `effect.border = { style: solid|gradient|conic|dashed|double, colors: ["#RRGGBB", ...], glow, animated }`. The front end draws it over the art's own ring. Default `border_none` (free). For sale: `border_bronze` 100, `border_emerald` 150, `border_pixel` 200, `border_circuit` 250, `border_crystal` 300, `border_laurel` 400 crystals (SOL = crystals / 500 in US$, min 0.20). 18 signature borders, no price: they come with their avatar.
+- Owned through `user_inventory` (global ref). Worn: `itera.learner_themes.border_key`, set by `POST /crystals/equip { border }`. `GET /crystals` `theme.border` and `theme_items` (kind border: `border`, `owned`, `equipped`, `for_sale`, `included_with`). `companion.avatar.border` and `learner-profile.avatar.border`: `{ style, colors, glow, animated } | null`.
+- `effect.includes = [keys]` on an avatar row; the avatar object lists `includes: [{ key, kind, title }]`. The `apply` of the avatar (SOL purchase and crystal purchase alike) grants them with the same idempotent upsert as the mint. Caju also includes `outfit_glasses`.
+
+### Avatars with crystals
+`POST /crystals/spend { item_key: <avatar> }` runs the SAME item `apply` as the SOL rail (`_shared/shop-items.ts`): the `avatar_assets` row, the serial (cap and holds respected: `409 sold_out`), the mint, the includes; the answer carries `avatar` like `purchase-confirm`. A learner with no wallet gets `403 no_wallet` before any debit. If the last unit goes between the check and the apply, the crystals are credited back (`reason: refund`) and the answer is `409 sold_out { refunded: true }`.
+
+### Lives (0167, `_shared/lives.ts`)
+`MAX_LIVES` and the column default are 10; existing rows were raised to 10 with their lives untouched (a learner who was full got a fresh regeneration clock). Packs (kind `life`, `effect.add_lives` N) ADD lives and may pass the maximum: that reserve is never trimmed and regeneration only runs below the maximum. `lives_infinite` (`effect.unlimited_days` 30) sets `companions.unlimited_until`; while it is in the future `loseLife` costs nothing (days stack if bought again). `lives` / `companion` answers gain `unlimited_until`. Prices (SOL / crystals): `life_refill` US$ 0.20 / 30, `lives_10` 0.30 / 40, `lives_30` 0.80 / 100, `lives_50` 1.20 / 150, `lives_100` 2.00 / 250, `lives_infinite` 10 / 1 000. `crystal_spend` writes `unlimited_until` in the same transaction as the debit.
+
+### Backgrounds and icon colours on the SOL rail
+`background` and `app_icon` are in the item registry (`ITEM_KINDS`, `ITEM_HANDLERS`) with the same apply the crystals path uses, and `GET /shop-items` lists them (and the borders) with `color` / `border`, `for_sale`, `included_with`.
+
+### Tests
+`seasons.test.ts`, `shop-accept.test.ts`, extended `lives.test.ts`, `crystals.test.ts`, `avatars.test.ts`, `shop-rules.test.ts`; live: `node scripts/hackathon/crystals-e2e.mjs`.
+
+### Limits (review of PR #43)
+- Crystal-paid avatar mints are paid by the AUTHORITY (the rent of one Core asset per mint, and one token account per learner's first crystal mirror); unlike the SOL rail, the Circuito sends nothing back. What bounds it: the per-tier supply caps (rare 500, epic 100, legendary 25, mythic 5, primordial 1) and the unpaid-hold rule (2 open holds per learner), plus the crystal price itself: crystals are only earned (never sold), the lesson earns are capped at 40 per learner per UTC day inside `itera.crystal_grant`, and every other earn is once per award.
+- Earns are paid from the server's own award rows, never from a request body: `passport` reconciles on every call (`reconcileCrystals`): every `day_stamp`, `trail_complete`, `streak_7`, podium, `friend_brought` and `invited` row with no ledger row is paid (ledger key `(user, reason, ref)`), so a grant that failed once is paid by the next call. `lesson_clean` is derived from `life_events` (no `lose` event on that lesson's activities on the stamp's day). `lives` pays nothing.
+- A refunded crystal purchase is terminal: a later purchase of the same item uses a new ledger key (`<item>:<ref>:r<n>`, n = refunded attempts) and a new `purchases` row.

@@ -1,4 +1,4 @@
-import { avatarImageUrl, isFreeAvatar, isOwnedRow, isSoldOut, reservationUntil, tierName, type AvatarAssetRow } from './avatars.ts';
+import { avatarImageUrl, includesOf, isFreeAvatar, isOwnedRow, isSoldOut, reservationUntil, tierName, type AvatarAssetRow } from './avatars.ts';
 import { loadAvatarCatalog, loadAvatarRow, loadSupply, mintAvatar, reserve, supabaseUrl } from './avatar-store.ts';
 import { GLOBAL_REF } from './awards.ts';
 import { changeLives, ensureCompanion, syncMirror } from './companion-store.ts';
@@ -7,10 +7,11 @@ import { trailCosmeticPurchases } from './cosmetics-store.ts';
 import { changedAttributes, explorerUrl, onchainAttributes, pickText, type AchievementRow, type CatalogEntry, type ChainWrite } from './credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { deliverGift, loadGift, recipientFacts, type GiftRow } from './gift-store.ts';
-import { refillLives, regenerate } from './lives.ts';
+import { applyLifePack, lifePackOf, refillLives, regenerate, type LifePack } from './lives.ts';
+import { inSeason, seasonData } from './seasons.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
 
-export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort';
+export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort,price_crystals,sol_enabled,crystals_enabled';
 export const PURCHASE_COLUMNS =
   'id,user_id,item_key,ref_id,lamports,price_usd_cents,status,wallet,tx_signature,memo,last_valid_block_height,expires_at,paid_at,applied_at,refund_due_at';
 
@@ -27,6 +28,11 @@ export interface ShopItem {
   art: Record<string, unknown>;
   active: boolean;
   sort: number;
+  /** What the item costs in Phoenix Crystals; `null`: not sold for crystals. */
+  price_crystals?: number | null;
+  /** The item's own currency switches (`shop_accept` is the global one); a missing flag reads as on. */
+  sol_enabled?: boolean;
+  crystals_enabled?: boolean;
 }
 
 export interface PurchaseRow {
@@ -68,7 +74,7 @@ export interface ApplyOutcome {
   /** A gift this purchase delivered: the answer then describes the recipient, not the payer. */
   gift?: GiftRow;
   /** A collectible avatar this purchase minted (or had minted already). */
-  avatar?: { key: string; title_i18n: Record<string, string>; tier_name_i18n: Record<string, string>; asset_address: string | null; image_url: string; thumb_url: string; serial: number };
+  avatar?: { key: string; title_i18n: Record<string, string>; tier_name_i18n: Record<string, string>; asset_address: string | null; image_url: string; thumb_url: string; serial: number; includes: Array<{ key: string; kind: string; title_i18n: Record<string, string> }> };
 }
 
 /**
@@ -175,19 +181,53 @@ const passportCosmetic = (kind: 'ink' | 'frame'): ItemHandler => ({
   },
 });
 
+/** A theme item: nobody buys what everybody has (the default), then owned once. */
+const themeItem = (kind: 'border' | 'background' | 'app_icon'): ItemHandler => ({
+  async canBuy(context) {
+    if (context.refId !== GLOBAL_REF) return eligibility(kind, { ...NO_FACTS, refId: context.refId });
+    if (context.item.effect?.default === true) return { ok: false, error: 'already_owned' };
+    return eligibility(kind, { ...NO_FACTS, refId: context.refId, owned: await owns(context) });
+  },
+  async apply(context) {
+    await grant(context);
+    return { companion: false, passport: null, chain: null };
+  },
+});
+
+/** A life pack, exactly once per purchase: the event row is the lock, dropped again if the change fails. */
+async function applyPackOnce(db: IteraClient, userId: string, purchaseId: string, pack: LifePack): Promise<void> {
+  const attemptId = `purchase:${purchaseId}`;
+  const { data, error } = await db
+    .from('life_events')
+    .upsert({ user_id: userId, attempt_id: attemptId, kind: 'refill', applied_at: new Date().toISOString() }, { onConflict: 'user_id,attempt_id', ignoreDuplicates: true })
+    .select('id');
+  if (error) throw new Error(`life_events: ${error.message}`);
+  if ((data ?? []).length === 0) return;
+  try {
+    await changeLives(db, userId, (state, now) => applyLifePack(state, pack, now));
+  } catch (failure) {
+    await db.from('life_events').delete().eq('user_id', userId).eq('attempt_id', attemptId);
+    throw failure;
+  }
+}
+
 /**
  * One handler per item kind. A new kind is one entry here plus its rule in
  * `shop-rules.ts`.
  */
 export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
   life: {
-    async canBuy({ db, userId, refId }) {
+    async canBuy({ db, userId, item, refId }) {
+      // A pack adds lives (or switches losing off): there is always room for it.
+      if (lifePackOf(item.effect)) return refId === GLOBAL_REF ? { ok: true } : { ok: false, error: 'invalid_ref' };
       const row = await ensureCompanion(db, userId);
       const { lives, maxLives } = regenerate({ lives: row.lives, maxLives: row.max_lives, lastRegenAt: row.last_regen_at }, new Date());
       return eligibility('life', { ...NO_FACTS, refId, lives, maxLives });
     },
-    async apply({ db, userId, purchase }) {
-      if (!purchase.applied_at) {
+    async apply({ db, userId, item, purchase }) {
+      const pack = lifePackOf(item.effect);
+      if (pack && !purchase.applied_at) await applyPackOnce(db, userId, purchase.id, pack);
+      else if (!purchase.applied_at) {
         await changeLives(db, userId, refillLives);
         const { error } = await db
           .from('life_events')
@@ -229,6 +269,10 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       return { companion: false, passport: null, chain: delivery.write, gift: delivery.gift };
     },
   },
+  // A profile border, a background or an app icon colour: global, owned once, worn through `POST /crystals/equip`.
+  border: themeItem('border'),
+  background: themeItem('background'),
+  app_icon: themeItem('app_icon'),
   // A collectible avatar: one per learner, a serial out of a (possibly limited) supply, minted to the buyer's wallet.
   avatar: {
     async canBuy({ db, userId, item, refId }) {
@@ -237,7 +281,7 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       if (!avatar || isFreeAvatar(avatar)) return eligibility('avatar', { ...NO_FACTS, refId, free: true });
       const [own, supply] = await Promise.all([loadAvatarRow(db, userId, item.key), loadSupply(db)]);
       const holding = own?.mint_status === 'reserved' && own.reserved_until !== null && Date.parse(own.reserved_until) > Date.now();
-      return eligibility('avatar', { ...NO_FACTS, refId, owned: isOwnedRow(own), soldOut: !holding && isSoldOut(avatar, supply.get(item.key)) });
+      return eligibility('avatar', { ...NO_FACTS, refId, owned: isOwnedRow(own), outOfSeason: !inSeason(seasonData(avatar.effect), new Date()), soldOut: !holding && isSoldOut(avatar, supply.get(item.key)) });
     },
     // The serial is held from here until the intent's window ends (plus a grace), so the buyer who pays gets a unit.
     async afterIntent({ db, userId, item }, intent) {
@@ -262,6 +306,12 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       }
       if (own.purchase_id !== purchase.id) throw new ApplyRefusal('already_owned_after_payment');
       const minted = await mintAvatar(db, catalog, avatar, own, purchase.wallet);
+      // What the avatar carries with it (its signature border, glasses...) is the learner's in the same step; granting again changes nothing.
+      const includes = includesOf(avatar.effect).flatMap((key) => {
+        const included = catalog.included?.get(key);
+        return included ? [included] : [];
+      });
+      for (const included of includes) await grant({ db, userId, item: { key: included.key } as ShopItem, refId: GLOBAL_REF });
       return {
         companion: false,
         passport: null,
@@ -274,6 +324,7 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
           image_url: avatarImageUrl(supabaseUrl(), avatar),
           thumb_url: avatarImageUrl(supabaseUrl(), avatar, '128'),
           serial: minted.serial,
+          includes: includes.map(({ key, kind, title_i18n }) => ({ key, kind, title_i18n })),
         },
       };
     },
@@ -291,5 +342,6 @@ export function purchasedAvatarView(avatar: NonNullable<ApplyOutcome['avatar']>,
     image_url: avatar.image_url,
     thumb_url: avatar.thumb_url,
     serial: avatar.serial,
+    includes: avatar.includes.map(({ key, kind, title_i18n }) => ({ key, kind, title: pickText(title_i18n, lang) || key })),
   };
 }

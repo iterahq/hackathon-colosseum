@@ -21,7 +21,7 @@ const STALE_CLAIM_MS = 3 * 60_000;
 const CAS_ATTEMPTS = 5;
 const XP_PAGE = 1000;
 const COLUMNS =
-  'user_id,id,lives,max_lives,last_regen_at,outfit,avatar,wallet_address,asset_address,mint_status,mint_claimed_at,tx_signature,minted_at,mirrored,mirrored_at,mirror_due,mirror_day,mirror_writes,version';
+  'user_id,id,lives,max_lives,last_regen_at,unlimited_until,outfit,avatar,wallet_address,asset_address,mint_status,mint_claimed_at,tx_signature,minted_at,mirrored,mirrored_at,mirror_due,mirror_day,mirror_writes,version';
 
 export interface CompanionRow {
   user_id: string;
@@ -29,6 +29,8 @@ export interface CompanionRow {
   lives: number;
   max_lives: number;
   last_regen_at: string;
+  /** The end of the infinite-lives pack; `null` when none was ever bought. */
+  unlimited_until: string | null;
   outfit: string | null;
   /** The avatar worn (a `shop_items` key of kind `avatar`). */
   avatar: string;
@@ -47,7 +49,7 @@ export interface CompanionRow {
   version: number;
 }
 
-const livesOf = (row: CompanionRow): LivesState => ({ lives: row.lives, maxLives: row.max_lives, lastRegenAt: row.last_regen_at });
+export const livesOf = (row: CompanionRow): LivesState => ({ lives: row.lives, maxLives: row.max_lives, lastRegenAt: row.last_regen_at, unlimitedUntil: row.unlimited_until });
 
 async function loadCompanion(db: IteraClient, userId: string): Promise<CompanionRow | null> {
   const { data, error } = await db.from('companions').select(COLUMNS).eq('user_id', userId).maybeSingle();
@@ -78,7 +80,7 @@ export async function changeLives(
     const next = change(livesOf(row), now);
     const { data, error } = await db
       .from('companions')
-      .update({ lives: next.lives, last_regen_at: next.lastRegenAt, version: row.version + 1, updated_at: now.toISOString() })
+      .update({ lives: next.lives, last_regen_at: next.lastRegenAt, unlimited_until: next.unlimitedUntil ?? row.unlimited_until, version: row.version + 1, updated_at: now.toISOString() })
       .eq('user_id', userId)
       .eq('version', row.version)
       .select(COLUMNS)
@@ -189,6 +191,7 @@ export function companionResponse(row: CompanionRow, stats: CompanionStats, now:
       asset_address: row.asset_address,
       mint_status: row.mint_status,
       explorer_url: explorerUrl('address', row.asset_address),
+      unlimited_until: livesView(livesOf(row), now).unlimited_until,
       outfit: row.outfit,
       level: stats.level,
       xp: stats.xp,

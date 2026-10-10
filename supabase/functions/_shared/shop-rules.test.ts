@@ -46,6 +46,14 @@ describe('eligibility', () => {
     expect(eligibility(kind, facts({ passportMinted: true }))).toEqual({ ok: false, error: 'invalid_ref' });
   });
 
+  it('refuses an avatar out of its season, after the ownership checks', () => {
+    expect(eligibility('avatar', facts({ outOfSeason: false }))).toEqual({ ok: true });
+    expect(eligibility('avatar', facts({ outOfSeason: true }))).toEqual({ ok: false, error: 'out_of_season' });
+    expect(eligibility('avatar', facts({ outOfSeason: true, owned: true }))).toEqual({ ok: false, error: 'already_owned' });
+    expect(eligibility('avatar', facts({ outOfSeason: true, free: true }))).toEqual({ ok: false, error: 'free_item' });
+    expect(eligibility('avatar', facts({ outOfSeason: true, soldOut: true }))).toEqual({ ok: false, error: 'out_of_season' });
+  });
+
   it('knows the four kinds and nothing else', () => {
     expect(['life', 'outfit', 'ink', 'frame'].every(isItemKind)).toBe(true);
     expect(isItemKind('pledge')).toBe(false);
