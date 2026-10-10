@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PurchaseIntent } from '@/types/shop';
+import { base64Decode, base64Encode } from './walletEncoding';
 import { WalletSignError, classifyWalletError, signAndSendPurchase } from './walletSign';
 
 const intent: PurchaseIntent = {
@@ -51,7 +52,7 @@ describe('signAndSendPurchase', () => {
     quiet();
     const request = vi.fn().mockResolvedValue({ signature: 'SIG' });
     install({ request });
-    await expect(signAndSendPurchase(intent)).resolves.toBe('SIG');
+    await expect(signAndSendPurchase(intent)).resolves.toEqual({ kind: 'sent', signature: 'SIG' });
     expect(request).toHaveBeenCalledWith({ method: 'signAndSendTransaction', params: { message: 'MSG58' } });
   });
 
@@ -63,7 +64,7 @@ describe('signAndSendPurchase', () => {
     const request = vi.fn().mockResolvedValue('SIGSTR');
     (window as unknown as { phantom?: unknown }).phantom = { solana: { connect: vi.fn(), request } };
     install({ request: vi.fn().mockRejectedValue(new Error('wrong provider')) });
-    await expect(signAndSendPurchase(intent)).resolves.toBe('SIGSTR');
+    await expect(signAndSendPurchase(intent)).resolves.toEqual({ kind: 'sent', signature: 'SIGSTR' });
     delete (window as unknown as { phantom?: unknown }).phantom;
   });
 
@@ -79,16 +80,54 @@ describe('signAndSendPurchase', () => {
     quiet();
     const signAndSendTransaction = vi.fn().mockResolvedValue({ signature: 'SIG2' });
     install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'Unexpected error' }), signAndSendTransaction });
-    await expect(signAndSendPurchase(intent)).resolves.toBe('SIG2');
+    await expect(signAndSendPurchase(intent)).resolves.toEqual({ kind: 'sent', signature: 'SIG2' });
     const tx = signAndSendTransaction.mock.calls[0][0];
     expect(Array.from(tx.serializeMessage())).toEqual([4, 5, 6]);
     expect(Array.from(tx.serialize())).toEqual([1, 2, 3]);
     expect(tx.signatures).toEqual([]);
   });
 
-  it('reports what every attempt said when both fail', async () => {
+  it('reports what every attempt said when all fail', async () => {
     quiet();
     install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'A' }), signAndSendTransaction: vi.fn().mockRejectedValue(new Error('B')) });
-    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'failed', detail: 'request → -32603: A | object → B' });
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'failed', detail: 'request → -32603: A | object → B | sign → -32603: A' });
+  });
+
+  it('falls back to sign-only and assembles the transaction from a bare signature', async () => {
+    quiet();
+    const signature = new Uint8Array(64).fill(7);
+    const request = vi.fn().mockImplementation(async ({ method }: { method: string }) => {
+      if (method === 'signTransaction') return { signature };
+      throw { code: -32603, message: 'nope' };
+    });
+    install({ request });
+    const result = await signAndSendPurchase(intent);
+    expect(request).toHaveBeenLastCalledWith({ method: 'signTransaction', params: { message: 'MSG58' } });
+    expect(result.kind).toBe('signed');
+    const bytes = base64Decode((result as { signedTransaction: string }).signedTransaction);
+    expect(Array.from(bytes.slice(0, 2))).toEqual([1, 7]);
+    expect(Array.from(bytes.slice(65))).toEqual([4, 5, 6]);
+  });
+
+  it('passes a whole signed transaction through untouched', async () => {
+    quiet();
+    const tx = new Uint8Array(100).fill(2);
+    tx[0] = 1;
+    install({ request: vi.fn().mockImplementation(async ({ method }: { method: string }) => { if (method === 'signTransaction') return tx; throw new Error('x'); }) });
+    await expect(signAndSendPurchase(intent)).resolves.toEqual({ kind: 'signed', signedTransaction: base64Encode(tx) });
+  });
+
+  it('never asks to sign-only after a rejection', async () => {
+    quiet();
+    const request = vi.fn().mockRejectedValue({ code: 4001, message: 'User rejected the request.' });
+    install({ request });
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'cancelled' });
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('a rejection of the sign-only prompt is a cancel', async () => {
+    quiet();
+    install({ request: vi.fn().mockImplementation(async ({ method }: { method: string }) => { throw method === 'signTransaction' ? { code: 4001, message: 'User rejected' } : new Error('x'); }) });
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'cancelled' });
   });
 });

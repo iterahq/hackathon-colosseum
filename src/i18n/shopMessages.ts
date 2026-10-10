@@ -1,5 +1,5 @@
 /** Backend error codes that have a friendly line (`purchase.error.<code>`). */
-export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet']);
+export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction']);
 
 /** Strings of lives, Tera's shop, the purchase flow and the companion. Never says "passport": the feature is "Certificações do Tera". */
 export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
@@ -84,6 +84,9 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.item_not_found': 'Este item saiu da loja.',
     'purchase.error.intent_expired': 'O pedido expirou antes de a transação chegar. Nada foi cobrado.',
     'purchase.error.tx_failed': 'A transação falhou na Solana. Nada foi cobrado.',
+    'purchase.error.broadcast_failed': 'A Solana não aceitou a transação (talvez ela tenha vencido). Tente de novo.',
+    'purchase.error.signature_invalid': 'A assinatura da carteira não confere com o pedido. Tente de novo.',
+    'purchase.error.invalid_transaction': 'A carteira devolveu uma transação que não conseguimos ler. Tente de novo.',
     'purchase.error.payment_mismatch': 'O pagamento não bate com o pedido, então o item não foi entregue.',
     'purchase.error.signature_reused': 'Esta transação já foi usada em outra compra.',
     'purchase.error.rpc_unavailable': 'A rede Solana não respondeu. Tente de novo em instantes.',
@@ -174,6 +177,9 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.item_not_found': 'This item left the shop.',
     'purchase.error.intent_expired': 'The request expired before the transaction arrived. Nothing was charged.',
     'purchase.error.tx_failed': 'The transaction failed on Solana. Nothing was charged.',
+    'purchase.error.broadcast_failed': 'Solana did not accept the transaction (it may have expired). Try again.',
+    'purchase.error.signature_invalid': 'The wallet signature does not match the request. Try again.',
+    'purchase.error.invalid_transaction': 'The wallet returned a transaction we could not read. Try again.',
     'purchase.error.payment_mismatch': 'The payment does not match the request, so the item was not delivered.',
     'purchase.error.signature_reused': 'This transaction was already used for another purchase.',
     'purchase.error.rpc_unavailable': 'The Solana network did not answer. Try again in a moment.',
