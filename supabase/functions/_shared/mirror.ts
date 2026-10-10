@@ -1,7 +1,7 @@
 /** A claim older than this belongs to an invocation that died; the next caller takes it over. */
 export const MIRROR_STALE_MS = 60_000;
 /** How many times one holder rewrites the asset before it leaves the rest to the next mirror moment. */
-export const MAX_MIRROR_PASSES = 3;
+export const MAX_MIRROR_PASSES = 5;
 
 /** Whether a caller may take the mirror: nobody holds it, or the holder went silent. */
 export function claimDecision(claimedAt: string | null, now: Date, staleMs = MIRROR_STALE_MS): 'claim' | 'defer' {

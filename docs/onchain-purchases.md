@@ -339,7 +339,7 @@ two independent transactions, and the older value could land last. `syncMirror`
   never writes a value captured earlier.
 - A caller that finds the mirror taken sends nothing. It sets `mirror_dirty` (and `mirror_due`) and
   returns; the holder, after its transaction is confirmed, can only release the claim while
-  `mirror_dirty` is false, otherwise it reads the row and writes again (at most 3 passes). The last
+  `mirror_dirty` is false, otherwise it reads the row and writes again (at most 5 passes; still dirty after that, it lets go and leaves the row `mirror_due` for the next call). The last
   confirmed write is therefore the latest database state.
 - `life_refill` waits up to 6 s, and the last-life `lose` up to 2.5 s, for a mirror in flight to
   finish and then takes the claim itself, so its answer still carries `chain`. Background mirrors
