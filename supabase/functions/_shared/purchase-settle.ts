@@ -5,6 +5,7 @@ import { companionResponse, ensureCompanion, loadInventory, loadStats } from './
 import { awardView, chainBlock, explorerUrl, pickText, writtenList, type CatalogEntry } from './credential.ts';
 import { CATALOG_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
+import { settlePayment, settledElsewhere } from './payments.ts';
 import { intentPhase, missingTransactionVerdict, verifyPayment, type ParsedTransaction, type PaymentExpectation, type PaymentVerdict } from './purchase-verify.ts';
 import { RpcError, blockHeight, rpc } from './rpc.ts';
 import { giftView } from './gift-store.ts';
@@ -13,7 +14,6 @@ import { isItemKind } from './shop-rules.ts';
 
 const LOOKUP_ATTEMPTS = 6;
 const LOOKUP_PAUSE_MS = 1_000;
-const UNIQUE_VIOLATION = '23505';
 /** How long a paid answer waits for the Circuito transfer before saying `pending`. */
 const CIRCUIT_BUDGET_MS = 6_000;
 
@@ -108,9 +108,7 @@ export async function settlePurchase(db: IteraClient, caller: Caller, input: Set
   if (phase === 'paid' && intent.tx_signature !== signature) return { status: 409, body: { error: 'intent_already_paid' } };
 
   if (phase === 'confirmable') {
-    const { data: reused, error: reuseError } = await db.from('purchases').select('id').eq('tx_signature', signature).neq('id', intent.id).limit(1);
-    if (reuseError) throw new Error(`purchases reuse: ${reuseError.message}`);
-    if ((reused ?? []).length > 0) return { status: 409, body: { error: 'signature_reused' } };
+    if (await settledElsewhere(db, signature, intent.id)) return { status: 409, body: { error: 'signature_reused' } };
 
     const { treasury } = await loadConfig(db);
     if (!isSolanaAddress(treasury)) return { status: 503, body: { error: 'shop_not_configured' } };
@@ -140,13 +138,11 @@ export async function settlePurchase(db: IteraClient, caller: Caller, input: Set
     const refused = paymentRefusal(verifyPayment(transaction, expected));
     if (refused) return refused;
 
-    const { error: payError } = await db
-      .from('purchases')
-      .update({ status: 'paid', tx_signature: signature, paid_at: new Date().toISOString(), error: null })
-      .eq('id', intent.id)
-      .in('status', ['pending', 'expired']);
-    if (payError?.code === UNIQUE_VIOLATION) return { status: 409, body: { error: 'signature_reused' } };
-    if (payError) throw new Error(`purchases pay: ${payError.message}`);
+    // Ledger entry and `paid` in one database transaction: this signature settles this intent and nothing else, ever.
+    const ledger = await settlePayment(db, 'purchase', intent.id, signature, intent.lamports);
+    if (ledger === 'signature_reused') return { status: 409, body: { error: 'signature_reused' } };
+    if (ledger === 'already_paid') return { status: 409, body: { error: 'intent_already_paid' } };
+    if (ledger !== 'settled') return { status: 410, body: { error: 'intent_expired' } };
     intent = await loadIntent(db, input.intentId, caller.iteraUserId);
     if (!intent || intent.status !== 'paid') throw new Error('purchases: intent is not paid after settling');
     if (intent.tx_signature !== signature) return { status: 409, body: { error: 'intent_already_paid' } };

@@ -4,6 +4,7 @@ import { explorerUrl, type ChainWrite } from './credential.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { cleanName, giftPhase } from './gift.ts';
 import { BONUS_LIVES, regenerate } from './lives.ts';
+import { settlePayment, settledElsewhere } from './payments.ts';
 import { missingTransactionVerdict, verifyPayment, type ParsedTransaction } from './purchase-verify.ts';
 import { RpcError, blockHeight, rpc } from './rpc.ts';
 
@@ -183,16 +184,11 @@ export interface Delivery {
 export async function deliverGift(db: IteraClient, row: GiftRow, signature: string, mirrorWaitMs: number): Promise<Delivery> {
   let gift = row;
   if (gift.status === 'pending' || gift.status === 'expired') {
-    const { data, error } = await db
-      .from('gifts')
-      .update({ status: 'paid', tx_signature: signature, paid_at: new Date().toISOString(), error: null })
-      .eq('id', gift.id)
-      .in('status', ['pending', 'expired'])
-      .select(GIFT_COLUMNS)
-      .maybeSingle();
-    if (error?.code === UNIQUE_VIOLATION) throw new GiftError('signature_reused');
-    if (error) throw new Error(`gifts pay: ${error.message}`);
-    gift = (data as GiftRow | null) ?? ((await loadGift(db, gift.id)) as GiftRow);
+    // The shared ledger: a signature that settled a purchase or another gift is refused here,
+    // and the in-app gift (same id as its purchase) reuses its purchase's entry.
+    const ledger = await settlePayment(db, 'gift', gift.id, signature, gift.lamports);
+    if (ledger !== 'settled') throw new GiftError(ledger === 'not_found' ? 'gift_not_found' : 'signature_reused');
+    gift = (await loadGift(db, gift.id)) as GiftRow;
   }
   if (gift.tx_signature !== signature) throw new GiftError('signature_reused');
 
@@ -239,6 +235,7 @@ export async function settleActionGift(db: IteraClient, giftId: string, account:
   const phase = giftPhase(gift, new Date());
   if (phase === 'expired') throw new GiftError('gift_expired');
   if (phase === 'payable') {
+    if (await settledElsewhere(db, signature, gift.id)) throw new GiftError('signature_reused');
     const { treasury } = await loadConfig(db);
     if (!isSolanaAddress(treasury)) throw new GiftError('unavailable');
     let transaction: ParsedTransaction | null;

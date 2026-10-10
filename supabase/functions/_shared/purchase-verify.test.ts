@@ -50,6 +50,39 @@ describe('verifyPayment', () => {
     expect(verifyPayment(tx({ memo: null }), expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
   });
 
+  it('refuses a transaction that carries the memos of two intents, in either order (pay once, get two)', () => {
+    const other = '7d0f3c1e-2a4b-4c5d-8e6f-9a0b1c2d3e4f';
+    const both = tx();
+    both.transaction.message.instructions.push({ program: 'spl-memo', programId: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', parsed: other });
+    expect(verifyPayment(both, expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+    expect(verifyPayment(both, { ...expected, memo: other })).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+    expect(verifyPayment(tx({ memo: `${MEMO} ${other}` }), expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+    expect(verifyPayment(tx({ memo: `${MEMO}\n` }), expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+  });
+
+  it('counts a memo instruction the node could not read, and the same memo twice', () => {
+    const unreadable = tx();
+    unreadable.transaction.message.instructions.push({ programId: 'Memo1UhkJRfHyvLMcVucJwxXeuD728EZVfJf9bBYHJ' });
+    expect(verifyPayment(unreadable, expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+    const twice = tx();
+    twice.transaction.message.instructions.push({ program: 'spl-memo', parsed: MEMO });
+    expect(verifyPayment(twice, expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+  });
+
+  it('counts only transfers from the fee payer to the treasury', () => {
+    const split = tx({ lamports: 600_000 });
+    split.transaction.message.instructions.push(
+      { program: 'system', parsed: { type: 'transfer', info: { source: WALLET, destination: TREASURY, lamports: 500_000 } } },
+      { program: 'system', parsed: { type: 'transfer', info: { source: OTHER, destination: TREASURY, lamports: 9_000_000 } } },
+      { program: 'system', parsed: { type: 'transfer', info: { source: WALLET, destination: OTHER, lamports: 9_000_000 } } },
+      { programId: 'ComputeBudget111111111111111111111111111111' },
+    );
+    expect(verifyPayment(split, expected)).toEqual({ ok: true, paidLamports: 1_100_000n });
+    const short = tx({ lamports: 600_000 });
+    short.transaction.message.instructions.push({ program: 'system', parsed: { type: 'transfer', info: { source: OTHER, destination: TREASURY, lamports: 9_000_000 } } });
+    expect(verifyPayment(short, expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'amount' });
+  });
+
   it('refuses another payer, as fee payer or as the source of the transfer', () => {
     expect(verifyPayment(tx({ payer: OTHER }), expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'payer' });
     expect(verifyPayment(tx({ source: OTHER }), expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'payer' });

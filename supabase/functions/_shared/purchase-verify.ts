@@ -1,3 +1,5 @@
+import { MEMO_PROGRAMS } from './solana-tx.ts';
+
 /** Fee of a one-signature transaction and the smallest balance a system account may keep. */
 export const BASE_FEE_LAMPORTS = 5_000n;
 export const RENT_EXEMPT_MIN_LAMPORTS = 890_880n;
@@ -25,9 +27,16 @@ export interface ParsedTransaction {
   transaction: {
     message: {
       accountKeys: Array<{ pubkey: string; signer?: boolean } | string>;
-      instructions: Array<{ program?: string; parsed?: unknown }>;
+      instructions: Array<{ program?: string; programId?: string; parsed?: unknown }>;
     };
   };
+}
+
+type Instruction = ParsedTransaction['transaction']['message']['instructions'][number];
+
+/** A memo instruction, whether or not the node could read its text. */
+function isMemo(instruction: Instruction): boolean {
+  return instruction.program === 'spl-memo' || (typeof instruction.programId === 'string' && MEMO_PROGRAMS.has(instruction.programId));
 }
 
 function toLamports(value: unknown): bigint | null {
@@ -51,9 +60,10 @@ function transfersOf(tx: ParsedTransaction): Array<{ source: string; destination
 
 /**
  * Decides whether a confirmed transaction pays an intent: it succeeded, the
- * learner's wallet paid the fee and funded a System transfer of at least the
- * price to the treasury, and it carries the intent id as a memo. Extra
- * instructions (a wallet adding a priority fee) are tolerated.
+ * learner's wallet paid the fee and funded System transfers of at least the
+ * price to the treasury, and its ONLY memo instruction is exactly the intent
+ * id. A transaction with two memos pays nothing: one payment names one intent.
+ * Other extra instructions (a wallet adding a priority fee) are tolerated.
  */
 export function verifyPayment(tx: ParsedTransaction, expected: PaymentExpectation): PaymentVerdict {
   if (!tx.meta || tx.meta.err !== null) return { ok: false, error: 'tx_failed' };
@@ -70,10 +80,8 @@ export function verifyPayment(tx: ParsedTransaction, expected: PaymentExpectatio
   const paidLamports = toTreasury.reduce((sum, transfer) => sum + transfer.lamports, 0n);
   if (paidLamports < expected.lamports) return mismatch('amount');
 
-  const memos = tx.transaction.message.instructions
-    .filter((instruction) => instruction.program === 'spl-memo' && typeof instruction.parsed === 'string')
-    .map((instruction) => instruction.parsed as string);
-  if (!memos.includes(expected.memo)) return mismatch('memo');
+  const memos = tx.transaction.message.instructions.filter(isMemo);
+  if (memos.length !== 1 || memos[0].parsed !== expected.memo) return mismatch('memo');
 
   return { ok: true, paidLamports };
 }

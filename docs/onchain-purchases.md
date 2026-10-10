@@ -46,6 +46,7 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 |---|---|---|
 | `shop_items` | catalog: `key`, `kind`, `price_lamports`, `price_usd_cents`, `price_label`, i18n texts, `effect`, `art`, `active`, `sort` | everyone |
 | `purchases` | one row per intent: `status` (`pending`/`paid`/`expired`; `refunded`/`failed` unused), `lamports`, `price_usd_cents`, `wallet`, `tx_signature` (unique), `memo`, `last_valid_block_height`, `expires_at`, `paid_at`, `applied_at`, `error` | own rows |
+| `payments` | the ledger of every settled payment, purchases **and** gifts: `tx_signature` (pk), `kind` (`purchase`/`gift`), `ref_id` (the intent it settled), `lamports`, `created_at`. Written only by `itera.settle_payment` (migration `0132`), in the same database transaction that marks the intent paid | nobody |
 | `user_inventory` | `(user_id, item_key, ref_id)` → `qty` | own rows |
 | `companions` | lives, `last_regen_at`, `outfit`, mint columns, `mirrored`, `mirror_due`, public `id` | own row |
 | `life_events` | idempotency: unique `(user_id, attempt_id)` | own rows |
@@ -176,10 +177,18 @@ Body `{ "intent_id": "…", "signature": "<base58>", "lang": "pt" | "en" }`.
   attributes the transaction changed, `value` being the on-chain string. An outfit writes nothing at
   purchase (it is written on equip), and a repeated confirm of an applied intent sends no
   transaction: both answer without `chain` and `written`.
-- All of these must hold: the intent is the caller's and not expired; the signature is on no other
-  purchase; the transaction is confirmed with no error; its fee payer and the source of the transfer
-  are the caller's wallet; a System transfer to the treasury of at least the intent's lamports; a
-  memo equal to the intent id. Extra instructions (a wallet's priority fee) are tolerated.
+- All of these must hold: the intent is the caller's and not expired; the signature settled nothing
+  else (no other purchase **and no gift**: one ledger, `itera.payments`); the transaction is confirmed
+  with no error; its fee payer is the caller's wallet; System transfers **from the fee payer** to the
+  treasury add up to at least the intent's lamports; and the transaction carries **exactly one** memo
+  instruction, equal to the intent id. A transaction with two memos (the ids of two intents) pays
+  nothing: `422 payment_mismatch`, `detail: memo`. Other extra instructions (a wallet's priority
+  fee) are tolerated.
+- One payment, one thing: `itera.settle_payment(kind, ref_id, signature, lamports)` locks the intent,
+  writes the ledger entry and marks the intent paid in one database transaction. The same signature
+  offered to any other purchase or gift answers `409 signature_reused`. The in-app gift shares one id
+  between its purchase and its gift row, so both point at one ledger entry. Proof on devnet:
+  `node scripts/hackathon/security-attacks.mjs a`.
 - Idempotent: the same intent and signature again returns the same paid result and re-applies
   nothing.
 - Errors: `404 intent_not_found` (also for another learner's intent), `410 intent_expired`,
@@ -431,7 +440,7 @@ mistake takes, and survives a refill and a lesson bonus. On chain the companion 
   a repeated confirm has no `chain` but keeps `gift.mirror_explorer_url`. `name` is the nickname of
   a wallet learner, `null` for anyone else (an e-mail account's name is never returned).
 - The life is given exactly once per intent (`life_events`, attempt `gift:<intent id>`), and one
-  payment settles one gift (`tx_signature` unique on both tables).
+  payment settles one thing across purchases and gifts (the `payments` ledger, see `purchase-confirm`).
 
 ### `POST /gifts` (Bearer user token, app CORS)
 
