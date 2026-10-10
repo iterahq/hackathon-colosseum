@@ -5,6 +5,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
+import { useWalletLink } from '@/hooks/useWalletLink';
 import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
 import { equipOutfit, getCompanion } from '@/services/companion.service';
@@ -25,7 +26,8 @@ export function useCompanion({ enabled = true }: { enabled?: boolean } = {}) {
     // A wallet user's Tera is minted in the background on the first call: watch until it lands.
     refetchInterval: (q) => (q.state.data?.companion.mintStatus === 'pending' ? 5000 : false),
   });
-  const wallet = query.data?.wallet ?? walletOf(session?.user)?.address ?? null;
+  const link = useWalletLink();
+  const wallet = query.data?.wallet ?? walletOf(session?.user)?.address ?? link.wallet;
 
   return { ...query, key, userId, wallet, outfit: query.data?.companion.outfit ?? null };
 }

@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
-import { confirmPurchase, createPurchaseIntent, requestFaucet } from '@/services/shop.service';
+import { confirmPurchase, createPurchaseIntent, requestFaucet, submitPurchase } from '@/services/shop.service';
 import { ShopCallError } from '@/services/shopTransport';
 import { WalletSignError, connectWallet, signAndSendPurchase } from '@/services/walletSign';
 import type { CompanionSnapshot, PurchaseConfirmation } from '@/types/shop';
@@ -64,14 +64,30 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         const intent = await createPurchaseIntent(itemKey, refId);
         if (!alive.current) return;
         dispatch({ type: 'connected' });
-        const signature = await signAndSendPurchase(intent);
+        const signed = await signAndSendPurchase(intent);
         if (!alive.current) return;
         dispatch({ type: 'signed' });
+        // A wallet that only signed hands the broadcast to the backend; the answer is the same either way.
+        const signedTransaction = signed.kind === 'signed' ? signed.signedTransaction : '';
+        let broadcast = signed.kind === 'sent' ? signed.signature : null;
+        const verify = async () => {
+          if (broadcast) return confirmPurchase(intent.intentId, broadcast, locale);
+          try {
+            return await submitPurchase(intent.intentId, signedTransaction, locale);
+          } catch (e) {
+            // Already broadcast: the transaction exists, so confirm it by signature instead of failing.
+            if (e instanceof ShopCallError && e.signature) {
+              broadcast = e.signature;
+              return confirmPurchase(intent.intentId, e.signature, locale);
+            }
+            throw e instanceof ShopCallError ? new ShopCallError(`sign-only path -> ${e.message}`, e.status, e.code, e.retryable, e.detail) : e;
+          }
+        };
         const deadline = Date.now() + POLL_LIMIT_MS;
-        let confirmation = await confirmPurchase(intent.intentId, signature, locale);
+        let confirmation = await verify();
         while (confirmation.status === 'pending' && Date.now() < deadline && alive.current) {
           await wait(POLL_MS);
-          confirmation = await confirmPurchase(intent.intentId, signature, locale);
+          confirmation = await verify();
         }
         if (!alive.current) return;
         if (confirmation.status === 'paid') {
@@ -80,7 +96,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
             type: 'paid',
             explorerUrl: confirmation.explorerUrl ?? confirmation.chain?.explorerUrl ?? null,
             proof: {
-              signature: confirmation.chain?.signature ?? signature,
+              signature: confirmation.chain?.signature ?? broadcast,
               imageUrl: confirmation.imageUrl ?? null,
               written: (confirmation.written ?? []).map((w) => ({ attribute: w.attribute, value: w.value })),
               lives: confirmation.lives ? { current: confirmation.lives.current, max: confirmation.lives.max } : null,

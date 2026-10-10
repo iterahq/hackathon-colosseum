@@ -42,6 +42,21 @@ describe('LearnerProfilePage', () => {
     expect(screen.getByRole('button', { name: 'Copiar link' })).toBeInTheDocument();
   });
 
+  it('prints the on-chain snapshot time, or a quiet line when there is no companion', () => {
+    useLearnerProfile.mockReturnValue(
+      ok({ verified_count: 1, companion: { asset: 'CompAsset1111111111111111111111111111111111', lives: 3, mirrored_at: '2026-10-10T12:30:00Z' }, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5, tier: 'gold' }], medals: [] })
+    );
+    const { unmount } = show();
+    expect(screen.getByTestId('snapshot-line')).toHaveTextContent(/^on-chain em /);
+    expect(screen.getByTestId('profile-cert')).toHaveTextContent('ouro');
+    expect(screen.getByTestId('profile-cta')).toHaveAttribute('href', '/');
+    unmount();
+    useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
+    show();
+    expect(screen.getByTestId('profile-no-companion')).toHaveTextContent('Tera companheiro ainda não mintado');
+    expect(screen.queryByTestId('snapshot-line')).not.toBeInTheDocument();
+  });
+
   it('an unknown wallet shows the empty line, not an error', () => {
     useLearnerProfile.mockReturnValue(ok({ companion: null, certifications: [], medals: [] }));
     show();

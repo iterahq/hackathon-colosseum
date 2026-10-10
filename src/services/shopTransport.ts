@@ -6,7 +6,7 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { mockShopCall } from '@/services/shopMock';
 
-export type ShopFunction = 'companion' | 'lives' | 'shop-items' | 'purchase-intent' | 'purchase-confirm' | 'wallet-faucet';
+export type ShopFunction = 'companion' | 'lives' | 'shop-items' | 'purchase-intent' | 'purchase-confirm' | 'purchase-submit' | 'wallet-faucet' | 'link-wallet';
 
 export class ShopCallError extends Error {
   constructor(
@@ -17,7 +17,9 @@ export class ShopCallError extends Error {
     /** The backend says the same call may succeed if repeated. */
     readonly retryable = false,
     /** The backend's `detail` field, verbatim (e.g. `payer | destination | amount | memo`). */
-    readonly detail: string | null = null
+    readonly detail: string | null = null,
+    /** Present when the backend already broadcast the transaction: confirm with it instead of failing. */
+    readonly signature: string | null = null
   ) {
     super(message);
   }
@@ -51,15 +53,15 @@ export function mockForced(): boolean {
   }
 }
 
-async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean; detail: string | null }> {
+async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean; detail: string | null; signature: string | null }> {
   const context = (error as { context?: Response }).context;
   const status = typeof context?.status === 'number' ? context.status : null;
   try {
-    const json = (await context?.clone().json()) as { error?: unknown; retryable?: unknown; detail?: unknown } | undefined;
+    const json = (await context?.clone().json()) as { error?: unknown; retryable?: unknown; detail?: unknown; signature?: unknown } | undefined;
     const detail = typeof json?.detail === 'string' ? json.detail : json?.detail == null ? null : JSON.stringify(json.detail);
-    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true, detail };
+    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true, detail, signature: typeof json?.signature === 'string' ? json.signature : null };
   } catch {
-    return { status, code: null, retryable: false, detail: null };
+    return { status, code: null, retryable: false, detail: null, signature: null };
   }
 }
 
@@ -71,5 +73,5 @@ export async function callShop(fn: ShopFunction, { method = 'POST', body = {}, q
   if (!error) return { data, mocked: false };
   const detail = await errorBody(error);
   const text = detail.code ? `${fn}: ${detail.code}${detail.detail ? ` (detail: ${detail.detail})` : ''}` : error.message;
-  throw new ShopCallError(text, detail.status, detail.code, detail.retryable, detail.detail);
+  throw new ShopCallError(text, detail.status, detail.code, detail.retryable, detail.detail, detail.signature);
 }

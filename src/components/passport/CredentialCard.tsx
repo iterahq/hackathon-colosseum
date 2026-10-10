@@ -6,6 +6,7 @@ import type { CredentialLookup } from '@/types/achievements';
 import { tierLabel } from '@/utils/tier';
 import { companionFacts, credentialFacts, isCompanion } from '@/utils/credential';
 import { CopyButton } from './CopyButton';
+import { SnapshotLine } from './SnapshotLine';
 
 type Found = Extract<CredentialLookup, { data: unknown }>;
 
@@ -55,6 +56,7 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
             {ok ? t('passport.credential.verified') : t('passport.credential.unverified')}
           </h1>
           <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{ok ? t('passport.credential.sub') : t('passport.credential.unverifiedBody')}</span>
+          {companion && <SnapshotLine mirroredAt={data.snapshot?.mirrored_at} />}
         </div>
       </div>
       <dl className="mt-4">

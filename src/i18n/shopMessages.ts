@@ -1,5 +1,5 @@
 /** Backend error codes that have a friendly line (`purchase.error.<code>`). */
-export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet']);
+export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction']);
 
 /** Strings of lives, Tera's shop, the purchase flow and the companion. Never says "passport": the feature is "Certificações do Tera". */
 export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
@@ -14,8 +14,6 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'lives.gate.next': 'Próxima vida em',
     'lives.gate.refill': 'Recarregar vidas · {price}',
     'lives.gate.refillPlain': 'Recarregar vidas',
-    'lives.gate.connect': 'Entrar com carteira',
-    'lives.gate.connectHint': 'Uma conta de carteira Solana, separada da sua conta de e-mail. Sem cartão de crédito.',
     'lives.gate.wait': 'Esperar {time}',
     'lives.gate.leave': 'Sair da lição',
     'lives.gate.shop': 'Abrir a Loja do Tera',
@@ -41,8 +39,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.previewing': 'Experimentando: {name}',
     'shop.wearing': 'Usando: {name}',
     'shop.wearingNone': 'Sem acessório',
-    'shop.connect': 'Entrar com carteira',
-    'shop.connectHint': 'Uma conta de carteira Solana, separada da sua conta de e-mail. Sem cartão de crédito.',
+    'shop.connectHint': 'Vincule uma carteira Solana à sua conta para comprar. Sem cartão de crédito.',
     'shop.loading': 'Abrindo a loja…',
     'shop.error': 'A loja não abriu agora.',
     'shop.retry': 'Tentar de novo',
@@ -84,6 +81,9 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.item_not_found': 'Este item saiu da loja.',
     'purchase.error.intent_expired': 'O pedido expirou antes de a transação chegar. Nada foi cobrado.',
     'purchase.error.tx_failed': 'A transação falhou na Solana. Nada foi cobrado.',
+    'purchase.error.broadcast_failed': 'A Solana não aceitou a transação (talvez ela tenha vencido). Tente de novo.',
+    'purchase.error.signature_invalid': 'A assinatura da carteira não confere com o pedido. Tente de novo.',
+    'purchase.error.invalid_transaction': 'A carteira devolveu uma transação que não conseguimos ler. Tente de novo.',
     'purchase.error.payment_mismatch': 'O pagamento não bate com o pedido, então o item não foi entregue.',
     'purchase.error.signature_reused': 'Esta transação já foi usada em outra compra.',
     'purchase.error.rpc_unavailable': 'A rede Solana não respondeu. Tente de novo em instantes.',
@@ -104,8 +104,6 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'lives.gate.next': 'Next life in',
     'lives.gate.refill': 'Refill lives · {price}',
     'lives.gate.refillPlain': 'Refill lives',
-    'lives.gate.connect': 'Sign in with wallet',
-    'lives.gate.connectHint': 'A Solana wallet account, separate from your e-mail account. No credit card.',
     'lives.gate.wait': 'Wait {time}',
     'lives.gate.leave': 'Leave the lesson',
     'lives.gate.shop': "Open Tera's Shop",
@@ -131,8 +129,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.previewing': 'Trying on: {name}',
     'shop.wearing': 'Wearing: {name}',
     'shop.wearingNone': 'No accessory',
-    'shop.connect': 'Sign in with wallet',
-    'shop.connectHint': 'A Solana wallet account, separate from your e-mail account. No credit card.',
+    'shop.connectHint': 'Link a Solana wallet to your account to buy. No credit card.',
     'shop.loading': 'Opening the shop…',
     'shop.error': "The shop didn't open right now.",
     'shop.retry': 'Try again',
@@ -174,6 +171,9 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.item_not_found': 'This item left the shop.',
     'purchase.error.intent_expired': 'The request expired before the transaction arrived. Nothing was charged.',
     'purchase.error.tx_failed': 'The transaction failed on Solana. Nothing was charged.',
+    'purchase.error.broadcast_failed': 'Solana did not accept the transaction (it may have expired). Try again.',
+    'purchase.error.signature_invalid': 'The wallet signature does not match the request. Try again.',
+    'purchase.error.invalid_transaction': 'The wallet returned a transaction we could not read. Try again.',
     'purchase.error.payment_mismatch': 'The payment does not match the request, so the item was not delivered.',
     'purchase.error.signature_reused': 'This transaction was already used for another purchase.',
     'purchase.error.rpc_unavailable': 'The Solana network did not answer. Try again in a moment.',

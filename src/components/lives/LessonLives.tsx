@@ -4,8 +4,8 @@
  * stays null and the lesson is exactly what it was before lives existed.
  */
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { useAuth } from '@/auth/AuthContext';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
+import { LinkWalletDialog } from '@/components/wallet/LinkWalletDialog';
 import { useLives } from '@/hooks/useLives';
 import { usePurchase } from '@/hooks/usePurchase';
 import { useShop } from '@/hooks/useShop';
@@ -49,11 +49,10 @@ function RefillPrice({ children }: { children: (label: string | null, title: str
 }
 
 function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onLeave }: Props) {
-  const { signInWithSolana } = useAuth();
-  const { active, lives, secondsToNext, lose, endLesson, wallet, outfit, refetch, chain, assetUrl } = useLives();
+  const { active, lives, secondsToNext, lose, endLesson, wallet, outfit, chain, assetUrl } = useLives();
   const purchase = usePurchase();
   const [bonus, setBonus] = useState(0);
-  const [connecting, setConnecting] = useState(false);
+  const [linking, setLinking] = useState(false);
   const visit = useRef(Date.now().toString(36));
   useEffect(() => setBonus(0), [lessonId]);
 
@@ -81,12 +80,6 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
   }, [active, current, max, bonus, outfit, gateOpen, onChange]);
   useEffect(() => () => onChange(null), [onChange]);
 
-  const connect = useCallback(async () => {
-    setConnecting(true);
-    await signInWithSolana();
-    setConnecting(false);
-    void refetch();
-  }, [signInWithSolana, refetch]);
 
   if (!gateOpen || !lives) return null;
   return (
@@ -101,12 +94,13 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
               hasWallet={Boolean(wallet)}
               outfit={outfit}
               chainUrl={chain?.explorerUrl ?? assetUrl}
-              busy={purchase.busy || connecting}
+              busy={purchase.busy || linking}
               onRefill={() => void purchase.buy(REFILL)}
-              onConnect={() => void connect()}
+              onConnect={() => setLinking(true)}
               onLeave={onLeave}
             />
           )}
+          {linking && <LinkWalletDialog onClose={() => setLinking(false)} />}
           <PurchaseDialog state={purchase.state} itemTitle={title} itemKind="life" outfit={outfit} onRetry={purchase.retry} onFund={() => void purchase.fund()} onClose={purchase.reset} />
         </>
       )}

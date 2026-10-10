@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { useAuth } from '@/auth/AuthContext';
 import '@/components/dashboard/dashboard.css';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
@@ -7,6 +6,8 @@ import { ShopArt } from '@/components/shop/ShopArt';
 import { ShopItemCard } from '@/components/shop/ShopItemCard';
 import { ShopTeraStage } from '@/components/shop/ShopTeraStage';
 import { BTN_PRIMARY, BTN_SMALL, CARD, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
+import { LinkWalletDialog } from '@/components/wallet/LinkWalletDialog';
+import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { useCompanion, useEquipOutfit } from '@/hooks/useCompanion';
 import { useLives } from '@/hooks/useLives';
@@ -39,7 +40,6 @@ function Shelf({ id, title, hint, children }: { id: string; title: string; hint?
 export default function ShopPage() {
   const { t } = useI18n();
   usePageTitle(t('shop.title'));
-  const { signInWithSolana } = useAuth();
   const shop = useShop();
   const companion = useCompanion();
   const { lives, secondsToNext } = useLives();
@@ -48,6 +48,7 @@ export default function ShopPage() {
   const purchase = usePurchase({ onPaid: () => setPreview(null) });
   // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
   const certs = usePassportView().pages.filter((page) => page.mintStatus === 'minted');
+  const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
   const targetId = target || certs[0]?.trailId || '';
 
@@ -58,7 +59,7 @@ export default function ShopPage() {
   const busy = purchase.busy || equip.isPending;
   const buying = byKey(purchase.state.itemKey);
   const shownKey = preview ?? companion.outfit;
-  const buy = (item: ShopItem, refId?: string) => (hasWallet ? void purchase.buy(item.key, refId) : void signInWithSolana().then(() => companion.refetch()));
+  const buy = (item: ShopItem, refId?: string) => (hasWallet ? void purchase.buy(item.key, refId) : setLinking(true));
 
   const tryOn = (key: string) => {
     setPreview(preview === key ? null : key);
@@ -97,9 +98,7 @@ export default function ShopPage() {
         {!hasWallet && !companion.isPending && (
           <div className={`${CARD} flex flex-wrap items-center justify-between gap-3 p-4`} data-testid="shop-no-wallet">
             <span className="[font:500_14px_Inter] text-[#C9BFB0]">{t('shop.connectHint')}</span>
-            <button type="button" onClick={() => void signInWithSolana().then(() => companion.refetch())} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="shop-connect">
-              {t('shop.connect')}
-            </button>
+            <LinkWalletButton className={`${BTN_PRIMARY} ${BTN_SMALL}`} testId="shop-connect" />
           </div>
         )}
         {shop.isPending && <TeraLoader size="md" label={t('shop.loading')} className="py-16" />}
@@ -149,6 +148,7 @@ export default function ShopPage() {
           </>
         )}
       </main>
+      {linking && <LinkWalletDialog onClose={() => setLinking(false)} />}
       <PurchaseDialog
         state={purchase.state}
         itemTitle={buying?.title ?? ''}

@@ -8,6 +8,7 @@ import type { PassportMedal, PassportPageData } from '@/types/achievements';
 const view = vi.fn();
 vi.mock('@/hooks/usePassportView', () => ({ usePassportView: () => view() }));
 vi.mock('@/hooks/useContent', () => ({ useUserStats: () => ({ data: { totalXp: 780, completedActivities: 20 } }) }));
+vi.mock('@/hooks/useWalletLink', () => ({ useWalletLink: () => ({ wallet: null, linked: false, pending: false, userId: 'u' }) }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => ({ data: [] }) }));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { displayName: 'Sam' } }) }));
 vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => ({ level: 'member' }) }));

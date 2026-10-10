@@ -12,7 +12,7 @@ interface Props {
   secondsToNext: number;
   /** `price_label` of the refill; null while the shop list is loading or unavailable. */
   priceLabel: string | null;
-  /** False for e-mail users: they see "Conectar carteira" instead of the purchase. */
+  /** False for e-mail users without a linked wallet: they see "Vincular carteira" instead of the purchase. */
   hasWallet: boolean;
   outfit: string | null;
   /** Explorer link of the on-chain Tera (the last mirror, else the asset); null renders nothing. */
@@ -67,9 +67,9 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, ou
           ) : (
             <>
               <button type="button" autoFocus disabled={busy} onClick={onConnect} data-testid="lives-gate-connect" className={`${BTN_PRIMARY} w-full [font:700_16px_Inter]`}>
-                {t('lives.gate.connect')}
+                {t('wallet.link.cta')}
               </button>
-              <p className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('lives.gate.connectHint')}</p>
+              <p className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('wallet.link.hint')}</p>
             </>
           )}
           <button type="button" onClick={onLeave} title={t('lives.gate.leave')} data-testid="lives-gate-wait" className={`mx-auto rounded px-2 py-2 [font:600_14px_Inter] text-[#A0978A] underline underline-offset-4 hover:text-[#F4EDE2] ${FOCUS}`}>

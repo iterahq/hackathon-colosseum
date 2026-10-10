@@ -2,9 +2,10 @@
  * The ONE place a purchase touches the injected Solana wallet (Phantom and compatibles). No web3
  * library: the backend builds a legacy transaction, the wallet signs and sends it.
  *
- * NOT YET PROVEN AGAINST A REAL PHANTOM. Two attempts, each logged (`[wallet] attempt <name>`), and
+ * NOT YET PROVEN AGAINST A REAL PHANTOM. Three attempts, each logged (`[wallet] attempt <name>`), and
  * whatever the provider answers is carried in `WalletSignError.detail` so the failed state shows it.
  */
+import { assembleSignedTransaction, base64Decode, base64Encode, bytesOf, normalizeSignOnlyAnswer } from '@/services/walletEncoding';
 import type { PurchaseIntent } from '@/types/shop';
 
 interface SolanaProvider {
@@ -12,6 +13,7 @@ interface SolanaProvider {
   connect(options?: { onlyIfTrusted?: boolean }): Promise<unknown>;
   request(args: { method: string; params?: unknown }): Promise<unknown>;
   signAndSendTransaction?(transaction: unknown): Promise<unknown>;
+  signMessage?(message: Uint8Array, display?: string): Promise<unknown>;
 }
 
 export type WalletSignFailure = 'no_wallet' | 'cancelled' | 'insufficient' | 'failed';
@@ -61,14 +63,16 @@ const signatureOf = (answer: unknown): string | null => {
   return typeof signature === 'string' && signature ? signature : null;
 };
 
-function bytesFromBase64(base64: string): Uint8Array {
-  const raw = atob(base64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
-  return out;
-}
+type Attempt = { name: string; run: () => Promise<WalletSigned> };
 
-type Attempt = { name: string; run: () => Promise<unknown> };
+/** `sent`: the wallet broadcast the transaction. `signed`: the wallet only signed; the backend broadcasts (`purchase-submit`). */
+export type WalletSigned = { kind: 'sent'; signature: string } | { kind: 'signed'; signedTransaction: string };
+
+async function sent(answer: Promise<unknown>): Promise<WalletSigned> {
+  const signature = signatureOf(await answer);
+  if (!signature) throw new WalletSignError('failed', 'The wallet answered without a signature.');
+  return { kind: 'sent', signature };
+}
 
 /**
  * 1. `request` — what Phantom's injected provider sends internally for a legacy transaction: the
@@ -76,19 +80,27 @@ type Attempt = { name: string; run: () => Promise<unknown> };
  * 2. `object` — FALLBACK, unproven: a duck-typed stand-in for a web3.js `Transaction` that can only
  *    hand back the bytes the backend serialized (message, and the transaction with one empty
  *    signature slot). If the wallet needs more than that, it throws and the learner sees that error.
+ * 3. `sign` — LAST RESORT, only after 1 and 2 failed for another reason than a rejection: the wallet
+ *    signs the message and does not send; the signed transaction goes to `purchase-submit`.
  */
 function attemptsFor(provider: SolanaProvider, intent: PurchaseIntent): Attempt[] {
+  const messageBytes = intent.messageBase64 ? base64Decode(intent.messageBase64) : null;
   const attempts: Attempt[] = [
-    { name: 'request', run: () => provider.request({ method: 'signAndSendTransaction', params: { message: intent.messageBase58 || intent.transactionBase58 } }) },
+    { name: 'request', run: () => sent(provider.request({ method: 'signAndSendTransaction', params: { message: intent.messageBase58 || intent.transactionBase58 } })) },
   ];
   const send = provider.signAndSendTransaction?.bind(provider);
-  if (send && intent.messageBase64 && intent.transactionBase64) {
+  if (send && messageBytes && intent.transactionBase64) {
+    const transactionBytes = base64Decode(intent.transactionBase64);
+    attempts.push({ name: 'object', run: () => sent(send({ serializeMessage: () => messageBytes, serialize: () => transactionBytes, signatures: [], feePayer: undefined })) });
+  }
+  if (messageBytes && intent.messageBase58) {
     attempts.push({
-      name: 'object',
-      run: () => {
-        const messageBytes = bytesFromBase64(intent.messageBase64);
-        const transactionBytes = bytesFromBase64(intent.transactionBase64);
-        return send({ serializeMessage: () => messageBytes, serialize: () => transactionBytes, signatures: [], feePayer: undefined });
+      name: 'sign',
+      run: async () => {
+        const answer = normalizeSignOnlyAnswer(await provider.request({ method: 'signTransaction', params: { message: intent.messageBase58 } }));
+        if (!answer) throw new WalletSignError('failed', 'The wallet signed but answered neither a signature nor a transaction.');
+        const signed = answer.kind === 'signature' ? assembleSignedTransaction(answer.signature, messageBytes) : answer.transaction;
+        return { kind: 'signed', signedTransaction: base64Encode(signed) };
       },
     });
   }
@@ -107,17 +119,15 @@ export async function connectWallet(): Promise<string | null> {
   return provider.publicKey?.toString() ?? null;
 }
 
-/** Asks the wallet to sign and send the intent's transaction; resolves with the transaction signature. */
-export async function signAndSendPurchase(intent: PurchaseIntent): Promise<string> {
+/** Asks the wallet to sign and send the intent's transaction, or failing that to only sign it. */
+export async function signAndSendPurchase(intent: PurchaseIntent): Promise<WalletSigned> {
   const provider = getWalletProvider();
   if (!provider) throw new WalletSignError('no_wallet', 'No Solana wallet found in this browser.');
   const failures: string[] = [];
   for (const attempt of attemptsFor(provider, intent)) {
     console.info('[wallet] attempt', attempt.name);
     try {
-      const signature = signatureOf(await attempt.run());
-      if (signature) return signature;
-      throw new WalletSignError('failed', 'The wallet answered without a signature.');
+      return await attempt.run();
     } catch (e) {
       console.warn('[wallet]', attempt.name, codeOf(e), messageOf(e));
       const failure = classifyWalletError(e);
@@ -127,4 +137,20 @@ export async function signAndSendPurchase(intent: PurchaseIntent): Promise<strin
     }
   }
   throw new WalletSignError('failed', failures.join(' | '));
+}
+
+/** Asks the wallet to sign a text (no transaction, no fee); resolves with the base64 of the 64 signature bytes. */
+export async function signTextMessage(text: string): Promise<string> {
+  const provider = getWalletProvider();
+  if (!provider) throw new WalletSignError('no_wallet', 'No Solana wallet found in this browser.');
+  if (!provider.signMessage) throw new WalletSignError('failed', 'This wallet cannot sign messages.');
+  try {
+    const answer = await provider.signMessage(new TextEncoder().encode(text), 'utf8');
+    const bytes = bytesOf((answer as { signature?: unknown } | null)?.signature ?? answer);
+    if (!bytes) throw new WalletSignError('failed', 'The wallet answered without a signature.');
+    return base64Encode(bytes);
+  } catch (e) {
+    console.warn('[wallet]', 'signMessage', codeOf(e), messageOf(e));
+    throw classifyWalletError(e);
+  }
 }
