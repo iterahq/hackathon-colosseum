@@ -6,7 +6,8 @@
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { AppHeader } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
+import '@/components/dashboard/dashboard.css';
 import { useI18n } from '@/i18n';
 import { useClassReport, useClassSessionById } from '@/hooks/useLiveClass';
 import { useLessonContent } from '@/hooks';
@@ -44,7 +45,7 @@ export default function InstructorReportPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AppHeader active="discover" />
+      <div className="dash-root"><AppTopBar /></div>
       <main className="flex-1 max-w-[900px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         <Link
           to="/live/instructor"

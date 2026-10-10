@@ -1,13 +1,14 @@
 /**
  * Tenant-admin observability shell (plan #6). Read-only window into the admin's
- * OWN tenant. Evergreen/obsidiana design, reuses the branded AppHeader.
+ * OWN tenant. Evergreen/obsidiana design, reuses the app top bar.
  *
  * Sub-nav: Roster / Completion / Engagement. NO authoring affordance anywhere
  * (ADR-5 — authoring is a different app, dfl-lms-admin; structurally absent here).
  */
 import { NavLink, Outlet } from 'react-router-dom';
 import { Users, BarChart3, Activity, ShieldCheck, FolderGit2, PlayCircle } from 'lucide-react';
-import { AppHeader } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
+import '@/components/dashboard/dashboard.css';
 import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
 import { adminMemberships, adminTenant } from '@/services/membership.service';
@@ -45,7 +46,7 @@ export default function AdminLayout() {
   return (
     <AdminTenantCtx.Provider value={tenantId}>
       <div className="min-h-screen bg-background flex flex-col">
-        <AppHeader active="discover" />
+        <div className="dash-root"><AppTopBar /></div>
         <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
           {/* Admin hero */}
           <div className="flex items-center gap-3 mb-2">

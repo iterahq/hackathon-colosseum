@@ -29,8 +29,12 @@ export function AvatarPicker() {
                 onClick={() => !on && equip.mutate(a.key)}
                 className={`flex w-full flex-col items-center gap-1 rounded-xl border p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F] ${on ? 'border-[#3FD17F]' : 'border-[#262320] hover:border-[#3FD17F]/50'}`}
               >
-                <LearnerAvatar avatar={a} size="md" />
-                <span className="max-w-full truncate font-mono text-[10px] text-[#C9BFB0]">{on ? t('avatar.picker.equipped') : label(a)}</span>
+                <span className="relative">
+                  <LearnerAvatar avatar={a} size="md" />
+                  {on && <span aria-hidden className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#141210] bg-[#3FD17F]" />}
+                </span>
+                <span className="max-w-full truncate font-mono text-[10px] text-[#C9BFB0]">{label(a)}</span>
+                {on && <span className="sr-only">{t('avatar.picker.equipped')}</span>}
               </button>
             </li>
           );

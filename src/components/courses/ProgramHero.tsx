@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import type { ProgramDetail } from '@/types/content';
 import type { Trail } from '@/types/trailDashboard';
-import { courseColor, glyphOf } from '@/utils/courses';
+import { glyphOf } from '@/utils/courses';
+import { PRIMARY_COLOR } from '@/utils/trailDashboard';
 import { programTotals } from '@/utils/coursesProgram';
 import { FOCUS } from './courseStyles';
 import { CourseProgressBar } from './CourseProgressBar';
@@ -15,11 +16,11 @@ interface Props {
 /** Hero of the program page: accent color, title, meta, overall progress and the way back into the course. */
 export function ProgramHero({ program, trails }: Props) {
   const { t, tText } = useI18n();
-  const color = courseColor(program.slug);
+  const color = PRIMARY_COLOR;
   const totals = programTotals(trails);
   const current = trails.find((tr) => tr.status !== 'locked' && tr.status !== 'done')?.days.find((d) => d.state === 'current');
   const finished = totals.lessons > 0 && totals.doneLessons === totals.lessons;
-  const style = { background: '#3FD17F', color: '#0A0908', borderBottomColor: '#1F8A4F' };
+  const style = { background: color.c, color: color.ink, borderBottomColor: color.cd };
 
   return (
     <section className="flex flex-col" data-testid="program-hero">
