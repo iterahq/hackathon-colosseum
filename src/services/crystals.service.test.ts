@@ -53,6 +53,13 @@ describe('crystalsNormalize', () => {
     expect(snap.themeItems[1].border?.style).toBe('gradient');
   });
 
+  it('reads the two-currency switches', () => {
+    const snap = toCrystals({ accept: 'crystals', theme_items: [{ key: 'bg_grape', slot: 'background', color: '#150B1F', crystals_enabled: false, sol_enabled: true }] }, false);
+    expect(snap.accept).toBe('crystals');
+    expect(snap.themeItems[0]).toMatchObject({ crystalsEnabled: false, solEnabled: true });
+    expect(toCrystals({}, false).accept).toBe('both');
+  });
+
   it('reads a spend answer', () => {
     expect(toSpend({ balance: 95, item: { key: 'life' } }, 'life')).toEqual({ balance: 95, itemKey: 'life', theme: null });
   });

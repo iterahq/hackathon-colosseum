@@ -7,6 +7,7 @@ import type { LearnerAvatar as Avatar } from '@/types/avatar';
 import type { LookTab, ProfileLook } from '@/utils/profileLook';
 import { LookChip } from './LookChip';
 import { ShopTile } from './ShopTile';
+import { ThemeRows } from './ThemeRows';
 
 interface Props {
   tab: LookTab;
@@ -70,7 +71,7 @@ export function LookPanel({ tab, look, currentKey, busy, onAvatar, onOutfit }: P
               ))}
             </Row>
           )}
-          {/* Extension point: further owned wearable families (border, background, icon colour) get their own labelled <Row> here once shop-items serves them. */}
+          {tab === 'gear' && <ThemeRows busy={busy} grid={GRID} />}
         </div>
       )}
       {hasOutfitRow && !look.outfitsAllowed && <p className="mt-2 font-sans text-xs text-[#A0978A]" data-testid="outfit-locked">{t('avatar.look.outfit.locked')}</p>}

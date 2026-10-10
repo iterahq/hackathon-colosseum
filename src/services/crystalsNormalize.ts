@@ -56,6 +56,8 @@ function toThemeItem(v: unknown): ThemeItem | null {
     forSale: r.for_sale !== false,
     includedWith: orNull(r.included_with),
     border: slot === 'border' ? toBorder(r.border ?? effect.border) : null,
+    crystalsEnabled: r.crystals_enabled !== false,
+    solEnabled: r.sol_enabled !== false,
   };
 }
 
@@ -71,6 +73,7 @@ export function toCrystals(v: unknown, mocked: boolean): CrystalsSnapshot {
     ledger: (Array.isArray(r.ledger) ? r.ledger : []).map(row).filter((e) => str(e.id)).map((e) => ({ id: str(e.id), delta: num(e.delta), reason: str(e.reason), refId: orNull(e.ref_id), createdAt: str(e.created_at) })),
     theme: toTheme(r.theme),
     themeItems: (Array.isArray(r.theme_items) ? r.theme_items : []).map(toThemeItem).filter((i): i is ThemeItem => i !== null),
+    accept: r.accept === 'sol' || r.accept === 'crystals' ? r.accept : 'both',
     mocked,
   };
 }

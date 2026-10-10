@@ -35,6 +35,7 @@ export interface ThemeInput {
 export function themeAction(item: ThemeItem, input: Pick<ThemeInput, 'onEquip' | 'onPreview'>, t: Translate, locale: Locale): ItemAction {
   if (item.owned && item.equipped) return { id: 'inuse', label: t('wardrobe.inUse'), disabled: true, primary: false };
   if (item.owned) return { id: 'equip', label: t('wardrobe.equip'), run: () => input.onEquip(item), disabled: false, primary: true };
+  if (item.crystalsEnabled === false && item.priceCrystals !== null) return { id: 'soldout', label: t('wardrobe.theme.noSale'), disabled: true, primary: false };
   if (!item.forSale || item.priceCrystals === null) {
     const name = item.includedWith ? (loreOf(item.includedWith, locale)?.name ?? null) : null;
     return { id: 'soldout', label: name ? t('crystals.comesWith', { name }) : t('crystals.comesWithGeneric'), disabled: true, primary: false };

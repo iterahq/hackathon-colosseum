@@ -41,6 +41,9 @@ export interface ThemeItem {
   /** Key of the avatar this border comes with, when it is a signature border. */
   includedWith: string | null;
   border: AvatarBorder | null;
+  /** The currencies this item accepts; the one that is off is hidden. */
+  crystalsEnabled?: boolean;
+  solEnabled?: boolean;
 }
 
 export interface ThemeChoice {
@@ -62,6 +65,8 @@ export interface CrystalsSnapshot {
   ledger: CrystalLedgerEntry[];
   theme: Theme;
   themeItems: ThemeItem[];
+  /** The shop-wide switch of `GET /crystals`: which currencies are accepted. */
+  accept?: 'both' | 'sol' | 'crystals';
   mocked: boolean;
 }
 
