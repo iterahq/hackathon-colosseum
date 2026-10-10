@@ -1,5 +1,5 @@
 {
-  "doc": "Transform of an outfit layer canvas (288x416 webp in public/mascot/outfits) onto the 512x512 expression avatar image. x,y: top-left of the layer canvas in avatar pixels (may be negative); scale: layer pixel -> avatar pixel; rotation: degrees clockwise about the layer centre. Front layer file per mood: neutral '-front', happy '-front-happy', oops '-front-oops'. Layer order: back (laurel only), avatar, front. Source of truth: this file is imported by src/components/avatar/AvatarLook.tsx.",
+  "doc": "Transform of an outfit layer canvas (288x416 webp in public/mascot/outfits) onto the 512x512 expression avatar image. x,y: top-left of the layer canvas in avatar pixels (may be negative); scale: layer pixel -> avatar pixel; rotation: degrees clockwise about the layer centre. Front layer file per mood: neutral '-front', happy '-front-happy', oops '-front-oops'. Layer order: back (laurel only), avatar, front. Source of truth: this file is imported by src/components/avatar/AvatarLook.tsx. `disabled`: pairs checked by eye on the 2026-10-10 art (image_key tera_a_*) where a lens misses an eye on the 3/4 views; the layer is not drawn there. Crown may sit in front of the crest.",
   "avatarCanvas": 512,
   "layerCanvas": {
     "width": 288,
@@ -29,5 +29,18 @@
       }
     }
   },
-  "disabled": []
+  "disabled": [
+    {
+      "outfit": "outfit_glasses",
+      "avatar": "tera_surpreso"
+    },
+    {
+      "outfit": "outfit_glasses",
+      "avatar": "tera_triste"
+    },
+    {
+      "outfit": "outfit_glasses",
+      "avatar": "tera_focado"
+    }
+  ]
 }

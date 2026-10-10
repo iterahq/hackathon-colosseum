@@ -29,6 +29,11 @@ export function outfitFits(outfit: string | null | undefined, avatar: Pick<Avata
   return Boolean(outfit) && (OUTFITS as readonly string[]).includes(outfit as string) && avatar.allowsOutfit && !DISABLED.some((d) => d.outfit === outfit && d.avatar === avatar.key);
 }
 
+/** The outfit is known and the avatar takes the layer, but this pair was checked and does not fit: the look shows the avatar bare. */
+export function outfitMisfit(outfit: string | null | undefined, avatar: Pick<Avatar, 'key' | 'allowsOutfit'>): boolean {
+  return Boolean(outfit) && avatar.allowsOutfit && DISABLED.some((d) => d.outfit === outfit && d.avatar === avatar.key);
+}
+
 interface Props {
   avatar: Avatar;
   /** The outfit to draw: the equipped one, or the one being tried. */

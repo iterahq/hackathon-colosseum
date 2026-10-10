@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AvatarLook, outfitFits, placementOf } from '@/components/avatar/AvatarLook';
+import { AvatarLook, outfitFits, outfitMisfit, placementOf } from '@/components/avatar/AvatarLook';
 import { DEFAULT_AVATAR, type LearnerAvatar } from '@/types/avatar';
 
 const painted: LearnerAvatar = { ...DEFAULT_AVATAR, key: 'special_dourado', allowsOutfit: false };
@@ -10,7 +10,7 @@ describe('AvatarLook', () => {
     const { container } = render(<AvatarLook avatar={{ ...DEFAULT_AVATAR, key: 'tera_feliz' }} outfit="outfit_crown" size={200} />);
     expect(container.querySelector('[data-testid="avatar-look"]')?.getAttribute('data-outfit')).toBe('outfit_crown');
     expect(container.querySelector('img[data-outfit-layer="front"]')?.getAttribute('src')).toContain('outfit_crown-front-happy');
-    expect(container.querySelector('img:not([data-outfit-layer])')?.getAttribute('src')).toContain('tera_normal');
+    expect(container.querySelector('img:not([data-outfit-layer])')?.getAttribute('src')).toContain('tera_a_normal');
   });
 
   it('puts the laurel behind and in front', () => {
@@ -22,6 +22,15 @@ describe('AvatarLook', () => {
     const { container } = render(<AvatarLook avatar={painted} outfit="outfit_crown" size={200} />);
     expect(container.querySelector('[data-outfit-layer]')).toBeNull();
     expect(container.querySelector('[data-testid="avatar-look"]')?.getAttribute('data-outfit')).toBe('none');
+  });
+
+  it('leaves the glasses off the expressions where they do not fit', () => {
+    const triste = { ...DEFAULT_AVATAR, key: 'tera_triste' };
+    expect(outfitFits('outfit_glasses', triste)).toBe(false);
+    expect(outfitMisfit('outfit_glasses', triste)).toBe(true);
+    expect(outfitFits('outfit_crown', triste)).toBe(true);
+    const { container } = render(<AvatarLook avatar={triste} outfit="outfit_glasses" size={200} />);
+    expect(container.querySelector('[data-outfit-layer]')).toBeNull();
   });
 
   it('knows which outfits fit', () => {

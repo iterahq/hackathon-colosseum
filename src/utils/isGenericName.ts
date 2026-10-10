@@ -21,9 +21,16 @@ export function isGenericName(name: string | null | undefined, email?: string | 
   // A wallet address, full or shortened (`CQzi…DAhW`, `2rAa...nqA`), is never a name.
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(n)) return true;
   if (/^[1-9A-HJ-NP-Za-km-z]{3,8}(…|\.{2,3})[1-9A-HJ-NP-Za-km-z]{3,8}$/.test(n)) return true;
-  // The name provisioning generates for a wallet learner, "Tera Curioso 482".
-  if (isGeneratedTeraName(n)) return true;
   const localRaw = (email ?? '').split('@')[0].trim();
   if (localRaw && n === localRaw) return true;
   return false;
+}
+
+/**
+ * Should we ASK this learner what to call them? A wallet-shaped or otherwise generic name, or the friendly
+ * "Tera <Word> <3 digits>" that provisioning generates. Not the same as what we DISPLAY: a generated
+ * name is shown as the name (never the wallet); only `isGenericName` names fall back.
+ */
+export function shouldAskForName(name: string | null | undefined, email?: string | null): boolean {
+  return isGenericName(name, email) || isGeneratedTeraName((name ?? '').trim());
 }

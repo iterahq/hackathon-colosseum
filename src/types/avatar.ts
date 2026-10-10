@@ -58,6 +58,8 @@ export interface AvatarOffer {
 }
 
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
+/** File stem of the default's art: `tera_normal` now points at `tera_a_normal` (`image_key`); the API's URLs win once loaded. The old stem still answers 200. */
+const DEFAULT_ART = 'tera_a_normal';
 
 const ART = 'https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars';
 /** Shipped with the app: the last resort when the published art cannot be loaded. */
@@ -69,9 +71,9 @@ export const DEFAULT_AVATAR: LearnerAvatar = {
   title: 'Tera',
   rarity: 'common',
   tierName: 'Tera',
-  imageUrl: `${ART}/${DEFAULT_AVATAR_KEY}.webp`,
-  thumbUrl: `${ART}/${DEFAULT_AVATAR_KEY}_128.webp`,
-  chipUrl: `${ART}/${DEFAULT_AVATAR_KEY}_chip.webp`,
+  imageUrl: `${ART}/${DEFAULT_ART}.webp`,
+  thumbUrl: `${ART}/${DEFAULT_ART}_128.webp`,
+  chipUrl: `${ART}/${DEFAULT_ART}_chip.webp`,
   assetAddress: null,
   allowsOutfit: true,
 };

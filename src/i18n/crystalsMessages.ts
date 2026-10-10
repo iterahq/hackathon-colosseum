@@ -2,6 +2,7 @@
 export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'crystals.name': 'Cristais de fênix',
+    'look.outfitMisfit': 'Esta peça não encaixa neste rosto.',
     'crystals.chip': 'Cristais: {n}',
     'crystals.sheet.title': 'Cristais de fênix',
     'crystals.sheet.balance': 'Seu saldo',
@@ -67,6 +68,7 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   },
   en: {
     'crystals.name': 'Phoenix Crystals',
+    'look.outfitMisfit': 'This piece does not fit this face.',
     'crystals.chip': 'Crystals: {n}',
     'crystals.sheet.title': 'Phoenix Crystals',
     'crystals.sheet.balance': 'Your balance',

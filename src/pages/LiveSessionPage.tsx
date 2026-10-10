@@ -103,7 +103,7 @@ import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { clearLearnerLessonState } from '@/utils/liveLessonReset';
 import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
 import { CHAT_LIVE_EVENT } from '@/services/chatLiveBuffer.service';
-import { isGenericName } from '@/utils/isGenericName';
+import { isGenericName, shouldAskForName } from '@/utils/isGenericName';
 import { useMembership } from '@/hooks/useMembership';
 import { usePodiumChain } from '@/hooks/useClassPodium';
 import { isInstructor as isStaffInstructor } from '@/services/membership.service';
@@ -687,7 +687,7 @@ export default function LiveSessionPage() {
     !ended &&
     !gatePassed &&
     !profileLoading &&
-    isGenericName(profile?.displayName, profile?.email);
+    shouldAskForName(profile?.displayName, profile?.email);
 
   // Where the surface EXITS. The X and the podium CTA both point at `/` for a
   // member; for a guest that route is RequireAuth+RequireSubscription, so it

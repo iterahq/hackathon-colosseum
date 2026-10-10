@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isGenericName } from './isGenericName';
+import { isGenericName, shouldAskForName } from './isGenericName';
 
 describe('isGenericName', () => {
   it('flags empty / null / placeholder names', () => {
@@ -42,9 +42,15 @@ describe('isGenericName', () => {
   });
 });
 
-describe('isGenericName, generated wallet names', () => {
-  it('treats "Tera <Word> <3 digits>" as generic', () => {
-    expect(isGenericName('Tera Curioso 482')).toBe(true);
-    expect(isGenericName('Tera Curioso')).toBe(false);
+describe('generated wallet names: displayed, but asked about once', () => {
+  it('is not generic for display: the name is shown, never the wallet', () => {
+    expect(isGenericName('Tera Curioso 482')).toBe(false);
+  });
+  it('is askable', () => {
+    expect(shouldAskForName('Tera Curioso 482')).toBe(true);
+    expect(shouldAskForName('CQzi…DAhW')).toBe(true);
+    expect(shouldAskForName('')).toBe(true);
+    expect(shouldAskForName('Marina')).toBe(false);
+    expect(shouldAskForName('Tera Curioso')).toBe(false);
   });
 });
