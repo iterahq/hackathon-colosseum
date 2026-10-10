@@ -5,6 +5,7 @@ import { CLUSTER } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { openGift, walletUser } from '../_shared/gift-store.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
+import { SHOP_ACCEPT_KEY, currencyOffered, parseAccept } from '../_shared/shop-accept.ts';
 import { expiresAt, fundsCheck } from '../_shared/purchase-verify.ts';
 import { RpcError, balanceOf, blockHeight, latestBlockhash } from '../_shared/rpc.ts';
 import { ITEM_COLUMNS, ITEM_HANDLERS, PURCHASE_COLUMNS, type PurchaseRow, type ShopItem } from '../_shared/shop-items.ts';
@@ -102,6 +103,10 @@ Deno.serve(async (request) => {
     if ((item.price_lamports as number | null) === null) return json({ error: item.kind === 'border' ? 'not_for_sale' : 'free_item' }, 409, cors);
     if (!Number.isSafeInteger(item.price_lamports) || item.price_lamports <= 0) throw new Error(`shop_items: bad price for ${item.key}`);
 
+    // The shop switch: SOL is taken for this item only if the global value and the item's own flag both say so.
+    const config = await loadConfig(db);
+    if (!currencyOffered(parseAccept(config[SHOP_ACCEPT_KEY]), item, 'sol')) return json({ error: 'currency_disabled' }, 409, cors);
+
     // A gift names its recipient by wallet address; the purchase is then scoped to that learner.
     let normalizedRef = refId.toLowerCase();
     let recipientWallet: string | null = null;
@@ -115,7 +120,7 @@ Deno.serve(async (request) => {
     const verdict = await ITEM_HANDLERS[item.kind].canBuy({ db, userId: caller.iteraUserId, item, refId: normalizedRef });
     if (!verdict.ok) return json({ error: verdict.error }, INELIGIBLE_STATUS[verdict.error], cors);
 
-    const { treasury } = await loadConfig(db);
+    const { treasury } = config;
     if (!isSolanaAddress(treasury) || treasury === caller.wallet) return json({ error: 'shop_not_configured' }, 503, cors);
 
     let chain: { balance: bigint; blockhash: string; lastValidBlockHeight: number; height: number };

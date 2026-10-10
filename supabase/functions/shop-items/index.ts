@@ -3,8 +3,9 @@ import { includedWithMap, shopAvatarFields, type AvatarAssetRow, type AvatarCata
 import { resolveCaller } from '../_shared/caller.ts';
 import { ensureCompanion, loadInventory, loadStats, type InventoryEntry } from '../_shared/companion-store.ts';
 import { pickText } from '../_shared/credential.ts';
-import { borderOf, isThemeDefault } from '../_shared/crystals.ts';
-import { serviceClient } from '../_shared/db.ts';
+import { THEME_KINDS, borderOf, isThemeDefault, themeColor } from '../_shared/crystals.ts';
+import { loadConfig, serviceClient } from '../_shared/db.ts';
+import { SHOP_ACCEPT_KEY, parseAccept, resolvedCurrencies } from '../_shared/shop-accept.ts';
 import { bearerToken, corsHeaders, json, langOf } from '../_shared/http.ts';
 import { ITEM_COLUMNS, type ShopItem } from '../_shared/shop-items.ts';
 import { isItemKind } from '../_shared/shop-rules.ts';
@@ -18,6 +19,7 @@ Deno.serve(async (request) => {
   try {
     const db = serviceClient();
     const lang = langOf(request, 'pt');
+    const acceptPromise = loadConfig(db);
     const { data, error } = await db.from('shop_items').select(ITEM_COLUMNS).eq('active', true).order('sort').order('key');
     if (error) throw new Error(`shop_items: ${error.message}`);
 
@@ -26,7 +28,7 @@ Deno.serve(async (request) => {
     let level: number | null = null;
     let wornAvatar: string | null = null;
     let avatarRows: AvatarAssetRow[] = [];
-    let wornBorder: string | null = null;
+    let chosenTheme: Record<string, string | null | undefined> = {};
     const hasAvatars = ((data ?? []) as ShopItem[]).some((item) => item.kind === 'avatar');
     // Avatars: the catalog with its tiers, and how many units of each are gone. Never fatal for the other shelves.
     let avatars: { catalog: AvatarCatalog; supply: Map<string, AvatarSupply> } | null = null;
@@ -45,9 +47,9 @@ Deno.serve(async (request) => {
         const companion = await ensureCompanion(db, caller.iteraUserId);
         inventory = await loadInventory(db, caller.iteraUserId, companion.outfit);
         wornAvatar = companion.avatar;
-        const { data: theme, error: themeError } = await db.from('learner_themes').select('border_key').eq('user_id', caller.iteraUserId).maybeSingle();
+        const { data: theme, error: themeError } = await db.from('learner_themes').select('background_key,icon_key,border_key').eq('user_id', caller.iteraUserId).maybeSingle();
         if (themeError) throw new Error(`learner_themes: ${themeError.message}`);
-        wornBorder = (theme?.border_key as string | null | undefined) ?? null;
+        chosenTheme = { background: theme?.background_key, app_icon: theme?.icon_key, border: theme?.border_key };
         if (avatars) avatarRows = await loadAvatarRows(db, caller.iteraUserId);
         // The level is only read when some item on sale can also be earned.
         if (((data ?? []) as ShopItem[]).some((item) => unlockLevelOf(item.effect) !== null)) {
@@ -57,6 +59,7 @@ Deno.serve(async (request) => {
     }
 
     // A gift is bought on someone's profile, not in the shop list: it is listed only when asked for (`?with=gift`).
+    const accept = parseAccept((await acceptPromise)[SHOP_ACCEPT_KEY]);
     const includedWith = avatars ? includedWithMap(avatars.catalog) : new Map<string, string>();
     const withGift = new URL(request.url).searchParams.get('with') === 'gift';
     const items = ((data ?? []) as ShopItem[])
@@ -66,12 +69,15 @@ Deno.serve(async (request) => {
           const avatar = avatars.catalog.items.get(item.key);
           if (avatar) {
             const own = avatarRows.find((row) => row.item_key === item.key) ?? null;
-            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar }), art: item.art, owned_refs: [] };
+            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar }), ...resolvedCurrencies(accept, item), art: item.art, owned_refs: [] };
           }
         }
         const held = inventory.filter((entry) => entry.item_key === item.key);
-        if (item.kind === 'border') {
+        if (THEME_KINDS.includes(item.kind)) {
           const isDefault = isThemeDefault(item);
+          const owned = isDefault || held.length > 0;
+          const chosen = chosenTheme[item.kind];
+          const chosenOwned = chosen ? inventory.some((entry) => entry.item_key === chosen) : false;
           return {
             key: item.key,
             kind: item.kind,
@@ -81,12 +87,14 @@ Deno.serve(async (request) => {
             price_lamports: item.price_lamports,
             price_label: item.price_label,
             price_crystals: item.price_crystals ?? null,
+            ...resolvedCurrencies(accept, item),
             for_sale: !isDefault && item.price_lamports !== null,
             included_with: includedWith.get(item.key) ?? null,
-            border: borderOf(item),
+            ...(item.kind === 'border' ? { border: borderOf(item) } : { color: themeColor(item) }),
             art: item.art,
-            owned: isDefault || held.length > 0,
-            equipped: isDefault ? wornBorder === null || wornBorder === item.key : wornBorder === item.key && held.length > 0,
+            owned,
+            // The default is worn while nothing else owned is chosen.
+            equipped: isDefault ? !chosen || !chosenOwned || chosen === item.key : chosen === item.key && held.length > 0,
             owned_refs: held.map((entry) => entry.ref_id),
           };
         }
@@ -103,6 +111,7 @@ Deno.serve(async (request) => {
           price_lamports: item.price_lamports,
           price_label: item.price_label,
           price_crystals: item.price_crystals ?? null,
+          ...resolvedCurrencies(accept, item),
           art: item.art,
           owned: held.length > 0,
           equipped: held.some((entry) => entry.equipped),

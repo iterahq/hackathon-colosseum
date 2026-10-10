@@ -1,6 +1,6 @@
 import { GLOBAL_REF } from './awards.ts';
 
-export const ITEM_KINDS = ['life', 'outfit', 'ink', 'frame', 'gift', 'avatar', 'border'] as const;
+export const ITEM_KINDS = ['life', 'outfit', 'ink', 'frame', 'gift', 'avatar', 'border', 'background', 'app_icon'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
 export type IneligibleCode =
@@ -67,7 +67,9 @@ export function eligibility(kind: ItemKind, facts: EligibilityFacts): Eligibilit
       if ((facts.giftsReceivedToday ?? 0) >= GIFT_DAILY_LIMIT) return refuse('gift_limit');
       return facts.lives < facts.maxLives + (facts.bonusLives ?? 0) ? { ok: true } : refuse('recipient_full');
     case 'border':
-      // Global and owned once; the default and the signature ones are not sold (the price check comes first).
+    case 'background':
+    case 'app_icon':
+      // Global and owned once; the defaults and the signature borders are not sold (the price and currency checks come first).
       if (!isGlobal) return refuse('invalid_ref');
       return facts.owned ? refuse('already_owned') : { ok: true };
     case 'avatar':

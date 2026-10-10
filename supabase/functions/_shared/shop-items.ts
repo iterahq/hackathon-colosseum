@@ -11,7 +11,7 @@ import { applyLifePack, lifePackOf, refillLives, regenerate, type LifePack } fro
 import { inSeason, seasonData } from './seasons.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
 
-export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort,price_crystals';
+export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort,price_crystals,sol_enabled,crystals_enabled';
 export const PURCHASE_COLUMNS =
   'id,user_id,item_key,ref_id,lamports,price_usd_cents,status,wallet,tx_signature,memo,last_valid_block_height,expires_at,paid_at,applied_at,refund_due_at';
 
@@ -30,6 +30,9 @@ export interface ShopItem {
   sort: number;
   /** What the item costs in Phoenix Crystals; `null`: not sold for crystals. */
   price_crystals?: number | null;
+  /** The item's own currency switches (`shop_accept` is the global one); a missing flag reads as on. */
+  sol_enabled?: boolean;
+  crystals_enabled?: boolean;
 }
 
 export interface PurchaseRow {
@@ -178,6 +181,19 @@ const passportCosmetic = (kind: 'ink' | 'frame'): ItemHandler => ({
   },
 });
 
+/** A theme item: nobody buys what everybody has (the default), then owned once. */
+const themeItem = (kind: 'border' | 'background' | 'app_icon'): ItemHandler => ({
+  async canBuy(context) {
+    if (context.refId !== GLOBAL_REF) return eligibility(kind, { ...NO_FACTS, refId: context.refId });
+    if (context.item.effect?.default === true) return { ok: false, error: 'already_owned' };
+    return eligibility(kind, { ...NO_FACTS, refId: context.refId, owned: await owns(context) });
+  },
+  async apply(context) {
+    await grant(context);
+    return { companion: false, passport: null, chain: null };
+  },
+});
+
 /** A life pack, exactly once per purchase: the event row is the lock, dropped again if the change fails. */
 async function applyPackOnce(db: IteraClient, userId: string, purchaseId: string, pack: LifePack): Promise<void> {
   const attemptId = `purchase:${purchaseId}`;
@@ -253,17 +269,10 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       return { companion: false, passport: null, chain: delivery.write, gift: delivery.gift };
     },
   },
-  // A profile border: global, owned once, worn through `POST /crystals/equip`.
-  border: {
-    async canBuy(context) {
-      if (context.refId !== GLOBAL_REF) return eligibility('border', { ...NO_FACTS, refId: context.refId });
-      return eligibility('border', { ...NO_FACTS, refId: context.refId, owned: await owns(context) });
-    },
-    async apply(context) {
-      await grant(context);
-      return { companion: false, passport: null, chain: null };
-    },
-  },
+  // A profile border, a background or an app icon colour: global, owned once, worn through `POST /crystals/equip`.
+  border: themeItem('border'),
+  background: themeItem('background'),
+  app_icon: themeItem('app_icon'),
   // A collectible avatar: one per learner, a serial out of a (possibly limited) supply, minted to the buyer's wallet.
   avatar: {
     async canBuy({ db, userId, item, refId }) {

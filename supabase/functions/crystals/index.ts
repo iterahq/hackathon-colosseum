@@ -40,6 +40,7 @@ import {
   type ThemeSlot,
 } from '../_shared/crystals.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
+import { SHOP_ACCEPT_KEY, currencyOffered, parseAccept, resolvedCurrencies, type ShopAccept } from '../_shared/shop-accept.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
 import { applyLifePack, lifePackOf, refillLives, regenerate } from '../_shared/lives.ts';
 import { ApplyRefusal, purchasedAvatarView, type ApplyOutcome } from '../_shared/shop-items.ts';
@@ -71,11 +72,13 @@ async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Re
   const token = tokenView(account, config[CRYSTAL_MINT_CONFIG_KEY] ?? null, caller.wallet);
   if (caller.wallet && !token.mirrored) inBackground(mirrorCrystals(db, userId, caller.wallet));
 
+  const accept = parseAccept(config[SHOP_ACCEPT_KEY]);
   const slotOf = (kind: string) => (Object.keys(THEME_SLOTS) as ThemeSlot[]).find((slot) => THEME_SLOTS[slot] === kind) as ThemeSlot;
   return {
     balance: account.balance,
     ...token,
-    prices: pricesOf(items),
+    accept,
+    prices: pricesOf(items.filter((item) => currencyOffered(accept, item, 'crystals'))),
     earn_rules: earnRulesView(lang),
     ledger,
     theme,
@@ -88,6 +91,7 @@ async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Re
         title: pickText(item.title_i18n, lang),
         description: pickText(item.description_i18n, lang),
         price_crystals: priceOf(item),
+        ...resolvedCurrencies(accept, item),
         for_sale: !isThemeDefault(item) && (priceOf(item) !== null || item.price_lamports != null),
         included_with: includedWith.get(item.key) ?? null,
         default: isThemeDefault(item),
@@ -223,20 +227,20 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
   return { status: 200, body };
 }
 
-async function spend(db: IteraClient, caller: Caller, body: Record<string, unknown>): Promise<Answer> {
+async function spend(db: IteraClient, caller: Caller, body: Record<string, unknown>, accept: ShopAccept): Promise<Answer> {
   const { item_key: itemKey, ref_id: refId = GLOBAL_REF } = body;
   const qty = lifeQty(body.qty);
   const lang: Lang = body.lang === 'en' ? 'en' : 'pt';
   if (typeof itemKey !== 'string' || itemKey.length === 0 || itemKey.length > 64 || typeof refId !== 'string' || !isUuid(refId) || qty === null) {
     return { status: 400, body: { error: 'invalid_body' } };
   }
-  if (itemKey === LIFE_KEY) return spendOnLives(db, caller, qty);
+  if (itemKey === LIFE_KEY) return accept === 'sol' ? { status: 400, body: { error: 'not_for_crystals' } } : spendOnLives(db, caller, qty);
 
   const item = await loadCrystalItem(db, itemKey);
   if (!item) return { status: 404, body: { error: 'item_not_found' } };
   if (!item.active) return { status: 409, body: { error: 'item_inactive' } };
   const price = priceOf(item);
-  if (price === null || !CRYSTAL_HANDLERS[item.kind]) return { status: 400, body: { error: 'not_for_crystals' } };
+  if (price === null || !CRYSTAL_HANDLERS[item.kind] || !currencyOffered(accept, item, 'crystals')) return { status: 400, body: { error: 'not_for_crystals' } };
   if (item.kind === 'life') return spendOnRefill(db, caller, item, price, lang);
   return spendOnItem(db, caller, item, price, refId.toLowerCase(), lang);
 }
@@ -285,7 +289,7 @@ Deno.serve(async (request) => {
 
     const body = await readJsonObject(request);
     if (!body) return json({ error: 'invalid_body' }, 400, cors);
-    const answer = route === 'spend' ? await spend(db, caller, body) : await equip(db, caller, body);
+    const answer = route === 'spend' ? await spend(db, caller, body, parseAccept((await loadConfig(db))[SHOP_ACCEPT_KEY])) : await equip(db, caller, body);
     return json(answer.body, answer.status, cors);
   } catch (error) {
     console.error('crystals failed', error);
