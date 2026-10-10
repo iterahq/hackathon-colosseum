@@ -14,6 +14,12 @@ export async function equipOutfit(outfit: string | null, lang: string): Promise<
   return toSnapshot(data, mocked);
 }
 
+/** Wears a free avatar or an NFT avatar the learner owns. */
+export async function equipAvatar(avatar: string, lang: string): Promise<CompanionSnapshot> {
+  const { data, mocked } = await callShop('companion', { body: { lang, equip: { avatar } } });
+  return toSnapshot(data, mocked);
+}
+
 /** One wrong answer. Idempotent on `attemptId`: the server charges an attempt once. */
 export async function reportLifeLost(attemptId: string, activityId: string): Promise<LivesUpdate> {
   const { data } = await callShop('lives', { body: { action: 'lose', attempt_id: attemptId, activity_id: activityId } });

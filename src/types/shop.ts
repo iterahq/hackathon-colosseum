@@ -1,5 +1,6 @@
 /** Shapes of the lives / shop / companion backend, normalised to camelCase by the services. */
 import type { PurchaseCircuit } from '@/types/circuit';
+import type { AvatarOffer, LearnerAvatar } from '@/types/avatar';
 import type { GiftReceipt } from '@/types/gift';
 
 export interface LivesState {
@@ -25,7 +26,7 @@ export interface CompanionState {
   imageUrl: string | null;
 }
 
-export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame';
+export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar';
 
 export interface InventoryEntry {
   itemKey: string;
@@ -44,6 +45,8 @@ export interface ChainProof {
 export interface CompanionSnapshot {
   lives: LivesState;
   companion: CompanionState;
+  /** Always present: the default avatar when the learner chose none or the backend sent none. */
+  avatar: LearnerAvatar;
   inventory: InventoryEntry[];
   /** The learner's wallet address; null for e-mail users. */
   wallet: string | null;
@@ -76,6 +79,8 @@ export interface ShopItem {
   ownedRefs: string[];
   /** Present on an item that is also earned: free to claim once the learner reaches `level`. */
   unlock?: ShopUnlock | null;
+  /** Present on items of kind `avatar`. */
+  avatar?: AvatarOffer | null;
 }
 
 export interface ShopUnlock {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CompanionSnapshot, ShopItem } from '@/types/shop';
 import { shelvesOf, withCompanionState } from './shop';
+import { DEFAULT_AVATAR } from '@/types/avatar';
 
 const item = (key: string, kind: ShopItem['kind'], patch: Partial<ShopItem> = {}): ShopItem => ({
   key,
@@ -20,7 +21,8 @@ const item = (key: string, kind: ShopItem['kind'], patch: Partial<ShopItem> = {}
 const snapshot = (outfit: string | null, owned: string[]): CompanionSnapshot => ({
   lives: { current: 5, max: 5, nextRegenAt: null, regenSeconds: 1200 },
   companion: { assetAddress: null, mintStatus: 'unclaimed', explorerUrl: null, outfit, level: 1, xp: 0, streak: 0, imageUrl: null },
-  inventory: owned.map((itemKey) => ({ itemKey, kind: 'outfit', qty: 1, equipped: itemKey === outfit })),
+  avatar: DEFAULT_AVATAR,
+    inventory: owned.map((itemKey) => ({ itemKey, kind: 'outfit', qty: 1, equipped: itemKey === outfit })),
   wallet: null,
   mocked: true,
 });
