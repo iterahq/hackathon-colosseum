@@ -7,7 +7,7 @@ export interface LivesState {
   regenSeconds: number;
 }
 
-export type OutfitKey = 'outfit_glasses' | 'outfit_crown' | 'outfit_headphones';
+export type OutfitKey = 'outfit_glasses' | 'outfit_crown' | 'outfit_headphones' | 'outfit_laurel';
 
 export interface CompanionState {
   assetAddress: string | null;
