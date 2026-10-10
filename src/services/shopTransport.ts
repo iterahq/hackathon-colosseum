@@ -6,7 +6,7 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { mockShopCall } from '@/services/shopMock';
 
-export type ShopFunction = 'companion' | 'lives' | 'shop-items' | 'purchase-intent' | 'purchase-confirm' | 'purchase-submit' | 'wallet-faucet';
+export type ShopFunction = 'companion' | 'lives' | 'shop-items' | 'purchase-intent' | 'purchase-confirm' | 'purchase-submit' | 'wallet-faucet' | 'link-wallet';
 
 export class ShopCallError extends Error {
   constructor(

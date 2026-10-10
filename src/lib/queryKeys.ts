@@ -137,6 +137,10 @@ export const queryKeys = {
     list: ['videoCourses', 'list'] as const,
     progress: (userId: string) => ['videoCourses', 'progress', userId] as const,
   },
+  // Which Solana wallet the signed-in learner has (sign-in identity or linked).
+  walletLink: {
+    mine: (userId: string) => ['wallet-link', userId] as const,
+  },
   // Tera companion (lives, outfit, inventory) and the shop list; both per learner, the list also per language.
   companion: {
     mine: (userId: string) => ['companion', userId] as const,
