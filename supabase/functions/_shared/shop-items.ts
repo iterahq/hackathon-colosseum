@@ -67,6 +67,8 @@ export interface ItemHandler {
   apply(context: ApplyContext): Promise<ApplyOutcome>;
 }
 
+/** How long a refill waits for a mirror already in flight before leaving the write to its holder. */
+const REFILL_MIRROR_WAIT_MS = 6_000;
 const NO_FACTS: Omit<EligibilityFacts, 'refId'> = { lives: 0, maxLives: 0, owned: false, passportMinted: false };
 
 async function owns({ db, userId, item, refId }: ShopContext): Promise<boolean> {
@@ -167,7 +169,8 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
           );
         if (error) throw new Error(`life_events: ${error.message}`);
       }
-      const mirror = await syncMirror(db, userId);
+      // The refill is the proof the buyer waits for: take the mirror even if a write is in flight.
+      const mirror = await syncMirror(db, userId, REFILL_MIRROR_WAIT_MS);
       return { companion: true, passport: null, chain: mirror.write };
     },
   },
