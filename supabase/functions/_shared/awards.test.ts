@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeAwards, dayIncomplete, GLOBAL_REF, localParts, type Award, type AwardsInput, type ProgressRow } from './awards';
+import { computeAwards, dayIncomplete, dayPendingReview, GLOBAL_REF, localParts, type Award, type AwardsInput, type ProgressRow } from './awards';
 
 const TZ = 'America/Sao_Paulo';
 const PROGRAM = 'p1';
@@ -250,5 +250,62 @@ describe('weekly_goal', () => {
     const awards = run(progress);
     expect(keys(awards)).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass', 'insert:weekly_goal']);
     expect(keys(run(finish('l1', '2026-10-07T15:00:00Z')))).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
+  });
+});
+
+describe('server-graded completions', () => {
+  const CUTOFF = '2026-10-11T12:00:00Z';
+  const attempt = (activity_id: string, mode: 'server' | 'self_reported' | 'participation' = 'server') =>
+    [activity_id, { activity_id, mode, answer_hash: 'a'.repeat(64), spec_hash: 'b'.repeat(64), created_at: '2026-10-12T15:00:00Z' }] as const;
+  const graded = (progress: ProgressRow[], attempts: ReturnType<typeof attempt>[], existing: Award[] = []) => ({
+    ...tree(),
+    progress,
+    attempts: new Map(attempts),
+    proofCutoff: CUTOFF,
+    existing: existing.map((award) => ({ achievement_key: award.key, ref_id: award.ref_id, state: award.state })),
+    timeZone: TZ,
+  });
+  const day = (at: string, byClient: boolean): ProgressRow[] => [
+    { activity_id: 'l1-a', status: 'completed', completed_at: at, written_by_client: byClient },
+    { activity_id: 'l1-b', status: 'completed', completed_at: new Date(new Date(at).getTime() + 5_000).toISOString(), written_by_client: byClient },
+  ];
+
+  it('a completion a client recorded after the cutoff, with no attempt, stamps nothing', () => {
+    const input = graded(day('2026-10-12T15:00:00Z', true), [attempt('l1-a')]);
+    expect(computeAwards(input)).toEqual([]);
+    expect(dayPendingReview(input, 'l1')).toEqual({ lesson_id: 'l1', reason: 'unverified' });
+  });
+
+  it('a day backed by attempts is stamped and says what stands behind it', () => {
+    const awards = computeAwards(graded(day('2026-10-12T15:00:00Z', false), [attempt('l1-a'), attempt('l1-b', 'self_reported')]));
+    expect(keys(awards)).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
+    const proof = { verified: 1, self_reported: 1, participation: 0, legacy: 0 };
+    expect(find(awards, 'day_stamp')?.state.proof).toMatchObject(proof);
+    expect(find(awards, 'trail_pass')?.state.proof).toMatchObject(proof);
+    expect((find(awards, 'day_stamp')?.state.proof as { evidence: string }).evidence).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('answers sent in one burst are held by the floor even though the server recorded them', () => {
+    const burst: ProgressRow[] = activitiesOf('l1').map((activity_id) => ({ activity_id, status: 'completed', completed_at: '2026-10-12T15:00:00Z', written_by_client: false }));
+    const input = graded(burst, [attempt('l1-a'), attempt('l1-b')]);
+    expect(computeAwards(input)).toEqual([]);
+    expect(dayPendingReview(input, 'l1')?.reason).toBe('too_fast');
+  });
+
+  it('a legacy day from before the cutoff keeps counting and carries no proof', () => {
+    const awards = computeAwards(graded(day('2026-10-10T15:00:00Z', true), []));
+    expect(keys(awards)).toEqual([]);
+    const withResults = computeAwards({ ...graded(day('2026-10-10T15:00:00Z', true), []), passedActivityIds: ['l1-a', 'l1-b'] });
+    expect(keys(withResults)).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
+    expect(find(withResults, 'trail_pass')?.state).not.toHaveProperty('proof');
+  });
+
+  it('a stored passport whose proof came back with reordered keys is not rewritten', () => {
+    const input = graded(day('2026-10-12T15:00:00Z', false), [attempt('l1-a'), attempt('l1-b')]);
+    const first = computeAwards(input);
+    const reordered = first.map((award) =>
+      award.state.proof ? { ...award, state: { ...award.state, proof: Object.fromEntries(Object.entries(award.state.proof as object).reverse()) } } : award,
+    );
+    expect(computeAwards({ ...input, existing: reordered.map((award) => ({ achievement_key: award.key, ref_id: award.ref_id, state: award.state })) })).toEqual([]);
   });
 });

@@ -1,4 +1,5 @@
 import { lessonPlausibility, type ReviewReason } from './plausibility.ts';
+import { combineProofs, lessonProof, type LessonProof, type PassingAttempt } from './proof.ts';
 import { WEEKLY_GOAL, weeklyGoalHits } from './weekly-goal.ts';
 
 export const GLOBAL_REF = '00000000-0000-0000-0000-000000000000';
@@ -68,6 +69,13 @@ export interface AwardsInput {
   progress: ProgressRow[];
   /** Activities the learner has a passed attempt for (`activity_results`). Read by the plausibility floor. */
   passedActivityIds?: Iterable<string>;
+  /** The first passing attempt the `grade` function recorded per activity (`graded_attempts`). */
+  attempts?: ReadonlyMap<string, PassingAttempt>;
+  /**
+   * Since this instant a completion is written by the server only (migration 0191). A client-recorded
+   * completion from before it is legacy; one from after it, without an attempt, is not a completion.
+   */
+  proofCutoff?: string | null;
   existing: ExistingAward[];
   /** IANA zone that decides calendar days and hours, e.g. `America/Sao_Paulo`. */
   timeZone: string;
@@ -85,6 +93,8 @@ export interface PassportState {
   stamped_days: number[];
   tier: Tier;
   completed_at: string | null;
+  /** What stands behind the stamped days, once any of them has server-recorded attempts. */
+  proof?: LessonProof;
 }
 
 export interface Award {
@@ -169,7 +179,7 @@ export interface PendingReview {
   reason: ReviewReason;
 }
 
-type ReviewInput = Pick<AwardsInput, 'lessons' | 'activities' | 'progress' | 'passedActivityIds' | 'existing'>;
+type ReviewInput = Pick<AwardsInput, 'lessons' | 'activities' | 'progress' | 'passedActivityIds' | 'attempts' | 'proofCutoff' | 'existing'>;
 
 /**
  * A lesson is done when every counted activity is completed; it happened when
@@ -181,6 +191,8 @@ function reviewLessons(input: ReviewInput): { done: CompletedLesson[]; pending: 
   const completedAtByActivity = completedAtOf(input.progress);
   const byClient = new Set(input.progress.filter((row) => row.written_by_client === true).map((row) => row.activity_id));
   const passed = new Set(input.passedActivityIds ?? []);
+  const attempts = input.attempts ?? new Map<string, PassingAttempt>();
+  const cutoff = input.proofCutoff ? new Date(input.proofCutoff).getTime() : Number.NaN;
   const stamped = new Set(input.existing.filter((row) => row.achievement_key === 'day_stamp').map((row) => row.ref_id));
   const activitiesByLesson = groupBy(input.activities, (activity) => activity.lesson_id);
   const done: CompletedLesson[] = [];
@@ -191,12 +203,20 @@ function reviewLessons(input: ReviewInput): { done: CompletedLesson[]; pending: 
     const times = activities.map((activity) => completedAtByActivity.get(activity.id));
     if (times.some((time) => time === undefined)) continue;
     if (!stamped.has(lesson.id)) {
+      const unverified = activities.some(
+        (activity, index) => byClient.has(activity.id) && !attempts.has(activity.id) && new Date(times[index] as string).getTime() >= cutoff,
+      );
+      if (unverified) {
+        pending.push({ lesson_id: lesson.id, reason: 'unverified' });
+        continue;
+      }
+      // A completion the server recorded after grading is judged by the floor like one a client recorded.
       const reason = lessonPlausibility(
         activities.map((activity, index) => ({
           activityId: activity.id,
           completedAt: times[index] as string,
-          writtenByClient: byClient.has(activity.id),
-          hasPassedResult: passed.has(activity.id),
+          writtenByClient: byClient.has(activity.id) || attempts.has(activity.id),
+          hasPassedResult: passed.has(activity.id) || attempts.has(activity.id),
         })),
       );
       if (reason) {
@@ -235,8 +255,18 @@ function streakClosedBy(done: CompletedLesson[], length: number, timeZone: strin
   return null;
 }
 
+/** Key order is not a difference: a stored `jsonb` object comes back with its keys reordered. */
+function stable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stable);
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return Object.fromEntries(entries.map(([key, item]) => [key, stable(item)]));
+  }
+  return value;
+}
+
 function sameJson(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(stable(a)) === JSON.stringify(stable(b));
 }
 
 /**
@@ -264,6 +294,9 @@ export function computeAwards(input: AwardsInput): Award[] {
   const unitsByProgram = groupBy(input.units, (unit) => unit.program_id);
   const activityLessonIds = new Set(input.activities.map((activity) => activity.lesson_id));
   const doneByUnit = groupBy(done, (entry) => entry.lesson.unit_id);
+  const activitiesByLesson = groupBy(input.activities, (activity) => activity.lesson_id);
+  const attempts = input.attempts ?? new Map<string, PassingAttempt>();
+  const proofOf = (lessonId: string) => lessonProof((activitiesByLesson.get(lessonId) ?? []).map((activity) => activity.id), attempts);
 
   const entitled: Omit<Award, 'op'>[] = [];
   const completedUnits = new Map<string, string>();
@@ -295,9 +328,12 @@ export function computeAwards(input: AwardsInput): Award[] {
       tier: isComplete ? 'gold' : 'bronze',
       completed_at: completedAt,
     };
+    const trailProof = combineProofs(stampedLessons.flatMap((lesson) => proofOf(lesson.id) ?? []));
+    if (trailProof) passport.proof = trailProof;
     entitled.push({ key: 'trail_pass', ref_id: unit.id, earned_at: unitDone[0].completedAt, state: { ...passport } });
 
     for (const entry of unitDone) {
+      const proof = proofOf(entry.lesson.id);
       entitled.push({
         key: 'day_stamp',
         ref_id: entry.lesson.id,
@@ -308,6 +344,7 @@ export function computeAwards(input: AwardsInput): Award[] {
           total_days: countedLessons.length,
           lesson_title: entry.lesson.title,
           trail_title: unit.title,
+          ...(proof ? { proof } : {}),
         },
       });
     }

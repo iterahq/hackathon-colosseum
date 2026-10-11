@@ -92,6 +92,16 @@ describe('evidence', () => {
     });
   });
 
+  it('carries the graded answers and their share once the server graded any (version 2)', () => {
+    const graded = { ...input, verified: '1/2', activities: [{ ...input.activities[0], attempt: 'f'.repeat(64) }, input.activities[1]] };
+    expect(JSON.parse(evidenceDocument(graded))).toMatchObject({
+      v: 2,
+      verified: '1/2',
+      activities: [['a', '2026-10-10T10:00:01.000Z', null], ['b', '2026-10-10T10:00:05.000Z', 'f'.repeat(64)]],
+    });
+    expect(evidenceDocument({ ...input, verified: null })).toBe(evidenceDocument(input));
+  });
+
   it('hashes differently for another wallet or another claim', async () => {
     const base = await sha256Hex(evidenceDocument(input));
     expect(base).toMatch(/^[0-9a-f]{64}$/);

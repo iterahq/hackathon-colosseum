@@ -1,3 +1,4 @@
+import { isLessonProof, verifiedShare } from './proof.ts';
 import type { ArtInput, Lang } from './art.ts';
 import type { I18nText, Tier } from './awards.ts';
 import { claimAttributes, claimsOf } from './claims.ts';
@@ -113,6 +114,7 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       { key: 'tier', value: tierOf(row, catalog) },
       { key: 'completed_at', value: typeof row.state.completed_at === 'string' ? row.state.completed_at : '' },
       { key: 'learner', value: row.wallet_address ?? '' },
+      ...(isLessonProof(row.state.proof) ? [{ key: 'server_verified', value: verifiedShare(row.state.proof) }] : []),
       ...(ink ? [{ key: 'ink', value: ink }] : []),
       ...(frame ? [{ key: 'frame', value: frame }] : []),
       ...endorsementAttributes(endorsementsOf(row.state)),
@@ -249,6 +251,10 @@ export function buildMetadata(
     );
   }
   if (row.achievement_key === 'day_stamp') attributes.push({ trait_type: 'Day', value: numberOf(row.state.day) });
+  const proof = row.achievement_key === 'day_stamp' ? row.state.proof : page?.state.proof;
+  if (isLessonProof(proof)) {
+    attributes.push({ trait_type: 'Server-verified answers', value: verifiedShare(proof) }, { trait_type: 'Proof of learning', value: proof.evidence });
+  }
   const position = podiumPositionOf(row.achievement_key);
   if (position !== null) {
     attributes.push(

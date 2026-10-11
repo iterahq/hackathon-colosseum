@@ -11,7 +11,7 @@ export const FULL_FLOOR_ACTIVITIES = 15;
 /** Shorter lessons scale down: this much per step between two activities. */
 const SPAN_PER_STEP_MS = Math.ceil(MIN_LESSON_SPAN_MS / (FULL_FLOOR_ACTIVITIES - 1));
 
-export type ReviewReason = 'too_fast' | 'missing_results';
+export type ReviewReason = 'too_fast' | 'missing_results' | 'unverified';
 
 export interface LessonCompletion {
   activityId: string;

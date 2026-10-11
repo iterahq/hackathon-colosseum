@@ -3,6 +3,8 @@ import { claimsOfDay, graphOf, nextClaim, type CapabilityClaim, type CapabilityG
 
 export const CLAIM_PREFIX = 'claim:';
 export const EVIDENCE_VERSION = 1;
+/** Version 2 adds, per activity, the hash of the answer the server graded, and the share it graded. */
+export const EVIDENCE_VERSION_GRADED = 2;
 /** Hex characters of the evidence hash written on chain, longest first. A crowded asset gets a shorter prefix. */
 export const HASH_LENGTHS = [16, 12, 8] as const;
 /**
@@ -24,6 +26,8 @@ export interface ProvenClaim {
 export interface EvidenceActivity {
   id: string;
   completed_at: string;
+  /** `graded_attempts.answer_hash` of the first answer the server graded as correct; absent when it graded none. */
+  attempt?: string | null;
 }
 
 export interface EvidenceInput {
@@ -32,6 +36,8 @@ export interface EvidenceInput {
   wallet: string;
   lessonId: string;
   activities: EvidenceActivity[];
+  /** "12/14": answers the server graded over the answers that had something to grade. Makes the document version 2. */
+  verified?: string | null;
 }
 
 interface Attribute {
@@ -50,16 +56,16 @@ const encoder = new TextEncoder();
 export function evidenceDocument(input: EvidenceInput): string {
   const activities = [...input.activities].sort((a, b) => a.id.localeCompare(b.id));
   const completedAt = activities.reduce((latest, entry) => (entry.completed_at > latest ? entry.completed_at : latest), '');
-  return JSON.stringify({
-    v: EVIDENCE_VERSION,
-    issuer: 'itera',
-    claim: input.claim,
-    program: input.program,
-    wallet: input.wallet,
-    lesson_id: input.lessonId,
-    completed_at: completedAt,
-    activities: activities.map((entry) => [entry.id, entry.completed_at]),
-  });
+  const head = { issuer: 'itera', claim: input.claim, program: input.program, wallet: input.wallet, lesson_id: input.lessonId, completed_at: completedAt };
+  if (typeof input.verified === 'string') {
+    return JSON.stringify({
+      v: EVIDENCE_VERSION_GRADED,
+      ...head,
+      verified: input.verified,
+      activities: activities.map((entry) => [entry.id, entry.completed_at, entry.attempt ?? null]),
+    });
+  }
+  return JSON.stringify({ v: EVIDENCE_VERSION, ...head, activities: activities.map((entry) => [entry.id, entry.completed_at]) });
 }
 
 export async function sha256Hex(text: string): Promise<string> {

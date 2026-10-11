@@ -37,6 +37,17 @@ let errorFor: ((table: string) => { message: string } | null) | null = null;
 /** Lets a test make one table's write THROW, not merely return an error. */
 let throwsFor: string | null = null;
 
+// The completion itself is recorded by the server (`grade` edge function); here it agrees with the player.
+vi.mock('@/services/grade.service', () => ({
+  submitForGrading: vi.fn(async ({ passed }: { passed: boolean }) => ({
+    verdict: passed ? 'pass' : 'fail',
+    mode: 'server',
+    attempt_id: 'attempt-1',
+    answer_hash: 'hash',
+    graded_at: '2026-10-11T00:00:00Z',
+  })),
+}));
+
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
   getSupabase: () => ({

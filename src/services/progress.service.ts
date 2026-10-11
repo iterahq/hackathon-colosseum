@@ -39,6 +39,7 @@
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
+import { submitForGrading } from '@/services/grade.service';
 import { awardActivityXp } from '@/services/gamification.service';
 import type { DurationSample } from '@/utils/activityDuration';
 import {
@@ -224,41 +225,16 @@ export async function persistActivityProgress(
     const userId = await getIteraUserId();
     if (!userId) return false;
 
-    // Progress: the completion signal. Monotonic by construction.
-    let progressError: unknown = null;
-    if (passed) {
-      // A pass upserts with the CORRECT enum value ('completed' — NOT 'done'),
-      // promoting an earlier 'in_progress' row left by a failed attempt.
-      const { error } = await sb.from('progress').upsert(
-        {
-          user_id: userId,
-          activity_id: activityId,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,activity_id' }
-      );
-      progressError = error;
-    } else {
-      // A miss records that the learner REACHED and attempted this activity, but
-      // must never overwrite a row that is already 'completed' — otherwise
-      // re-playing a finished lesson and slipping once would erase a real
-      // completion. `ignoreDuplicates` makes this an INSERT ... ON CONFLICT DO
-      // NOTHING, so an existing row (of either status) is left untouched.
-      const { error } = await sb.from('progress').upsert(
-        {
-          user_id: userId,
-          activity_id: activityId,
-          status: 'in_progress',
-          completed_at: null,
-        },
-        { onConflict: 'user_id,activity_id', ignoreDuplicates: true }
-      );
-      progressError = error;
-    }
-    // The progress write is the load-bearing one; if it failed, report failure so
-    // we never celebrate an unsaved completion.
-    if (progressError) return false;
+    // Progress: the completion signal. The SERVER writes it, after grading the
+    // answer itself (`grade` edge function): a completion this client could
+    // write on its own word would prove nothing, and the database refuses one
+    // (migration 0191). The verdict shown to the learner stays the local one;
+    // the server's is what is recorded. A pass the server does not confirm, or
+    // an answer it never received, reports failure so we never celebrate an
+    // unsaved completion.
+    const verdict = await submitForGrading({ activityId, passed, response, actions });
+    if (!verdict) return false;
+    if (passed && verdict.verdict !== 'pass') return false;
 
     // Results: the attempt log — every attempt, with the REAL outcome AND what
     // was actually answered. Wrong answers land here and nowhere else, so this

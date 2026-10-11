@@ -19,6 +19,7 @@ import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
+import { loadPassingAttempts } from '../_shared/proof.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
 import { reconcileCrystals } from '../_shared/crystals-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
@@ -123,7 +124,7 @@ async function loadCatalog(db: IteraClient): Promise<Map<string, CatalogEntry>> 
 
 /** Everything `computeAwards` reads, fetched in one round of parallel queries. */
 async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omit<AwardsInput, 'existing'>> {
-  const [progress, passed, programs, units, lessons, activities] = await Promise.all([
+  const [progress, passed, programs, units, lessons, activities, attempts, config] = await Promise.all([
     fetchAll<AwardsInput['progress'][number]>((from, to) =>
       db.from('progress').select('activity_id,status,completed_at,written_by_client').eq('user_id', userId).eq('status', 'completed').order('activity_id').range(from, to),
     ),
@@ -143,6 +144,8 @@ async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omi
     fetchAll<{ id: string; lesson_id: string }>((from, to) =>
       db.from('activities').select('id,lesson_id').eq('status', 'published').order('id').range(from, to),
     ),
+    loadPassingAttempts(db, userId),
+    loadConfig(db),
   ]);
 
   return {
@@ -152,6 +155,8 @@ async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omi
     activities,
     progress,
     passedActivityIds: new Set(passed.map((row) => row.activity_id)),
+    attempts,
+    proofCutoff: config.proof_cutoff ?? null,
     timeZone: TIME_ZONE,
   };
 }
