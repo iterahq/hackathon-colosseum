@@ -568,6 +568,10 @@ export async function rejectPosted(bounty: string, note: string): Promise<void> 
   await postCall(note.trim() ? { action: 'reject', bounty, note: note.trim() } : { action: 'reject', bounty });
 }
 
+export async function deletePostedDraft(bounty: string): Promise<void> {
+  await postCall({ action: 'delete', bounty });
+}
+
 export async function reportBounty(bounty: string, reason: string): Promise<void> {
   await postCall({ action: 'report', bounty, reason: reason.trim() });
 }
@@ -578,7 +582,7 @@ export interface TxErrorInfo {
   faucet: boolean;
 }
 
-const TX_CODES = ['insufficient_funds', 'not_fundable', 'already_funded', 'not_submitted', 'chain_mismatch', 'already_paid', 'self_review', 'not_refundable', 'already_refunded', 'broadcast_failed', 'too_many_today', 'too_many_live', 'no_wallet'];
+const TX_CODES = ['insufficient_funds', 'not_fundable', 'already_funded', 'not_submitted', 'chain_mismatch', 'already_paid', 'self_review', 'not_refundable', 'already_refunded', 'broadcast_failed', 'too_many_today', 'too_many_live', 'no_wallet', 'funded', 'not_a_draft'];
 
 const solText = (lamports: number): string => {
   const whole = Math.floor(lamports / 1_000_000_000);

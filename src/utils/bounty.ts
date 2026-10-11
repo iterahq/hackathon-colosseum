@@ -119,6 +119,9 @@ export function statusTone(status: BountyStatus): StatusTone {
   return 'muted';
 }
 
+/** A posted bounty nobody funded: it is not on the board. A draft past its date reads `expired` with no money in. */
+export const isDraft = (b: Pick<Bounty, 'status' | 'funding'>): boolean => b.status === 'awaiting_funding' || (b.status === 'expired' && !b.funding);
+
 export const REFUNDABLE: readonly BountyStatus[] = ['open', 'expired', 'awaiting_funding'];
 
 /** `2d 3h`, `5h 12min`, `14min` or `0min`. */

@@ -30,6 +30,7 @@ import {
   type ClaimRow,
   type Requirement,
 } from '../_shared/bounty.ts';
+import { draftVerdict } from '../_shared/bounty-draft.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
 import { pickText } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
@@ -205,6 +206,28 @@ async function fundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: 
   return unsigned(wallet, [createFor(terms, wallet)], transferMemo(bounty.id, 'fund'), { kind: 'fund', cost_lamports: Number(cost), rent_lamports: Number(rent), escrow: bounty.escrow_address }, cors);
 }
 
+/** Deletes a draft nobody funded: the escrow account is read first, and an account that exists means the money is in. */
+async function deleteDraft(db: IteraClient, wallet: string, bounty: BountyRow, cors: Cors): Promise<Response> {
+  if (draftVerdict(bounty, wallet) !== 'ok') return json({ error: 'not_a_draft', status: bounty.status }, 409, cors);
+  const terms = await escrowTerms(bounty, await loadConfig(db));
+  if (!terms) return json({ error: 'unavailable' }, 503, cors);
+  if (await readEscrow(terms.programId, bounty.escrow_address)) {
+    await refreshFunding(db, bounty).catch((error) => console.error('bounty-post: funding not refreshed', error instanceof Error ? error.message : error));
+    return json({ error: 'funded' }, 409, cors);
+  }
+  const { count, error: claimsError } = await db.from('bounty_claims').select('id', { count: 'exact', head: true }).eq('bounty_id', bounty.id);
+  if (claimsError) throw new Error(`bounty_claims: ${claimsError.message}`);
+  if ((count ?? 0) > 0) return json({ error: 'not_a_draft', status: bounty.status }, 409, cors);
+  for (const table of ['bounty_events', 'bounty_reports']) {
+    const { error } = await db.from(table).delete().eq('bounty_id', bounty.id);
+    if (error) throw new Error(`${table} delete: ${error.message}`);
+  }
+  const { data, error } = await db.from('bounties').delete().eq('id', bounty.id).eq('origin', 'wallet').eq('sponsor_wallet', wallet).eq('status', 'awaiting_funding').is('funded_at', null).select('id');
+  if (error) throw new Error(`bounties delete: ${error.message}`);
+  if (!data || data.length === 0) return json({ error: 'not_a_draft', status: bounty.status }, 409, cors);
+  return json({ deleted: true, id: bounty.id }, 200, cors);
+}
+
 async function approveTx(db: IteraClient, caller: Caller, wallet: string, bounty: BountyRow, cors: Cors): Promise<Response> {
   if (bounty.status !== 'submitted') return json({ error: 'not_submitted' }, 409, cors);
   const claim = bounty.claim_id ? (await loadClaims(db, [bounty.claim_id])).get(bounty.claim_id) : undefined;
@@ -344,6 +367,7 @@ Deno.serve(async (request) => {
     if (!bounty || bounty.origin !== 'wallet' || bounty.sponsor_wallet !== wallet) return json({ error: 'bounty_not_found' }, 404, cors);
 
     if (body.action === 'fund_tx') return await fundTx(db, wallet, bounty, cors);
+    if (body.action === 'delete') return await deleteDraft(db, wallet, bounty, cors);
     if (body.action === 'approve_tx') return await approveTx(db, caller, wallet, bounty, cors);
     if (body.action === 'refund_tx') return await refundTx(db, wallet, bounty, cors);
     if (body.action === 'reject') return await reject(db, caller, bounty, body, cors);

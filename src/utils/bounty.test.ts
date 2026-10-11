@@ -153,3 +153,16 @@ describe('hiddenTestsLine', () => {
     expect(hiddenTestsLine(t('pt'), { hiddenTestCount: 3, listedCount: null }, 2)).toBe('2 listadas · 3 missões de teste da equipe escondidas (abertas na chain, fora do quadro)');
   });
 });
+
+describe('isDraft', () => {
+  const funding = { signature: 's', lamports: 1, sol: '1', at: null, wallet: null, explorerUrl: null };
+  it('is a bounty waiting for funding, or one that expired with nothing locked', () => {
+    expect(isDraft({ status: 'awaiting_funding', funding: null })).toBe(true);
+    expect(isDraft({ status: 'expired', funding: null })).toBe(true);
+  });
+  it('is not a bounty with money in or one that is live', () => {
+    expect(isDraft({ status: 'expired', funding })).toBe(false);
+    expect(isDraft({ status: 'open', funding })).toBe(false);
+    expect(isDraft({ status: 'refunded', funding: null })).toBe(false);
+  });
+});

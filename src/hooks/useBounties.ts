@@ -10,6 +10,7 @@ import {
   bountyErrorCode,
   createBounty,
   createPostedBounty,
+  deletePostedDraft,
   fundBounty,
   getBounty,
   getBountyBoard,
@@ -133,6 +134,7 @@ export function useModeration() {
 }
 
 export const useCreatePostedBounty = () => useWrite((input: CreatePostedInput) => createPostedBounty(input));
+export const useDeleteDraft = () => useWrite((bounty: string) => deletePostedDraft(bounty));
 export const useRejectPosted = () => useWrite((v: { bounty: string; note: string }) => rejectPosted(v.bounty, v.note));
 export const useReportBounty = () => useWrite((v: { bounty: string; reason: string }) => reportBounty(v.bounty, v.reason));
 export const useSetHidden = () => useWrite((v: { bounty: string; hidden: boolean; reason: string }) => setBountyHidden(v.bounty, v.hidden, v.reason));
