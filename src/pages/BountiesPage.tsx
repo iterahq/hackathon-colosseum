@@ -88,7 +88,7 @@ export default function BountiesPage() {
         </div>
       )}
       {items.length > 0 && (
-        <ul className="grid gap-4 sm:grid-cols-2" data-testid="bounty-list">
+        <ul className="grid gap-4 sm:grid-cols-2 min-[1536px]:grid-cols-3" data-testid="bounty-list">
           {items.map((bounty) => (
             <li key={bounty.id} className="flex">
               <BountyCard bounty={bounty} />

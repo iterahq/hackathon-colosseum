@@ -147,7 +147,7 @@ export function BountyHeaderLinks() {
  */
 export function BountyShell({ children, width = 960 }: { children: ReactNode; width?: 960 | 720 }) {
   const { signedIn } = useBountySession();
-  const max = width === 720 ? 'max-w-[720px]' : 'max-w-[960px]';
+  const max = width === 720 ? 'max-w-[720px]' : 'max-w-[960px] min-[1536px]:max-w-[1280px]';
   return (
     <div className="min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="bounty-page">
       {signedIn ? (
