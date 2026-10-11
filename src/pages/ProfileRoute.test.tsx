@@ -152,27 +152,10 @@ describe('ProfileRoute (web host of the universal profile screen)', () => {
     expect(container.textContent).not.toMatch(/em breve|coming soon|excluir|apagar conta|delete/i);
   });
 
-  describe('the cast of the exercises', () => {
-    it('saves the edited fields, cleaned, and says so', async () => {
-      renderPage();
-      await screen.findByTestId('profile-name-input');
-      const section = screen.getByTestId('personalization-section');
-      expect(within(section).getAllByRole('textbox')).toHaveLength(11);
-      fireEvent.change(screen.getByTestId('personalization-input-eu.nome'), { target: { value: '**Bia**' } });
-      expect(screen.getByTestId('personalization-input-eu.nome')).toHaveValue('Bia');
-      fireEvent.change(screen.getByTestId('personalization-input-eu.idade'), { target: { value: '17 anos' } });
-      fireEvent.click(screen.getByTestId('personalization-save'));
-      await screen.findByTestId('personalization-saved');
-      expect(personalization.save).toHaveBeenCalledWith({ 'eu.nome': 'Bia', 'eu.idade': '17' });
-      fireEvent.change(screen.getByTestId('personalization-input-eu.nome'), { target: { value: 'Bia M' } });
-      expect(screen.queryByTestId('personalization-saved')).not.toBeInTheDocument();
-    });
-
-    it('cannot be saved before the cast arrived', async () => {
-      personalization.ready = false;
-      renderPage();
-      await screen.findByTestId('profile-name-input');
-      expect(screen.getByTestId('personalization-save')).toBeDisabled();
-    });
+  it('never asks for the cast of the exercises (a relative or a friend) on this build', async () => {
+    renderPage();
+    await screen.findByTestId('profile-name-input');
+    expect(screen.queryByTestId('personalization-section')).toBeNull();
+    expect(screen.queryByTestId('profile-legal-help')).toBeNull();
   });
 });
