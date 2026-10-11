@@ -6,7 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { queryKeys } from '@/lib/queryKeys';
 import { getAchievementCatalog, getMyAchievements } from '@/services/achievements.service';
-import type { AchievementView } from '@/types/achievements';
+import type { AchievementView, UserAchievement } from '@/types/achievements';
+
+const NO_ROWS: readonly UserAchievement[] = [];
 
 export function useAchievements({ enabled = true }: { enabled?: boolean } = {}) {
   const { session, configured } = useAuth();
@@ -20,6 +22,8 @@ export function useAchievements({ enabled = true }: { enabled?: boolean } = {}) 
 
   return {
     items,
+    /** Every earned row, one per day stamp: the catalog join above keeps one row per key. */
+    earned: mine.data ?? NO_ROWS,
     earnedCount: items.filter((a) => a.earned).length,
     isPending: catalog.isPending || mine.isPending,
     isError: catalog.isError || mine.isError,

@@ -58,9 +58,21 @@ describe('buildMedals and totals', () => {
     expect(buildMedals([...base, podium, locked], pick).map((m) => m.key)).toEqual([...base.map((m) => m.key), 'podium_1']);
   });
 
-  it('counts stamps, started pages and earned medals', () => {
-    const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [], pick);
+  it('counts as stamped only what is on chain; the rest of what is done is pending', () => {
+    const rows = [
+      earned('t10', { id: 'd0', achievementKey: 'day_stamp' }),
+      earned('t11', { id: 'd1', achievementKey: 'day_stamp', mintStatus: 'unclaimed' as const, txSignature: null }),
+      earned('other', { id: 'd2', achievementKey: 'day_stamp' }),
+    ];
+    const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [item('trail_t1', 'trail', { earned: earned('t1') })], pick, rows);
+    expect(pages[0]).toMatchObject({ daysDone: 4, daysStamped: 1, daysPending: 3 });
+    expect(pages[1]).toMatchObject({ daysDone: 0, daysStamped: 0, daysPending: 0 });
     const medals = buildMedals([item('m', 'streak', { earned: earned(null) })], pick);
-    expect(totals(pages, medals)).toEqual({ pages: 1, stamps: 4, medals: 1 });
+    expect(totals(pages, medals)).toEqual({ pages: 1, stamps: 1, daysDone: 4, pending: 3, medals: 1 });
+  });
+
+  it('a day done with nothing on chain is no stamp and no certification', () => {
+    const pages = buildPages([trail('t1', 1, 5)], [item('trail_t1', 'trail', { earned: earned('t1', { mintStatus: 'unclaimed' as const, assetAddress: null, txSignature: null }) })], pick, []);
+    expect(totals(pages, [])).toEqual({ pages: 0, stamps: 0, daysDone: 1, pending: 1, medals: 0 });
   });
 });

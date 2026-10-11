@@ -89,7 +89,12 @@ export interface PassportPageData {
   trailId: string;
   trailTitle: string;
   colorIndex: number;
+  /** Days whose every activity is completed (the server's record). */
   daysDone: number;
+  /** Of those, the days already written on the certification on chain (their stamp transaction is confirmed). */
+  daysStamped: number;
+  /** Days done and not on chain yet: no wallet, a stamp still being written, or a day held for review. */
+  daysPending: number;
   totalDays: number;
   tier: string | null;
   mintStatus: MintStatus;

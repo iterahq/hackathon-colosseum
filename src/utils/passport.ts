@@ -27,15 +27,24 @@ function rowFor(trailId: string, items: readonly AchievementView[]): { row: User
   return top?.earned ? { row: top.earned, tier: top.tier } : null;
 }
 
-export function buildPages(trails: readonly Trail[], items: readonly AchievementView[], pick: Pick): PassportPageData[] {
+/** Lessons whose day stamp is confirmed on chain. One `day_stamp` row per day; `minted` is set after the transaction confirms. */
+export function stampedLessonIds(rows: readonly UserAchievement[]): ReadonlySet<string> {
+  return new Set(rows.filter((row) => row.achievementKey === 'day_stamp' && row.mintStatus === 'minted' && row.refId).map((row) => row.refId as string));
+}
+
+export function buildPages(trails: readonly Trail[], items: readonly AchievementView[], pick: Pick, earnedRows: readonly UserAchievement[] = []): PassportPageData[] {
+  const onChain = stampedLessonIds(earnedRows);
   return trails.map((trail) => {
     const earned = rowFor(trail.id, items);
+    const daysStamped = trail.days.filter((day) => onChain.has(day.id)).length;
     return {
       credentialId: earned?.row.id ?? null,
       trailId: trail.id,
       trailTitle: pick(trailName(trail.title)),
       colorIndex: trail.colorIndex,
       daysDone: trail.doneDays,
+      daysStamped,
+      daysPending: Math.max(0, trail.doneDays - daysStamped),
       totalDays: trail.days.length,
       tier: earned?.tier ?? null,
       mintStatus: earned?.row.mintStatus ?? 'unclaimed',
@@ -71,10 +80,15 @@ export function buildMedals(items: readonly AchievementView[], pick: Pick): Pass
     });
 }
 
-/** Stamps = days stamped across every page; a page with a stamp counts as started. */
+/**
+ * One truth for every total: `pages` are certifications that exist on chain, `stamps` are days written on them.
+ * What is finished and not on chain yet is `pending`, never folded into `stamps`.
+ */
 export const totals = (pages: readonly PassportPageData[], medals: readonly PassportMedal[]) => ({
-  pages: pages.filter((p) => p.daysDone > 0).length,
-  stamps: pages.reduce((s, p) => s + p.daysDone, 0),
+  pages: pages.filter((p) => p.mintStatus === 'minted').length,
+  stamps: pages.reduce((s, p) => s + p.daysStamped, 0),
+  daysDone: pages.reduce((s, p) => s + p.daysDone, 0),
+  pending: pages.reduce((s, p) => s + p.daysPending, 0),
   medals: medals.filter((m) => m.earned).length,
 });
 
