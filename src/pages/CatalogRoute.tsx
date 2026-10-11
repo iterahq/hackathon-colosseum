@@ -7,7 +7,7 @@ import { CatalogSkeleton, VideoState } from '@/components/videoCourses/VideoStat
 import { useVideoCourses } from '@/hooks/useVideoCourses';
 import { useI18n } from '@/i18n';
 import type { VideoCourseFilter } from '@/types/videoCourses';
-import { countByFilter, filterCourses, pickFeatured, sortCourses } from '@/utils/videoCourses';
+import { countByFilter, filterCourses, pickFeatured, sortCourses, thumbnailsOf } from '@/utils/videoCourses';
 
 /** The "Cursos" tab: a library of video courses, each with a teacher. */
 export default function CatalogRoute() {
@@ -18,6 +18,7 @@ export default function CatalogRoute() {
   const ordered = sortCourses(courses);
   const featured = pickFeatured(ordered, progress);
   const shown = filterCourses(ordered, progress, filter);
+  const thumbnails = thumbnailsOf(ordered);
 
   return (
     <CoursesShell>
@@ -38,7 +39,7 @@ export default function CatalogRoute() {
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4" data-testid="courses-grid">
               {shown.map((course) => (
-                <VideoCourseCard key={course.id} course={course} progress={progress} />
+                <VideoCourseCard key={course.id} course={course} progress={progress} thumbnail={thumbnails.get(course.id) ?? null} />
               ))}
             </div>
           )}

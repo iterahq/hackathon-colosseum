@@ -1,5 +1,5 @@
 /** Bounties. componente → hook → service → edge function. Every write refreshes every bounty read. */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
@@ -38,7 +38,8 @@ export function useBountySession() {
 
 export function useBountyBoard() {
   const { locale } = useI18n();
-  return useQuery({ queryKey: queryKeys.bounty.board(locale), queryFn: () => getBountyBoard(locale), staleTime: 15_000 });
+  // A language switch keeps the numbers on screen while the other language's labels arrive: no blank tiles.
+  return useQuery({ queryKey: queryKeys.bounty.board(locale), queryFn: () => getBountyBoard(locale), staleTime: 15_000, placeholderData: keepPreviousData });
 }
 
 export function useBounty(slug: string) {

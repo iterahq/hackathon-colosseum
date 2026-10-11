@@ -10,6 +10,8 @@ export function useLearnerProfile(wallet: string, lang: 'pt' | 'en') {
     enabled: Boolean(wallet),
     retry: false,
     staleTime: 30_000,
+    // A language switch keeps the same wallet's profile on screen; another wallet starts blank.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[2] === wallet ? previous : undefined),
   });
 }
 

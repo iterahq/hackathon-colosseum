@@ -22,7 +22,7 @@ export function DailyChallengeBanner({ challenge, className }: DailyChallengeBan
   const expiry = expiresToday
     ? t('daily-challenge.expiry')
     : t('daily-challenge.expiryOn', {
-        date: expiresAt.toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US'),
+        date: expiresAt.toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
       });
   return (
     <section

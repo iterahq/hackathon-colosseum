@@ -62,6 +62,7 @@ export default function BountyPage() {
       </Link>
       {query.isPending && (
         <div className="flex flex-col gap-4" aria-busy="true" data-testid="bounty-loading">
+          <p role="status" className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.reading')}</p>
           <Skeleton className="h-10 w-3/4" />
           <Skeleton className="h-24" />
           <Skeleton className="h-40" />

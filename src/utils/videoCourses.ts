@@ -116,6 +116,29 @@ const YOUTUBE_ID = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?(?:[^#]*&)?
 /** The YouTube video id of a lesson URL (embed, watch, shorts or short link), or null. */
 export const youtubeIdOf = (videoUrl: string): string | null => YOUTUBE_ID.exec(videoUrl)?.[1] ?? null;
 
+/** The YouTube thumbnail of the course's first lesson, or null. */
+function firstVideoThumbnail(course: { lessons: { videoUrl: string; position: number }[] }): string | null {
+  const first = [...course.lessons].sort((a, b) => a.position - b.position).find((l) => youtubeIdOf(l.videoUrl));
+  const id = first ? youtubeIdOf(first.videoUrl) : null;
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}
+
+/**
+ * One picture per course in a list: a thumbnail URL two courses share (a copy-paste in the catalog) is kept by the
+ * first course in the given order; the next one falls back to its own first video, so two cards never look alike.
+ */
+export function thumbnailsOf<C extends { id: string; thumbnailUrl: string | null; lessons: { videoUrl: string; position: number }[] }>(courses: readonly C[]): Map<string, string | null> {
+  const used = new Set<string>();
+  const out = new Map<string, string | null>();
+  for (const course of courses) {
+    const own = course.thumbnailUrl && !used.has(course.thumbnailUrl) ? course.thumbnailUrl : null;
+    const picked = own ?? firstVideoThumbnail(course);
+    if (picked) used.add(picked);
+    out.set(course.id, picked);
+  }
+  return out;
+}
+
 /** The course's own thumbnail, else the YouTube thumbnail of its first lesson, else null (the designed cover takes over). */
 export function courseThumbnail(course: { thumbnailUrl: string | null; lessons: { videoUrl: string; position: number }[] }): string | null {
   if (course.thumbnailUrl) return course.thumbnailUrl;

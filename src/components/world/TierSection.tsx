@@ -1,4 +1,5 @@
-import { TIER_LORE, loreKeysOfTier, loreOf, type LoreTier } from '@/content/teraLore';
+import { TIER_LORE, loreOf, type LoreTier } from '@/content/teraLore';
+import { castKeysOfTier } from './castArt';
 import { useI18n } from '@/i18n';
 import { TeraPortrait } from './TeraPortrait';
 import { FOCUS, H2, PANEL } from './worldStyles';
@@ -6,7 +7,8 @@ import { FOCUS, H2, PANEL } from './worldStyles';
 export function TierSection({ tier, onOpen }: { tier: LoreTier; onOpen: (key: string) => void }) {
   const { t, locale } = useI18n();
   const info = TIER_LORE(tier, locale);
-  const keys = loreKeysOfTier(tier);
+  const keys = castKeysOfTier(tier);
+  if (keys.length === 0) return null;
   return (
     <section className="flex flex-col gap-4" aria-labelledby={`world-tier-${tier}`} data-testid={`world-tier-${tier}`}>
       <div>

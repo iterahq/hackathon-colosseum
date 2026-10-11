@@ -34,7 +34,7 @@ export function InstructorReportsCard({ sessions }: { sessions: ClassSession[] }
                 data-testid="instructor-report-row"
               >
                 <span className="text-sm text-foreground flex-1">
-                  {d.toLocaleDateString()}{' '}
+                  {d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}{' '}
                   {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <span className="text-xs text-muted-foreground">

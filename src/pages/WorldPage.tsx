@@ -5,7 +5,8 @@ import { TierSection } from '@/components/world/TierSection';
 import { WorldHero } from '@/components/world/WorldHero';
 import { WorldStory } from '@/components/world/WorldStory';
 import { WORLD_GRID, H2 } from '@/components/world/worldStyles';
-import { LORE_KEYS, LORE_TIERS } from '@/content/teraLore';
+import { LORE_TIERS } from '@/content/teraLore';
+import { CAST_KEYS } from '@/components/world/castArt';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 
@@ -23,7 +24,7 @@ export default function WorldPage() {
         <section id="cast" className="flex scroll-mt-6 flex-col gap-10" aria-labelledby="world-cast">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="world-cast" className={H2}>{t('world.cast')}</h2>
-            <span className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.12em] text-[#A0978A]">{t('world.cast.count', { n: LORE_KEYS.length })}</span>
+            <span className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.12em] text-[#A0978A]">{t('world.cast.count', { n: CAST_KEYS.length })}</span>
           </div>
           {LORE_TIERS.map((tier) => (
             <TierSection key={tier} tier={tier} onOpen={setOpen} />

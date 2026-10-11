@@ -10,6 +10,8 @@ interface Props {
   play?: boolean;
   /** A chip over the corner, e.g. the language of a course that exists in one language only. */
   note?: string;
+  /** The first cards above the fold load at once instead of waiting for a scroll. */
+  eager?: boolean;
   className?: string;
 }
 
@@ -17,7 +19,7 @@ interface Props {
  * 16:9 course thumbnail. The designed cover (title, green edge, play glyph) is always drawn first and the
  * image fades in over it once it has loaded, so a slow or missing picture never shows as a black box.
  */
-export function CourseThumb({ title, slug, src, play = false, note, className = '' }: Props) {
+export function CourseThumb({ title, slug, src, play = false, note, eager = false, className = '' }: Props) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const showImage = Boolean(src) && !failed;
@@ -42,7 +44,7 @@ export function CourseThumb({ title, slug, src, play = false, note, className = 
         <img
           src={src ?? undefined}
           alt=""
-          loading="lazy"
+          loading={eager ? 'eager' : 'lazy'}
           decoding="async"
           onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}

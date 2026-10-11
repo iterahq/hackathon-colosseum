@@ -10,7 +10,7 @@ import { TeacherAvatar } from './TeacherAvatar';
 
 const STATE_COLOR = { new: '#A0978A', in_progress: '#F2C66D', done: '#3FD17F' } as const;
 
-export function VideoCourseCard({ course, progress }: { course: VideoCourse; progress: ReadonlyMap<string, number> }) {
+export function VideoCourseCard({ course, progress, thumbnail }: { course: VideoCourse; progress: ReadonlyMap<string, number>; thumbnail?: string | null }) {
   const { t, locale } = useI18n();
   const color = courseColor(course.slug);
   const stats = courseStats(course, progress);
@@ -22,7 +22,7 @@ export function VideoCourseCard({ course, progress }: { course: VideoCourse; pro
       className="group relative flex flex-col overflow-hidden rounded-[14px] border border-[#262320] border-b-[5px] bg-[#141210] text-left transition-transform duration-100 hover:-translate-y-1 [&:has(a:active)]:translate-y-[3px]"
       style={{ borderBottomColor: color.c }}
     >
-      <CourseThumb note={locale === 'en' ? t('video.language.pt') : undefined} title={course.title} slug={course.slug} src={courseThumbnail(course)} />
+      <CourseThumb note={locale === 'en' ? t('video.language.pt') : undefined} title={course.title} slug={course.slug} src={thumbnail === undefined ? courseThumbnail(course) : thumbnail} />
       <span className="flex flex-1 flex-col gap-2.5 px-[18px] pb-[18px] pt-4">
         <Link
           to={`/course/${course.slug}`}
