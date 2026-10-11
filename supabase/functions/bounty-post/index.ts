@@ -11,6 +11,7 @@ import {
   recordWalletPayout,
   refreshFunding,
   syncWithEscrow,
+  unclaimOnChain,
 } from '../_shared/bounty-store.ts';
 import {
   MAX_REWARD_LAMPORTS,
@@ -231,7 +232,10 @@ async function reject(db: IteraClient, caller: Caller, bounty: BountyRow, body: 
   const { data, error } = await db.rpc('bounty_review', { p_bounty: bounty.id, p_reviewer: caller.iteraUserId, p_approve: false, p_note: note });
   if (error) throw new Error(`bounty_review: ${error.message}`);
   if (data !== 'ok') return json({ error: 'not_submitted' }, 409, cors);
-  return json({ rejected: true, status: 'open' }, 200, cors);
+  // The escrow account still names the learner: the attester reopens it, so the page and the account agree.
+  const claim = bounty.claim_id ? (await loadClaims(db, [bounty.claim_id])).get(bounty.claim_id) : undefined;
+  const reopened = claim ? await unclaimOnChain(db, bounty, 'rejected', claim) : null;
+  return json({ rejected: true, status: 'open', unclaim_signature: reopened }, 200, cors);
 }
 
 async function refundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: Cors): Promise<Response> {
@@ -240,7 +244,8 @@ async function refundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors
   if (!terms) return json({ error: 'unavailable' }, 503, cors);
   const state = await readEscrow(terms.programId, bounty.escrow_address);
   if (!state) return json({ error: 'not_refundable', status: bounty.status }, 409, cors);
-  const plan = refundPlan(state, terms);
+  // Signed by the sponsor's own wallet, which the program accepts as the bounty's sponsor and approver.
+  const plan = refundPlan(state, { ...terms, attester: wallet });
   if (plan === 'done') {
     await syncWithEscrow(db, bounty.id);
     return json({ error: 'already_refunded', status: (await loadBounty(db, { id: bounty.id }))?.status }, 409, cors);

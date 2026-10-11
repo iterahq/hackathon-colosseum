@@ -1,12 +1,8 @@
 /** Bounties: the public board (`bounty-board`), the learner's side (`bounty-claim`) and the sponsor console (`bounty-sponsor`). */
-<<<<<<< HEAD
 import { parseSignOffer, signOffer } from '@/services/bountySign';
-import { callShop } from '@/services/shopTransport';
-=======
 import { connectWallet, signAndSendPurchase, WalletSignError } from '@/services/walletSign';
 import { callShop, ShopCallError } from '@/services/shopTransport';
 import type { PurchaseIntent } from '@/types/shop';
->>>>>>> 18eab55 (Bounties UI: post a bounty from your wallet, sponsor console, labels for team and outside sponsors and rehearsals, held notice, deliver form that says what is wrong, plurals)
 import type {
   ApproveResult,
   Bounty,
