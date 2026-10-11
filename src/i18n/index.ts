@@ -2488,17 +2488,26 @@ export const resources: Record<Locale, Record<string, string>> = {
 
 export const DEFAULT_LOCALE: Locale = 'pt';
 
+/** The locale a browser asks for: Portuguese for any pt-* language, English for everything else; `null` with no signal. */
+export function localeFromLanguages(languages: readonly string[] | undefined): Locale | null {
+  const first = languages?.find((l) => typeof l === 'string' && l.trim() !== '');
+  if (!first) return null;
+  return first.toLowerCase().startsWith('pt') ? 'pt' : 'en';
+}
+
 /**
- * The startup locale. Default is **pt-BR** (the canonical app language). We only
- * honor an explicit, persisted localStorage choice — a first-time visitor with
- * no stored preference ALWAYS starts in pt (we deliberately do NOT auto-switch on
- * navigator.language). The DB-backed per-user preference (itera.users.locale) is
- * applied on top of this once the profile loads (see useLocaleSync), so the
- * stored locale only matters before the profile resolves / when signed out.
+ * The startup locale. An explicit, persisted choice (localStorage) wins; a first visit follows the browser's
+ * language (`navigator.languages`), so an en-US visitor reads English and a pt-BR one Portuguese; with no
+ * signal at all the canonical app language is pt-BR. The DB-backed per-user preference (itera.users.locale)
+ * is applied on top of this once the profile loads (see useLocaleSync).
  */
 function detectLocale(): Locale {
   const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('itera.locale') : null;
   if (stored === 'pt' || stored === 'en') return stored;
+  if (typeof navigator !== 'undefined') {
+    const fromBrowser = localeFromLanguages(navigator.languages?.length ? navigator.languages : [navigator.language]);
+    if (fromBrowser) return fromBrowser;
+  }
   return DEFAULT_LOCALE;
 }
 

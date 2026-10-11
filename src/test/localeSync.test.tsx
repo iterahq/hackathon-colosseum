@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { I18nProvider, useI18n, DEFAULT_LOCALE } from '@/i18n';
+import { I18nProvider, useI18n, DEFAULT_LOCALE, localeFromLanguages } from '@/i18n';
 
 /**
  * i18n provider contract for the per-user (DB-backed) language preference:
- *  - the default locale is pt (NOT navigator-driven),
+ *  - a first visit follows the browser language (pt-* reads Portuguese, anything else English),
  *  - a user-initiated setLocale persists via the registered sink,
  *  - a hydrate (setLocale(l, false)) does NOT echo back to the sink (so loading
  *    the stored profile locale never re-writes it).
@@ -31,14 +31,46 @@ function Probe({ onReady }: { onReady: (api: ReturnType<typeof useI18n>) => void
 }
 
 describe('i18n locale preference (DB-backed sink)', () => {
-  it('defaults to pt with no stored preference', () => {
+  it('follows the browser language with no stored preference', () => {
+    const languages = vi.spyOn(navigator, 'languages', 'get');
+    languages.mockReturnValue(['en-US', 'en']);
+    const { unmount } = render(
+      <I18nProvider>
+        <Probe onReady={() => {}} />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('locale').textContent).toBe('en');
+    unmount();
+    languages.mockReturnValue(['pt-BR', 'pt']);
     render(
       <I18nProvider>
         <Probe onReady={() => {}} />
       </I18nProvider>
     );
     expect(screen.getByTestId('locale').textContent).toBe('pt');
+    languages.mockRestore();
     expect(DEFAULT_LOCALE).toBe('pt');
+  });
+
+  it('maps browser languages to the two locales', () => {
+    expect(localeFromLanguages(['pt-BR'])).toBe('pt');
+    expect(localeFromLanguages(['PT'])).toBe('pt');
+    expect(localeFromLanguages(['en-US', 'pt-BR'])).toBe('en');
+    expect(localeFromLanguages(['es-AR'])).toBe('en');
+    expect(localeFromLanguages([])).toBeNull();
+    expect(localeFromLanguages(undefined)).toBeNull();
+  });
+
+  it('honours a stored choice over the browser language', () => {
+    localStorage.setItem('itera.locale', 'pt');
+    const languages = vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
+    render(
+      <I18nProvider>
+        <Probe onReady={() => {}} />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('locale').textContent).toBe('pt');
+    languages.mockRestore();
   });
 
   it('persists a user-initiated change through the registered sink + localStorage', () => {
