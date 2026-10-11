@@ -80,11 +80,11 @@ function storedFeedback(response: string | null): Record<string, unknown> {
 }
 
 /** One submission judged: the verdict, and the part of the activity the verdict lets out. */
-function judge(activity: ActivityRow, body: { answer: unknown; response: string | null; trace: unknown; claimedPassed: boolean; readsTrace: boolean }): Judged {
+function judge(activity: ActivityRow, body: { answer: unknown; response: string | null; trace: unknown; claimedPassed: boolean }): Judged {
   const secret = sealSecret();
   const answer = unsealAnswer(activity, body.answer, secret);
   let grade = gradeSubmission(activity.kind, activity.spec, { answer, response: body.response }, body.claimedPassed, parseHtmlDocument);
-  if (grade.mode === 'self_reported' && grade.passed && body.readsTrace) {
+  if (grade.mode === 'self_reported' && grade.passed) {
     const refused = checkSelfReported(activity.kind, activity.spec, { response: body.response, trace: body.trace }, parseHtmlDocument);
     if (refused) grade = { mode: grade.mode, passed: false, reason: refused };
   }
@@ -130,8 +130,7 @@ Deno.serve(async (request) => {
     }
     if (canonicalJson(answer).length > MAX_ANSWER_CHARS) return json({ error: 'invalid_body' }, 400, cors);
     if (trace !== null && (!Array.isArray(trace) || JSON.stringify(trace).length > MAX_TRACE_CHARS)) return json({ error: 'invalid_body' }, 400, cors);
-    // Rollout: the player that sends traces says so. The next deploy reads the trace of every submission.
-    const submitted = { answer, response: response as string | null, trace, claimedPassed, readsTrace: body.results === 'server' };
+    const submitted = { answer, response: response as string | null, trace, claimedPassed };
 
     if (!token) return json({ error: 'unauthorized' }, 401, cors);
     const subject = await authSubjectOf(db, token);
