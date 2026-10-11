@@ -54,20 +54,36 @@ amount, expiry, claimant and the certification that qualified them.
 | instruction | signer | what the PROGRAM checks |
 |---|---|---|
 | `create(id, amount, expires_at)` | funder | the account is the PDA of these exact terms and does not exist; amount > 0; expiry in the future. Moves `amount` + rent from the funder |
-| `accept` | approver | the bounty is open and not expired; the certification account is owned by Metaplex Core, is an `AssetV1`, **its owner is the claimant** and **its collection is the one the bounty names**. Records claimant and certification |
+| `accept` | an attester (the approver, or Itera's attester key) **and the claimant** | the claimant signed (`claimant_must_sign` otherwise); the bounty is open and not expired; the certification account is owned by Metaplex Core, is an `AssetV1`, **its owner is the claimant** and **its collection is the one the bounty names**. Records claimant and certification |
 | `release` | approver | the bounty is claimed and the account passed is the recorded claimant. Pays `amount`, marks `paid` |
-| `unclaim` | approver | the bounty is claimed. Reopens it |
-| `refund` | approver or sponsor | the bounty is open and the destination is the recorded sponsor. Pays `amount`, marks `refunded` |
+| `unclaim` | the recorded claimant, the approver, or Itera's attester key | the bounty is claimed. Reopens it and clears the claimant |
+| `refund` | approver or sponsor; **any signer once the bounty is past its expiry** | the bounty is open and the destination is the recorded sponsor. Pays `amount`, marks `refunded` |
 
 The account is never closed: after a payout it stays on chain saying `paid`, to whom, with which
-certification. The approver is the Itera treasury key. It chooses **when** each step happens; it cannot
-choose a destination, pay a wallet that holds no Itera certification, or pay twice.
+certification. The approver (the Itera treasury key on Itera's own bounties, the sponsor's wallet on a bounty a
+wallet posted) chooses **when** the reward is paid; it cannot choose a destination, pay a wallet that holds no
+Itera certification, or pay twice. Itera's attester key (`ITERA_ATTESTER` in `lib.rs`, the treasury address) may
+co-sign an `accept` and reopen a claim on any bounty; it can move no reward it is not also the approver or sponsor of.
+
+**Who signs what (since the upgrade of 2026-10-11, slot 509884700).** The learner's own wallet signs `accept` and
+the `unclaim` of a withdrawal. The wallet holds no SOL: the transaction's fee payer is the treasury, which signs
+after the wallet did (`_shared/cosign.ts`). The page's ledger says, per step, which wallet signed
+(`bounty_events.signer`), and says when a step is only our own record (a delivery, a step from before the upgrade).
 
 - **Funding.** The treasury button and the blink both send `create`. A bounty opens when its account
   exists on chain with the terms it was posted with (our approver, the refund address, the passports
   collection, at least the reward, the expiry). An account someone created with other terms is ignored.
-- **Accept.** After the database picked the single winner, the server sends `accept`; the signature lands
-  on the ledger row. A refusal by the program (`refused_by_program`) releases the claim.
+- **Accept.** `accept_prepare` answers a transaction (the program's `accept` and the memo; fee payer = treasury)
+  for the learner's wallet to sign; `accept_submit` takes the signed message back, checks it is the one offered
+  (same instructions in order; the only additions tolerated are a wallet's own compute-budget instruction with a
+  capped price and Lighthouse assertions, none naming the fee payer), verifies the wallet's signature, adds the
+  treasury's and sends. **The chain picks the winner of a race**: the program records the first accept that lands
+  and refuses the rest (`not_open`); our tables record it afterwards, and reopen the account if they cannot.
+- **Withdraw.** Same two steps with the program's `unclaim`, signed by the wallet that holds the bounty. Our tables
+  let the claim go only after the account stopped naming the learner. A learner with SOL can send that `unclaim`
+  without us; the page follows on its next read (`syncWithEscrow`).
+- **Out of time, rejected.** When a claim ends without the learner, the server reopens the account at once with the
+  attester key (`unclaimOnChain`); the transaction lands on that step's ledger row.
 - **Payout / refund.** `settleTransfer` reads the account and sends what is missing to get there
   (`releasePlan`, `refundPlan` in `bounty-chain.ts`): a claim our tables already let go of is released on
   chain in the same transaction. An account that already says `paid` to this claimant only gets recorded.
@@ -93,7 +109,7 @@ custodial escrow with a public ledger, and the UI says so on those bounties.
 - **Where money can go.** A payout goes to the wallet recorded when the claim was accepted. A refund goes
   to `refund_address`, fixed when the bounty was created. No request parameter chooses a destination.
 - **Treasury money** only enters an escrow whose refund returns to the treasury.
-- Every transaction carries a memo, `itera-bounty:<id>:fund|accept|payout|refund`.
+- Every transaction carries a memo, `itera-bounty:<id>:fund|accept|withdraw|expired|rejected|payout|refund`.
 
 Currency is **devnet SOL**. Devnet USDC only comes from a captcha faucet, which neither the sponsor nor a
 judge can refill on demand.
@@ -233,9 +249,12 @@ Body `{ "action": …, "bounty": "<uuid>" }`.
 | action | answer |
 |---|---|
 | `status` | `{ wallet, eligible, reason: null \| "no_wallet" \| "no_certification" \| "not_enough_days", proof: { asset, days_done, explorer_url } \| null, claim: { bounty_id, status, accepted_at, deadline_at, submission_url, submission_note, submitted_at, review_note } \| null, busy_elsewhere }` |
-| `accept` | `200 { accepted: true, proof, chain?: { status: "recorded" \| "pending", signature } }` · `403 { error: "not_eligible", reason, proof }` · `403 { error: "refused_by_program", reason }` · `409 { error: "not_open" \| "already_claiming" }` |
+| `accept_prepare` | `200 { sign: { message_base58, message_base64, fee_payer, signer, last_valid_block_height } \| null, proof }` (`sign: null` only for a server-held escrow) · `403 { error: "not_eligible", reason, proof }` · `403 own_bounty` · `409 { error: "not_open" \| "already_claiming" }` |
+| `accept_submit` (`message`, `signature`: base64) | `200 { accepted: true, proof, chain: { status: "recorded", signature, signed_by, explorer_url } }` · `400 signature_required \| invalid_transaction \| invalid_signature` · `409 expired` (the blockhash died in the wallet) · `409 not_open` (another wallet's accept landed first) · `403 { error: "refused_by_program", reason }` |
 | `submit` (`url` https, optional `note`) | `200 { submitted: true }` · `400 invalid_submission` · `409 not_active` |
-| `withdraw` | `200 { withdrawn: true }` · `409 not_active` |
+| `withdraw_prepare` | `200 { sign: {…} \| null }` · `409 not_active` |
+| `withdraw_submit` (`message`, `signature`) | `200 { withdrawn: true, chain: { status, signature, signed_by, explorer_url } \| null }` · `400 signature_required \| invalid_transaction \| invalid_signature` · `409 expired \| not_active` |
+| `accept`, `withdraw` | `409 client_outdated` (a page from before the learner signed) |
 
 `401 unauthorized`, `403 no_itera_profile`, `404 bounty_not_found`, `400 invalid_body | invalid_action`.
 A learner holds at most one bounty at a time (`already_claiming`, `busy_elsewhere`).
@@ -285,12 +304,14 @@ whoever holds the program's upgrade key.
   Week 1 · HTML". The server reads `program`, `trail` and `days_done` from the same on-chain asset and refuses the
   rest. A server that lied here could let a wallet with a one-day certification take a three-day bounty. It could
   not let an uncertified wallet in.
-- **Who wins a race, and the deadlines.** One live claim per bounty and per learner, `claim_hours`, `expires_at`:
-  database functions.
-- **When the program is called.** The approver of every bounty is the Itera treasury key. It decides when to accept,
-  release, reopen a claim (`unclaim`) or refund an unclaimed bounty. So the server can: delay a payout forever,
-  take a bounty away from a learner who has not been paid yet, refund an unclaimed bounty before its date. It
-  cannot: send the reward anywhere but the certified claimant or the sponsor.
+- **The deadlines, and one bounty per learner.** `claim_hours`, one live claim per learner: database functions.
+  (Who wins a race is the chain's: the first `accept` that lands.)
+- **When the program is called.** On Itera's own bounties the approver is the Itera treasury key: it decides when to
+  release or to refund an unclaimed bounty. On every bounty the treasury key is also the attester: it must co-sign an
+  accept (so it can refuse one) and it can reopen a claim. So the server can: refuse to co-sign, delay a payout of
+  its own bounty forever, take a bounty away from a learner who has not been paid yet. It cannot: record a learner
+  who did not sign, send a reward anywhere but the certified claimant or the sponsor, or move the reward of a
+  bounty a wallet posted before its expiry.
 - **Whether the work is good.** A person on the sponsor's staff approves or rejects. This is a human judgement, and
   the sponsor's staff could approve a friend's delivery. There is no dispute path.
 - **The ledger shown on the page** (`bounty_events`) is our table. The transactions it links to are the proof; a
@@ -357,6 +378,7 @@ Run from a clone (devnet; credentials of the hackathon project in the environmen
 source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN
 node scripts/hackathon/bounty-program-e2e.mjs   # the escrow program called directly, 27 checks, ~0.006 SOL of the treasury
 node scripts/hackathon/bounty-e2e.mjs           # the whole flow through the API, 52 checks, ~0.02 SOL (authority + treasury)
+RUN=<label> node scripts/hackathon/bounty-chain-agrees.mjs   # page vs escrow account at every step, 32 checks, ~0.01 SOL of the treasury
 node scripts/hackathon/bounty-wallet-sponsor-e2e.mjs  # a bounty posted, funded and refunded by an outside wallet, 32 checks, 0.05 SOL of the authority
 ```
 
@@ -366,10 +388,19 @@ environment variables. They leave throwaway wallet accounts behind: run `select 
 - Unit (`npx vitest run -c vitest.supabase.config.ts <files>`): `bounty.test.ts`, `bounty-escrow.test.ts`,
   `bounty-chain.test.ts` (the plans), `bounty-program.test.ts` (encoding, account layout),
   `solana-message.test.ts` (message bytes equal to the hand-written transfer; PDAs equal to the Solana CLI's).
-- **The program, called directly on devnet** (27 checks, 2026-10-11): it refuses someone else's
-  certification, an account that is not a Core asset, a certification of another collection, a signer that
-  is not the approver, a payout to anyone but the recorded claimant, a second release, a refund after
-  payment, a refund to anyone but the sponsor. Release of that run:
+- **The page and the chain, compared at every step** (`scripts/hackathon/bounty-chain-agrees.mjs`, 32 checks,
+  2026-10-11, through the live API): funded, accepted, given up, accepted, delivered, rejected, delivered, paid,
+  then accepted, out of time, refunded. After each one the public page and the escrow account read from a node tell
+  the same status and the same wallet; the accept and the give-up carry the learner's signature and a fee payer that
+  is not the learner; the rejection and the expiry carry a transaction of the attester. The server refuses another
+  wallet's signature, a transfer out of the fee payer slipped into the message, and the old unsigned accept.
+- **The program, called directly on devnet** (45 checks, 2026-10-11, after the upgrade): it refuses a claimant who
+  did not sign, someone else's
+  certification, an account that is not a Core asset, a certification of another collection, an attester that
+  is neither the approver nor Itera's, a payout signed by the attester on an outside sponsor's bounty, a payout to
+  anyone but the recorded claimant, a second release, a refund after
+  payment, a refund to anyone but the sponsor, a stranger's refund before the expiry; it lets the claimant give up
+  alone and anyone return an expired bounty to its sponsor. Release of that run:
   `2o9Sd9mmTYnmZQmHZpyiEuwRLtas8gVRiZtK1CwVdmrrXmzC5Et2HHLM4vezAonaxEfvpqsicp6jXy4k4HLQjig8`.
 - **End to end through the API on devnet**, once per escrow kind (51 and 52 checks): an uncertified
   wallet is refused; one stamped day is refused where two are required; three simultaneous accepts give

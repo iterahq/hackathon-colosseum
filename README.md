@@ -46,7 +46,7 @@ example to open without playing: certificate
 | Tera companion (one per wallet learner) | Core asset, collection "Itera Companions" | Yes | Mirrors `lives`, `max_lives`, `outfit`, `level`, `xp`, `streak`, `avatar`. Written on purchase, equip, lesson end and when the last life is lost, rate limited. A gifted life shows as 6/5 | `/c/<asset>`, `/u/<wallet>` |
 | Collectible Tera avatar | Core asset, collection "Itera Avatars" | **No**, transferable | Minted on a paid purchase, numbered, rarity pyramid with supply caps | `/c/<asset>`, Explorer |
 | Shop payment | System transfer + Memo (intent id) | n/a | Learner wallet to treasury | Explorer, `purchase-confirm` |
-| Bounty escrow (one account per bounty) | Program-derived account of the Itera escrow program (`programs/bounty-escrow`, native Solana program) | n/a | Created when a sponsor locks a reward. `accept` records the claimant after the **program** reads their certification account; `release` pays that wallet once; `refund` returns to the sponsor. The account stays on chain saying `paid` and to whom | `/bounties/<slug>`, Explorer |
+| Bounty escrow (one account per bounty) | Program-derived account of the Itera escrow program (`programs/bounty-escrow`, native Solana program) | n/a | Created when a sponsor locks a reward. `accept` is signed by the learner's own wallet (the treasury only pays the fee) and records the claimant after the **program** reads their certification account; the learner's wallet signs the give-up too; `release` pays that wallet once; `refund` returns to the sponsor. The account stays on chain saying `paid` and to whom | `/bounties/<slug>`, Explorer |
 | Circuito | System transfer + Memo `circuit:<purchase id>` | n/a | 50 % of each paid purchase, treasury to mint authority, to fund the stamps the server pays; public counter at `GET /circuit` | Explorer |
 
 Addresses (devnet):
@@ -101,10 +101,13 @@ keys still say `passport`; only user-facing text says "Certification".
   the escrow program `ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq`. The program decides where that money can go:
   only to a wallet that owns a certification of the "Itera Passports" collection (it reads the asset account
   itself), only once, or back to the sponsor recorded when the bounty was funded. The server decides everything
-  else: how many stamped days a bounty asks for (read from the same on-chain asset), which of two simultaneous
-  claimants wins, the deadlines, and when to call the program; a person on the sponsor's staff decides whether a
-  delivery is approved. The server's key (the treasury) is the program's approver: it can delay, reopen a claim or
-  refund an unclaimed bounty early, and it cannot redirect a reward. **The program is upgradeable and its upgrade
+  else: how many stamped days a bounty asks for (read from the same on-chain asset), the deadlines, and when to pay
+  its own bounties; a person on the sponsor's staff decides whether a delivery is approved. **The learner's wallet
+  signs the accept and the give-up** (fee paid by the treasury, so it needs no SOL); the program records nobody
+  without their signature, and the first accept that lands wins a race. The server's key (the treasury) co-signs
+  every accept as attester and is the approver of Itera's own bounties: it can refuse, delay, reopen a claim or
+  refund an unclaimed bounty of its own early; it cannot redirect a reward, nor move the reward of a bounty another
+  wallet posted. Anyone can check all of this at `/verify` (program source, IDL, deployed-code hash, raw accounts). **The program is upgradeable and its upgrade
   authority is the Itera authority key**, a single key held as a function secret: whoever holds it could replace
   the program and, with it, every rule above. On devnet that is deliberate, to fix bugs during the hackathon; it is
   the first thing to remove (or hand to a multisig) before real money. Full model:
