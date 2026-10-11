@@ -5,15 +5,23 @@
 //! amount, expiry). The program, not the Itera server, decides where that
 //! money can go:
 //!
-//! * `accept` records a claimant only if the certification account passed in is
-//!   a Metaplex Core asset owned by that claimant and belonging to the
-//!   collection the bounty names. The program reads the asset account itself.
-//! * `release` pays the recorded claimant, once.
+//! * `accept` records a claimant only if THE CLAIMANT SIGNED and the
+//!   certification account passed in is a Metaplex Core asset owned by that
+//!   claimant and belonging to the collection the bounty names. The program
+//!   reads the asset account itself. An attester co-signs (the bounty's
+//!   approver, or Itera's attester key): it vouches for what the program does
+//!   not read (how many days the certification has stamped).
+//! * `unclaim` reopens a held bounty. The claimant can always sign it (giving
+//!   up needs nobody's permission); so can the approver and the attester.
+//! * `release` pays the recorded claimant, once. Only the approver signs it.
 //! * `refund` pays the sponsor recorded at creation, and only while nobody
-//!   holds the bounty.
+//!   holds the bounty. Once the bounty is past its expiry anyone may send it:
+//!   the destination is fixed.
 //!
-//! The approver (the sponsor's key) chooses WHEN each step happens. It cannot
-//! choose a destination, pay an uncertified wallet, or pay twice.
+//! The approver (the sponsor's key) chooses WHEN the reward is paid. It cannot
+//! choose a destination, pay an uncertified wallet, or pay twice. The attester
+//! can never move the reward anywhere: it can only co-sign an accept or reopen
+//! a claim.
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -37,6 +45,10 @@ pub const MPL_CORE: Pubkey = pubkey!("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX
 const CORE_ASSET_V1: u8 = 1;
 /// `UpdateAuthority::Collection`, the tag that follows the owner in a Core asset account.
 const CORE_UPDATE_AUTHORITY_COLLECTION: u8 = 2;
+
+/// Itera's attester: may co-sign `accept` and sign `unclaim` on any bounty. It appears in no instruction that moves lamports
+/// unless it is also that bounty's approver or sponsor.
+pub const ITERA_ATTESTER: Pubkey = pubkey!("AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA");
 
 pub const SEED: &[u8] = b"bounty";
 pub const STATE_LEN: usize = 195;
@@ -75,6 +87,7 @@ pub enum EscrowError {
     WrongClaimant = 6011,
     WrongSponsor = 6012,
     NotAuthorized = 6013,
+    ClaimantMustSign = 6014,
 }
 
 impl From<EscrowError> for ProgramError {
@@ -205,17 +218,27 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     Ok(())
 }
 
-/// accounts: approver (signer), bounty (writable), claimant, certification (the claimant's Core asset)
+/// accounts: attester (signer: the approver or ITERA_ATTESTER), bounty (writable), claimant (signer), certification (the claimant's Core asset)
 fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let iter = &mut accounts.iter();
-    let approver = next_account_info(iter)?;
+    let attester = next_account_info(iter)?;
     let bounty = next_account_info(iter)?;
     let claimant = next_account_info(iter)?;
     let certification = next_account_info(iter)?;
 
     check_bounty(program_id, bounty)?;
     let mut state = bounty.try_borrow_mut_data()?;
-    check_approver(&state, approver)?;
+    if *attester.key == ITERA_ATTESTER {
+        if !attester.is_signer {
+            return Err(EscrowError::NotApprover.into());
+        }
+    } else {
+        check_approver(&state, attester)?;
+    }
+    // Nobody can be recorded as holding a bounty without their own signature.
+    if !claimant.is_signer {
+        return Err(EscrowError::ClaimantMustSign.into());
+    }
     if state[O_STATUS] != OPEN {
         return Err(EscrowError::NotOpen.into());
     }
@@ -268,24 +291,27 @@ fn release(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     pay_out(bounty, claimant, amount)
 }
 
-/// accounts: approver (signer), bounty (writable)
+/// accounts: authority (signer: the recorded claimant, the approver or ITERA_ATTESTER), bounty (writable)
 fn unclaim(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let iter = &mut accounts.iter();
-    let approver = next_account_info(iter)?;
+    let authority = next_account_info(iter)?;
     let bounty = next_account_info(iter)?;
 
     check_bounty(program_id, bounty)?;
     let mut state = bounty.try_borrow_mut_data()?;
-    check_approver(&state, approver)?;
     if state[O_STATUS] != CLAIMED {
         return Err(EscrowError::NotClaimed.into());
+    }
+    let allowed = *authority.key == key_at(&state, O_CLAIMANT) || *authority.key == key_at(&state, O_APPROVER) || *authority.key == ITERA_ATTESTER;
+    if !authority.is_signer || !allowed {
+        return Err(EscrowError::NotAuthorized.into());
     }
     state[O_CLAIMANT..O_CERT + 32].fill(0);
     state[O_STATUS] = OPEN;
     Ok(())
 }
 
-/// accounts: authority (signer: the approver or the sponsor), bounty (writable), sponsor (writable)
+/// accounts: authority (signer: the approver or the sponsor; anyone once the bounty is past its expiry), bounty (writable), sponsor (writable)
 fn refund(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let iter = &mut accounts.iter();
     let authority = next_account_info(iter)?;
@@ -296,7 +322,10 @@ fn refund(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let amount = {
         let mut state = bounty.try_borrow_mut_data()?;
         let recorded_sponsor = key_at(&state, O_SPONSOR);
-        if !authority.is_signer || (*authority.key != key_at(&state, O_APPROVER) && *authority.key != recorded_sponsor) {
+        let expires_at = i64::from_le_bytes(u64_at(&state, O_EXPIRES).to_le_bytes());
+        let past_expiry = Clock::get()?.unix_timestamp >= expires_at;
+        let named = *authority.key == key_at(&state, O_APPROVER) || *authority.key == recorded_sponsor;
+        if !authority.is_signer || (!named && !past_expiry) {
             return Err(EscrowError::NotAuthorized.into());
         }
         if state[O_STATUS] != OPEN {
