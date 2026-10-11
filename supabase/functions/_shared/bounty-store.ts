@@ -32,7 +32,8 @@ const CERTIFICATION_LIMIT = 20;
 /** The public board, or every bounty of the given tenants (a sponsor's own, test rows included). */
 export async function listBounties(db: IteraClient, tenantIds?: string[]): Promise<BountyRow[]> {
   const query = db.from('bounties').select(BOUNTY_COLUMNS).order('created_at', { ascending: false }).limit(BOARD_LIMIT);
-  const { data, error } = await (tenantIds ? query.in('tenant_id', tenantIds) : query.eq('is_test', false));
+  // A sponsor keeps seeing a test row while it is live, so an automated run can be driven from the console; closed ones only add noise.
+  const { data, error } = await (tenantIds ? query.in('tenant_id', tenantIds).or('is_test.eq.false,status.not.in.(paid,refunded)') : query.eq('is_test', false));
   if (error) throw new Error(`bounties: ${error.message}`);
   return (data ?? []) as unknown as BountyRow[];
 }
