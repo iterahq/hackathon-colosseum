@@ -72,7 +72,7 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
             </div>
           )}
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-4 [&>*]:flex-none">
           {offer && !offer.free && (
             <span className={`${MONO_LABEL} self-start rounded-full border px-2 py-[3px]`} style={{ borderColor: edge, color: edge }}>
               {offer.tierName} · {offer.rarityLabel}

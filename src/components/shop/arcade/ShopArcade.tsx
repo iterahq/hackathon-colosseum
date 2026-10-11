@@ -120,7 +120,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
                     {strips && <span className="ml-auto [font:700_11px_JetBrains_Mono] text-[#A0978A] lg:hidden">{group.items.length}</span>}
                   </div>
                 )}
-                <div className={`${strips ? '-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:overflow-visible lg:p-0' : 'grid grid-cols-4 sm:grid-cols-6'} gap-2 lg:grid-cols-[repeat(auto-fill,minmax(84px,1fr))]`} data-strip={strips || undefined}>
+                <div className={`${strips ? '-mx-4 flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:overflow-visible lg:p-0' : 'grid grid-cols-4 sm:grid-cols-6'} gap-2 lg:grid-cols-[repeat(auto-fill,minmax(84px,1fr))]`} data-strip={strips || undefined}>
                   {group.items.map((item) => (
                     <ArcadeTile key={item.key} item={item} selected={selected?.key === item.key} avatar={avatar} lives={lives} onSelect={select} className={strips ? 'w-[84px] flex-none snap-start lg:w-auto' : ''} />
                   ))}
