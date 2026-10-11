@@ -6,7 +6,8 @@ import LearnerProfilePage from '@/pages/LearnerProfilePage';
 import { parseProfile } from '@/services/learnerProfile.service';
 
 const useLearnerProfile = vi.fn();
-vi.mock('@/hooks/useLearnerProfile', () => ({ useLearnerProfile: (w: string, l: string) => useLearnerProfile(w, l) }));
+vi.mock('@/hooks/useLearnerProfile', () => ({ useLearnerProfile: (w: string, l: string) => useLearnerProfile(w, l), useWalletGraph: () => ({ data: undefined }) }));
+vi.mock('@/components/graph/CapabilityGraphSection', () => ({ CapabilityGraphSection: ({ wallet, capabilities }: { wallet: string; capabilities: { source?: string } }) => <div data-testid="capability-section" data-wallet={wallet} data-source={capabilities.source ?? 'chain'} /> }));
 // The gift block reads the session and the shop: it has its own test.
 vi.mock('@/components/gift/ProfileGift', () => ({ ProfileGift: ({ wallet }: { wallet: string }) => <div data-testid="profile-gift" data-wallet={wallet} /> }));
 
@@ -71,5 +72,21 @@ describe('LearnerProfilePage', () => {
     expect(useLearnerProfile).toHaveBeenCalledWith('', 'pt');
     expect(screen.getByTestId('profile-invalid')).toBeInTheDocument();
     expect(screen.queryByText('garbage')).not.toBeInTheDocument();
+  });
+
+  it('draws the graph from the shipped model while the profile is still loading', () => {
+    useLearnerProfile.mockReturnValue({ isPending: true, isError: false, data: undefined, refetch: vi.fn() });
+    const wallet = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[`/u/${wallet}`]}>
+          <Routes>
+            <Route path="/u/:wallet" element={<LearnerProfilePage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('profile-band-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('capability-section')).toHaveAttribute('data-source', 'static');
   });
 });

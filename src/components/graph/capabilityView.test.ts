@@ -48,3 +48,17 @@ describe('counts and targets', () => {
     expect(nextNode(caps([node('a', 'open')]))).toBeNull();
   });
 });
+
+describe('the fast database answer', () => {
+  const written = node('a', 'recorded');
+  const unwritten = node('b', 'recorded', { proof: { ...(written.proof as NonNullable<typeof written.proof>), txSignature: null } });
+
+  it('treats a recorded claim with a transaction as a candidate, never as server-verified', () => {
+    expect(nodeView(written, { phase: 'pending' }, 'database')).toBe('checking');
+    expect(nodeView(written, { phase: 'error' }, 'database')).toBe('recorded');
+    expect(nodeView(written, done({ 'claim:a': 'abcd1234' }), 'database')).toBe('chain');
+    expect(nodeView(written, done({}), 'database')).toBe('unconfirmed');
+    expect(nodeView(unwritten, { phase: 'pending' }, 'database')).toBe('recorded');
+    expect(nodeView(written, { phase: 'pending' }, 'chain')).toBe('recorded');
+  });
+});

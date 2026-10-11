@@ -50,6 +50,20 @@
         } catch (e) {}
       })();
     </script>
+    <script>
+      // /u/<wallet> is opened cold by people who never saw the app: ask for the wallet's graph now, while the
+      // bundle downloads (`getWalletGraph` picks the answer up), so the page is not waiting on JavaScript to start.
+      (function () {
+        try {
+          var m = /^\/u\/([1-9A-HJ-NP-Za-km-z]{32,44})\/?$/.exec(location.pathname);
+          var base = '%VITE_SUPABASE_URL%';
+          if (!m || base.indexOf('https://') !== 0) return;
+          var lang = localStorage.getItem('itera.locale') === 'en' ? 'en' : 'pt';
+          window.__iteraGraph = { wallet: m[1], lang: lang, response: fetch(base + '/functions/v1/capability-graph/' + m[1] + '?lang=' + lang) };
+          window.__iteraGraph.response.catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
     <title>Itera</title>
     <meta name="description" content="Prova de aprendizado que vive na sua carteira. Treine, prove na Solana, ganhe: cada dia concluído carimba uma credencial soulbound que qualquer pessoa verifica." />
     <meta name="author" content="Itera" />
@@ -98,7 +112,10 @@
   </head>
 
   <body class="dark">
-    <div id="root"></div>
+    <div id="root"><div id="boot" style="display:none;min-height:100vh;background:#0A0908;color:#F4EDE2"><div style="max-width:1180px;margin:0 auto;padding:16px"><div style="height:48px;display:flex;align-items:center;font:700 28px 'Barlow Condensed',sans-serif;letter-spacing:.02em">ITERA<span style="color:#3FD17F">/</span></div><div style="height:122px;margin-top:16px;border:1px solid #262320;border-radius:14px;background:#141210"></div><div style="height:150px;margin-top:32px;border:1px solid #262320;border-radius:14px;background:#141210"></div><div style="height:60vh;margin-top:12px;border:1px solid #262320;border-radius:14px;background:radial-gradient(ellipse at 50% 0%,#16221b 0%,#141210 55%)"></div></div></div></div>
+    <script>
+      if (/^\/u\//.test(location.pathname)) document.getElementById('boot').style.display = 'block';
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -107,3 +107,24 @@ export async function loadEvidence(db: IteraClient, wallet: string, claimId: str
   if (error) throw new Error(`claim_proofs evidence: ${error.message}`);
   return data ? { claim: data.claim_id, lesson_id: data.lesson_id, evidence: data.evidence, evidence_hash: data.evidence_hash, tx_signature: data.tx_signature } : null;
 }
+
+/**
+ * What our tables hold for a wallet, with no chain read: every claim recorded
+ * for it and the asset it was written to. For the first paint of a profile;
+ * the reader checks the chain afterwards.
+ */
+export async function loadRecordedProofs(db: IteraClient, wallet: string): Promise<Array<{ claim_id: string; asset: string; evidence_hash: string; tx_signature: string | null; proven_at: string }>> {
+  const { data, error } = await db
+    .from('claim_proofs')
+    .select('claim_id,evidence_hash,tx_signature,proven_at,user_achievements!inner(asset_address,mint_status)')
+    .eq('wallet', wallet)
+    .order('proven_at')
+    .limit(200);
+  if (error) throw new Error(`claim_proofs recorded: ${error.message}`);
+  const rows = (data ?? []) as unknown as Array<{ claim_id: string; evidence_hash: string; tx_signature: string | null; proven_at: string; user_achievements: { asset_address: string | null; mint_status: string } | null }>;
+  return rows.flatMap((row) =>
+    row.user_achievements?.mint_status === 'minted' && row.user_achievements.asset_address
+      ? [{ claim_id: row.claim_id, asset: row.user_achievements.asset_address, evidence_hash: row.evidence_hash, tx_signature: row.tx_signature, proven_at: row.proven_at }]
+      : [],
+  );
+}

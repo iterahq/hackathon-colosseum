@@ -10,6 +10,7 @@ import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { APP_URL, artInput, buildMetadata, type AchievementRow, type CatalogEntry } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
+import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 
 const CACHE = 'public, max-age=60';
 const PREVIEW_CACHE = 'public, max-age=300';
@@ -129,9 +130,13 @@ function svg(body: string, cors: Record<string, string>, cache = CACHE): Respons
   });
 }
 
+const RATE: RateLimit = { limit: 300, windowMs: 60_000 };
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  const verdict = await takeRate(serviceClient(), 'credential-meta', callerAddress(request), RATE);
+  if (!verdict.allowed) return tooMany(verdict, cors);
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
 
   try {

@@ -45,6 +45,11 @@ export function EvidenceBlock({ wallet, claimId, proofHash }: { wallet: string; 
           {t('graph.detail.activities', { n: facts.activityCount, date: formatDate(facts.completedAt, locale) })}
         </p>
       )}
+      {facts && (
+        <p className={`[font:500_13px/1.4_Inter] ${facts.serverVerified ? 'text-[#F4EDE2]' : 'text-[#A0978A]'}`} data-testid="graph-evidence-graded" data-version={facts.version}>
+          {facts.serverVerified ? t('graph.detail.graded', { share: facts.serverVerified, n: facts.answerHashes }) : t('graph.detail.ungraded')}
+        </p>
+      )}
     </section>
   );
 }

@@ -1,4 +1,5 @@
-import type { I18nText } from './awards.ts';
+/** Text by language. Declared here so the browser can import this module without the server's awarding code. */
+type I18nText = Record<string, string>;
 
 export interface CapabilityClaim {
   /** Stable id, written on chain as `claim:<id>`. Never rename one that was minted. */
@@ -15,6 +16,8 @@ export interface CapabilityClaim {
 export interface CapabilityGraph {
   program: string;
   version: number;
+  /** Trail titles by trail ordinal: what a reader sees before anything is fetched. */
+  trails: I18nText[];
   claims: CapabilityClaim[];
 }
 
@@ -30,6 +33,11 @@ const claim = (id: string, trail: number, day: number, en: string, pt: string, r
 export const ITERA_V2_GRAPH: CapabilityGraph = {
   program: 'itera-v2',
   version: 1,
+  trails: [
+    { en: 'Week 1 · HTML', pt: 'Semana 1 · HTML' },
+    { en: 'Week 2 · CSS', pt: 'Semana 2 · CSS' },
+    { en: 'Week 3 · JavaScript', pt: 'Semana 3 · JavaScript' },
+  ],
   claims: [
     claim('html-tags', 0, 1, 'Reads HTML and tells the tags from the content', 'Lê HTML e separa as tags do conteúdo'),
     claim('html-skeleton', 0, 1, 'Writes a valid page skeleton from scratch', 'Escreve do zero o esqueleto válido de uma página', ['html-tags']),

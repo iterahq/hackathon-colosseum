@@ -19,6 +19,7 @@ import {
 } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
+import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 
 const ASSET_KEYS = ['trail_pass', 'first_stamp', 'streak_3', 'streak_7', 'program_complete', 'early_bird', 'night_owl', 'podium_1', 'podium_2', 'podium_3', 'weekly_goal'];
 const PUBLIC_STATE_FIELDS = [
@@ -172,9 +173,13 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
   };
 }
 
+const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  const verdict = await takeRate(serviceClient(), 'credential-verify', callerAddress(request), RATE);
+  if (!verdict.allowed) return tooMany(verdict, cors);
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
 
   try {

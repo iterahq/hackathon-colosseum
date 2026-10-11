@@ -14,6 +14,7 @@ import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/
 import { regenerate } from '../_shared/lives.ts';
 import { PROFILE_ASSET_LIMIT, buildProfile, isVerified, profileAvatars, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
+import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 
 const COMPANION_COLUMNS = 'id,user_id,asset_address,lives,max_lives,last_regen_at,outfit,avatar,version,mirrored_at';
 const AVATAR_LIMIT = 30;
@@ -33,9 +34,13 @@ async function loadWalletAvatars(db: ReturnType<typeof serviceClient>, wallet: s
   }
 }
 
+const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  const verdict = await takeRate(serviceClient(), 'learner-profile', callerAddress(request), RATE);
+  if (!verdict.allowed) return tooMany(verdict, cors);
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
 
   try {

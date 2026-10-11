@@ -8,24 +8,30 @@ export type ChainState = { phase: 'pending' } | { phase: 'error' } | { phase: 'd
 
 export const isLit = (view: NodeView): boolean => view === 'chain' || view === 'checking' || view === 'server';
 
-export function nodeView(node: CapabilityNode, chain: ChainState): NodeView {
+type Source = Capabilities['source'];
+
+/** A claim worth looking for on chain: the server read it there, or the fast database answer says it was written. */
+const isCandidate = (node: CapabilityNode, source: Source): boolean =>
+  node.status === 'verified' || (source === 'database' && node.status === 'recorded' && Boolean(node.proof?.txSignature));
+
+export function nodeView(node: CapabilityNode, chain: ChainState, source: Source = 'chain'): NodeView {
   if (node.status === 'open') return 'open';
-  if (node.status === 'recorded') return 'recorded';
+  if (!isCandidate(node, source)) return 'recorded';
   if (chain.phase === 'pending') return 'checking';
-  if (chain.phase === 'error') return 'server';
+  if (chain.phase === 'error') return source === 'database' ? 'recorded' : 'server';
   if (!node.proof) return 'unconfirmed';
   return checkClaim(chain.reads[node.proof.asset], node.proof.attribute, node.proof.evidenceHash) === 'verified' ? 'chain' : 'unconfirmed';
 }
 
 export function viewsOf(capabilities: Capabilities, chain: ChainState): Record<string, NodeView> {
-  return Object.fromEntries(capabilities.nodes.map((n) => [n.id, nodeView(n, chain)]));
+  return Object.fromEntries(capabilities.nodes.map((n) => [n.id, nodeView(n, chain, capabilities.source)]));
 }
 
-/** One entry per asset holding a server-verified claim, listing the attributes to look for on it. */
+/** One entry per asset holding a candidate claim, listing the attributes to look for on it. */
 export function chainTargets(capabilities: Capabilities | null): ChainTarget[] {
   const byAsset = new Map<string, Set<string>>();
   for (const n of capabilities?.nodes ?? []) {
-    if (n.status !== 'verified' || !n.proof) continue;
+    if (!n.proof || !isCandidate(n, capabilities?.source)) continue;
     byAsset.set(n.proof.asset, (byAsset.get(n.proof.asset) ?? new Set()).add(n.proof.attribute));
   }
   return [...byAsset].map(([asset, attributes]) => ({ asset, attributes: [...attributes] }));
