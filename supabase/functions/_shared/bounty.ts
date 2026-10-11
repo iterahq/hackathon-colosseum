@@ -294,7 +294,7 @@ export function slugify(title: string, max = 48): string {
 
 function clean(value: unknown): unknown {
   // deno-lint-ignore no-control-regex
-  return typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '') : value;
+  return typeof value === 'string' ? value.normalize('NFKC').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '') : value;
 }
 
 /** A text given in one language or in both. The missing one repeats the other, and `source` says which was written. */

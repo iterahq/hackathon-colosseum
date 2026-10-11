@@ -63,6 +63,8 @@ export async function listBounties(db: IteraClient, tenantIds?: string[]): Promi
 /** One bounty by id or by either of its slugs. */
 export async function loadBounty(db: IteraClient, key: { id: string } | { slug: string }): Promise<BountyRow | null> {
   const query = db.from('bounties').select(BOUNTY_COLUMNS);
+  // The slug goes into a filter expression: only the shape a slug can have ever reaches it.
+  if ('slug' in key && !/^[a-z0-9][a-z0-9-]{2,62}$/.test(key.slug)) return null;
   const { data, error } = await ('id' in key ? query.eq('id', key.id) : query.or(`slug.eq.${key.slug},slug_en.eq.${key.slug}`).limit(1)).maybeSingle();
   if (error) throw new Error(`bounty: ${error.message}`);
   return data as unknown as BountyRow | null;
