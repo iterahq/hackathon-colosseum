@@ -19,6 +19,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { resetIteraUserIdCache } from '@/services/iteraUser';
+import type { SolanaSignInProvider } from '@/types/solanaWallet';
 import { clearIteraStorage } from '@/utils/storageScope';
 
 interface AuthState {
@@ -28,7 +29,10 @@ interface AuthState {
   configured: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithOAuth: (provider: 'azure' | 'keycloak') => Promise<{ error: string | null }>;
-  signInWithSolana: () => Promise<{ error: string | null; noWallet?: boolean }>;
+  /** Sign in with Solana through the given injected wallet, or `window.solana` when none is given. */
+  signInWithSolana: (wallet?: SolanaSignInProvider) => Promise<{ error: string | null; noWallet?: boolean }>;
+  /** Creates an e-mail account; the code names what went wrong (`user_already_exists`, `weak_password`, `email_address_invalid`…). */
+  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null; code: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -89,21 +93,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return { error: error?.message ?? null };
       },
-      async signInWithSolana() {
+      async signInWithSolana(wallet) {
         if (!isSupabaseConfigured) return { error: 'Supabase not configured' };
         // The injected provider (Phantom, Solflare, Backpack) is the only wallet
         // surface: no adapter dependency, and Supabase verifies the signature.
-        if (!('solana' in window)) return { error: 'No Solana wallet found', noWallet: true };
+        if (!wallet && !('solana' in window)) return { error: 'No Solana wallet found', noWallet: true };
         try {
           const { error } = await getSupabase().auth.signInWithWeb3({
             chain: 'solana',
             statement: 'Sign in to Itera',
+            ...(wallet ? { wallet } : {}),
           });
           return { error: error?.message ?? null };
         } catch (e) {
           // A rejected signature request throws from the wallet, not from Supabase.
           return { error: e instanceof Error ? e.message : 'Wallet sign-in failed' };
         }
+      },
+      async signUpWithPassword(email, password) {
+        if (!isSupabaseConfigured) return { error: 'Supabase not configured', code: null };
+        const { error } = await getSupabase().auth.signUp({ email, password });
+        return { error: error?.message ?? null, code: (error as { code?: string } | null)?.code ?? null };
       },
       async signOut() {
         if (!isSupabaseConfigured) return;

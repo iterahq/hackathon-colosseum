@@ -1,13 +1,10 @@
 /**
- * Itera auth — sign-in surface.
- *
- * Self-serve sign-up lives at /signup (passwordless); access still requires a
- * DFL membership or an active subscription — creating an account only gets you
- * to the paywall. DFL is the primary federated IdP.
- * Google login has been removed. Per-tenant white-label branding via ?tenant=.
+ * Itera sign-in — the wallet first, because the wallet is the account that holds the certification.
+ * A browser without a wallet is told how to get one (install link; on a phone, the Phantom in-app
+ * browser). E-mail + password and the DevFellowship account live under "other ways in".
  * On success navigates to the `from` location (default '/').
  */
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import { Button, Input, Label, PasswordInput } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
@@ -16,8 +13,12 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { WebOnly } from '@/components/shell/WebOnly';
 import { useI18n } from '@/i18n';
 import { returnPathOf, returnState } from '@/lib/loginReturn';
-import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
 import { isGuestAccessToken } from '@/services/guestSession.service';
+import type { InjectedWallet } from '@/types/solanaWallet';
+import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
+import { PHANTOM_INSTALL_URL, detectInjectedWallets, isMobileBrowser } from '@/utils/solanaWallets';
+
+const LINK = 'text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline';
 
 export default function AuthPage() {
   const { session, loading, signInWithPassword, signInWithSolana, configured } = useAuth();
@@ -29,6 +30,8 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const wallets = useMemo(() => detectInjectedWallets(), []);
+  const mobile = useMemo(() => isMobileBrowser(undefined, isTouchBrowser()), []);
 
   // location.state is client-controlled and `from` reaches the DFL federate URL
   // as the post-login redirect — only a same-origin in-app path may pass through.
@@ -57,137 +60,137 @@ export default function AuthPage() {
     navigate(from, { replace: true });
   }
 
-  async function onSolana() {
+  async function onWallet(wallet?: InjectedWallet) {
     setBusy(true);
     setError(null);
     setWalletError(null);
-    const { error, noWallet } = await signInWithSolana();
+    const { error, noWallet } = await signInWithSolana(wallet?.provider);
     setBusy(false);
     if (error) {
-      if (noWallet && isTouchBrowser()) {
-        setWalletError(t('auth.solana.openInPhantom'));
-        window.location.assign(phantomBrowseUrl(window.location.href, window.location.origin));
-        return;
-      }
       setWalletError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'));
       return;
     }
     navigate(from, { replace: true });
   }
 
+  const phantomHref = typeof window === 'undefined' ? '#' : phantomBrowseUrl(window.location.href, window.location.origin);
+
   return (
-    <AuthShell title={t('auth.welcome')} subtitle={t('auth.subtitle')} testId="login-page">
+    <AuthShell title={t('door.title')} subtitle={t('door.subtitle')} testId="login-page">
       {!configured && (
         <p className="mb-4 rounded-md bg-destructive/10 p-2 text-center text-xs text-destructive">
           Supabase is not configured (VITE_SUPABASE_* missing).
         </p>
       )}
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-3" data-testid="login-form">
-        <Label htmlFor="email">{t('auth.email')}</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          enterKeyHint="next"
-          autoFocus
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? 'login-error' : undefined}
-          data-testid="email-input"
-        />
-        <Label htmlFor="password">{t('auth.password')}</Label>
-        <PasswordInput
-          id="password"
-          autoComplete="current-password"
-          enterKeyHint="go"
-          required
-          value={password}
-          onValueChange={setPassword}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? 'login-error' : undefined}
-          data-testid="password-input"
-        />
-        <Link
-          to="/auth/forgot"
-          className="self-end text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
-          data-testid="forgot-password-link"
-        >
-          {t('auth.forgot.link')}
-        </Link>
-        {error && (
-          <p id="login-error" role="alert" className="text-sm text-destructive" data-testid="login-error">
-            {error}
+      {wallets.length > 0 ? (
+        <div className="flex flex-col gap-2" data-testid="wallet-choices">
+          {wallets.map((wallet, index) => (
+            <Button
+              key={wallet.id}
+              type="button"
+              className="h-auto min-h-12 w-full whitespace-normal py-2.5 text-center leading-snug"
+              variant={index === 0 ? 'default' : 'outline'}
+              disabled={busy}
+              onClick={() => void onWallet(wallet)}
+              data-testid={index === 0 ? 'web3-solana' : `web3-solana-${wallet.id}`}
+            >
+              {t('door.wallet.continue', { wallet: wallet.name })}
+            </Button>
+          ))}
+          <p className="text-center text-xs text-muted-foreground" data-testid="web3-solana-why">
+            {t('door.wallet.free')}
           </p>
-        )}
-        <Button type="submit" disabled={busy} className="mt-2 min-h-11 w-full" data-testid="submit-login">
-          {busy ? t('common.loading') : t('auth.signIn')}
-        </Button>
-      </form>
-
-      <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        <span>{t('auth.or')}</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-
-      {/* Wallet first: the account that is also the certificate and the inventory. DFL is the federated IdP. */}
-      <div className="flex flex-col gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-auto min-h-11 w-full whitespace-normal py-2.5 text-center leading-snug"
-          disabled={busy}
-          onClick={onSolana}
-          aria-describedby={walletError ? 'wallet-error' : 'web3-solana-why'}
-          data-testid="web3-solana"
-        >
-          {t('auth.wallet.cta')}
-        </Button>
-        <p id="web3-solana-why" className="-mt-1 text-center text-xs text-muted-foreground" data-testid="web3-solana-why">
-          {t('auth.wallet.why')}
-        </p>
-        {walletError && (
-          <p id="wallet-error" role="alert" className="text-center text-sm text-destructive" data-testid="wallet-error">
-            {walletError}
-          </p>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full"
-          onClick={() => loginWithDfl(from)}
-          data-testid="oauth-dfl"
-        >
-          {t('auth.signInWith', { provider: 'DFL' })}
-        </Button>
-        <Link
-          to="/auth/code"
-          state={returnState(from)}
-          className="text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
-          data-testid="goto-otp"
-        >
-          {t('auth.otp.link')}
-        </Link>
-      </div>
-
-      {/* Sign-up CTA — the self-serve door. Access still requires a subscription
-          or DFL membership; /signup only mints the account that can pay. */}
-      <WebOnly>
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          {t('auth.noAccount')}{' '}
-          <Link
-            to="/signup"
-            className="font-medium text-foreground touch-hit underline-offset-2 hover:underline"
-            data-testid="goto-signup"
+          <p className="text-center text-[11px] text-muted-foreground">{t('door.wallet.devnet')}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/60 p-4" data-testid="no-wallet">
+          <p className="font-display text-base font-bold text-foreground">{t('door.noWallet.title')}</p>
+          <p className="text-sm text-muted-foreground">{t(mobile ? 'door.noWallet.mobile' : 'door.noWallet.desktop')}</p>
+          {mobile && (
+            <a href={phantomHref} className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-evergreen px-4 text-sm font-medium text-obsidiana" data-testid="open-in-phantom">
+              {t('door.noWallet.openPhantom')}
+            </a>
+          )}
+          <a
+            href={PHANTOM_INSTALL_URL}
+            target="_blank"
+            rel="noreferrer"
+            className={`inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground ${mobile ? '' : 'bg-evergreen text-obsidiana'}`}
+            data-testid="install-phantom"
           >
-            {t('auth.signUp')}
-          </Link>
+            {t('door.noWallet.install')}
+          </a>
+          <p className="text-xs text-muted-foreground">{t('door.noWallet.others')}</p>
+          <Button type="button" variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => void onWallet()} data-testid="web3-solana">
+            {t('door.wallet.continue', { wallet: 'Phantom' })}
+          </Button>
+        </div>
+      )}
+      {walletError && (
+        <p id="wallet-error" role="alert" className="mt-2 text-center text-sm text-destructive" data-testid="wallet-error">
+          {walletError}
         </p>
-      </WebOnly>
+      )}
+
+      <details className="group mt-5" data-testid="other-ways">
+        <summary className="cursor-pointer list-none text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline">
+          {t('door.other.summary')}
+        </summary>
+        <div className="mt-4 flex flex-col gap-4">
+          <form onSubmit={onSubmit} className="flex flex-col gap-3" data-testid="login-form">
+            <p className="text-xs font-medium text-foreground">{t('door.other.email')}</p>
+            <Label htmlFor="email">{t('auth.email')}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              enterKeyHint="next"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'login-error' : undefined}
+              data-testid="email-input"
+            />
+            <Label htmlFor="password">{t('auth.password')}</Label>
+            <PasswordInput
+              id="password"
+              autoComplete="current-password"
+              enterKeyHint="go"
+              required
+              value={password}
+              onValueChange={setPassword}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'login-error' : undefined}
+              data-testid="password-input"
+            />
+            {error && (
+              <p id="login-error" role="alert" className="text-sm text-destructive" data-testid="login-error">
+                {error}
+              </p>
+            )}
+            <Button type="submit" variant="outline" disabled={busy} className="min-h-11 w-full" data-testid="submit-login">
+              {busy ? t('common.loading') : t('auth.signIn')}
+            </Button>
+            <WebOnly>
+              <p className="text-center text-xs text-muted-foreground">
+                {t('door.other.noAccount')}{' '}
+                <Link to="/signup" state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="goto-signup">
+                  {t('door.other.createEmail')}
+                </Link>
+              </p>
+            </WebOnly>
+          </form>
+          <div className="flex flex-col gap-1.5">
+            <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => loginWithDfl(from)} data-testid="oauth-dfl">
+              {t('auth.signInWith', { provider: 'DFL' })}
+            </Button>
+            <p className={`text-center ${LINK} no-underline hover:no-underline`}>{t('door.other.dflWhy')}</p>
+          </div>
+        </div>
+      </details>
     </AuthShell>
   );
 }

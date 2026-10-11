@@ -24,6 +24,7 @@ import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
 import { BOUNTY_MESSAGES } from './bountyMessages';
 import { LANDING_MESSAGES } from './landingMessages';
+import { DOOR_MESSAGES } from './doorMessages';
 import { LOOP_MESSAGES } from './loopMessages';
 import { SOCIAL_MESSAGES } from './socialMessages';
 import { TERA_MESSAGES } from './teraMessages';
@@ -1245,6 +1246,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...GIFT_MESSAGES.pt,
     ...BOUNTY_MESSAGES.pt,
     ...LANDING_MESSAGES.pt,
+    ...DOOR_MESSAGES.pt,
     ...LOOP_MESSAGES.pt,
     ...SOCIAL_MESSAGES.pt,
     'header.search.open': 'Abrir a busca',
@@ -2443,6 +2445,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...GIFT_MESSAGES.en,
     ...BOUNTY_MESSAGES.en,
     ...LANDING_MESSAGES.en,
+    ...DOOR_MESSAGES.en,
     ...LOOP_MESSAGES.en,
     ...SOCIAL_MESSAGES.en,
     'header.search.open': 'Open search',
@@ -2488,17 +2491,26 @@ export const resources: Record<Locale, Record<string, string>> = {
 
 export const DEFAULT_LOCALE: Locale = 'pt';
 
+/** The locale a browser asks for: Portuguese for any pt-* language, English for everything else; `null` with no signal. */
+export function localeFromLanguages(languages: readonly string[] | undefined): Locale | null {
+  const first = languages?.find((l) => typeof l === 'string' && l.trim() !== '');
+  if (!first) return null;
+  return first.toLowerCase().startsWith('pt') ? 'pt' : 'en';
+}
+
 /**
- * The startup locale. Default is **pt-BR** (the canonical app language). We only
- * honor an explicit, persisted localStorage choice — a first-time visitor with
- * no stored preference ALWAYS starts in pt (we deliberately do NOT auto-switch on
- * navigator.language). The DB-backed per-user preference (itera.users.locale) is
- * applied on top of this once the profile loads (see useLocaleSync), so the
- * stored locale only matters before the profile resolves / when signed out.
+ * The startup locale. An explicit, persisted choice (localStorage) wins; a first visit follows the browser's
+ * language (`navigator.languages`), so an en-US visitor reads English and a pt-BR one Portuguese; with no
+ * signal at all the canonical app language is pt-BR. The DB-backed per-user preference (itera.users.locale)
+ * is applied on top of this once the profile loads (see useLocaleSync).
  */
 function detectLocale(): Locale {
   const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('itera.locale') : null;
   if (stored === 'pt' || stored === 'en') return stored;
+  if (typeof navigator !== 'undefined') {
+    const fromBrowser = localeFromLanguages(navigator.languages?.length ? navigator.languages : [navigator.language]);
+    if (fromBrowser) return fromBrowser;
+  }
   return DEFAULT_LOCALE;
 }
 

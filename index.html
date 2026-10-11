@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -58,14 +58,16 @@
           var m = /^\/u\/([1-9A-HJ-NP-Za-km-z]{32,44})\/?$/.exec(location.pathname);
           var base = '%VITE_SUPABASE_URL%';
           if (!m || base.indexOf('https://') !== 0) return;
-          var lang = localStorage.getItem('itera.locale') === 'en' ? 'en' : 'pt';
+          var stored = localStorage.getItem('itera.locale');
+          var browser = ((navigator.languages && navigator.languages[0]) || navigator.language || 'pt').toLowerCase();
+          var lang = stored === 'en' || stored === 'pt' ? stored : browser.indexOf('pt') === 0 ? 'pt' : 'en';
           window.__iteraGraph = { wallet: m[1], lang: lang, response: fetch(base + '/functions/v1/capability-graph/' + m[1] + '?lang=' + lang) };
           window.__iteraGraph.response.catch(function () {});
         } catch (e) {}
       })();
     </script>
     <title>Itera</title>
-    <meta name="description" content="Prova de aprendizado que vive na sua carteira. Treine, prove na Solana, ganhe: cada dia concluído carimba uma credencial soulbound que qualquer pessoa verifica." />
+    <meta name="description" content="Proof of learning that lives in your wallet. Train, prove it on Solana, earn: every finished day stamps a soulbound credential anyone can verify." />
     <meta name="author" content="Itera" />
     <meta name="theme-color" content="#0A0908" />
     <!-- Itera "I/" monogram favicon (evergreen slash). SVG primary, ico fallback; PNGs for the manifest and iOS. -->
@@ -83,8 +85,8 @@
     <meta property="og:image" content="https://hackathon-colosseum.178-105-2-230.sslip.io/og/itera.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:locale" content="pt_BR" />
-    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="pt_BR" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@DevFellowship" />
