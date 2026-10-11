@@ -106,6 +106,10 @@ verify_jwt = false
 [functions.bounty-sponsor]
 verify_jwt = false
 
+# Any wallet posts and funds a bounty: public GET for the form's options; every POST checks the bearer token in code.
+[functions.bounty-post]
+verify_jwt = false
+
 # Server-side grading: the only writer of a completion. Validates the bearer token itself.
 [functions.grade]
 verify_jwt = false

@@ -13,6 +13,8 @@ import {
   fundingTarget,
   parseNewBounty,
   parseSubmission,
+  parseWalletBounty,
+  slugify,
   publicStatus,
   trailAttribute,
   transferMemo,
@@ -349,10 +351,96 @@ describe('trailAttribute', () => {
 });
 
 describe('boardStats and the team test accounts', () => {
-  it('a payout to a test account is not counted as paid', () => {
-    const row = (id: string, status: string) => ({ id, status, payout_lamports: 5_000_000, reward_lamports: 5_000_000, funded_lamports: 5_000_000, expires_at: '2099-01-01T00:00:00Z' }) as unknown as Parameters<typeof boardStats>[0][number];
-    const rows = [row('real', 'paid'), row('test', 'paid'), row('open', 'open')];
-    expect(boardStats(rows, new Date('2026-10-11T00:00:00Z'))).toMatchObject({ paid_count: 2, paid_lamports: 10_000_000, open_count: 1 });
-    expect(boardStats(rows, new Date('2026-10-11T00:00:00Z'), new Set(['test']))).toMatchObject({ paid_count: 1, paid_lamports: 5_000_000, open_count: 1 });
+  it('a payout to a test account is counted like the card that shows it, and named as a rehearsal', () => {
+    const row = (id: string, status: string) => ({ id, status, origin: 'team', payout_lamports: 5_000_000, reward_lamports: 5_000_000, funded_lamports: 5_000_000, expires_at: '2099-01-01T00:00:00Z' }) as unknown as Parameters<typeof boardStats>[0][number];
+    const rows = [row('real', 'paid'), row('test', 'paid'), row('open', 'open'), row('held', 'claimed')];
+    expect(boardStats(rows, new Date('2026-10-11T00:00:00Z'))).toMatchObject({ paid_count: 2, paid_lamports: 10_000_000, rehearsal_paid_count: 0, outside_paid_count: 2, open_count: 1, held_count: 1 });
+    expect(boardStats(rows, new Date('2026-10-11T00:00:00Z'), new Set(['test']))).toMatchObject({
+      paid_count: 2,
+      paid_lamports: 10_000_000,
+      rehearsal_paid_count: 1,
+      rehearsal_paid_sol: '0.005 SOL',
+      outside_paid_count: 1,
+      open_count: 1,
+    });
+  });
+});
+
+describe('parseWalletBounty', () => {
+  const form = {
+    sponsor_name: 'Padaria do Bairro',
+    title: { en: 'Accessible price list for a bakery' },
+    summary: { en: 'Turn our photographed price list into an HTML table a screen reader can read.' },
+    brief: { en: 'Context: our prices are a photo. What to do: one HTML table with caption, header cells and at least eight products.' },
+    deliverable: { en: 'A public link to the page (CodePen or GitHub Pages).' },
+    reward_lamports: 20_000_000,
+    unit_id: '9624052c-4efb-49ca-8bbf-f63d0e5d6c2d',
+    min_days: 1,
+    expires_in_days: 7,
+  };
+
+  it('accepts one language and repeats it in the other', () => {
+    const parsed = parseWalletBounty(form, NOW);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.source_lang).toBe('en');
+    expect(parsed.value.title_i18n).toEqual({ pt: form.title.en, en: form.title.en });
+    expect(parsed.value.claim_hours).toBe(48);
+    expect(parsed.value.expires_at).toBe('2026-10-18T12:00:00.000Z');
+  });
+
+  it('refuses a name of the team, a reward under the floor, a long deadline and thin text', () => {
+    expect(parseWalletBounty({ ...form, sponsor_name: 'DevFellowship' }, NOW)).toEqual({ ok: false, error: 'invalid_sponsor' });
+    expect(parseWalletBounty({ ...form, sponsor_name: 'Itera team' }, NOW)).toEqual({ ok: false, error: 'invalid_sponsor' });
+    expect(parseWalletBounty({ ...form, reward_lamports: 9_999_999 }, NOW)).toEqual({ ok: false, error: 'invalid_reward' });
+    expect(parseWalletBounty({ ...form, reward_lamports: 500_000_001 }, NOW)).toEqual({ ok: false, error: 'invalid_reward' });
+    expect(parseWalletBounty({ ...form, expires_in_days: 31 }, NOW)).toEqual({ ok: false, error: 'invalid_deadline' });
+    expect(parseWalletBounty({ ...form, claim_hours: 169 }, NOW)).toEqual({ ok: false, error: 'invalid_deadline' });
+    expect(parseWalletBounty({ ...form, brief: { en: 'too short' } }, NOW)).toEqual({ ok: false, error: 'invalid_text' });
+    expect(parseWalletBounty({ ...form, title: { en: form.title.en, pt: 'x' } }, NOW)).toEqual({ ok: false, error: 'invalid_text' });
+  });
+
+  it('drops invisible direction marks from what a sponsor typed', () => {
+    const parsed = parseWalletBounty({ ...form, sponsor_name: 'Pada\u202eria' }, NOW);
+    expect(parsed.ok && parsed.value.sponsor_name).toBe('Padaria');
+  });
+});
+
+describe('slugify', () => {
+  it('makes a readable ascii slug', () => {
+    expect(slugify('Tabela de horários acessível!')).toBe('tabela-de-horarios-acessivel');
+    expect(slugify('???')).toBe('bounty');
+    expect(slugify('a'.repeat(80)).length).toBe(48);
+  });
+});
+
+describe('bountyView for a wallet sponsor and for a rehearsal', () => {
+  const base = {
+    id: '11111111-1111-4111-8111-111111111111', slug: 'lista-de-precos-ab12cd', slug_en: 'price-list-ab12cd', tenant_id: 't', sponsor_name: 'Padaria', title_i18n: { pt: 'Lista', en: 'List' }, summary_i18n: { pt: 's', en: 's' },
+    brief_i18n: { pt: 'b', en: 'b' }, deliverable_i18n: { pt: 'd', en: 'd' }, requirement, reward_lamports: 20_000_000, escrow_kind: 'program', escrow_address: OTHER, refund_address: WALLET,
+    status: 'open', claim_id: null, claim_hours: 48, expires_at: '2099-01-01T00:00:00Z', funded_at: null, funded_lamports: null, funding_signature: null, transfer_signature: null, transfer_sent_at: null,
+    transfer_lamports: null, paid_at: null, paid_wallet: null, payout_lamports: null, payout_signature: null, refunded_at: null, refund_lamports: null, refund_signature: null, created_at: '2026-10-11T00:00:00Z',
+    origin: 'wallet', sponsor_wallet: WALLET, approver_address: WALLET, source_lang: 'en', hidden_at: null, hidden_reason: null, delivery_mirror_url: null,
+  } as unknown as BountyRow;
+
+  it('names the wallet that posted, says it approves, and answers the slug of the language', () => {
+    const view = bountyView({ bounty: base, claim: null, lang: 'en', now: NOW, functionsBase: 'https://f' });
+    expect(view.posted_by).toMatchObject({ kind: 'wallet', wallet: WALLET });
+    expect(view.approver).toBe('sponsor_wallet');
+    expect(view.slug).toBe('price-list-ab12cd');
+    expect(view.page_url.endsWith('/bounties/price-list-ab12cd')).toBe(true);
+    expect(bountyView({ bounty: base, claim: null, lang: 'pt', now: NOW, functionsBase: 'https://f' }).slug).toBe('lista-de-precos-ab12cd');
+    expect(view.rehearsal).toBe(false);
+  });
+
+  it('a team bounty is approved by Itera; a rehearsal shows the hosted copy of the delivery', () => {
+    const claim = { id: 'c', bounty_id: base.id, user_id: 'u', wallet: OTHER, proof_asset: OTHER, proof: {}, status: 'approved', accepted_at: '', deadline_at: '', submission_url: 'https://private.example/x', submission_note: null, submitted_at: null, reviewed_at: null, review_note: null } as ClaimRow;
+    const team = { ...base, origin: 'team', sponsor_wallet: null, approver_address: null, status: 'paid', delivery_mirror_url: 'https://site.example/rehearsal/form.html' } as BountyRow;
+    const view = bountyView({ bounty: team, claim, lang: 'en', now: NOW, functionsBase: 'https://f', rehearsal: true });
+    expect(view.approver).toBe('itera');
+    expect(view.posted_by.wallet).toBeNull();
+    expect(view.rehearsal).toBe(true);
+    expect(view.claim?.submission_url).toBe('https://site.example/rehearsal/form.html');
+    expect(view.claim?.submission_mirrored).toBe(true);
   });
 });

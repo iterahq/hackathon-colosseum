@@ -6,6 +6,8 @@ import {
   expireStaleClaims,
   listBounties,
   loadBounty,
+  loadTrails,
+  PROGRAM_SLUG,
   loadClaims,
   refreshFunding,
   refundBounty,
@@ -22,7 +24,6 @@ import { staffTenantIds } from '../_shared/staff.ts';
 import { TransferBroadcastError, TreasuryNotConfiguredError, sendFromTreasury, treasuryAddress } from '../_shared/treasury.ts';
 
 type Cors = Record<string, string>;
-const PROGRAM_SLUG = 'itera-v2';
 
 interface Sponsor {
   caller: Caller;
@@ -30,22 +31,6 @@ interface Sponsor {
   tenantIds: string[];
   /** May fund from the Itera treasury. */
   treasuryTenant: string | null;
-}
-
-interface Trail {
-  unit_id: string;
-  title: Record<string, string>;
-  total_days: number;
-}
-
-async function loadTrails(db: IteraClient): Promise<Trail[]> {
-  const { data, error } = await db.from('units').select('id,title_i18n,ordinal,programs!inner(slug),lessons(count)').eq('programs.slug', PROGRAM_SLUG).order('ordinal');
-  if (error) throw new Error(`units: ${error.message}`);
-  return ((data ?? []) as unknown as Array<{ id: string; title_i18n: Record<string, string>; lessons: Array<{ count: number }> }>).map((unit) => ({
-    unit_id: unit.id,
-    title: unit.title_i18n,
-    total_days: unit.lessons[0]?.count ?? 0,
-  }));
 }
 
 /** A bounty as its sponsor sees it: the public view plus the delivery under review. */
@@ -203,6 +188,39 @@ async function refund(db: IteraClient, sponsor: Sponsor, bounty: BountyRow, cors
   return json({ outcome, status: after?.status, refund_signature: after?.refund_signature ?? after?.transfer_signature ?? null }, outcome === 'settled' ? 200 : 202, cors);
 }
 
+/**
+ * Moderation, for the staff of the treasury tenant (Itera's own): every bounty a wallet posted, with the
+ * reports against it. Hiding takes a bounty off the public board. It moves no money: the escrow obeys the
+ * program, and the sponsor's wallet can still refund it.
+ */
+async function moderation(db: IteraClient, sponsor: Sponsor, cors: Cors): Promise<Response> {
+  if (!sponsor.treasuryTenant) return json({ error: 'forbidden' }, 403, cors);
+  const { data, error } = await db
+    .from('bounties')
+    .select('id,slug,sponsor_name,sponsor_wallet,title_i18n,status,reward_lamports,hidden_at,hidden_reason,created_at,bounty_reports(reason,created_at)')
+    .eq('origin', 'wallet')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw new Error(`bounties moderation: ${error.message}`);
+  return json({ bounties: data ?? [] }, 200, cors);
+}
+
+async function setHidden(db: IteraClient, sponsor: Sponsor, body: Record<string, unknown>, hide: boolean, cors: Cors): Promise<Response> {
+  if (!sponsor.treasuryTenant) return json({ error: 'forbidden' }, 403, cors);
+  const id = body.bounty;
+  if (typeof id !== 'string' || !isUuid(id)) return json({ error: 'invalid_body' }, 400, cors);
+  const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, 300) : null;
+  const { data, error } = await db
+    .from('bounties')
+    .update(hide ? { hidden_at: new Date().toISOString(), hidden_by: sponsor.caller.iteraUserId, hidden_reason: reason } : { hidden_at: null, hidden_by: null, hidden_reason: null })
+    .eq('id', id)
+    .eq('origin', 'wallet')
+    .select('id');
+  if (error) throw new Error(`bounties hide: ${error.message}`);
+  if ((data ?? []).length === 0) return json({ error: 'bounty_not_found' }, 404, cors);
+  return json({ hidden: hide }, 200, cors);
+}
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'app');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -220,6 +238,9 @@ Deno.serve(async (request) => {
     if (!body) return json({ error: 'invalid_body' }, 400, cors);
     if (body.action === 'list') return await list(db, sponsor, cors);
     if (body.action === 'create') return await create(db, sponsor, body, cors);
+    if (body.action === 'moderation') return await moderation(db, sponsor, cors);
+    if (body.action === 'hide') return await setHidden(db, sponsor, body, true, cors);
+    if (body.action === 'unhide') return await setHidden(db, sponsor, body, false, cors);
 
     const bountyId = body.bounty;
     if (typeof bountyId !== 'string' || !isUuid(bountyId)) return json({ error: 'invalid_body' }, 400, cors);
