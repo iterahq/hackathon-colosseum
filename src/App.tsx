@@ -16,6 +16,7 @@ import { PersonalizationProvider } from "./personalization/PersonalizationProvid
 // `@iterahq/activities`, which cannot import either. See the file.
 import { IteraActivityHost } from "./components/branded/activity/IteraActivityHost";
 import { RequireAuth } from "./auth/RequireAuth";
+import { RootRoute } from "./pages/RootRoute";
 import { RequireRole } from "./auth/RequireRole";
 import { RequireSubscription } from "./auth/RequireSubscription";
 import { ShellBridgeMount } from "./lib/shellBridge";
@@ -213,11 +214,13 @@ const App = () => (
                 <Route
                   path="/"
                   element={
-                    <RequireAuth>
-                      <RequireSubscription mode="preview">
-                        <LazyRoute><HomeRoute /></LazyRoute>
-                      </RequireSubscription>
-                    </RequireAuth>
+                    <RootRoute>
+                      <RequireAuth>
+                        <RequireSubscription mode="preview">
+                          <LazyRoute><HomeRoute /></LazyRoute>
+                        </RequireSubscription>
+                      </RequireAuth>
+                    </RootRoute>
                   }
                 />
                 {/* Self-serve catalog — browse + enroll into catalog courses
