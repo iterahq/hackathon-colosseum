@@ -11,10 +11,10 @@ import { RpcError, balanceOf, blockHeight, latestBlockhash } from '../_shared/rp
 import { ITEM_COLUMNS, ITEM_HANDLERS, PURCHASE_COLUMNS, type PurchaseRow, type ShopItem } from '../_shared/shop-items.ts';
 import { isItemKind, type IneligibleCode } from '../_shared/shop-rules.ts';
 import { base58Encode, base64Encode, buildTransferMessage, serializeTransaction } from '../_shared/solana-tx.ts';
-import { RateLimiter, callerAddress, tooMany } from '../_shared/ratelimit.ts';
+import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 
-/** Every intent costs three RPC reads before any check of the learner: one address gets one a second, best effort. */
-const limiter = new RateLimiter({ limit: 60, windowMs: 60_000 });
+/** Every intent costs three RPC reads: one address gets one a second. Counted beside the caller lookup. */
+const RATE = { limit: 60, windowMs: 60_000 };
 
 const INELIGIBLE_STATUS: Record<IneligibleCode, number> = {
   invalid_ref: 400,
@@ -83,12 +83,11 @@ Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'app');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, cors);
-  const verdict = limiter.take(callerAddress(request));
-  if (!verdict.allowed) return tooMany(verdict, cors);
 
   try {
     const db = serviceClient();
-    const caller = await resolveCaller(db, request);
+    const [caller, verdict] = await Promise.all([resolveCaller(db, request), takeRate(db, 'purchase-intent', callerAddress(request), RATE)]);
+    if (!verdict.allowed) return tooMany(verdict, cors);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
 
     const body = await readJsonObject(request);

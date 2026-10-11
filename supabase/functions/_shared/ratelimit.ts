@@ -1,9 +1,12 @@
 /**
- * A best-effort per-caller limit for public, unauthenticated endpoints: a sliding window kept in the
- * memory of this isolate. It resets on a cold start and is not shared between instances, so it caps
- * a single abusive source per instance; it is not a quota. The caller is told by its address, which
- * is for throttling only and never for deciding what it may read.
+ * A per-caller limit for public endpoints: a fixed window counted in the database (`itera.rate_take`,
+ * migration 0210), because a Supabase edge function may run every request in a fresh isolate, where
+ * an in-memory counter never moves. One upsert per call. The caller is told by its address, which is
+ * for throttling only and never for deciding what it may read. When the counter cannot be reached the
+ * request is allowed and the failure logged: a throttle must not take the endpoint down.
  */
+import type { IteraClient } from './db.ts';
+
 export interface RateLimit {
   /** Requests allowed per window from one address. */
   limit: number;
@@ -17,37 +20,28 @@ export interface RateVerdict {
   retryAfterSeconds: number;
 }
 
-const MAX_TRACKED = 5_000;
+const OPEN: RateVerdict = { allowed: true, remaining: -1, retryAfterSeconds: 0 };
 
-export class RateLimiter {
-  private readonly hits = new Map<string, number[]>();
+/** One row from `itera.rate_take`, in the shape the function returns. */
+export function verdictOf(row: unknown): RateVerdict {
+  const r = (Array.isArray(row) ? row[0] : row) as { allowed?: unknown; remaining?: unknown; retry_after_seconds?: unknown } | null;
+  if (!r || typeof r.allowed !== 'boolean') return OPEN;
+  return {
+    allowed: r.allowed,
+    remaining: typeof r.remaining === 'number' ? r.remaining : 0,
+    retryAfterSeconds: typeof r.retry_after_seconds === 'number' ? r.retry_after_seconds : 0,
+  };
+}
 
-  constructor(private readonly rule: RateLimit) {}
-
-  take(key: string, now = Date.now()): RateVerdict {
-    const since = now - this.rule.windowMs;
-    const recent = (this.hits.get(key) ?? []).filter((at) => at > since);
-    if (recent.length >= this.rule.limit) {
-      this.hits.set(key, recent);
-      return { allowed: false, remaining: 0, retryAfterSeconds: Math.max(1, Math.ceil((recent[0] + this.rule.windowMs - now) / 1000)) };
-    }
-    recent.push(now);
-    this.hits.set(key, recent);
-    if (this.hits.size > MAX_TRACKED) this.sweep(since);
-    return { allowed: true, remaining: this.rule.limit - recent.length, retryAfterSeconds: 0 };
-  }
-
-  private sweep(since: number): void {
-    for (const [key, stamps] of this.hits) {
-      const kept = stamps.filter((at) => at > since);
-      if (kept.length === 0) this.hits.delete(key);
-      else this.hits.set(key, kept);
-    }
-    // Still over the cap after dropping idle keys: forget the oldest entries rather than grow without bound.
-    for (const key of this.hits.keys()) {
-      if (this.hits.size <= MAX_TRACKED) break;
-      this.hits.delete(key);
-    }
+/** Takes one slot of `rule` for `address` on `scope` (the function name). Never throws. */
+export async function takeRate(db: IteraClient, scope: string, address: string, rule: RateLimit): Promise<RateVerdict> {
+  try {
+    const { data, error } = await db.rpc('rate_take', { p_key: `${scope}:${address}`, p_limit: rule.limit, p_window_ms: rule.windowMs });
+    if (error) throw new Error(error.message);
+    return verdictOf(data);
+  } catch (error) {
+    console.error(`rate limit unavailable for ${scope}`, error instanceof Error ? error.message : error);
+    return OPEN;
   }
 }
 

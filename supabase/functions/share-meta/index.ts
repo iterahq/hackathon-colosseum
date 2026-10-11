@@ -7,11 +7,11 @@ import { isSolanaAddress } from '../_shared/address.ts';
 import { APP_URL, pickText } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, json, pathAfter } from '../_shared/http.ts';
-import { RateLimiter, callerAddress, tooMany } from '../_shared/ratelimit.ts';
+import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 
 const IMAGE = `${APP_URL}/og/itera.png`;
-/** A crawler fetches a link once; a script hammering previews is throttled, best effort, per isolate. */
-const limiter = new RateLimiter({ limit: 60, windowMs: 60_000 });
+/** A crawler fetches a link once; a script hammering previews is throttled per address. */
+const RATE = { limit: 60, windowMs: 60_000 };
 const CACHE = 'public, max-age=300';
 const DEFAULT = { title: 'Itera | Proof of learning that lives in your wallet', description: 'Train. Prove it on Solana. Earn. Every finished day stamps a soulbound credential anyone can verify.' };
 
@@ -97,15 +97,15 @@ Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (request.method !== 'GET' && request.method !== 'HEAD') return json({ error: 'method_not_allowed' }, 405, cors);
-  const verdict = limiter.take(callerAddress(request));
-  if (!verdict.allowed) return tooMany(verdict, cors);
 
   try {
+    const db = serviceClient();
+    const verdict = await takeRate(db, 'share-meta', callerAddress(request), RATE);
+    if (!verdict.allowed) return tooMany(verdict, cors);
     const [kind, id, ...rest] = pathAfter(request, 'share-meta');
     let share = DEFAULT;
     let url = APP_URL;
     if (rest.length === 0 && id && isSolanaAddress(id)) {
-      const db = serviceClient();
       if (kind === 'c') {
         share = await credentialShare(db, id);
         url = `${APP_URL}/c/${id}`;
@@ -119,7 +119,7 @@ Deno.serve(async (request) => {
     }
     return new Response(page(share, url), {
       status: 200,
-      headers: { ...cors, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': CACHE, 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex' },
+      headers: { ...cors, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': CACHE, 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex', 'X-RateLimit-Remaining': String(verdict.remaining) },
     });
   } catch (error) {
     console.error('share-meta failed', error);

@@ -30,7 +30,7 @@ import {
   type Lang,
 } from '../_shared/gift.ts';
 import { functionsBase, isUuid, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
-import { RateLimiter, callerAddress, tooMany } from '../_shared/ratelimit.ts';
+import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 import { expiresAt, fundsCheck } from '../_shared/purchase-verify.ts';
 import { RpcError, balanceOf, blockHeight, latestBlockhash } from '../_shared/rpc.ts';
 import { ITEM_COLUMNS, type ShopItem } from '../_shared/shop-items.ts';
@@ -248,16 +248,16 @@ async function confirm(db: IteraClient, request: Request, lang: Lang): Promise<R
 }
 
 /** The slots per payer and the pending cap live in the table; this one keeps one address from flooding the intent builder. */
-const limiter = new RateLimiter({ limit: 60, windowMs: 60_000 });
+const RATE = { limit: 60, windowMs: 60_000 };
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: actionHeaders() });
-  const verdict = limiter.take(callerAddress(request));
-  if (!verdict.allowed) return tooMany(verdict, actionHeaders());
   const lang = langOf(request, 'en');
   try {
     const [first, ...rest] = pathAfter(request, FUNCTION);
     const db = serviceClient();
+    const verdict = await takeRate(db, 'action-gift', callerAddress(request), RATE);
+    if (!verdict.allowed) return tooMany(verdict, actionHeaders());
     if (first === 'confirm' && rest.length === 0) {
       return request.method === 'POST' ? await confirm(db, request, lang) : refuse('invalid_body', lang, 405);
     }
