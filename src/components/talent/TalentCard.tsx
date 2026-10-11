@@ -43,12 +43,12 @@ export function TalentCard({ learner }: { learner: TalentLearner }) {
         <span className={`${MONO_LABEL} text-[#A0978A]`}>{t('talent.card.capabilities')}</span>
         {learner.capabilities.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5" data-testid="talent-card-capabilities">
-            {learner.capabilities.slice(0, 6).map((entry) => (
+            {learner.capabilities.slice(0, 4).map((entry) => (
               <li key={entry.key} className="min-w-0 max-w-full">
                 <Chip title={entry.title}>{entry.title}</Chip>
               </li>
             ))}
-            {learner.capabilities.length > 6 && <li><Chip>+{learner.capabilities.length - 6}</Chip></li>}
+            {learner.capabilities.length > 4 && <li><Chip>+{learner.capabilities.length - 4}</Chip></li>}
           </ul>
         ) : (
           <p className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('talent.card.noCapabilities')}</p>
@@ -58,7 +58,7 @@ export function TalentCard({ learner }: { learner: TalentLearner }) {
         {learner.bountiesPaid > 0 ? plural(t, 'talent.card.paid', learner.bountiesPaid, { sol: localizeDecimal(lamportsToSol(learner.bountiesPaidLamports), locale) }) : t('talent.card.paid.none')}
       </p>
       {lastStamp && <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('talent.card.lastStamp', { date: lastStamp })}</p>}
-      <div className="mt-auto flex flex-col gap-2 pt-1 sm:flex-row">
+      <div className="mt-auto flex flex-col gap-2 pt-1">
         <Link to={learner.profileUrl} className={`${BTN_SECONDARY} ${BTN_SMALL} flex-1`} data-testid="talent-card-proof">
           {t('talent.card.viewProof')}
         </Link>
