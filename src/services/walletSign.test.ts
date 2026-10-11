@@ -14,6 +14,7 @@ const intent: PurchaseIntent = {
   priceLabel: 'US$ 0.10',
   expiresAt: null,
   cluster: 'devnet',
+  payer: null,
 };
 
 const install = (provider: Record<string, unknown>) => {
@@ -38,6 +39,11 @@ describe('classifyWalletError', () => {
   it('spots an empty wallet', () => {
     expect(classifyWalletError(new Error('Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.')).reason).toBe('insufficient');
     expect(classifyWalletError({ code: -32603, message: 'insufficient lamports 0, need 500000' }).reason).toBe('insufficient');
+  });
+
+  it('spots a dead blockhash', () => {
+    expect(classifyWalletError({ code: -32003, message: 'Transaction simulation failed: Blockhash not found' }).reason).toBe('expired');
+    expect(classifyWalletError(new Error('block height exceeded')).reason).toBe('expired');
   });
 
   it('keeps code and message of anything else', () => {
@@ -76,21 +82,26 @@ describe('signAndSendPurchase', () => {
     expect(signAndSendTransaction).not.toHaveBeenCalled();
   });
 
-  it('falls back to the duck-typed transaction object when the request form fails', async () => {
+  it('never hands a duck-typed object to signAndSendTransaction: Phantom would only prompt twice for the same request', async () => {
     quiet();
     const signAndSendTransaction = vi.fn().mockResolvedValue({ signature: 'SIG2' });
     install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'Unexpected error' }), signAndSendTransaction });
-    await expect(signAndSendPurchase(intent)).resolves.toEqual({ kind: 'sent', signature: 'SIG2' });
-    const tx = signAndSendTransaction.mock.calls[0][0];
-    expect(Array.from(tx.serializeMessage())).toEqual([4, 5, 6]);
-    expect(Array.from(tx.serialize())).toEqual([1, 2, 3]);
-    expect(tx.signatures).toEqual([]);
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'failed' });
+    expect(signAndSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('stops at a dead blockhash: expired, no sign-only prompt', async () => {
+    quiet();
+    const request = vi.fn().mockRejectedValue({ code: -32003, message: 'Blockhash not found' });
+    install({ request });
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'expired' });
+    expect(request).toHaveBeenCalledTimes(1);
   });
 
   it('reports what every attempt said when all fail', async () => {
     quiet();
-    install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'A' }), signAndSendTransaction: vi.fn().mockRejectedValue(new Error('B')) });
-    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'failed', detail: 'request → -32603: A | object → B | sign → -32603: A' });
+    install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'A' }) });
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'failed', detail: 'request → -32603: A | sign → -32603: A' });
   });
 
   it('falls back to sign-only and assembles the transaction from a bare signature', async () => {

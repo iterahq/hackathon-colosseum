@@ -133,6 +133,8 @@ export interface PurchaseIntent {
   priceLabel: string;
   expiresAt: string | null;
   cluster: string;
+  /** The wallet the backend built the transaction for (the account's wallet): the one that has to sign. */
+  payer: string | null;
 }
 
 /** `pending` is ours: the backend answered a retryable error (the transaction is not visible yet). */
@@ -160,6 +162,10 @@ export interface PurchaseConfirmation {
   gift?: GiftReceipt | null;
   /** What this purchase paid forward (the Circuito), once its transfer is confirmed. */
   circuit?: PurchaseCircuit | null;
+  /** While `pending`: the backend's retryable code (`tx_not_found`, `apply_failed`, `rpc_unavailable`). */
+  pendingCode?: string | null;
+  /** While `pending`: the payment is already recorded; only the delivery of the item is outstanding. */
+  paymentSettled?: boolean;
 }
 
 export type FaucetResult = { signature: string; blocked: null } | { signature: null; blocked: string };

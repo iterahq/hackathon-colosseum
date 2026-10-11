@@ -193,6 +193,8 @@ Deno.serve(async (request) => {
         treasury,
         memo: intent.memo,
         cluster: CLUSTER,
+        // The account the transaction was built for: the wallet open in the browser has to be this one.
+        payer: caller.wallet,
         ...(recipientWallet ? { recipient: { wallet: recipientWallet } } : {}),
       },
       200,

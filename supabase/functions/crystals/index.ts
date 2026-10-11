@@ -18,6 +18,7 @@ import {
   loadLedger,
   loadChoice,
   loadTheme,
+  ownedItemKeys,
   ownedThemeKeys,
   saveThemeChoice,
   spendCrystals,
@@ -63,17 +64,21 @@ const TOKEN_ART =
 /** Everything the crystals sheet shows. Starts the token mirror when the chain is behind. */
 async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Record<string, unknown>> {
   const userId = caller.iteraUserId;
-  // A refund whose credit failed earlier is paid before the balance is read.
-  await reconcileRefunds(db, userId);
-  const [account, ledger, items, config, includedWith] = await Promise.all([
+  // Everything is read in one round, the pending refunds included; the balance and the ledger are
+  // read again only when a refund whose credit had failed earlier was paid just now.
+  const [refunded, firstAccount, firstLedger, items, config, includedWith, ownedAll, chosen] = await Promise.all([
+    reconcileRefunds(db, userId),
     loadAccount(db, userId),
     loadLedger(db, userId),
     loadCrystalItems(db),
     loadConfig(db),
     // Which avatar a border comes with. Never fatal for the sheet.
     loadAvatarCatalog(db).then(includedWithMap, () => new Map<string, string>()),
+    ownedItemKeys(db, userId),
+    loadChoice(db, userId),
   ]);
-  const [owned, chosen] = await Promise.all([ownedThemeKeys(db, userId, items), loadChoice(db, userId)]);
+  const [account, ledger] = refunded > 0 ? await Promise.all([loadAccount(db, userId), loadLedger(db, userId)]) : [firstAccount, firstLedger];
+  const owned = new Set(items.filter((item) => THEME_KINDS.includes(item.kind) && ownedAll.has(item.key)).map((item) => item.key));
   const theme = themeOf(items, chosen, owned, lang);
   const token = tokenView(account, config[CRYSTAL_MINT_CONFIG_KEY] ?? null, caller.wallet);
   if (caller.wallet && !token.mirrored) inBackground(mirrorCrystals(db, userId, caller.wallet));

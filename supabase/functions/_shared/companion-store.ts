@@ -210,8 +210,38 @@ export interface InventoryEntry {
   equipped: boolean;
 }
 
+type InventoryRow = {
+  item_key: string;
+  ref_id: string;
+  qty: number;
+  shop_items: { kind: string; effect: Record<string, unknown> } | null;
+};
+
+/** The inventory as read, before the worn outfit is known: `inventoryWith` finishes it. */
+export interface InventoryRead {
+  rows: InventoryRow[];
+  cosmeticsByTrail: Map<string, ReturnType<typeof cosmeticsOf>>;
+}
+
 /** What the learner owns. `equipped`: the outfit Tera wears, or a cosmetic its passport shows. */
 export async function loadInventory(db: IteraClient, userId: string, outfit: string | null): Promise<InventoryEntry[]> {
+  return inventoryWith(await readInventory(db, userId), outfit);
+}
+
+/** Marks what is worn. Pure, so the companion row and the inventory can be read at the same time. */
+export function inventoryWith({ rows, cosmeticsByTrail }: InventoryRead, outfit: string | null): InventoryEntry[] {
+  return rows.map((row) => {
+    const kind = row.shop_items?.kind ?? '';
+    const worn = cosmeticsByTrail.get(row.ref_id);
+    const value = row.shop_items?.effect?.value;
+    const equipped =
+      kind === 'outfit' ? row.item_key === outfit : kind === 'ink' ? worn?.ink === value : kind === 'frame' ? worn?.frame === value : false;
+    return { item_key: row.item_key, kind, ref_id: row.ref_id, qty: row.qty, equipped };
+  });
+}
+
+/** The owned rows and, when an ink or frame is among them, what each certification wears. */
+export async function readInventory(db: IteraClient, userId: string): Promise<InventoryRead> {
   const { data, error } = await db
     .from('user_inventory')
     .select('item_key,ref_id,qty,shop_items(kind,effect)')
@@ -219,12 +249,7 @@ export async function loadInventory(db: IteraClient, userId: string, outfit: str
     .gt('qty', 0)
     .order('item_key');
   if (error) throw new Error(`user_inventory: ${error.message}`);
-  const rows = (data ?? []) as unknown as Array<{
-    item_key: string;
-    ref_id: string;
-    qty: number;
-    shop_items: { kind: string; effect: Record<string, unknown> } | null;
-  }>;
+  const rows = (data ?? []) as unknown as InventoryRow[];
 
   const cosmeticsByTrail = new Map<string, ReturnType<typeof cosmeticsOf>>();
   if (rows.some((row) => row.shop_items?.kind === 'ink' || row.shop_items?.kind === 'frame')) {
@@ -241,14 +266,7 @@ export async function loadInventory(db: IteraClient, userId: string, outfit: str
     for (const passport of worn) cosmeticsByTrail.set(passport.ref_id, cosmeticsOf(passport.state));
   }
 
-  return rows.map((row) => {
-    const kind = row.shop_items?.kind ?? '';
-    const worn = cosmeticsByTrail.get(row.ref_id);
-    const value = row.shop_items?.effect?.value;
-    const equipped =
-      kind === 'outfit' ? row.item_key === outfit : kind === 'ink' ? worn?.ink === value : kind === 'frame' ? worn?.frame === value : false;
-    return { item_key: row.item_key, kind, ref_id: row.ref_id, qty: row.qty, equipped };
-  });
+  return { rows, cosmeticsByTrail };
 }
 
 /** Work that may finish after the response is sent. Awaited in place where the runtime has no such hook. */

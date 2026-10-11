@@ -2,7 +2,7 @@ import { SHOP_LAYOUT_MESSAGES } from './shopLayoutMessages';
 import { WARDROBE_MESSAGES } from './wardrobeMessages';
 
 /** Backend error codes that have a friendly line (`purchase.error.<code>`). */
-export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction', 'sold_out', 'out_of_season', 'not_for_crystals', 'apply_failed']);
+export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction', 'sold_out', 'out_of_season', 'not_for_crystals', 'apply_failed', 'tx_not_found', 'wallet_failed', 'wallet_mismatch', 'refund_due']);
 
 /** Strings of lives, Tera's shop, the purchase flow and the companion. Never says "passport": the feature is "Certificações do Tera". */
 export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
@@ -108,6 +108,11 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.no_wallet': 'Conecte uma carteira Solana para comprar.',
     'purchase.noWallet.title': 'Nenhuma carteira encontrada',
     'purchase.noWallet.body': 'Instale a Phantom ou outra carteira Solana neste navegador e tente de novo.',
+    'purchase.pending.title': 'Pagamento enviado, entrega pendente',
+    'purchase.error.tx_not_found': 'A carteira enviou o pagamento, mas a Solana ainda não o confirmou. Espere alguns segundos e toque em Tentar de novo: a mesma transação é conferida, você não paga duas vezes.',
+    'purchase.error.wallet_failed': 'A carteira não concluiu a transação. Confira se a Phantom está na devnet (Configurações → Developer Settings → Testnet Mode) e tente de novo. Nada foi cobrado.',
+    'purchase.error.wallet_mismatch': 'A carteira aberta no navegador não é a da sua conta. Troque de conta na Phantom e tente de novo. Nada foi cobrado.',
+    'purchase.error.refund_due': 'O pagamento chegou, mas o item esgotou antes. O valor volta para a sua carteira; nada mais a fazer.',
     ...WARDROBE_MESSAGES.pt,
     ...SHOP_LAYOUT_MESSAGES.pt,
   },
@@ -213,6 +218,11 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.no_wallet': 'Connect a Solana wallet to buy.',
     'purchase.noWallet.title': 'No wallet found',
     'purchase.noWallet.body': 'Install Phantom or another Solana wallet in this browser and try again.',
+    'purchase.pending.title': 'Payment sent, delivery pending',
+    'purchase.error.tx_not_found': 'Your wallet sent the payment, but Solana has not confirmed it yet. Wait a few seconds and tap Try again: the same transaction is checked, you will not pay twice.',
+    'purchase.error.wallet_failed': 'Your wallet did not complete the transaction. Check that Phantom is on devnet (Settings → Developer Settings → Testnet Mode) and try again. Nothing was charged.',
+    'purchase.error.wallet_mismatch': 'The wallet open in this browser is not the one on your account. Switch accounts in Phantom and try again. Nothing was charged.',
+    'purchase.error.refund_due': 'The payment arrived, but the item sold out first. The amount goes back to your wallet; nothing else to do.',
     ...WARDROBE_MESSAGES.en,
     ...SHOP_LAYOUT_MESSAGES.en,
   },

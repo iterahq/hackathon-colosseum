@@ -70,9 +70,10 @@ Deno.serve(async (request) => {
     const lang = body.lang === 'en' ? 'en' : 'pt';
 
     const userId = caller.iteraUserId;
-    // A gift whose confirm never arrived lands here, before the lives are read.
-    await reconcileGiftsWithin(db, { toUserId: userId }, GIFT_RECONCILE_BUDGET_MS);
-    let row = await ensureCompanion(db, userId);
+    // A gift whose confirm never arrived lands here, before the lives are read. The row is read in the
+    // same round and read again only when a gift did land (or the reconcile is still running).
+    const [landed, firstRead] = await Promise.all([reconcileGiftsWithin(db, { toUserId: userId }, GIFT_RECONCILE_BUDGET_MS), ensureCompanion(db, userId)]);
+    let row = landed === 0 ? firstRead : await ensureCompanion(db, userId);
     let mirrorWanted = row.mirror_due;
     let mirrorReason: MirrorReason = 'routine';
 

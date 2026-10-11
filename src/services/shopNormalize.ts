@@ -229,6 +229,7 @@ export function toIntent(v: unknown): PurchaseIntent {
     priceLabel: priceLabel(orNull(r.price_label), priceUsdCents, priceLamports),
     expiresAt: orNull(r.expires_at),
     cluster: str(r.cluster) || 'devnet',
+    payer: orNull(r.payer),
   };
 }
 

@@ -24,7 +24,8 @@ async function settle(fn: 'purchase-confirm' | 'purchase-submit', body: Record<s
     return toConfirmation(data);
   } catch (e) {
     if (!(e instanceof ShopCallError)) throw e;
-    if (e.retryable) return UNSETTLED;
+    // A retryable answer that already says `status: paid` means the payment is recorded and only the delivery failed.
+    if (e.retryable) return { ...UNSETTLED, pendingCode: e.code, paymentSettled: e.body?.status === 'paid', explorerUrl: typeof e.body?.explorer_url === 'string' ? e.body.explorer_url : null };
     if (e.code === 'intent_expired') return { ...UNSETTLED, status: 'expired' };
     throw e;
   }
