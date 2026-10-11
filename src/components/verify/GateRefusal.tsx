@@ -57,7 +57,7 @@ export function GateRefusal() {
           <p className={P}>
             {gateTried(t, result)}{' '}
             <Link to={`/bounties/${result.bounty.slug}`} className="underline">
-              {result.bounty.title}
+              {t('verify.gate.try.openBounty')}
             </Link>
           </p>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
