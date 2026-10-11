@@ -22,10 +22,8 @@ export function QuestCard({ bounty }: { bounty: Bounty }) {
       data-testid="bounty-card"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-        <span className="shrink-0 whitespace-nowrap">
-          <Reward sol={bounty.rewardSol} />
-        </span>
-        <StatusChip status={bounty.status} />
+        <Reward sol={bounty.rewardSol} />
+        {bounty.status !== 'open' && <StatusChip status={bounty.status} />}
       </div>
       <h3 className="line-clamp-2 [font:700_24px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <p className="line-clamp-2 [font:400_13px/1.5_Inter] text-[#A0978A]">{bounty.summary}</p>
@@ -55,9 +53,9 @@ export function QuestCard({ bounty }: { bounty: Bounty }) {
         </span>
       )}
       <div className="mt-auto flex flex-col gap-2 pt-1">
-        <span className="inline-flex max-w-full items-center gap-1.5 self-start rounded-full border border-[#2E2A25] bg-[#1C1916] px-2.5 py-1 [font:500_11px/1.2_JetBrains_Mono] text-[#C9BFB0]">
+        <span className="inline-flex max-w-full items-center gap-1.5 self-start rounded-[10px] border border-[#2E2A25] bg-[#1C1916] px-2.5 py-1 [font:500_11px/1.3_JetBrains_Mono] text-[#C9BFB0]">
           <Lock aria-hidden size={11} className="shrink-0 text-[#A0978A]" />
-          <span className="truncate">{t(minDays === 1 ? 'bounty.req.one' : 'bounty.req.many', { trail, n: minDays })}</span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">{t(minDays === 1 ? 'bounty.req.one' : 'bounty.req.many', { trail, n: minDays })}</span>
         </span>
         <span className="truncate [font:500_11px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-card-posted-by">
           {bounty.postedBy.kind === 'team'
