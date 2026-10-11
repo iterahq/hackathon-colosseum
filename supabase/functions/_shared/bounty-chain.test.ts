@@ -38,6 +38,29 @@ describe('matchesTerms', () => {
   });
 });
 
+describe('matchesTerms on a direct bounty', () => {
+  const direct: EscrowTerms = { ...terms, gate: { minDays: 1, trail: 'ab'.repeat(32) }, invitee: A };
+  const account = (overrides: Partial<EscrowState> = {}) => state({ gate: { minDays: 1, trail: 'ab'.repeat(32) }, invitee: A, ...overrides });
+
+  it('is the bounty we posted only when the account names the same invitee', () => {
+    expect(matchesTerms(account(), direct)).toBe(true);
+    expect(matchesTerms(account({ invitee: D }), direct)).toBe(false);
+    expect(matchesTerms(account({ invitee: null }), direct)).toBe(false);
+  });
+
+  it('never takes a direct account for an open bounty, nor an open one for a direct bounty', () => {
+    expect(matchesTerms(account(), { ...direct, invitee: null })).toBe(false);
+    expect(matchesTerms(account({ invitee: null }), { ...direct, invitee: null })).toBe(true);
+  });
+
+  it('asks nobody but the claimant to sign the accept, and lets anyone-signed refund go to the sponsor', () => {
+    const accept = acceptPlan(account(), party, A, CERT_A);
+    expect(Array.isArray(accept) && accept[0].accounts.filter((entry) => entry.signer).map((entry) => entry.address)).toEqual([A]);
+    const refund = refundPlan(account(), party);
+    expect(Array.isArray(refund) && refund[0].accounts[2]).toEqual({ address: TREASURY, writable: true });
+  });
+});
+
 describe('plans', () => {
   it('accepts on an open account', () => {
     expect(tags(acceptPlan(state(), party, A, CERT_A))).toEqual([1]);

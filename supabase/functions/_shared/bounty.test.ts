@@ -12,7 +12,9 @@ import {
   bountyView,
   checkEligibility,
   drainLamports,
+  directStats,
   earningsView,
+  notInvited,
   fundingCost,
   fundingTarget,
   parseNewBounty,
@@ -401,6 +403,79 @@ describe('collapseJudgeBounties', () => {
   });
 });
 
+describe('direct bounties', () => {
+  it('answers not_invited before anything else, whatever the wallet holds', () => {
+    const direct = (wallet: string | null, assets: OnchainAsset[]) => checkEligibility({ wallet, requirement, assets, collection: COLLECTION, authority: AUTHORITY, invitee: OTHER });
+    expect(direct(WALLET, [asset()])).toEqual({ eligible: false, reason: 'not_invited', proof: null });
+    expect(direct(null, [])).toEqual({ eligible: false, reason: 'not_invited', proof: null });
+    expect(direct(OTHER, [])).toMatchObject({ eligible: false, reason: 'no_certification' });
+    expect(direct(OTHER, [asset({ owner: OTHER })])).toMatchObject({ eligible: true, reason: null });
+    expect(check([asset()])).toMatchObject({ eligible: true });
+  });
+
+  it('knows who a direct bounty is not for', () => {
+    expect(notInvited({ invitee_wallet: OTHER }, WALLET)).toBe(true);
+    expect(notInvited({ invitee_wallet: OTHER }, null)).toBe(true);
+    expect(notInvited({ invitee_wallet: OTHER }, OTHER)).toBe(false);
+    expect(notInvited({ invitee_wallet: null }, WALLET)).toBe(false);
+  });
+
+  it('says in the view that it is direct, for whom, and who enforces it', () => {
+    const view = (row: BountyRow) => bountyView({ bounty: row, claim: null, lang: 'en', now: NOW, functionsBase: 'https://fn.test/functions/v1' });
+    expect(view(bounty({ escrow_kind: 'program', escrow_gated: true, invitee_wallet: OTHER }))).toMatchObject({
+      direct: true,
+      invitee_wallet: OTHER,
+      invitee_wallet_short: '6BZt…mxJp',
+      invitee_profile_url: `https://hackathon-colosseum.178-105-2-230.sslip.io/u/${OTHER}`,
+      invite_enforced_by: 'program',
+    });
+    expect(view(bounty())).toMatchObject({ direct: false, invitee_wallet: null, invitee_wallet_short: null, invitee_profile_url: null, invite_enforced_by: null });
+    expect(view(bounty({ invitee_wallet: null }))).toMatchObject({ direct: false });
+  });
+
+  it('counts their money under its own figures, and leaves the open bounties out of them', () => {
+    const direct = (overrides: Partial<BountyRow>) => bounty({ invitee_wallet: OTHER, funded_lamports: 20_000_000, ...overrides });
+    const rows = [
+      direct({ id: 'a' }),
+      direct({ id: 'b', status: 'claimed' }),
+      direct({ id: 'c', status: 'submitted' }),
+      direct({ id: 'd', status: 'paid', payout_lamports: 20_000_000 }),
+      direct({ id: 'e', status: 'refunded' }),
+      direct({ id: 'f', status: 'open', expires_at: '2026-10-01T00:00:00Z' }),
+      direct({ id: 'g', status: 'awaiting_funding' }),
+      bounty({ id: 'h' }),
+    ];
+    expect(directStats(rows, NOW, new Set(['d', 'e', 'h']))).toEqual({
+      direct_open: 1,
+      direct_held: 2,
+      direct_locked_lamports: 60_000_000,
+      direct_locked_sol: '0.06 SOL',
+      direct_paid: 1,
+      direct_paid_lamports: 20_000_000,
+      direct_paid_sol: '0.02 SOL',
+      direct_team_test: 1,
+    });
+    expect(directStats([], NOW)).toMatchObject({ direct_open: 0, direct_paid: 0, direct_locked_sol: '0 SOL' });
+  });
+
+  it('counts a paid direct bounty in what its payee earned', () => {
+    const paid = bounty({ slug: 'direct-one', invitee_wallet: WALLET, status: 'paid', paid_wallet: WALLET, payout_lamports: 20_000_000, payout_signature: 'sig-d', paid_at: '2026-10-11T03:00:00Z' });
+    expect(earningsView({ wallet: WALLET, bounties: [paid], landed: new Set(['sig-d']), lang: 'en' })).toMatchObject({ earned_lamports: 20_000_000, bounties_paid: 1 });
+  });
+
+  it('does not offer a direct bounty to strangers in the Solana Action', () => {
+    const row = bounty({ status: 'awaiting_funding', invitee_wallet: OTHER });
+    for (const lang of ['en', 'pt'] as const) {
+      const action = bountyActionGet({ bounty: row, lang, missingLamports: 20_000_000n, href: 'https://fn.test/x', blocked: null });
+      expect(action.description).toContain('6BZt…mxJp');
+      expect(action.description).not.toMatch(/stamped day|dia\(s\) carimbados/);
+      expect(bountyActionCompleted({ lang, funded: true, direct: true }).description).not.toMatch(/certified wallets|quem tem a certificação/);
+    }
+    expect(bountyActionGet({ bounty: bounty({ status: 'awaiting_funding' }), lang: 'en', missingLamports: 1n, href: 'https://fn.test/x', blocked: null }).description).toContain('stamped day');
+    expect(bountyActionCompleted({ lang: 'en', funded: true }).description).toContain('certified wallets');
+  });
+});
+
 describe('parseWalletBounty', () => {
   const form = {
     sponsor_name: 'Padaria do Bairro',
@@ -433,6 +508,17 @@ describe('parseWalletBounty', () => {
     expect(parseWalletBounty({ ...form, claim_hours: 169 }, NOW)).toEqual({ ok: false, error: 'invalid_deadline' });
     expect(parseWalletBounty({ ...form, brief: { en: 'too short' } }, NOW)).toEqual({ ok: false, error: 'invalid_text' });
     expect(parseWalletBounty({ ...form, title: { en: form.title.en, pt: 'x' } }, NOW)).toEqual({ ok: false, error: 'invalid_text' });
+  });
+
+  it('takes an invited wallet: an address, and never the sponsor own', () => {
+    const open = parseWalletBounty(form, NOW, WALLET);
+    expect(open.ok && open.value.invitee_wallet).toBeNull();
+    expect(parseWalletBounty({ ...form, invitee_wallet: '' }, NOW, WALLET)).toMatchObject({ ok: true, value: { invitee_wallet: null } });
+    expect(parseWalletBounty({ ...form, invitee_wallet: OTHER }, NOW, WALLET)).toMatchObject({ ok: true, value: { invitee_wallet: OTHER } });
+    expect(parseWalletBounty({ ...form, invitee_wallet: 'not-a-wallet' }, NOW, WALLET)).toEqual({ ok: false, error: 'invalid_invitee' });
+    expect(parseWalletBounty({ ...form, invitee_wallet: 42 }, NOW, WALLET)).toEqual({ ok: false, error: 'invalid_invitee' });
+    expect(parseWalletBounty({ ...form, invitee_wallet: `${OTHER} https://x.test` }, NOW, WALLET)).toEqual({ ok: false, error: 'invalid_invitee' });
+    expect(parseWalletBounty({ ...form, invitee_wallet: WALLET }, NOW, WALLET)).toEqual({ ok: false, error: 'own_invitee' });
   });
 
   it('drops invisible direction marks from what a sponsor typed', () => {

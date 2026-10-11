@@ -88,6 +88,8 @@ export interface BountyRow {
   auto_check: AutoCheck | null;
   /** The template this bounty was refilled from (`itera.bounty_templates`). */
   template_key: string | null;
+  /** A direct bounty: the one wallet that may accept it, named in the escrow account and in its address. `null`: any eligible wallet. */
+  invitee_wallet: string | null;
 }
 
 /** The lesson engine's static HTML asserts, run on the code a learner pastes as their delivery. */
@@ -223,7 +225,12 @@ function attribute(asset: OnchainAsset, key: string): string {
   return asset.attributes.find((entry) => entry.key === key)?.value ?? '';
 }
 
-export type IneligibleReason = 'no_wallet' | 'no_certification' | 'not_enough_days';
+export type IneligibleReason = 'not_invited' | 'no_wallet' | 'no_certification' | 'not_enough_days';
+
+/** Whether a bounty was posted for one wallet and `wallet` is not that one. */
+export function notInvited(bounty: Pick<BountyRow, 'invitee_wallet'>, wallet: string | null): boolean {
+  return Boolean(bounty.invitee_wallet) && bounty.invitee_wallet !== wallet;
+}
 
 export interface Eligibility {
   eligible: boolean;
@@ -236,6 +243,8 @@ export interface Eligibility {
  * Whether a wallet may take a bounty. Every fact comes from `assets`, the Core
  * accounts as read from chain: the owner, our collection under our authority,
  * the soulbound freeze, and the `program` / `trail` / `days_done` attributes.
+ * A direct bounty (`invitee`) is nobody else's to take, whatever they hold:
+ * that is answered first.
  */
 export function checkEligibility(input: {
   wallet: string | null;
@@ -243,8 +252,10 @@ export function checkEligibility(input: {
   assets: readonly OnchainAsset[];
   collection: string | undefined;
   authority: string | undefined;
+  invitee?: string | null;
 }): Eligibility {
   const { wallet, requirement } = input;
+  if (input.invitee && input.invitee !== wallet) return { eligible: false, reason: 'not_invited', proof: null };
   if (!wallet) return { eligible: false, reason: 'no_wallet', proof: null };
   let best: { asset: string; days: number } | null = null;
   for (const asset of input.assets) {
@@ -382,14 +393,19 @@ function oneOrBoth(value: unknown, min: number, max: number): { texts: I18n; sou
 
 export interface NewWalletBounty extends Omit<NewBounty, 'slug' | 'refund_address'> {
   source_lang: 'pt' | 'en';
+  /** A direct bounty: the one wallet it is posted for. */
+  invitee_wallet: string | null;
 }
+
+export type NewWalletBountyError = NewBountyError | 'invalid_invitee' | 'own_invitee';
 
 /**
  * The form of a wallet that posts a bounty. Stricter than the staff form: a
  * floor on the reward, shorter deadlines, no name of the team, and the slug
- * and every address are decided by the server.
+ * and every address are decided by the server. `invitee_wallet` makes it a
+ * direct bounty: a wallet address, and never `sponsorWallet`'s own.
  */
-export function parseWalletBounty(body: Record<string, unknown>, now: Date): { ok: true; value: NewWalletBounty } | { ok: false; error: NewBountyError } {
+export function parseWalletBounty(body: Record<string, unknown>, now: Date, sponsorWallet?: string): { ok: true; value: NewWalletBounty } | { ok: false; error: NewWalletBountyError } {
   const sponsor = text(clean(body.sponsor_name), 2, 40);
   if (!sponsor || RESERVED_SPONSORS.test(sponsor)) return { ok: false, error: 'invalid_sponsor' };
   const title = oneOrBoth(body.title, 8, 90);
@@ -406,9 +422,13 @@ export function parseWalletBounty(body: Record<string, unknown>, now: Date): { o
   const claimHours = body.claim_hours ?? 48;
   if (typeof days !== 'number' || !Number.isInteger(days) || days < 1 || days > WALLET_MAX_EXPIRY_DAYS) return { ok: false, error: 'invalid_deadline' };
   if (typeof claimHours !== 'number' || !Number.isInteger(claimHours) || claimHours < 1 || claimHours > WALLET_MAX_CLAIM_HOURS) return { ok: false, error: 'invalid_deadline' };
+  const invitee = body.invitee_wallet === undefined || body.invitee_wallet === null || body.invitee_wallet === '' ? null : body.invitee_wallet;
+  if (invitee !== null && !isEd25519Address(invitee)) return { ok: false, error: 'invalid_invitee' };
+  if (invitee !== null && invitee === sponsorWallet) return { ok: false, error: 'own_invitee' };
   return {
     ok: true,
     value: {
+      invitee_wallet: invitee as string | null,
       sponsor_name: sponsor,
       title_i18n: title.texts,
       summary_i18n: summary.texts,
@@ -491,8 +511,16 @@ export function bountyView(input: {
   const program = bounty.escrow_kind === 'program' ? (input.programId ?? null) : null;
   const status = publicStatus(bounty, input.now);
   const paid = bounty.status === 'paid';
+  const invitee = bounty.invitee_wallet ?? null;
   return {
     id: bounty.id,
+    /** Posted for one wallet. The escrow program refuses every other claimant; the board never lists it. */
+    direct: invitee !== null,
+    invitee_wallet: invitee,
+    invitee_wallet_short: invitee ? shortWallet(invitee) : null,
+    invitee_profile_url: invitee ? `${APP_URL}/u/${invitee}` : null,
+    /** Who refuses a wallet that was not invited: the escrow program, at `accept`. `null`: not a direct bounty. */
+    invite_enforced_by: invitee ? (bounty.escrow_kind === 'program' && bounty.escrow_gated ? ('program' as const) : ('server' as const)) : null,
     slug: lang === 'en' && bounty.slug_en ? bounty.slug_en : bounty.slug,
     slugs: { pt: bounty.slug, en: bounty.slug_en ?? bounty.slug },
     sponsor: bounty.sponsor_name,
@@ -660,6 +688,47 @@ export function boardStats(
   };
 }
 
+/**
+ * The money of direct bounties, under its own figures: they are not on the
+ * board (nobody is shown a bounty they cannot take) and not in `boardStats`,
+ * and they are not left out of the count either. `teamTests`: the ones posted
+ * by, or paid to, one of the team's own test accounts.
+ */
+export function directStats(bounties: readonly BountyRow[], now: Date, teamTests: ReadonlySet<string> = new Set()) {
+  let locked = 0n;
+  let paid = 0n;
+  let open = 0;
+  let held = 0;
+  let paidCount = 0;
+  let teamTestCount = 0;
+  for (const bounty of bounties) {
+    if (!bounty.invitee_wallet) continue;
+    const status = publicStatus(bounty, now);
+    const live = status === 'open' || status === 'claimed' || status === 'submitted' || status === 'paying';
+    if (!live && status !== 'paid') continue;
+    if (teamTests.has(bounty.id)) teamTestCount += 1;
+    if (status === 'paid') {
+      paid += BigInt(bounty.payout_lamports ?? 0);
+      paidCount += 1;
+      continue;
+    }
+    locked += BigInt(bounty.funded_lamports ?? bounty.reward_lamports);
+    if (status === 'open') open += 1;
+    else held += 1;
+  }
+  return {
+    direct_open: open,
+    direct_held: held,
+    direct_locked_lamports: Number(locked),
+    direct_locked_sol: solAmount(locked),
+    direct_paid: paidCount,
+    direct_paid_lamports: Number(paid),
+    direct_paid_sol: solAmount(paid),
+    /** Of the direct bounties counted above: how many the team's own test accounts posted or were paid for. */
+    direct_team_test: teamTestCount,
+  };
+}
+
 const LIVE_STATUSES: readonly string[] = ['open', 'claimed', 'submitted', 'paying'];
 
 /**
@@ -710,6 +779,9 @@ const ACTION_TEXT = {
     title: (name: string) => `Financie a missão: ${name}`,
     description: (sponsor: string, trail: string, days: number) =>
       `Missão paga da Itera (devnet), publicada por ${sponsor}. O valor fica travado numa conta de escrow própria desta missão e só sai para quem tem ${days} dia(s) carimbados de "${trail}" na certificação on-chain e entregar o trabalho aprovado. Sem entrega, volta para o patrocinador.`,
+    directDescription: (sponsor: string, invitee: string) =>
+      `Missão direta da Itera (devnet), publicada por ${sponsor} para uma única carteira convidada (${invitee}). O valor fica travado numa conta de escrow própria desta missão e o programa recusa qualquer outra carteira. Sem entrega, volta para o patrocinador.`,
+    directDoneDescription: 'O valor está travado no escrow. Só a carteira convidada pode aceitar esta missão.',
     label: 'Financiar',
     button: (price: string) => `Travar ${price} no escrow`,
     message: (name: string) => `Escrow da missão: ${name}`,
@@ -730,6 +802,9 @@ const ACTION_TEXT = {
     title: (name: string) => `Fund the bounty: ${name}`,
     description: (sponsor: string, trail: string, days: number) =>
       `A paid bounty at Itera (devnet), posted by ${sponsor}. The amount is locked in an escrow account of this bounty alone and only leaves to a wallet with ${days} stamped day(s) of "${trail}" in its on-chain certification that delivers approved work. With no delivery it returns to the sponsor.`,
+    directDescription: (sponsor: string, invitee: string) =>
+      `A direct bounty at Itera (devnet), posted by ${sponsor} for one invited wallet (${invitee}). The amount is locked in an escrow account of this bounty alone and the program refuses any other wallet. With no delivery it returns to the sponsor.`,
+    directDoneDescription: 'The amount is locked in escrow. Only the invited wallet can accept this bounty.',
     label: 'Fund',
     button: (price: string) => `Lock ${price} in escrow`,
     message: (name: string) => `Bounty escrow: ${name}`,
@@ -763,7 +838,9 @@ export function bountyActionGet(input: { bounty: BountyRow; lang: Lang; missingL
     type: 'action' as const,
     icon: BOUNTY_ACTION_ICON,
     title: copy.title(pickText(bounty.title_i18n, input.lang)),
-    description: copy.description(bounty.sponsor_name, pickText(bounty.requirement.trail_title, input.lang), bounty.requirement.min_days),
+    description: bounty.invitee_wallet
+      ? copy.directDescription(bounty.sponsor_name, shortWallet(bounty.invitee_wallet))
+      : copy.description(bounty.sponsor_name, pickText(bounty.requirement.trail_title, input.lang), bounty.requirement.min_days),
     label: copy.label,
     ...(input.blocked ? { disabled: true, error: bountyActionError(input.blocked, input.lang) } : {}),
     links: { actions: [{ type: 'transaction' as const, label: copy.button(solAmount(input.missingLamports)), href: input.href }] },
@@ -779,13 +856,13 @@ export function bountyActionPost(input: { bounty: BountyRow; lang: Lang; transac
   };
 }
 
-export function bountyActionCompleted(input: { lang: Lang; funded: boolean }) {
+export function bountyActionCompleted(input: { lang: Lang; funded: boolean; direct?: boolean }) {
   const copy = ACTION_TEXT[input.lang];
   return {
     type: 'completed' as const,
     icon: BOUNTY_ACTION_ICON,
     title: copy.doneTitle,
-    description: input.funded ? copy.doneDescription : copy.pendingDescription,
+    description: input.funded ? (input.direct ? copy.directDoneDescription : copy.doneDescription) : copy.pendingDescription,
     label: copy.doneLabel,
   };
 }

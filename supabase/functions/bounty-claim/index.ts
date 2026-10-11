@@ -13,7 +13,7 @@ import {
   syncWithEscrow,
   withdrawInstructions,
 } from '../_shared/bounty-store.ts';
-import { judgeCode, parseCodeSubmission, parseSubmission, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { judgeCode, notInvited, parseCodeSubmission, parseSubmission, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
 import { alreadyJudged, approveByCheck, refillTemplates } from '../_shared/bounty-judge.ts';
 import { parseHtmlDocument } from '../_shared/html-document.ts';
 import { CosignError, isExpiredBlockhash, offerCosigned, parseSignedByWallet, sendCosigned, type SignedByWallet } from '../_shared/cosign.ts';
@@ -59,8 +59,11 @@ async function status(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
       .maybeSingle(),
   ]);
   if (last.error) throw new Error(`bounty_claims: ${last.error.message}`);
+  // A direct bounty answers 403 to every wallet but the invitee, with the same fields so the page can still say why.
+  const uninvited = notInvited(bounty, caller.wallet);
   return json(
     {
+      ...(uninvited ? { error: 'not_invited', invitee_wallet: bounty.invitee_wallet } : {}),
       wallet: caller.wallet,
       eligible: eligibility.eligible,
       reason: eligibility.reason,
@@ -70,7 +73,7 @@ async function status(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
       // A judge bounty pays each learner and each wallet once.
       judged_before: bounty.auto_check !== null && caller.wallet !== null && (await alreadyJudged(db, caller.iteraUserId, caller.wallet)),
     },
-    200,
+    uninvited ? 403 : 200,
     cors,
   );
 }
@@ -109,6 +112,8 @@ async function sendFailure(db: IteraClient, bounty: BountyRow, error: unknown, c
  * records nobody who did not sign.
  */
 async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed: SignedByWallet | null, cors: Cors): Promise<Response> {
+  // A direct bounty: nothing is prepared for a wallet it was not posted for. The program would refuse it anyway (`not_invited`).
+  if (notInvited(bounty, caller.wallet)) return json({ error: 'not_invited', invitee_wallet: bounty.invitee_wallet }, 403, cors);
   if (publicStatus(bounty, new Date()) !== 'open') return json({ error: 'not_open' }, 409, cors);
   // The gate: the certification is read from chain now, whatever our tables say about this learner.
   const eligibility = await eligibilityOf(db, caller.wallet, bounty, await loadConfig(db));

@@ -51,7 +51,7 @@ async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
       bounty,
       lang,
       // The label is the only thing here that needs the node: without it the button shows the reward alone.
-      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated).catch(() => 0n) : 0n),
+      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated, Boolean(bounty.invitee_wallet)).catch(() => 0n) : 0n),
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
       blocked: fundable(bounty) ? null : 'not_fundable',
     }),
@@ -70,7 +70,7 @@ async function build(db: IteraClient, bounty: BountyRow, request: Request, lang:
     // The payer creates the bounty's account on the escrow program, with the terms this bounty was posted with.
     const terms = await escrowTerms(bounty, await loadConfig(db));
     if (!terms) return refuse('unavailable', lang, 503);
-    const [existing, balance, latest, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(account), latestBlockhash(), escrowRentLamports(terms.gate !== null)]);
+    const [existing, balance, latest, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(account), latestBlockhash(), escrowRentLamports(terms.gate !== null, Boolean(terms.invitee))]);
     if (existing) return refuse('not_fundable', lang, 400);
     if (!fundsCheck(balance, fundingCost(bounty, rent)).ok) return refuse('insufficient_funds', lang, 400);
     message = compileMessage(account, [createFor(terms, account), memoInstruction(transferMemo(bounty.id, 'fund'))], latest.blockhash);
@@ -104,7 +104,7 @@ async function confirm(db: IteraClient, request: Request, lang: Lang): Promise<R
     if (bounty.status !== 'awaiting_funding' || Date.now() >= deadline) break;
     await new Promise((resolve) => setTimeout(resolve, CONFIRM_POLL_MS));
   }
-  return answer(bountyActionCompleted({ lang, funded: bounty.status !== 'awaiting_funding' }));
+  return answer(bountyActionCompleted({ lang, funded: bounty.status !== 'awaiting_funding', direct: Boolean(bounty.invitee_wallet) }));
 }
 
 Deno.serve(async (request) => {

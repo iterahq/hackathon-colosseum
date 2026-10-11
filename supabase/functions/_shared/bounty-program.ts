@@ -5,6 +5,8 @@ import { SYSTEM_PROGRAM, base58Decode, base58Encode } from './solana-tx.ts';
 export const ESCROW_STATE_BYTES = 195;
 /** A gated bounty: the same 195 bytes, then the days and the trail its terms ask for. */
 export const GATED_ESCROW_STATE_BYTES = 228;
+/** A direct bounty: the same 228 bytes, then the one wallet that may accept it. */
+export const DIRECT_ESCROW_STATE_BYTES = 260;
 const SEED = new TextEncoder().encode('bounty');
 const STATUSES = ['open', 'claimed', 'paid', 'refunded'] as const;
 const NO_KEY = '11111111111111111111111111111111';
@@ -21,6 +23,8 @@ export interface EscrowGate {
 export interface EscrowState {
   /** `null`: a bounty created before gated escrows. Its accept is co-signed by an attester, who vouches for the days. */
   gate: EscrowGate | null;
+  /** The only wallet the program lets accept (a direct bounty). `null`: any wallet whose certification passes the gate. */
+  invitee: string | null;
   status: EscrowStatus;
   id: string;
   sponsor: string;
@@ -54,6 +58,7 @@ export const ESCROW_ERRORS: Record<number, string> = {
   6017: 'certification_of_another_trail',
   6018: 'not_enough_stamped_days',
   6019: 'invalid_requirement',
+  6020: 'not_invited',
 };
 
 const hexOf = (bytes: Uint8Array) => [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -90,6 +95,8 @@ export interface EscrowSeedTerms {
   amount: bigint;
   expiresAt: number;
   gate?: EscrowGate | null;
+  /** A direct bounty: the address commits to the invited wallet too. Needs a gate. */
+  invitee?: string | null;
 }
 
 function u64le(value: bigint): Uint8Array {
@@ -114,6 +121,10 @@ export async function escrowPda(programId: string, terms: EscrowSeedTerms): Prom
     const gate = gateBytes(terms.gate);
     seeds.push(gate.slice(0, 1), gate.slice(1));
   }
+  if (terms.invitee) {
+    if (!terms.gate) throw new Error('a direct bounty needs a gate');
+    seeds.push(key(terms.invitee));
+  }
   return (await findProgramAddress(seeds, programId)).address;
 }
 
@@ -128,11 +139,15 @@ export function createInstruction(input: {
   amount: bigint;
   expiresAt: number;
   gate?: EscrowGate | null;
+  invitee?: string | null;
 }): Instruction {
   const gate = input.gate ? gateBytes(input.gate) : null;
-  const data = new Uint8Array(gate ? 66 : 33);
-  data[0] = gate ? 5 : 0;
+  const invitee = input.invitee ? base58Decode(input.invitee, 32) : null;
+  if (input.invitee && (!invitee || !gate)) throw new Error('not a direct bounty');
+  const data = new Uint8Array(invitee ? 98 : gate ? 66 : 33);
+  data[0] = invitee ? 6 : gate ? 5 : 0;
   if (gate) data.set(gate, 33);
+  if (invitee) data.set(invitee, 66);
   data.set(bountyIdBytes(input.bountyId), 1);
   const view = new DataView(data.buffer);
   view.setBigUint64(17, input.amount, true);
@@ -154,8 +169,10 @@ export function createInstruction(input: {
 /**
  * The claimant signs: the program records nobody who did not ask for it.
  * On a bounty with no gate `attester` co-signs (the bounty's approver, or
- * Itera's attester key). On a `gated` one the program reads the days itself
- * and the first account is not read: nobody co-signs.
+ * Itera's attester key). On a `gated` one (a direct bounty is gated too) the
+ * program reads the days itself and the first account is not read: nobody
+ * co-signs. On a direct bounty the program also refuses any claimant but the
+ * invitee its account names (`not_invited`).
  */
 export function acceptInstruction(input: { programId: string; attester: string; escrow: string; claimant: string; certification: string; gated?: boolean }): Instruction {
   return {
@@ -189,13 +206,15 @@ export function refundInstruction(input: { programId: string; authority: string;
 
 /** The escrow account as the program wrote it. `null` when the bytes are not one. */
 export function parseEscrowState(data: Uint8Array): EscrowState | null {
-  const gated = data.length === GATED_ESCROW_STATE_BYTES && data[0] === 2;
+  const direct = data.length === DIRECT_ESCROW_STATE_BYTES && data[0] === 3;
+  const gated = direct || (data.length === GATED_ESCROW_STATE_BYTES && data[0] === 2);
   if (!(gated || (data.length === ESCROW_STATE_BYTES && data[0] === 1)) || data[2] >= STATUSES.length) return null;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const keyAt = (offset: number) => base58Encode(data.slice(offset, offset + 32));
   const optional = (offset: number) => (keyAt(offset) === NO_KEY ? null : keyAt(offset));
   return {
     gate: gated ? { minDays: data[195], trail: hexOf(data.slice(196, 228)) } : null,
+    invitee: direct ? keyAt(228) : null,
     status: STATUSES[data[2]],
     id: uuidOf(data.slice(3, 19)),
     sponsor: keyAt(19),

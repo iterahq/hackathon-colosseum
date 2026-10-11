@@ -10,7 +10,7 @@ import {
   type EscrowState,
 } from './bounty-program.ts';
 import { compileMessage, memoInstruction, type Instruction } from './solana-message.ts';
-import { ESCROW_STATE_BYTES, GATED_ESCROW_STATE_BYTES } from './bounty-program.ts';
+import { DIRECT_ESCROW_STATE_BYTES, ESCROW_STATE_BYTES, GATED_ESCROW_STATE_BYTES } from './bounty-program.ts';
 import { RpcNodeError, rpc } from './rpc.ts';
 import { sendMessage, treasurySigner } from './treasury.ts';
 
@@ -46,10 +46,10 @@ export async function readEscrows(programId: string, addresses: string[]): Promi
   return found;
 }
 
-/** How many escrow accounts of the program are OPEN on chain right now (status byte 0), of either layout. */
+/** How many escrow accounts of the program are OPEN on chain right now (status byte 0), of every layout. */
 export async function countOpenEscrows(programId: string): Promise<number> {
   const counts = await Promise.all(
-    [ESCROW_STATE_BYTES, GATED_ESCROW_STATE_BYTES].map((dataSize) =>
+    [ESCROW_STATE_BYTES, GATED_ESCROW_STATE_BYTES, DIRECT_ESCROW_STATE_BYTES].map((dataSize) =>
       rpc<unknown[]>('getProgramAccounts', [programId, { commitment: 'confirmed', encoding: 'base64', dataSlice: { offset: 0, length: 0 }, filters: [{ dataSize }, { memcmp: { offset: 2, bytes: '1' } }] }]),
     ),
   );
@@ -93,6 +93,8 @@ export interface EscrowTerms {
   expiresAt: number;
   /** The days and trail the program itself checks at `accept`. `null`: a bounty from before gated escrows. */
   gate: EscrowGate | null;
+  /** A direct bounty: the one wallet the program lets accept. `null` or absent: any wallet that passes the gate. */
+  invitee?: string | null;
 }
 
 export function createFor(terms: EscrowTerms, funder: string): Instruction {
@@ -110,7 +112,8 @@ export function matchesTerms(state: EscrowState | null, terms: EscrowTerms): boo
     state.amount >= terms.amount &&
     state.expiresAt >= terms.expiresAt &&
     (state.gate?.minDays ?? 0) === (terms.gate?.minDays ?? 0) &&
-    (state.gate?.trail ?? '') === (terms.gate?.trail ?? '')
+    (state.gate?.trail ?? '') === (terms.gate?.trail ?? '') &&
+    (state.invitee ?? null) === (terms.invitee ?? null)
   );
 }
 
@@ -151,11 +154,15 @@ export function refundPlan(state: EscrowState, party: Party): Instruction[] | 'd
  * byte, 128 bytes of account header included. Shown on the form when the node is slow; the funding
  * transaction always asks the node itself.
  */
-export function escrowRentLastRead(gated = false): bigint {
-  return BigInt((128 + (gated ? GATED_ESCROW_STATE_BYTES : ESCROW_STATE_BYTES)) * 5_080);
+export function escrowRentLastRead(gated = false, direct = false): bigint {
+  return BigInt((128 + escrowBytes(gated, direct)) * 5_080);
+}
+
+function escrowBytes(gated: boolean, direct: boolean): number {
+  return direct ? DIRECT_ESCROW_STATE_BYTES : gated ? GATED_ESCROW_STATE_BYTES : ESCROW_STATE_BYTES;
 }
 
 /** The rent the node asks for an escrow account, which whoever funds a bounty pays on top of the reward. */
-export async function escrowRentLamports(gated = false): Promise<bigint> {
-  return BigInt(await rpc<number>('getMinimumBalanceForRentExemption', [gated ? GATED_ESCROW_STATE_BYTES : ESCROW_STATE_BYTES]));
+export async function escrowRentLamports(gated = false, direct = false): Promise<bigint> {
+  return BigInt(await rpc<number>('getMinimumBalanceForRentExemption', [escrowBytes(gated, direct)]));
 }

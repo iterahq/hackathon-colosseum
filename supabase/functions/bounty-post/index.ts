@@ -14,6 +14,9 @@ import {
   unclaimOnChain,
   gateOf,
   gatedEscrows,
+  directEscrows,
+  eligibilityOf,
+  isLearnerWallet,
 } from '../_shared/bounty-store.ts';
 import {
   MAX_REWARD_LAMPORTS,
@@ -33,6 +36,7 @@ import {
   type Requirement,
 } from '../_shared/bounty.ts';
 import { draftVerdict } from '../_shared/bounty-draft.ts';
+import { isEd25519Address } from '../_shared/address.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
 import { pickText } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
@@ -50,16 +54,19 @@ type Cors = Record<string, string>;
 const FUNCTION = 'bounty-post';
 const READ_RATE: RateLimit = { limit: 60, windowMs: 60_000 };
 const WRITE_RATE: RateLimit = { limit: 20, windowMs: 60_000 };
+const INVITEE_RATE: RateLimit = { limit: 30, windowMs: 60_000 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CONFIRM_WAIT_MS = 8_000;
 const CONFIRM_POLL_MS = 1_000;
 const LIVE = ['awaiting_funding', 'open', 'claimed', 'submitted', 'paying'];
 
-function limits(rent: bigint | null) {
+function limits(rent: bigint | null, directRent: bigint | null) {
   return {
     min_reward_lamports: Number(WALLET_MIN_REWARD_LAMPORTS),
     max_reward_lamports: Number(MAX_REWARD_LAMPORTS),
     escrow_rent_lamports: rent === null ? null : Number(rent),
+    /** The rent of a direct bounty's account (32 bytes more: the invitee). `null`: the deployed program has no direct bounties. */
+    direct_escrow_rent_lamports: directRent === null ? null : Number(directRent),
     fee_lamports: Number(BASE_FEE_LAMPORTS),
     posts_per_day: WALLET_POSTS_PER_DAY,
     live_bounties: WALLET_LIVE_BOUNTIES,
@@ -76,8 +83,43 @@ async function options(db: IteraClient, cors: Cors): Promise<Response> {
   const config = await loadConfig(db);
   // The form never waits for a slow node: past the budget the rent shown is what the node answered when last asked.
   const gated = gatedEscrows(config);
-  const [trails, rent] = await Promise.all([loadTrails(db), withinMs(escrowRentLamports(gated).catch(() => null), FORM_RPC_BUDGET_MS).then((answer) => answer ?? escrowRentLastRead(gated))]);
-  return json({ cluster: 'devnet', program_id: config.bounty_escrow_program ?? null, trails, limits: limits(rent) }, 200, { ...cors, 'Cache-Control': 'public, max-age=60' });
+  const direct = directEscrows(config);
+  const [trails, rent, directRent] = await Promise.all([
+    loadTrails(db),
+    withinMs(escrowRentLamports(gated).catch(() => null), FORM_RPC_BUDGET_MS).then((answer) => answer ?? escrowRentLastRead(gated)),
+    direct ? withinMs(escrowRentLamports(true, true).catch(() => null), FORM_RPC_BUDGET_MS).then((answer) => answer ?? escrowRentLastRead(true, true)) : null,
+  ]);
+  return json({ cluster: 'devnet', program_id: config.bounty_escrow_program ?? null, direct, trails, limits: limits(rent, directRent) }, 200, { ...cors, 'Cache-Control': 'public, max-age=60' });
+}
+
+/** The stamped days a bounty would ask for, from the form's own two fields. `null`: not a trail, or more days than it has. */
+async function requirementOf(db: IteraClient, unitId: unknown, minDays: unknown): Promise<Requirement | null> {
+  if (typeof unitId !== 'string' || typeof minDays !== 'number' || !Number.isInteger(minDays) || minDays < 1) return null;
+  const trail = (await loadTrails(db)).find((entry) => entry.unit_id === unitId);
+  if (!trail || minDays > trail.total_days) return null;
+  return { program: PROGRAM_SLUG, unit_id: trail.unit_id, trail: trailAttribute(pickText(trail.title, 'en')), trail_title: trail.title, min_days: minDays, total_days: trail.total_days };
+}
+
+/** Whether the wallet a direct bounty would be posted for could accept it right now: the same chain read `accept` makes. */
+async function inviteeStanding(db: IteraClient, config: Record<string, string>, invitee: string, requirement: Requirement) {
+  const [known, eligibility] = await Promise.all([isLearnerWallet(db, invitee), eligibilityOf(db, invitee, { requirement }, config)]);
+  return { known_learner: known, eligible: eligibility.eligible, reason: eligibility.reason, proof: eligibility.proof };
+}
+
+/**
+ * Before a sponsor locks money for one wallet: is that wallet a learner's, and does it hold the stamped days the
+ * bounty would ask for. A read; it writes nothing and names no bounty.
+ */
+async function inviteeCheck(db: IteraClient, caller: Caller, wallet: string, body: Record<string, unknown>, cors: Cors): Promise<Response> {
+  const verdict = await takeRate(db, `${FUNCTION}:invitee`, caller.iteraUserId, INVITEE_RATE);
+  if (!verdict.allowed) return tooMany(verdict, cors);
+  const invitee = body.wallet;
+  if (!isEd25519Address(invitee)) return json({ error: 'invalid_invitee' }, 400, cors);
+  if (invitee === wallet) return json({ error: 'own_invitee' }, 400, cors);
+  const requirement = await requirementOf(db, body.unit_id, body.min_days);
+  if (!requirement) return json({ error: 'invalid_requirement' }, 400, cors);
+  const config = await loadConfig(db);
+  return json({ wallet: invitee, direct_available: directEscrows(config), ...(await inviteeStanding(db, config, invitee, requirement)), requirement: { unit_id: requirement.unit_id, min_days: requirement.min_days, total_days: requirement.total_days } }, 200, cors);
 }
 
 async function ownBounties(db: IteraClient, wallet: string): Promise<BountyRow[]> {
@@ -132,11 +174,13 @@ async function list(db: IteraClient, wallet: string, cors: Cors): Promise<Respon
 
 async function create(db: IteraClient, caller: Caller, wallet: string, body: Record<string, unknown>, cors: Cors): Promise<Response> {
   const now = new Date();
-  const parsed = parseWalletBounty(body, now);
+  const parsed = parseWalletBounty(body, now, wallet);
   if (!parsed.ok) return json({ error: parsed.error }, 400, cors);
   const input = parsed.value;
   const config = await loadConfig(db);
   if (!config.bounty_wallet_tenant || !config.bounty_escrow_program || !config.collection_passports) return json({ error: 'unavailable' }, 503, cors);
+  // Only the program can keep a bounty for one wallet: without `create_direct` deployed there is no direct bounty to post.
+  if (input.invitee_wallet && !directEscrows(config)) return json({ error: 'direct_unavailable' }, 503, cors);
 
   const mine = await ownBounties(db, wallet);
   if (mine.filter((bounty) => now.getTime() - Date.parse(bounty.created_at) < DAY_MS).length >= WALLET_POSTS_PER_DAY) return json({ error: 'too_many_today', limit: WALLET_POSTS_PER_DAY }, 429, cors);
@@ -157,6 +201,8 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
     total_days: trail.total_days,
   };
   const gated = gatedEscrows(config);
+  // Read before anything is written: the sponsor is told when the invited wallet could not accept today.
+  const standing = input.invitee_wallet ? await inviteeStanding(db, config, input.invitee_wallet, requirement) : null;
   // The sponsor's wallet is the refund destination AND the approver the program records: no key of ours is in the money path.
   const escrow = await escrowPda(config.bounty_escrow_program, {
     bountyId: id,
@@ -166,6 +212,7 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
     amount: BigInt(input.reward_lamports),
     expiresAt: Math.floor(Date.parse(input.expires_at) / 1000),
     gate: gated ? await gateOf(requirement) : null,
+    invitee: input.invitee_wallet,
   });
   const { error } = await db.from('bounties').insert({
     id,
@@ -189,11 +236,17 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
     sponsor_wallet: wallet,
     approver_address: wallet,
     source_lang: input.source_lang,
+    invitee_wallet: input.invitee_wallet,
   });
   if (error) throw new Error(`bounties insert: ${error.message}`);
   const { error: eventError } = await db.from('bounty_events').insert({ bounty_id: id, kind: 'created', wallet });
   if (eventError) console.error('bounty created event not written', id, eventError.message);
-  return json({ created: true, id, slug }, 200, cors);
+  if (!input.invitee_wallet || !standing) return json({ created: true, id, slug, direct: false }, 200, cors);
+  return json(
+    { created: true, id, slug, direct: true, invitee_wallet: input.invitee_wallet, invitee_known: standing.known_learner, invitee_eligible: standing.eligible, invitee_reason: standing.reason, invitee_proof: standing.proof, invite_enforced_by: 'program' },
+    200,
+    cors,
+  );
 }
 
 /** An unsigned transaction for the sponsor's wallet: it is the fee payer and the only signer. */
@@ -221,7 +274,7 @@ async function fundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: 
   if (publicStatus(bounty, new Date()) !== 'awaiting_funding') return json({ error: 'not_fundable' }, 409, cors);
   const terms = await escrowTerms(bounty, await loadConfig(db));
   if (!terms) return json({ error: 'unavailable' }, 503, cors);
-  const [existing, balance, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(wallet), escrowRentLamports(terms.gate !== null)]);
+  const [existing, balance, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(wallet), escrowRentLamports(terms.gate !== null, Boolean(terms.invitee))]);
   if (existing) {
     const status = (await refreshFunding(db, bounty)).status;
     return json({ error: 'already_funded', status }, 409, cors);
@@ -389,6 +442,7 @@ Deno.serve(async (request) => {
     if (!wallet) return json({ error: 'no_wallet' }, 403, cors);
     if (body.action === 'list') return await list(db, wallet, cors);
     if (body.action === 'create') return await create(db, caller, wallet, body, cors);
+    if (body.action === 'invitee_check') return await inviteeCheck(db, caller, wallet, body, cors);
 
     const bountyId = body.bounty;
     if (typeof bountyId !== 'string' || !isUuid(bountyId)) return json({ error: 'invalid_body' }, 400, cors);
