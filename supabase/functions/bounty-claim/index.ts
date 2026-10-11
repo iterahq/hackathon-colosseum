@@ -149,7 +149,11 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
       throw error;
     }
   }
-  const result = await record();
+  // The account now names this wallet. If our tables cannot follow, it is reopened: the page and the chain never part ways.
+  const result = await record().catch(async (error) => {
+    await reopenOnChain(db, bounty, wallet);
+    throw error;
+  });
   if (result?.status !== 'ok' || !result.claim_id) {
     // Our tables refused what the chain took (this learner took another bounty meanwhile): the account is reopened.
     const reopened = await reopenOnChain(db, bounty, wallet);
