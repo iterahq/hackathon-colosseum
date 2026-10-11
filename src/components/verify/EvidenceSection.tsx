@@ -47,6 +47,7 @@ export function EvidenceSection() {
   return (
     <VerifySection id="evidence" title={t('verify.evidence.title')}>
       <p className={P}>{t('verify.evidence.intro')}</p>
+      <p className={P} data-testid="evidence-limit">{t('verify.evidence.limit')}</p>
       <Steps items={[t('verify.evidence.step1'), t('verify.evidence.step2'), t('verify.evidence.step3')]} />
       <div className="grid min-w-0 gap-3">
         <TextInput label={t('verify.evidence.wallet')} value={wallet} onChange={setWallet} />

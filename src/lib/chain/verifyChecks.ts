@@ -11,6 +11,22 @@ export const SOURCE_PATH = '/verify/bounty-escrow.rs';
 export const IDL_PATH = '/verify/bounty-escrow.idl.json';
 export const BINARY_PATH = '/verify/itera_bounty_escrow.so';
 
+/**
+ * The sha256 of the three files above as Itera's authority key (the program's upgrade authority) wrote them in a
+ * memo on Solana devnet. The site cannot edit that transaction: a file served here that no longer hashes to its
+ * line was changed after the record. `scripts/hackathon/publish-program-hashes.mjs` writes a new one.
+ */
+export const PUBLISHED_RECORD = {
+  signature: '2gWPWR8wQbpC1PCugL7Hd1kP87aKmMzwFGKc8ueBvFnkiJpWjRn1T31mwqi6CL7sSD3krUv6rg8dBn2VZC6KN6gz',
+  signer: 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B',
+  date: '2026-10-11',
+  files: [
+    { path: BINARY_PATH, label: 'so', sha256: '17c346404f60ba1f6d76d889aa1b25ccd5333ae661dc1b2f383d1e76fb5787f9' },
+    { path: SOURCE_PATH, label: 'rs', sha256: '331b75855d34a84cae7cfe44218d475bef7ee3c47bc980f592140c016fa579b1' },
+    { path: IDL_PATH, label: 'idl', sha256: 'bc4794e4078bfb160bb2bd6e6e026b7a0dcb780d61b53760ade511619f885c09' },
+  ],
+} as const;
+
 export interface InstructionRow {
   name: string;
   signers: string[];
