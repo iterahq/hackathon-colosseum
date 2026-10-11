@@ -131,6 +131,29 @@ async function mark(
   return data === true;
 }
 
+interface NodeTransaction {
+  meta: { err: unknown } | null;
+  transaction: { message: { header?: { numRequiredSignatures: number }; accountKeys: Array<string | { pubkey: string }> } };
+}
+
+/**
+ * Puts the sponsor's wallet on a ledger row of a bounty it posted, once the node shows that wallet signed the transaction
+ * of that step. A transaction the node does not know, or one the sponsor did not sign, leaves the row as it was.
+ */
+async function recordSponsorSigner(db: IteraClient, bounty: BountyRow, kind: string, signature: string | null): Promise<void> {
+  if (bounty.origin !== 'wallet' || !bounty.sponsor_wallet || !signature) return;
+  try {
+    const found = await rpc<NodeTransaction | null>('getTransaction', [signature, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
+    if (!found || found.meta?.err) return;
+    const signers = found.transaction.message.accountKeys.slice(0, found.transaction.message.header?.numRequiredSignatures ?? 1).map((key) => (typeof key === 'string' ? key : key.pubkey));
+    if (!signers.includes(bounty.sponsor_wallet)) return;
+    const { error } = await db.from('bounty_events').update({ signer: bounty.sponsor_wallet }).eq('bounty_id', bounty.id).eq('kind', kind).eq('signature', signature);
+    if (error) console.error('sponsor signer not recorded', bounty.id, kind, error.message);
+  } catch (error) {
+    console.error('sponsor signer not recorded', bounty.id, kind, error instanceof Error ? error.message : error);
+  }
+}
+
 function escrowHistory(address: string): Promise<SignatureInfo[]> {
   return rpc<SignatureInfo[]>('getSignaturesForAddress', [address, { limit: ESCROW_HISTORY, commitment: 'confirmed' }]);
 }
@@ -196,7 +219,7 @@ export async function refreshFunding(db: IteraClient, bounty: BountyRow, known?:
     const history = await escrowHistory(bounty.escrow_address).catch(() => [] as SignatureInfo[]);
     signature = history.filter((entry) => entry.err === null).at(-1)?.signature ?? null;
   }
-  await mark(db, bounty.id, ['awaiting_funding'], 'open', { wallet: known?.wallet ?? null, lamports: locked, signature });
+  if (await mark(db, bounty.id, ['awaiting_funding'], 'open', { wallet: known?.wallet ?? null, lamports: locked, signature })) await recordSponsorSigner(db, bounty, 'funded', signature);
   return (await loadBounty(db, { id: bounty.id })) ?? bounty;
 }
 
@@ -439,7 +462,7 @@ async function sendThroughProgram(db: IteraClient, transfer: Transfer): Promise<
   }
   if (plan === 'done') {
     const signature = findPayment(await escrowHistory(bounty.escrow_address), memo);
-    await mark(db, bounty.id, [bounty.status], done, { wallet: recipient, lamports: state.amount, signature });
+    if (await mark(db, bounty.id, [bounty.status], done, { wallet: recipient, lamports: state.amount, signature })) await recordSponsorSigner(db, bounty, done, signature);
     return 'settled';
   }
   const signature = await sendAsApprover(plan, memo, recordBroadcast(db, bounty, state.amount));

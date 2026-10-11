@@ -122,7 +122,7 @@ export default function BountyPage() {
           <Block title={t('bounty.detail.deliverable')}>{bounty.deliverable}</Block>
           <JudgeChecksSection bounty={bounty} />
           <Block title={t('bounty.detail.requirement')}>
-            {plural(t, 'bounty.detail.requirementBody', bounty.requirement.totalDays, { trail: bounty.requirement.trail, min: bounty.requirement.minDays })}
+            {plural(t, bounty.direct ? 'bounty.detail.requirementDirectBody' : 'bounty.detail.requirementBody', bounty.requirement.totalDays, { trail: bounty.requirement.trail, min: bounty.requirement.minDays })}
           </Block>
           <EscrowPanel bounty={bounty} />
           <Ledger events={bounty.events} judge={bounty.judge} report={bounty.claim?.checkReport ?? null} />

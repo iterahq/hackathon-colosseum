@@ -179,6 +179,8 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
       </Panel>
     );
   }
+  const settled = bounty.status === 'paid' || bounty.status === 'refunded' || bounty.status === 'expired';
+  if (settled && !mine.isSuccess) return null;
   if (mine.isPending) {
     return (
       <Panel title={title}>
