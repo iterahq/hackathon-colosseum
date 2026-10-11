@@ -32,7 +32,7 @@ export default function LearnerProfilePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden text-[#F4EDE2]" style={GRID} data-testid="profile-page">
-      <header className="mx-auto flex h-16 max-w-[960px] items-center justify-between px-4 sm:px-8">
+      <header className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-4 sm:px-8">
         <Link to="/" className={`[font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2] ${FOCUS}`}>
           ITERA<span className="text-[#3FD17F]">/</span>
         </Link>
@@ -40,7 +40,7 @@ export default function LearnerProfilePage() {
           {t('dash.nav.language')}
         </button>
       </header>
-      <main className="mx-auto flex w-full max-w-[960px] flex-col gap-8 px-4 pb-14 pt-4 sm:pt-8">
+      <main className="mx-auto flex w-full max-w-[1180px] flex-col gap-8 px-4 pb-14 pt-4 sm:pt-8">
         {valid && query.isPending && <TeraLoader size="md" label={t('passport.credential.loading')} />}
         {valid && query.isError && (
           <div role="alert" className="rounded-[14px] border border-[#262320] bg-[#141210] p-5 [font:500_14px_Inter] text-[#C9BFB0]" data-testid="profile-failed">
@@ -53,6 +53,9 @@ export default function LearnerProfilePage() {
         {(!valid || lookup?.status === 'invalid') && (
           <div className="rounded-[14px] border border-[#262320] bg-[#141210] p-5" data-testid="profile-invalid">
             <TeraNote mood="oops" title={t('profile.invalid')} className="!pt-2" />
+            <div className="mt-4 flex justify-center">
+              <Link to="/" className={`${TERA_BUTTON} w-full max-w-[320px]`} data-testid="profile-invalid-cta">{t('profile.cta')}</Link>
+            </div>
           </div>
         )}
         {profile && (
