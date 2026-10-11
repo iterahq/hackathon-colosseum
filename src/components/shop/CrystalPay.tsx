@@ -76,7 +76,6 @@ export function PayButtons({ item, action, testId, labels = 'short', walletLabel
       {crystals && labels === 'full' && ctx?.balance != null && (
         <p className={`w-full [font:600_12px/1.3_JetBrains_Mono] ${short ? 'text-[#E0A86F]' : 'text-[#A0978A]'}`} data-testid={`${testId}-balance`}>
           {t('shop.pay.balance', { n: formatCount(ctx.balance, locale) })}
-          {short ? ` · ${reason}` : ''}
         </p>
       )}
     </div>
