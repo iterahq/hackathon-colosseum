@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>DevFellowship signup form: team rehearsal delivery</title>
+</head>
+<body>
+<header>
+<p><strong>Team rehearsal.</strong> This page was written by the Itera team as the delivery of the bounty
+<a href="/bounties/accessible-signup-form">Make the DevFellowship signup form accessible</a>, which the team posted and paid
+to one of its own test wallets to prove the escrow path end to end. It is not the work of an outside learner. The link
+first submitted on 2026-10-11 pointed to a file in a private repository; this page replaces it so anyone can open the delivery.
+The form sends nothing.</p>
+</header>
+<main>
+<h1>Apply to DevFellowship</h1>
+<p>Fields marked "required" must be filled in before sending.</p>
+<form action="#" method="get">
+<fieldset>
+<legend>About you</legend>
+<p>
+<label for="full-name">Full name (required)</label><br>
+<input type="text" id="full-name" name="full-name" autocomplete="name" required>
+</p>
+<p>
+<label for="city">City (required)</label><br>
+<input type="text" id="city" name="city" autocomplete="address-level2" required>
+</p>
+</fieldset>
+<fieldset>
+<legend>How to reach you</legend>
+<p>
+<label for="email">E-mail (required)</label><br>
+<input type="email" id="email" name="email" autocomplete="email" required>
+</p>
+<p>
+<label for="phone">Phone, with area code</label><br>
+<input type="tel" id="phone" name="phone" autocomplete="tel">
+</p>
+</fieldset>
+<fieldset>
+<legend>Your application</legend>
+<p>
+<label for="heard">How did you hear about DevFellowship? (required)</label><br>
+<select id="heard" name="heard" required>
+<option value="">Choose one</option>
+<option value="friend">A friend or colleague</option>
+<option value="social">Social media</option>
+<option value="event">An event or meetup</option>
+<option value="school">School or university</option>
+<option value="other">Somewhere else</option>
+</select>
+</p>
+<p>
+<label for="why">What do you want to be able to build a year from now?</label><br>
+<textarea id="why" name="why" rows="6" cols="40"></textarea>
+</p>
+</fieldset>
+<p><button type="submit">Send application</button></p>
+</form>
+</main>
+</body>
+</html>

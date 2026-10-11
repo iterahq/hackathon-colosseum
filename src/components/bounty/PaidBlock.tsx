@@ -30,7 +30,7 @@ export function PaidBlock({ bounty }: { bounty: BountyDetail }) {
         )}
         {delivery && (
           <a href={delivery} target="_blank" rel="noopener noreferrer" className={LINK}>
-            {t('bounty.paid.delivery')} ↗
+            {t(claim?.submissionMirrored ? 'bounty.paid.deliveryMirrored' : 'bounty.paid.delivery')} ↗
           </a>
         )}
       </div>

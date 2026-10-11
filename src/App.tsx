@@ -89,6 +89,8 @@ const GiftPage = lazy(() => import("./pages/GiftPage"));
 const BountiesPage = lazy(() => import("./pages/BountiesPage"));
 const BountyPage = lazy(() => import("./pages/BountyPage"));
 const BountyManagePage = lazy(() => import("./pages/BountyManagePage"));
+const BountyPostPage = lazy(() => import("./pages/BountyPostPage"));
+const BountyMinePage = lazy(() => import("./pages/BountyMinePage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
@@ -327,6 +329,8 @@ const App = () => (
                 <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
                 <Route path="/bounties" element={<LazyRoute><BountiesPage /></LazyRoute>} />
                 <Route path="/bounties/manage" element={<LazyRoute><BountyManagePage /></LazyRoute>} />
+                <Route path="/bounties/post" element={<LazyRoute><BountyPostPage /></LazyRoute>} />
+                <Route path="/bounties/mine" element={<LazyRoute><BountyMinePage /></LazyRoute>} />
                 <Route path="/bounties/:slug" element={<LazyRoute><BountyPage /></LazyRoute>} />
                 {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
                 {/* Self-serve subscribe surface (PLG). Calls itera-api

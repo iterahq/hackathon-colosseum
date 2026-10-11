@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BountyShell, LINK, LoadError, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { CreateBountyForm } from '@/components/bounty/CreateBountyForm';
+import { ModerationSection } from '@/components/bounty/ModerationSection';
 import { FundingItem, PlainItem, ReviewItem } from '@/components/bounty/SponsorItems';
 import { BTN_PRIMARY, CARD } from '@/components/shop/shopStyles';
 import { TeraNote } from '@/components/tera/TeraNote';
@@ -72,6 +73,7 @@ export default function BountyManagePage() {
           <Group testId="bounty-group-open" title={t('bounty.manage.open')} items={open} render={(b) => <PlainItem key={b.id} bounty={b} />} />
           <Group testId="bounty-group-closed" title={t('bounty.manage.closed')} items={closed} render={(b) => <PlainItem key={b.id} bounty={b} />} />
           <CreateBountyForm trails={data.trails} />
+          <ModerationSection />
         </>
       )}
     </BountyShell>

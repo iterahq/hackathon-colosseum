@@ -48,7 +48,7 @@ const initial = (trails: SponsorTrail[]): FormState => ({
 
 const wholeNumber = (v: string): number | null => (/^\d+$/.test(v.trim()) ? Number(v) : null);
 
-function Field({ label, error, children, id }: { label: string; error?: string | null; children: ReactNode; id: string }) {
+export function Field({ label, error, children, id }: { label: string; error?: string | null; children: ReactNode; id: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <label htmlFor={id} className={LABEL}>{label}</label>

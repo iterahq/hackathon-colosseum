@@ -1,15 +1,19 @@
 import { Link, useParams } from 'react-router-dom';
 import { BountyActionPanel } from '@/components/bounty/ActionPanel';
-import { BountyShell, LINK, LoadError, RequirementChip, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
+import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, RequirementChip, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
 import { EscrowPanel } from '@/components/bounty/EscrowPanel';
+import { HeldNotice } from '@/components/bounty/HeldNotice';
 import { Ledger } from '@/components/bounty/Ledger';
 import { PaidBlock } from '@/components/bounty/PaidBlock';
+import { ReportBounty } from '@/components/bounty/ReportBounty';
 import { CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TeraNote, TERA_BUTTON } from '@/components/tera/TeraNote';
 import { useBounty } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
-import { formatWhen } from '@/utils/bounty';
+import { addressUrl } from '@/lib/explorer';
+import { formatWhen, plural } from '@/utils/bounty';
+import type { BountyDetail } from '@/types/bounty';
 
 function Block({ title, children }: { title: string; children: string }) {
   return (
@@ -17,6 +21,29 @@ function Block({ title, children }: { title: string; children: string }) {
       <h2 className={SECTION_TITLE}>{title}</h2>
       <p className="whitespace-pre-line [font:400_15px/1.6_Inter] text-[#C9BFB0] [overflow-wrap:anywhere]">{children}</p>
     </section>
+  );
+}
+
+function PostedBy({ bounty }: { bounty: BountyDetail }) {
+  const { t } = useI18n();
+  const { postedBy } = bounty;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="bounty-posted-by">
+      <span className={`${MONO_LABEL} text-[#A0978A]`}>
+        {postedBy.kind === 'team'
+          ? t('bounty.card.postedTeam', { name: postedBy.name })
+          : t('bounty.card.postedWallet', { name: postedBy.name, wallet: postedBy.walletShort ?? '' })}
+      </span>
+      {postedBy.kind === 'wallet' && postedBy.wallet && (
+        <>
+          <Link to={`/u/${postedBy.wallet}`} className={LINK}>{t('bounty.mine.profile')} →</Link>
+          <ExplorerAnchor href={addressUrl(postedBy.wallet)} />
+        </>
+      )}
+      {postedBy.kind === 'wallet' && bounty.writtenIn && (
+        <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-written-in">{t(`bounty.detail.writtenIn.${bounty.writtenIn}`)}</span>
+      )}
+    </div>
   );
 }
 
@@ -56,7 +83,7 @@ export default function BountyPage() {
         <>
           <section className="flex flex-col gap-4" data-testid="bounty-detail">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.detail.sponsor', { name: bounty.sponsor })}</span>
+              <PostedBy bounty={bounty} />
               <StatusChip status={bounty.status} />
             </div>
             <h1 className="[font:700_44px/1.02_'Barlow_Condensed'] max-sm:text-[34px] [overflow-wrap:anywhere]">{bounty.title}</h1>
@@ -66,15 +93,19 @@ export default function BountyPage() {
               {bounty.expiresAt && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.expires', { date: formatWhen(bounty.expiresAt, locale) })}</span>}
             </div>
           </section>
+          {bounty.hidden && <Notice tone="error" testId="bounty-hidden-banner">{t('bounty.hidden.banner')}</Notice>}
+          {bounty.rehearsal && <Notice testId="bounty-rehearsal-banner">{t('bounty.rehearsal.banner')}</Notice>}
           <PaidBlock bounty={bounty} />
+          <HeldNotice bounty={bounty} />
           <BountyActionPanel bounty={bounty} />
           <Block title={t('bounty.detail.brief')}>{bounty.brief}</Block>
           <Block title={t('bounty.detail.deliverable')}>{bounty.deliverable}</Block>
           <Block title={t('bounty.detail.requirement')}>
-            {t('bounty.detail.requirementBody', { trail: bounty.requirement.trail, n: bounty.requirement.minDays, total: bounty.requirement.totalDays })}
+            {plural(t, 'bounty.detail.requirementBody', bounty.requirement.totalDays, { trail: bounty.requirement.trail, min: bounty.requirement.minDays })}
           </Block>
           <EscrowPanel bounty={bounty} />
           <Ledger events={bounty.events} />
+          <ReportBounty bounty={bounty} />
         </>
       )}
     </BountyShell>

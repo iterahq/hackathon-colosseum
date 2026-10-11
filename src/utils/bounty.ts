@@ -29,6 +29,53 @@ export function solToLamports(input: string): number | null {
   return Number.isSafeInteger(lamports) ? lamports : null;
 }
 
+/** Whole lamports to plain decimal SOL text (`0.05`), without touching floats. */
+export function lamportsToSol(lamports: number): string {
+  const whole = Math.floor(lamports / 1_000_000_000);
+  const fraction = String(lamports % 1_000_000_000).padStart(9, '0').replace(/0+$/, '');
+  return fraction ? `${whole}.${fraction}` : String(whole);
+}
+
+/** Picks `<key>.one` for exactly 1 and `<key>.many` otherwise; `n` is always passed on to the string. */
+export function plural(t: (key: string, vars?: Record<string, string | number>) => string, key: string, n: number, vars: Record<string, string | number> = {}): string {
+  return t(`${key}${n === 1 ? '.one' : '.many'}`, { n, ...vars });
+}
+
+export const MAX_DELIVERY_URL = 500;
+
+export type DeliveryUrlProblem = 'empty' | 'not_url' | 'http' | 'too_long';
+
+export function checkDeliveryUrl(value: string): DeliveryUrlProblem | null {
+  const clean = value.trim();
+  if (!clean) return 'empty';
+  if (clean.length > MAX_DELIVERY_URL) return 'too_long';
+  if (/^http:\/\//i.test(clean)) return 'http';
+  return safeHttpsUrl(clean) ? null : 'not_url';
+}
+
+export type PostTextField = 'sponsor' | 'title' | 'summary' | 'brief' | 'deliverable';
+
+export const POST_TEXT_LIMITS: Record<PostTextField, { min: number; max: number }> = {
+  sponsor: { min: 2, max: 40 },
+  title: { min: 8, max: 90 },
+  summary: { min: 20, max: 220 },
+  brief: { min: 60, max: 2400 },
+  deliverable: { min: 10, max: 400 },
+};
+
+export function checkPostText(field: PostTextField, value: string): 'short' | 'long' | null {
+  const length = value.trim().length;
+  const { min, max } = POST_TEXT_LIMITS[field];
+  return length < min ? 'short' : length > max ? 'long' : null;
+}
+
+/** An integer inside `[min, max]` from a form field, or null. */
+export function boundedInt(value: string, min: number, max: number): number | null {
+  if (!/^\d+$/.test(value.trim())) return null;
+  const n = Number(value);
+  return n >= min && n <= max ? n : null;
+}
+
 export const isRewardInRange = (lamports: number): boolean => lamports >= MIN_REWARD_LAMPORTS && lamports <= MAX_REWARD_LAMPORTS;
 
 /** Only a plain https link may be rendered as one. */
@@ -103,3 +150,50 @@ const CREATE_ERRORS: Record<string, CreateField> = {
 export const createErrorField = (code: string | null): CreateField | null => (code ? (CREATE_ERRORS[code] ?? null) : null);
 
 export const isCreateErrorCode = (code: string | null): code is string => Boolean(code && code in CREATE_ERRORS);
+
+export interface PostFormValues {
+  sponsor: string;
+  title: string;
+  summary: string;
+  brief: string;
+  deliverable: string;
+  reward: string;
+  minDays: string;
+  expires: string;
+  claimHours: string;
+}
+
+export type PostField = PostTextField | 'reward' | 'requirement' | 'expires' | 'claimHours';
+
+export interface PostFormContext {
+  minRewardLamports: number;
+  maxRewardLamports: number;
+  maxExpiryDays: number;
+  maxClaimHours: number;
+  totalDays: number | null;
+}
+
+export interface PostFormCheck {
+  errors: Partial<Record<PostField, 'short' | 'long' | 'invalid'>>;
+  rewardLamports: number | null;
+  minDays: number | null;
+  expiresInDays: number | null;
+  claimHours: number | null;
+}
+
+export function validatePostForm(values: PostFormValues, ctx: PostFormContext): PostFormCheck {
+  const errors: PostFormCheck['errors'] = {};
+  for (const field of ['sponsor', 'title', 'summary', 'brief', 'deliverable'] as const) {
+    const problem = checkPostText(field, values[field]);
+    if (problem) errors[field] = problem;
+  }
+  const rewardLamports = solToLamports(values.reward);
+  if (rewardLamports === null || rewardLamports < ctx.minRewardLamports || rewardLamports > ctx.maxRewardLamports) errors.reward = 'invalid';
+  const minDays = ctx.totalDays === null ? null : boundedInt(values.minDays, 1, ctx.totalDays);
+  if (minDays === null) errors.requirement = 'invalid';
+  const expiresInDays = boundedInt(values.expires, 1, ctx.maxExpiryDays);
+  if (expiresInDays === null) errors.expires = 'invalid';
+  const claimHours = boundedInt(values.claimHours, 1, ctx.maxClaimHours);
+  if (claimHours === null) errors.claimHours = 'invalid';
+  return { errors, rewardLamports, minDays, expiresInDays, claimHours };
+}

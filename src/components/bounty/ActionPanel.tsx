@@ -1,18 +1,18 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ExplorerAnchor, INPUT, LABEL, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
+import { ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD } from '@/components/shop/shopStyles';
+import { DeliverForm } from '@/components/bounty/DeliverForm';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { useCountdown } from '@/hooks/useCountdown';
-import { useAcceptBounty, useBountySession, useMyBountyStatus, useSubmitBounty, useWithdrawBounty } from '@/hooks/useBounties';
+import { useAcceptBounty, useBountySession, useMyBountyStatus, useWithdrawBounty } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode } from '@/services/bounty.service';
-import { formatRemaining, safeHttpsUrl } from '@/utils/bounty';
+import { formatRemaining } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
 const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty'] as const;
-const SUBMIT_ERRORS = ['invalid_submission', 'not_active'] as const;
 const WITHDRAW_ERRORS = ['not_active'] as const;
 
 /** What can go wrong in a step the learner's wallet signs, whatever the step. */
@@ -36,58 +36,17 @@ function Panel({ children, tone = 'plain' }: { children: ReactNode; tone?: 'plai
 
 function ActiveClaim({ bounty, status }: { bounty: BountyDetail; status: NonNullable<MyBountyStatus['claim']> }) {
   const { t } = useI18n();
-  const submit = useSubmitBounty();
   const withdraw = useWithdrawBounty();
-  const [url, setUrl] = useState('');
-  const [note, setNote] = useState('');
-  const [invalid, setInvalid] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const deadline = status.deadlineAt ? Date.parse(status.deadlineAt) : null;
   const left = useCountdown(Number.isFinite(deadline) ? deadline : null);
-
-  const onSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const clean = url.trim();
-    if (!safeHttpsUrl(clean)) return setInvalid(true);
-    setInvalid(false);
-    submit.mutate({ bounty: bounty.id, url: clean, note });
-  };
 
   return (
     <>
       <p className="[font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-countdown">
         {left > 0 ? t('bounty.active.left', { time: formatRemaining(left) }) : t('bounty.active.late')}
       </p>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
-        <label className="flex flex-col gap-1.5">
-          <span className={LABEL}>{t('bounty.active.url')}</span>
-          <input
-            type="url"
-            inputMode="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://"
-            className={INPUT}
-            aria-invalid={invalid}
-            aria-describedby={invalid ? 'bounty-url-error' : undefined}
-            data-testid="bounty-url"
-          />
-          {invalid && (
-            <span id="bounty-url-error" role="alert" className="[font:500_13px_Inter] text-[#E0655A]">
-              {t('bounty.active.urlInvalid')}
-            </span>
-          )}
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={LABEL}>{t('bounty.active.note')}</span>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} rows={3} className={INPUT} data-testid="bounty-note" />
-          <span className="self-end [font:500_11px_JetBrains_Mono] text-[#5E574E]">{note.length}/1000</span>
-        </label>
-        {submit.isError && <Notice tone="error">{errorText(t, 'submit', SUBMIT_ERRORS, submit.error)}</Notice>}
-        <button type="submit" disabled={submit.isPending || withdraw.isPending} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-submit">
-          {submit.isPending ? t('bounty.working') : t('bounty.active.submit')}
-        </button>
-      </form>
+      <DeliverForm bountyId={bounty.id} />
       <div className="flex flex-col gap-2 border-t border-[#262320] pt-3">
         {!confirming ? (
           <button type="button" onClick={() => setConfirming(true)} className={`${BTN_SECONDARY} ${BTN_SMALL} w-full sm:w-auto sm:self-start`} data-testid="bounty-withdraw">
