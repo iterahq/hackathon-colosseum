@@ -159,9 +159,9 @@ feature, the instructor and admin screens, subscription billing code (Stripe), t
 tooling. Of the 2,493 tracked files at `main` when this was written, roughly 2,000 are TypeScript; the copy point already
 contained about 2,000 files. The inherited product is large and is not claimed.
 
-**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-11, 76 commits after the copy point, merged PRs #1 to
-#77; +63.9k / -5.3k lines in 784 files against the copy point; everything under `supabase/functions/` and 50 new
-migrations 0110 to 0210; counts as of main `65f9256`, see the disclosure file for the exact list):
+**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-11, 82 commits after the copy point, merged PRs #1 to
+#83; +64.6k / -5.2k lines in 802 files against the copy point; everything under `supabase/functions/` and 52 new
+migrations 0110 to 0210; counts as of main `77dea24`, see the disclosure file for the exact list):
 
 - Wallet auth: Sign in with Solana (Phantom), provisioning trigger, nickname step, link a wallet to an e-mail account.
 - Credentials: Certifications (stamp per day, gold, server-paid, server-generated SVG art), medals, stamp ceremony,
