@@ -22,6 +22,21 @@
   outline: 2px solid #3FD17F;
   outline-offset: 2px;
 }
+/* Lives and crystals share one pill: each cell drops its own border and the second one gets a divider. */
+.hd-pocket [data-testid="header-lives"],
+.hd-pocket [data-testid="header-crystals"],
+.hd-pocket [data-testid="header-lives-loading"] {
+  border: 0;
+  background: transparent;
+  height: 42px;
+}
+.hd-pocket [data-testid="header-crystals"] {
+  border-left: 1px solid #2E2A25;
+  border-radius: 0 9999px 9999px 0;
+}
+.hd-pocket [data-testid="header-lives"] {
+  border-radius: 9999px 0 0 9999px;
+}
 /* The mobile tab bar is fixed: keep the page's last row above it. */
 @media (max-width: 1023px) {
   .dash-root > main {

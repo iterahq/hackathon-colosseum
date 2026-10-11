@@ -1,5 +1,5 @@
 import { isSolanaAddress } from '../_shared/address.ts';
-import { circuitTotals } from '../_shared/circuit.ts';
+import { CIRCUIT_SHARE_PERCENT, STAMP_FEE_LAMPORTS, circuitTotals } from '../_shared/circuit.ts';
 import { retryCircuits, walletCircuit } from '../_shared/circuit-store.ts';
 import { inBackground } from '../_shared/companion-store.ts';
 import { explorerUrl } from '../_shared/credential.ts';
@@ -10,10 +10,28 @@ import { loadTestAccountIds } from '../_shared/test-accounts.ts';
 const RECENT = 10;
 const PAGE = 1000;
 
+interface SentRow {
+  user_id: string;
+  lamports: number | string;
+  circuit_lamports: number;
+  circuit_signature: string;
+  circuit_at: string;
+}
+
+/** The cheapest and dearest item on the shelf right now, so the landing quotes the shop's own prices. */
+async function shopPriceRange(db: ReturnType<typeof serviceClient>): Promise<{ min_usd_cents: number; max_usd_cents: number; items: number } | null> {
+  const { data, error } = await db.from('shop_items').select('price_usd_cents').eq('active', true).neq('kind', 'gift').gt('price_usd_cents', 0);
+  if (error) throw new Error(`shop_items: ${error.message}`);
+  const cents = (data ?? []).map((row) => Number(row.price_usd_cents)).filter((n) => Number.isFinite(n) && n > 0);
+  if (cents.length === 0) return null;
+  return { min_usd_cents: Math.min(...cents), max_usd_cents: Math.max(...cents), items: cents.length };
+}
+
 /**
  * Public counter of the Circuito: what the shop moved from the treasury to the key that pays for stamps.
- * The totals count the purchases of real accounts. What the team's test accounts bought is on chain too
- * and is stated apart (`with_tests`), never inside the headline number.
+ * The headline counts EVERY confirmed transfer, the team's own test runs included, so it never shrinks
+ * when an account is tagged as a test later. `outside` is the same sum without the tagged accounts,
+ * labelled as such. `as_of` is when this answer was computed.
  */
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
@@ -25,33 +43,41 @@ Deno.serve(async (request) => {
     if (wallet !== null && !isSolanaAddress(wallet)) return json({ error: 'invalid_address' }, 400, cors);
 
     const db = serviceClient();
-    const all: Array<{ user_id: string; circuit_lamports: number; circuit_signature: string; circuit_at: string }> = [];
+    const all: SentRow[] = [];
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await db
         .from('purchases')
-        .select('user_id,circuit_lamports,circuit_signature,circuit_at')
+        .select('user_id,lamports,circuit_lamports,circuit_signature,circuit_at')
         .eq('circuit_status', 'sent')
         .order('circuit_at', { ascending: false })
         .range(from, from + PAGE - 1);
       if (error) throw new Error(`purchases: ${error.message}`);
-      all.push(...((data ?? []) as typeof all));
+      all.push(...((data ?? []) as SentRow[]));
       if (!data || data.length < PAGE) break;
     }
-    const [config, mine, tests] = await Promise.all([loadConfig(db), wallet ? walletCircuit(db, wallet) : null, loadTestAccountIds(db)]);
-    const sent = all.filter((row) => !tests.has(row.user_id));
-    const everything = circuitTotals(all);
+    const [config, mine, tests, shop] = await Promise.all([loadConfig(db), wallet ? walletCircuit(db, wallet) : null, loadTestAccountIds(db), shopPriceRange(db)]);
+    const outsideRows = all.filter((row) => !tests.has(row.user_id));
+    const outside = circuitTotals(outsideRows);
+    const purchaseLamports = all.reduce((sum, row) => sum + BigInt(row.lamports ?? 0), 0n);
+    const testBuyers = new Set(all.filter((row) => tests.has(row.user_id)).map((row) => row.user_id)).size;
     // Off the response path: transfers that failed or never ran are taken up again (at most two per call).
     inBackground(retryCircuits(db));
     return json(
       {
-        ...circuitTotals(sent),
-        with_tests: { total_lamports: everything.total_lamports, purchases: everything.purchases, stamps_funded: everything.stamps_funded },
+        as_of: new Date().toISOString(),
+        ...circuitTotals(all),
+        purchase_lamports: Number(purchaseLamports),
+        share_percent: Number(CIRCUIT_SHARE_PERCENT),
+        stamp_fee_lamports: Number(STAMP_FEE_LAMPORTS),
+        includes_team_tests: true,
+        outside: { total_lamports: outside.total_lamports, purchases: outside.purchases, stamps_funded: outside.stamps_funded, test_accounts_left_out: testBuyers },
+        shop,
         cluster: config.cluster ?? 'devnet',
         treasury: config.treasury ?? null,
         authority: config.authority ?? null,
         treasury_explorer_url: explorerUrl('address', config.treasury ?? null),
         authority_explorer_url: explorerUrl('address', config.authority ?? null),
-        recent: sent.slice(0, RECENT).map((row) => ({ at: row.circuit_at, lamports: Number(row.circuit_lamports), tx_signature: row.circuit_signature, explorer_url: explorerUrl('tx', row.circuit_signature) })),
+        recent: all.slice(0, RECENT).map((row) => ({ at: row.circuit_at, lamports: Number(row.circuit_lamports), tx_signature: row.circuit_signature, explorer_url: explorerUrl('tx', row.circuit_signature) })),
         ...(mine ? { wallet: mine } : {}),
       },
       200,

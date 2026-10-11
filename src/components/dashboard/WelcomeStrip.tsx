@@ -6,6 +6,7 @@ import { useCompanion } from '@/hooks/useCompanion';
 import { useHeaderStats } from '@/hooks/useHeaderStats';
 import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
 import { useProfile } from '@/hooks/useProfile';
+import { useProgressStory } from '@/hooks/useProgressStory';
 import { useI18n } from '@/i18n';
 import { DEFAULT_AVATAR_KEY } from '@/types/avatar';
 import type { Trail } from '@/types/trailDashboard';
@@ -15,10 +16,11 @@ import { currentDayOf, trailName } from '@/utils/trailDashboard';
 
 const CHIP = 'inline-flex h-9 items-center gap-2 rounded-full border border-[#262320] bg-[#141210] px-3 [font:600_12px_JetBrains_Mono] text-[#C9BFB0]';
 
-/** The line above the hero: Tera, "welcome back" and the learner's quiet numbers (they no longer live in the header). */
+/** The line above the hero: Tera, "welcome back", then the progress story first (days stamped, capabilities proven) and the quiet numbers after it. */
 export function WelcomeStrip({ trail }: { trail: Trail | null }) {
   const { t, tText } = useI18n();
   const stats = useHeaderStats();
+  const story = useProgressStory();
   const avatar = useLearnerAvatar();
   const companion = useCompanion();
   const outfitTera = Boolean(companion.data) && avatar.key === DEFAULT_AVATAR_KEY && avatar.allowsOutfit;
@@ -45,6 +47,16 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2" data-testid="welcome-stats">
+        <Link to="/passport" className={`${CHIP} border-[#3FD17F]/50 text-[#F4EDE2] hover:border-[#3FD17F]`} data-testid="welcome-days">
+          <HeaderIcon name="passport" size={16} className="text-[#3FD17F]" />
+          {t(story.wallet ? 'dash.welcome.days' : 'dash.welcome.daysNoWallet', { n: story.daysDone, total: story.daysTotal })}
+        </Link>
+        {story.verified != null && story.capabilitiesTotal != null && (
+          <Link to={`/u/${story.wallet}`} className={`${CHIP} hover:border-[#3FD17F] hover:text-[#F4EDE2]`} data-testid="welcome-proven">
+            <HeaderIcon name="verify" size={16} className="text-[#3FD17F]" />
+            {t('dash.welcome.proven', { n: story.verified, total: story.capabilitiesTotal })}
+          </Link>
+        )}
         <span className={CHIP} title={t('header.hud.streak', { n: stats.streak ?? 0 })}>
           <HeaderIcon name="flame" size={16} className="text-[#3FD17F]" />
           {t('dash.welcome.streak', { n: stats.streak ?? 0 })}

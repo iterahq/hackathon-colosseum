@@ -1,8 +1,9 @@
 /**
  * Itera sign-in — the wallet first, because the wallet is the account that holds the certification.
- * A browser without a wallet is told how to get one (install link; on a phone, the Phantom in-app
- * browser). E-mail + password and the DevFellowship account live under "other ways in".
- * On success navigates to the `from` location (default '/').
+ * A browser without a wallet gets no dead wallet button: on a phone the first button opens the page
+ * inside the Phantom app, and "Create an account with e-mail" is a real button in both cases.
+ * E-mail + password and the DevFellowship account live under "sign in with e-mail", open by default
+ * when no wallet is injected. On success navigates to the `from` location (default '/').
  */
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
@@ -20,6 +21,8 @@ import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
 import { PHANTOM_INSTALL_URL, detectInjectedWallets, isMobileBrowser } from '@/utils/solanaWallets';
 
 const LINK = 'text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline';
+const PRIMARY = 'inline-flex min-h-12 w-full items-center justify-center rounded-md bg-evergreen px-4 text-sm font-medium text-obsidiana';
+const OUTLINE = 'inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground';
 
 export default function AuthPage() {
   const { session, loading, signInWithPassword, signInWithSolana, configured } = useAuth();
@@ -61,11 +64,11 @@ export default function AuthPage() {
     navigate(from, { replace: true });
   }
 
-  async function onWallet(wallet?: InjectedWallet) {
+  async function onWallet(wallet: InjectedWallet) {
     setBusy(true);
     setError(null);
     setWalletError(null);
-    const { error, noWallet } = await signInWithSolana(wallet?.provider);
+    const { error, noWallet } = await signInWithSolana(wallet.provider);
     setBusy(false);
     if (error) {
       setWalletError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'));
@@ -75,6 +78,14 @@ export default function AuthPage() {
   }
 
   const phantomHref = typeof window === 'undefined' ? '#' : phantomBrowseUrl(window.location.href, window.location.origin);
+  const noWallet = wallets.length === 0;
+  const signUp = (
+    <WebOnly>
+      <Link to="/signup" state={returnState(from)} className={`${noWallet && !mobile ? PRIMARY : OUTLINE} touch-hit`} data-testid="goto-signup">
+        {t('door.other.createEmail')}
+      </Link>
+    </WebOnly>
+  );
 
   return (
     <AuthShell title={t('door.title')} subtitle={t('door.subtitle')} testId="login-page">
@@ -103,32 +114,27 @@ export default function AuthPage() {
             {t('door.wallet.free')}
           </p>
           <p className="text-center text-[11px] text-muted-foreground">{t('door.wallet.devnet')}</p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">{t('door.email.lead')}</p>
+          {signUp}
         </div>
       ) : (
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/60 p-4" data-testid="no-wallet">
           <p className="font-display text-base font-bold text-foreground">{t('door.noWallet.title')}</p>
           <p className="text-sm text-muted-foreground">{t(mobile ? 'door.noWallet.mobile' : 'door.noWallet.desktop')}</p>
           {mobile && (
-            <a href={phantomHref} className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-evergreen px-4 text-sm font-medium text-obsidiana" data-testid="open-in-phantom">
+            <a href={phantomHref} className={PRIMARY} data-testid="open-in-phantom">
               {t('door.noWallet.openPhantom')}
             </a>
           )}
-          <a
-            href={PHANTOM_INSTALL_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={`inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground ${mobile ? '' : 'bg-evergreen text-obsidiana'}`}
-            data-testid="install-phantom"
-          >
+          <p className="text-xs text-muted-foreground">{t('door.email.lead')}</p>
+          {signUp}
+          <a href={PHANTOM_INSTALL_URL} target="_blank" rel="noreferrer" className={mobile ? `text-center ${LINK}` : OUTLINE} data-testid="install-phantom">
             {t('door.noWallet.install')}
           </a>
           <p className="text-xs text-muted-foreground">{t('door.noWallet.others')}</p>
           <Link to={TRY_PATH} className="text-center text-sm font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="try-first-lesson">
             {t('door.noWallet.tryFirst')}
           </Link>
-          <Button type="button" variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => void onWallet()} data-testid="web3-solana">
-            {t('door.wallet.continue', { wallet: 'Phantom' })}
-          </Button>
         </div>
       )}
       {walletError && (
@@ -137,8 +143,8 @@ export default function AuthPage() {
         </p>
       )}
 
-      <details className="group mt-5" data-testid="other-ways">
-        <summary className="cursor-pointer list-none text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline">
+      <details className="group mt-5" data-testid="other-ways" open={noWallet}>
+        <summary className="cursor-pointer list-none text-center text-sm font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="other-ways-summary">
           {t('door.other.summary')}
         </summary>
         <div className="mt-4 flex flex-col gap-4">
@@ -181,7 +187,7 @@ export default function AuthPage() {
             <WebOnly>
               <p className="text-center text-xs text-muted-foreground">
                 {t('door.other.noAccount')}{' '}
-                <Link to="/signup" state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="goto-signup">
+                <Link to="/signup" state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="goto-signup-link">
                   {t('door.other.createEmail')}
                 </Link>
               </p>

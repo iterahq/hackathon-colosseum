@@ -27,7 +27,10 @@ export function CourseCarousel({ courses }: Props) {
   return (
     <section className="flex min-w-0 flex-col gap-4" data-testid="course-carousel">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="[font:700_32px_'Barlow_Condensed'] max-sm:text-[26px]">{t('dash.courses.title')}</h2>
+        <div className="flex min-w-0 flex-col gap-1">
+          <h2 className="[font:700_32px_'Barlow_Condensed'] max-sm:text-[26px]">{t('dash.courses.title')}</h2>
+          <p className="[font:400_13px/1.4_Inter] text-[#A0978A]" data-testid="course-carousel-extra">{t('dash.courses.extra')}</p>
+        </div>
         <span className="flex flex-none items-center gap-2">
           <Link to="/catalog" data-testid="course-carousel-all" className={`rounded px-1 py-2 [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
             {t('dash.courses.seeAll')}

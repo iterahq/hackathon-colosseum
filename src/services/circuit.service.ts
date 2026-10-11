@@ -1,6 +1,6 @@
 /** The Circuito: half of every shop purchase pays the network fee of other learners' stamps. Public counter, anon key only. */
 import { takePreload } from '@/services/learnerProfile.service';
-import type { CircuitCounter, CircuitShare, PurchaseCircuit } from '@/types/circuit';
+import type { CircuitCounter, CircuitShare, CircuitShopRange, PurchaseCircuit } from '@/types/circuit';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -15,12 +15,26 @@ export function toCircuitShare(v: unknown): CircuitShare {
   return { lamports: num(r.lamports), stampsFunded: num(r.stamps_funded) };
 }
 
+function toShopRange(v: unknown): CircuitShopRange | null {
+  const r = row(v);
+  const min = num(r.min_usd_cents);
+  const max = num(r.max_usd_cents);
+  return min > 0 && max >= min ? { minUsdCents: min, maxUsdCents: max, items: num(r.items) } : null;
+}
+
 export function toCircuitCounter(v: unknown): CircuitCounter {
   const r = row(v);
+  const outside = r.outside && typeof r.outside === 'object' ? row(r.outside) : null;
   return {
     lamports: num(r.total_lamports),
     stampsFunded: num(r.stamps_funded),
     purchases: num(r.purchases),
+    asOf: orNull(r.as_of),
+    purchaseLamports: num(r.purchase_lamports),
+    sharePercent: num(r.share_percent) || 50,
+    stampFeeLamports: num(r.stamp_fee_lamports) || 5000,
+    outside: outside ? { lamports: num(outside.total_lamports), stampsFunded: num(outside.stamps_funded), purchases: num(outside.purchases), testAccountsLeftOut: num(outside.test_accounts_left_out) } : null,
+    shop: toShopRange(r.shop),
     treasuryExplorerUrl: orNull(r.treasury_explorer_url),
     authorityExplorerUrl: orNull(r.authority_explorer_url),
     wallet: r.wallet && typeof r.wallet === 'object' ? toCircuitShare(r.wallet) : null,

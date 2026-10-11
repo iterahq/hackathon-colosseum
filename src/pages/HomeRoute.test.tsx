@@ -46,6 +46,7 @@ vi.mock('@/hooks/useLiveClass', () => ({
 }));
 vi.mock('@/hooks/useIteraIdentity', () => ({ useIteraIdentity: () => ({ userId: 'u1' }) }));
 vi.mock('@/hooks/useWalletLink', () => ({ useWalletLink: () => ({ wallet: null, linked: false, pending: false, userId: 'u1' }) }));
+vi.mock('@/hooks/useLoopView', () => ({ useLoopView: () => ({ status: 'no-wallet', view: null, capabilities: null, learner: null, retry: () => undefined }) }));
 vi.mock('@/hooks/useCompanion', () => ({ useCompanion: () => ({ data: undefined }) }));
 vi.mock('@/hooks/useCrystals', () => ({ useCrystals: () => ({ data: undefined }) }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => ({ data: [] }) }));
