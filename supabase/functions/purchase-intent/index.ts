@@ -86,8 +86,8 @@ Deno.serve(async (request) => {
 
   try {
     const db = serviceClient();
-    const [caller, verdict] = await Promise.all([resolveCaller(db, request), takeRate(db, 'purchase-intent', callerAddress(request), RATE)]);
-    if (!verdict.allowed) return tooMany(verdict, cors);
+    const [caller, rate] = await Promise.all([resolveCaller(db, request), takeRate(db, 'purchase-intent', callerAddress(request), RATE)]);
+    if (!rate.allowed) return tooMany(rate, cors);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
 
     const body = await readJsonObject(request);
