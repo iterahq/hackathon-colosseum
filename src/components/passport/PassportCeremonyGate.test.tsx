@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({ view: null as unknown, broken: true, seen: [] 
 
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play: vi.fn() }) }));
 vi.mock('@/hooks/useCompanion', () => ({ useCompanion: () => ({ outfit: null }) }));
+vi.mock('@/hooks/useWalletLink', () => ({ useWalletLink: () => ({ wallet: 'CQziWallet', linked: false, pending: false, userId: 'u1' }) }));
 vi.mock('@/hooks/usePassport', () => ({
   usePassportPrefetch: () => {
     if (state.broken) throw new Error('no providers');

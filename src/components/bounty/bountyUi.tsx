@@ -7,6 +7,7 @@ import { DEVNET_BADGE, FOCUS, MONO_LABEL, SHOP_GRID } from '@/components/shop/sh
 import { useBountySession } from '@/hooks/useBounties';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useI18n } from '@/i18n';
+import { localizeDecimal } from '@/utils/shopPrice';
 import { loginHref } from '@/lib/loginReturn';
 import { parseExplorerUrl, shortAddress } from '@/lib/explorer';
 import { statusTone, type StatusTone } from '@/utils/bounty';
@@ -51,10 +52,11 @@ export function DevnetTag() {
 }
 
 export function Reward({ sol, size = 'lg' }: { sol: string; size?: 'lg' | 'xl' }) {
+  const { locale } = useI18n();
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`${size === 'xl' ? "[font:700_56px/1_'Barlow_Condensed'] max-sm:text-[44px]" : "[font:700_40px/1_'Barlow_Condensed']"} text-[#3FD17F]`} data-testid="bounty-reward">
-        {sol}
+        {localizeDecimal(sol, locale)}
       </span>
       <DevnetTag />
     </span>

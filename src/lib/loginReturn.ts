@@ -22,6 +22,12 @@ export function loginHref(path: string): string {
   return next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`;
 }
 
+/** The sign-up link that brings the visitor back to `path` once the account exists. */
+export function signupHref(path: string): string {
+  const next = safeInternalPath(path);
+  return next === '/' ? '/signup' : `/signup?next=${encodeURIComponent(next)}`;
+}
+
 /** What a link to another sign-in page passes on, so the destination is not lost on the way. */
 export function returnState(path: string): { from: { pathname: string } } {
   return { from: { pathname: path } };

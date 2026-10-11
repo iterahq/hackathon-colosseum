@@ -18,6 +18,12 @@ export function localizePriceLabel(label: string, locale: string): string {
   return label.replace(/US\$\s*(\d{1,3}(?:,\d{3})*)\.(\d{2})/g, (_, whole: string, cents: string) => `US$ ${whole.replace(/,/g, '.')},${cents}`);
 }
 
+/** "0.38 SOL" is the API's English shape; a Portuguese screen reads "0,38 SOL". */
+export function localizeDecimal(text: string, locale: string): string {
+  if (locale !== 'pt') return text;
+  return text.replace(/(\d)\.(\d)/g, '$1,$2');
+}
+
 export function priceLabel(label: string | null | undefined, cents: number, lamports: number): string {
   if (label && label.trim()) return label.trim();
   return lamports > 0 ? `${formatUsdCents(cents)} ≈ ${formatSol(lamports)} SOL` : formatUsdCents(cents);

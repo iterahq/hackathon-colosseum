@@ -16,6 +16,7 @@ import { useAuth } from './AuthContext';
 import { findStoredGuestCode, isGuestAccessToken } from '@/services/guestSession.service';
 import { GUEST_ROUTE_PREFIX } from '@/guest/guestRoute';
 import { RouteSettling } from '@/components/RouteSettling';
+import { loginHref } from '@/lib/loginReturn';
 
 export function RequireAuth({
   children,
@@ -33,7 +34,9 @@ export function RequireAuth({
   }
   if (!session) {
     const tenant = new URLSearchParams(location.search).get('tenant');
-    const to = tenant ? `${signedOutTo}?tenant=${encodeURIComponent(tenant)}` : signedOutTo;
+    // `?next=` survives a full page load (Phantom reopening the page in its own browser); the router state is the fast path.
+    const back = signedOutTo === '/login' ? loginHref(`${location.pathname}${location.search}`) : signedOutTo;
+    const to = tenant ? `${back}${back.includes('?') ? '&' : '?'}tenant=${encodeURIComponent(tenant)}` : back;
     return <Navigate to={to} replace state={{ from: location }} />;
   }
 

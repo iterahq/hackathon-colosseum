@@ -10,6 +10,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 import { formatWhen, hiddenTestsLine, plural, sortBounties } from '@/utils/bounty';
 import { daysFooter, judgePaidHint, openHint } from '@/utils/bountyJudge';
+import { localizeDecimal } from '@/utils/shopPrice';
 import type { BountyStats } from '@/types/bounty';
 
 function Stat({ label, value, hint, testId }: { label: string; value: string; hint: string; testId: string }) {
@@ -67,8 +68,8 @@ export default function BountiesPage() {
         )}
       </section>
       <section className="grid gap-3 sm:grid-cols-3" aria-label={t('bounty.stats.aria')}>
-        <Stat testId="bounty-stat-locked" label={t('bounty.stats.locked')} value={stats?.lockedSol ?? '—'} hint={t('bounty.stats.lockedHint')} />
-        <Stat testId="bounty-stat-paid" label={t('bounty.stats.paid')} value={stats?.paidSol ?? '—'} hint={(stats && judgePaidHint(t, stats)) ?? paidHint(stats, t)} />
+        <Stat testId="bounty-stat-locked" label={t('bounty.stats.locked')} value={stats ? localizeDecimal(stats.lockedSol, locale) : '—'} hint={t('bounty.stats.lockedHint')} />
+        <Stat testId="bounty-stat-paid" label={t('bounty.stats.paid')} value={stats ? localizeDecimal(stats.paidSol, locale) : '—'} hint={(stats && judgePaidHint(t, stats)) ?? paidHint(stats, t)} />
         <Stat testId="bounty-stat-open" label={t('bounty.stats.open')} value={stats ? String(stats.openCount) : '—'} hint={stats ? openHint(t, { bounties: items.filter((item) => item.status === 'open').length, places: stats.openCount, held: stats.heldCount }) : t('bounty.stats.openHint')} />
       </section>
       {board.data?.readAt && (

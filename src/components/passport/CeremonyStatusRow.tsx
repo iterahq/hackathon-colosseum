@@ -21,6 +21,8 @@ interface Props {
   onRetry?: () => void;
   onLater?: () => void;
   onConnect?: () => void;
+  /** False for an account with no wallet: the minting state reads "saving", with no network line. */
+  hasWallet?: boolean;
 }
 
 const BTN =
@@ -57,7 +59,7 @@ function useSentSignature(waiting: boolean): string | null {
 }
 
 /** Under the page: what the chain is doing, and the one or two actions that fit that state. */
-export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, goldTrail = null, accent, accentDark, locked, onRetry, onLater, onConnect }: Props) {
+export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, goldTrail = null, accent, accentDark, locked, onRetry, onLater, onConnect, hasWallet = true }: Props) {
   const { t, locale } = useI18n();
   const reduce = useReducedMotion();
   const href = chainUrl(txSignature, assetAddress);
@@ -78,10 +80,10 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, g
         <>
           <span className={`${line} flex items-center gap-2`}>
             <Spinner />
-            {t('passport.ceremony.minting')}
+            {t(hasWallet ? 'passport.ceremony.minting' : 'passport.ceremony.savingLine')}
           </span>
-          <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.ceremony.mintingSub')}</span>
-          {sentHref && (
+          {hasWallet && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.ceremony.mintingSub')}</span>}
+          {hasWallet && sentHref && (
             <a href={sentHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]" data-testid="ceremony-sent-tx">
               {t('passport.ceremony.sent')}
             </a>
