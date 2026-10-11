@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { BountyActionPanel } from '@/components/bounty/ActionPanel';
 import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, RequirementChip, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
+import { DirectChip, DirectNotice } from '@/components/bounty/DirectParts';
 import { EscrowPanel } from '@/components/bounty/EscrowPanel';
 import { HeldNotice } from '@/components/bounty/HeldNotice';
 import { JudgeCaption, JudgeChecksSection, JudgeChip, JudgePaidBlock } from '@/components/bounty/JudgeParts';
@@ -91,6 +92,7 @@ export default function BountyPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <PostedBy bounty={bounty} />
               <span className="flex flex-wrap items-center gap-1.5">
+                {bounty.direct && <DirectChip />}
                 {bounty.judge && <JudgeChip />}
                 {!confirming && <StatusChip status={bounty.status} />}
               </span>
@@ -103,6 +105,7 @@ export default function BountyPage() {
               {bounty.expiresAt && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.expires', { date: formatWhen(bounty.expiresAt, locale) })}</span>}
             </div>
           </section>
+          {bounty.direct && bounty.inviteeWallet && <DirectNotice wallet={bounty.inviteeWallet} short={bounty.inviteeWalletShort ?? bounty.inviteeWallet} />}
           {bounty.hidden && <Notice tone="error" testId="bounty-hidden-banner">{t('bounty.hidden.banner')}</Notice>}
           {bounty.rehearsal && <Notice testId="bounty-rehearsal-banner">{t('bounty.rehearsal.banner')}</Notice>}
           <PaidBlock bounty={bounty} />

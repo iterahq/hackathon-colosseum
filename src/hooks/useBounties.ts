@@ -7,6 +7,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import {
   acceptBounty,
   approveBounty,
+  checkInvitee,
   bountyErrorCode,
   createBounty,
   createPostedBounty,
@@ -151,6 +152,17 @@ export const useRefundBounty = () => useWrite((bounty: string) => refundBounty(b
 
 export function useBountyPostOptions() {
   return useQuery({ queryKey: queryKeys.bounty.postOptions, queryFn: getPostOptions, staleTime: 60_000 });
+}
+
+export function useInviteeCheck(wallet: string | null, unitId: string, minDays: number | null) {
+  const { signedIn, userId } = useBountySession();
+  return useQuery({
+    queryKey: queryKeys.bounty.inviteeCheck(userId, wallet ?? '', unitId, minDays ?? 0),
+    queryFn: () => checkInvitee({ wallet: wallet ?? '', unitId, minDays: minDays ?? 1 }),
+    enabled: signedIn && Boolean(wallet) && Boolean(unitId) && minDays !== null,
+    retry: false,
+    staleTime: 30_000,
+  });
 }
 
 export function useMyPostedBounties() {

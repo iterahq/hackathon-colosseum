@@ -19,6 +19,7 @@ export const isSponsor = (bounty: Pick<TitleBounty, 'postedBy'>, status: Pick<My
 export function actionTitle(bounty: TitleBounty, status: MyBountyStatus | null): ActionTitle {
   if (!status) return { key: 'bounty.action.titleNeutral', vars: {} };
   if (isSponsor(bounty, status)) return { key: 'bounty.action.titleSponsor', vars: {} };
+  if (status.notInvited) return { key: 'bounty.action.titleNotInvited', vars: {} };
   const claim = status.claim && status.claim.bountyId === bounty.id ? status.claim : null;
   const wonIt = bounty.status === 'paid' && Boolean(status.wallet) && bounty.claim?.wallet === status.wallet;
   if (wonIt || claim?.status === 'approved' || claim?.status === 'submitted') return YOURS;

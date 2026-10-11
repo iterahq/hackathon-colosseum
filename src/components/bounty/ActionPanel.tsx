@@ -15,7 +15,7 @@ import { actionTitle, isSponsor } from '@/utils/bountyAction';
 import { formatRemaining, plural } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
-const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty', 'judged_before'] as const;
+const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty', 'judged_before', 'not_invited'] as const;
 const WITHDRAW_ERRORS = ['not_active'] as const;
 
 /** What can go wrong in a step the learner's wallet signs, whatever the step. */
@@ -170,7 +170,9 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
     if (bounty.status !== 'open') return null;
     return (
       <Panel title={title}>
-        <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.signIn.hint')}</p>
+        <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-signin-hint">
+          {bounty.direct && bounty.inviteeWallet ? t('bounty.direct.signInHint', { wallet: bounty.inviteeWalletShort ?? bounty.inviteeWallet }) : t('bounty.signIn.hint')}
+        </p>
         <Link to={loginHref(`/bounties/${bounty.slug}`)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-sign-in">
           {t('bounty.signIn.cta')}
         </Link>
@@ -203,6 +205,19 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
       </Panel>
     );
   }
+  if (status.notInvited) {
+    if (bounty.status !== 'open') return null;
+    return (
+      <Panel title={title}>
+        <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-not-invited">
+          {t('bounty.notInvited.body', { wallet: bounty.inviteeWalletShort ?? status.inviteeWallet ?? '' })}
+        </p>
+        <Link to="/bounties" className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-not-invited-board">
+          {t('bounty.notInvited.board')}
+        </Link>
+      </Panel>
+    );
+  }
   const claim = status.claim && status.claim.bountyId === bounty.id ? status.claim : null;
   const wonIt = bounty.status === 'paid' && Boolean(status.wallet) && bounty.claim?.wallet === status.wallet;
 
@@ -231,6 +246,7 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
 
   return (
     <Panel title={title}>
+      {bounty.direct && bounty.inviteeWallet === status.wallet && <Notice tone="good" testId="bounty-direct-foryou">{t('bounty.direct.forYou')}</Notice>}
       {rejected && (
         <Notice tone="error" testId="bounty-rejected">
           <strong className="text-[#F4EDE2]">{t('bounty.rejected.title')}</strong>

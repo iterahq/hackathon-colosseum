@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BountyTxError, bountyErrorCode, describeTxError, parseApprove, parseJudgeResult, parseBoard, parseBounty, parseConfirm, parseDetail, parseModeration, parseMyStatus, parsePostedList, parsePostOptions, parseSponsorList, parseWalletTx } from './bounty.service';
+import { BountyTxError, bountyErrorCode, describeTxError, parseApprove, parseJudgeResult, parseBoard, parseBounty, parseConfirm, parseDetail, parseInbox, parseInviteeCheck, parseModeration, parseMyStatus, parsePostedList, parsePostOptions, parseSponsorList, parseWalletTx } from './bounty.service';
 import { WalletSignError } from './walletSign';
 import { ShopCallError } from './shopTransport';
 
@@ -288,5 +288,39 @@ describe('judge bounty fields', () => {
       submitted: true,
       payout: { status: 'paying', signature: 'S', explorerUrl: 'https://x/t', lamports: 20_000_000 },
     });
+  });
+});
+
+describe('direct bounty fields', () => {
+  const direct = { invitee_wallet: 'BRNkmbKCGxqL4p9W67sgiHRev6VAdzScSqBQYmS36Upx', invitee_wallet_short: 'BRNk…6Upx', invitee_profile_url: 'https://x/u/BRNk', invite_enforced_by: 'program' };
+  it('reads the invitee of a direct bounty', () => {
+    const b = parseBounty({ ...bounty, direct: true, ...direct });
+    expect(b).toMatchObject({ direct: true, inviteeWallet: direct.invitee_wallet, inviteeWalletShort: 'BRNk…6Upx', inviteeProfileUrl: 'https://x/u/BRNk' });
+  });
+  it('is open to everyone without an invitee, even when the flag lies', () => {
+    expect(parseBounty(bounty)).toMatchObject({ direct: false, inviteeWallet: null });
+    expect(parseBounty({ ...bounty, direct: true })?.direct).toBe(false);
+  });
+  it('reads the not_invited state out of the refusal body', () => {
+    const status = parseMyStatus({ error: 'not_invited', invitee_wallet: direct.invitee_wallet, wallet: 'W2', eligible: false, reason: 'not_invited', proof: null, claim: null, busy_elsewhere: false });
+    expect(status).toMatchObject({ notInvited: true, eligible: false, reason: 'not_invited', wallet: 'W2', inviteeWallet: direct.invitee_wallet });
+    expect(parseMyStatus({ wallet: 'W', eligible: true }).notInvited).toBe(false);
+  });
+  it('reads the pre-post check of a wallet', () => {
+    const check = parseInviteeCheck({ wallet: 'W', direct_available: true, known_learner: true, eligible: false, reason: 'not_enough_days', proof: { asset: 'A', days_done: 1, explorer_url: 'https://x' }, requirement: { unit_id: 'u1', min_days: 2, total_days: 5 } });
+    expect(check).toEqual({ wallet: 'W', directAvailable: true, knownLearner: true, eligible: false, reason: 'not_enough_days', proof: { asset: 'A', daysDone: 1, explorerUrl: 'https://x' }, requirement: { unitId: 'u1', minDays: 2, totalDays: 5 } });
+    expect(parseInviteeCheck({ wallet: 'W' })).toBeNull();
+    expect(parseInviteeCheck({ wallet: 'W', eligible: true, reason: 'wat' })?.reason).toBeNull();
+  });
+  it('reads the inbox and skips broken rows', () => {
+    const inbox = parseInbox({ wallet: 'W', chain_read: true, open_count: 1, bounties: [{ ...bounty, direct: true, ...direct }, { slug: 'broken' }] });
+    expect(inbox).toMatchObject({ wallet: 'W', chainRead: true, openCount: 1 });
+    expect(inbox?.bounties).toHaveLength(1);
+    expect(parseInbox({})).toBeNull();
+    expect(parseInbox({ wallet: 'W' })).toEqual({ wallet: 'W', chainRead: false, openCount: 0, bounties: [] });
+  });
+  it('reads the direct escrow rent of the form options', () => {
+    expect(parsePostOptions({ limits: { direct_escrow_rent_lamports: 1971040 } }).limits.directEscrowRentLamports).toBe(1971040);
+    expect(parsePostOptions({}).limits.directEscrowRentLamports).toBeNull();
   });
 });

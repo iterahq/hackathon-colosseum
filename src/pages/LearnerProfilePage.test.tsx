@@ -15,7 +15,9 @@ vi.mock('@/components/graph/CapabilityGraphSection', () => ({
   ),
 }));
 // The gift block reads the session and the shop: it has its own test.
-vi.mock('@/hooks/useProgressStory', () => ({ useProgressStory: () => ({ daysDone: 0, daysStamped: 0, daysPending: 0, daysTotal: 0, verified: null, capabilitiesTotal: null, wallet: null, pending: false }) }));
+const storyWallet = { value: null as string | null };
+vi.mock('@/hooks/useProgressStory', () => ({ useProgressStory: () => ({ daysDone: 0, daysStamped: 0, daysPending: 0, daysTotal: 0, verified: null, capabilitiesTotal: null, wallet: storyWallet.value, pending: false }) }));
+vi.mock('@/components/talent/TalentOptIn', () => ({ TalentOptIn: () => <div data-testid="talent-optin" /> }));
 vi.mock('@/components/gift/ProfileGift', () => ({ ProfileGift: ({ wallet }: { wallet: string }) => <div data-testid="profile-gift" data-wallet={wallet} /> }));
 
 const WALLET = 'CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW';
@@ -34,7 +36,23 @@ function show(wallet = WALLET) {
 }
 
 describe('LearnerProfilePage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    storyWallet.value = null;
+  });
+
+  it('offers a visitor a paid mission for this wallet, and the owner their talent card instead', () => {
+    useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
+    const visitor = show();
+    expect(screen.getByTestId('profile-mission-cta')).toHaveAttribute('href', `/bounties/post?to=${WALLET}`);
+    expect(screen.getByTestId('profile-mission-cta')).toHaveTextContent('Enviar uma missão paga');
+    expect(screen.queryByTestId('talent-optin')).toBeNull();
+    visitor.unmount();
+    storyWallet.value = WALLET;
+    show();
+    expect(screen.queryByTestId('profile-mission')).toBeNull();
+    expect(screen.getByTestId('talent-optin')).toBeInTheDocument();
+  });
 
   it('lists the certifications linking to /c/<asset>; the companion and the medals stay off the public profile on the focus build', () => {
     useLearnerProfile.mockReturnValue(

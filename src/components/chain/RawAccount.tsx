@@ -64,6 +64,7 @@ function DecodedEscrow({ escrow }: { escrow: EscrowAccount }) {
           {Number.isFinite(expires.getTime()) ? expires.toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US', { dateStyle: 'medium' }) : String(escrow.expiresAt)}
         </RawField>
         <RawField label={t('verify.raw.escrowId')}>{escrow.bountyId}</RawField>
+        {escrow.invitee && <RawField label={t('verify.raw.escrowInvitee')} testId="raw-escrow-invitee">{escrow.invitee}</RawField>}
         {escrow.gate && <RawField label={t('verify.raw.escrowMinDays')} testId="raw-escrow-min-days">{escrow.gate.minDays}</RawField>}
         {escrow.gate && <RawField label={t('verify.raw.escrowTrail')} testId="raw-escrow-trail">{escrow.gate.trail}</RawField>}
       </RawFields>

@@ -17,6 +17,7 @@ import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import { looksLikeAddress } from '@/utils/credential';
 import { profileProgress } from '@/utils/profileProgress';
+import { missionHref } from '@/utils/talent';
 
 const GRID = {
   backgroundColor: '#0A0908',
@@ -98,6 +99,12 @@ export default function LearnerProfilePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
               </div>
+              {story.wallet !== profile.wallet && (
+                <div className="flex basis-full flex-col items-start gap-1" data-testid="profile-mission">
+                  <Link to={missionHref(profile.wallet)} className={`${TERA_BUTTON} w-full sm:w-auto`} data-testid="profile-mission-cta">{t('bounty.profile.send')}</Link>
+                  <span className="[font:400_12px/1.4_Inter] text-[#A0978A]">{t('bounty.profile.sendHint')}</span>
+                </div>
+              )}
               <div className="flex basis-full flex-wrap items-center gap-x-4">
                 <ExplorerLink address={profile.wallet} />
                 <Link to="/verify#evidence" className={`inline-flex min-h-11 items-center rounded [font:500_12px_JetBrains_Mono] text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline ${FOCUS}`}>

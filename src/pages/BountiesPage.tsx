@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BountyCard } from '@/components/bounty/BountyCard';
+import { InviteInbox } from '@/components/bounty/InviteInbox';
 import { JudgeBoardBlock } from '@/components/bounty/JudgeParts';
 import { BountyShell, LINK, LoadError, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
@@ -47,6 +48,7 @@ export default function BountiesPage() {
 
   return (
     <BountyShell>
+      {signedIn && <InviteInbox />}
       <section className="flex flex-col gap-4 pt-2" aria-labelledby="bounty-hero">
         <span className={`${MONO_LABEL} text-[#3FD17F]`}>{t('bounty.eyebrow')}</span>
         <h1 id="bounty-hero" className="max-w-[760px] [font:700_60px/.98_'Barlow_Condensed'] max-sm:text-[44px]">{t('bounty.hero.title')}</h1>

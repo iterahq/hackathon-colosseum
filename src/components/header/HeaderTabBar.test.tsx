@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FOCUS_HEADER_NAV, FULL_HEADER_NAV, HEADER_NAV } from '@/consts/headerNav';
 import { I18nProvider } from '@/i18n';
 import { HeaderTabBar } from './HeaderTabBar';
+
+const openInvites = vi.fn(() => 0);
+vi.mock('@/hooks/useInvites', () => ({ useOpenInviteCount: () => openInvites() }));
 
 describe('HeaderTabBar', () => {
   it('gives every nav entry its own column, so a sixth entry never wraps to a second row', () => {
@@ -18,6 +21,31 @@ describe('HeaderTabBar', () => {
     expect(list.style.gridTemplateColumns).toBe(`repeat(${HEADER_NAV.length}, minmax(0, 1fr))`);
     expect(list.querySelectorAll('li')).toHaveLength(HEADER_NAV.length);
     expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/bounties');
+  });
+});
+
+describe('invite badge', () => {
+  const show = () =>
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <HeaderTabBar active="trails" />
+        </MemoryRouter>
+      </I18nProvider>,
+    );
+  it('draws nothing without an open invite', () => {
+    openInvites.mockReturnValue(0);
+    show();
+    expect(screen.queryByTestId('invite-badge')).toBeNull();
+  });
+  it('shows the count on the Bounties tab only', () => {
+    openInvites.mockReturnValue(2);
+    show();
+    const badge = screen.getByTestId('invite-badge');
+    expect(badge).toHaveTextContent('2');
+    expect(badge).toHaveAccessibleName('Missões enviadas para você: 2');
+    expect(badge.closest('a')).toHaveAttribute('href', '/bounties');
+    expect(screen.getAllByTestId('invite-badge')).toHaveLength(1);
   });
 });
 

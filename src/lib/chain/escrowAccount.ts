@@ -1,12 +1,13 @@
 /**
  * A bounty's escrow account as the escrow program wrote it (`programs/bounty-escrow/src/lib.rs`),
- * decoded from its raw bytes in the browser. Two layouts, fixed offsets: 195 bytes (tag 1) and, for a gated bounty, 228 bytes (tag 2).
+ * decoded from its raw bytes in the browser. Three layouts, fixed offsets: 195 bytes (tag 1), for a gated bounty 228 bytes (tag 2) and, for a direct bounty, 260 bytes (tag 3).
  */
 import { base58Encode } from '@/lib/chain/base58';
 
 export const ESCROW_PROGRAM = 'ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq';
 export const ESCROW_STATE_BYTES = 195;
 export const GATED_ESCROW_STATE_BYTES = 228;
+export const DIRECT_ESCROW_STATE_BYTES = 260;
 export const ESCROW_STATUSES = ['open', 'claimed', 'paid', 'refunded'] as const;
 export type EscrowStatus = (typeof ESCROW_STATUSES)[number];
 
@@ -32,6 +33,9 @@ export const GATED_ESCROW_LAYOUT = [
   { field: 'trail', offset: 196, length: 32 },
 ] as const;
 
+/** The fields a direct account adds after the 228 gated bytes: the one wallet the program lets accept. */
+export const DIRECT_ESCROW_LAYOUT = [...GATED_ESCROW_LAYOUT, { field: 'invitee', offset: 228, length: 32 }] as const;
+
 export interface EscrowGate {
   minDays: number;
   /** sha256(program attribute, line feed, trail attribute), hex. */
@@ -40,6 +44,8 @@ export interface EscrowGate {
 
 export interface EscrowAccount {
   gate: EscrowGate | null;
+  /** Direct bounty only: the single wallet the program accepts as claimant. */
+  invitee: string | null;
   status: EscrowStatus;
   bountyId: string;
   sponsor: string;
@@ -54,7 +60,8 @@ export interface EscrowAccount {
 const NO_KEY = '11111111111111111111111111111111';
 
 export function parseEscrowAccount(data: Uint8Array): EscrowAccount | null {
-  const gated = data.length === GATED_ESCROW_STATE_BYTES && data[0] === 2;
+  const direct = data.length === DIRECT_ESCROW_STATE_BYTES && data[0] === 3;
+  const gated = direct || (data.length === GATED_ESCROW_STATE_BYTES && data[0] === 2);
   if (!gated && (data.length !== ESCROW_STATE_BYTES || data[0] !== 1)) return null;
   if (data[2] >= ESCROW_STATUSES.length) return null;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
@@ -62,6 +69,7 @@ export function parseEscrowAccount(data: Uint8Array): EscrowAccount | null {
   const optional = (offset: number) => (keyAt(offset) === NO_KEY ? null : keyAt(offset));
   const id = [...data.subarray(3, 19)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
   return {
+    invitee: direct ? keyAt(228) : null,
     gate: gated ? { minDays: data[195], trail: [...data.subarray(196, 228)].map((byte) => byte.toString(16).padStart(2, '0')).join('') } : null,
     status: ESCROW_STATUSES[data[2]],
     bountyId: `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`,

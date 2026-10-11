@@ -175,6 +175,8 @@ export const queryKeys = {
     postOptions: ['bounty', 'post-options'] as const,
     posted: (userId: string) => ['bounty', 'posted', userId] as const,
     moderation: (userId: string) => ['bounty', 'moderation', userId] as const,
+    invited: (wallet: string, locale: string) => ['bounty', 'invited', wallet, { locale }] as const,
+    inviteeCheck: (userId: string, wallet: string, unitId: string, minDays: number) => ['bounty', 'invitee-check', userId, wallet, unitId, minDays] as const,
   },
   // Reads made by the visitor's browser straight from the public Solana node.
   chain: {

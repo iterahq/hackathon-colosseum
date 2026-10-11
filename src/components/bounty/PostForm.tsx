@@ -1,18 +1,20 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Field } from '@/components/bounty/CreateBountyForm';
+import { blockingInviteeCode, DirectInviteeBlock } from '@/components/bounty/DirectInviteeBlock';
 import { ExplorerAnchor, INPUT, Notice, SECTION_TITLE } from '@/components/bounty/bountyUi';
 import { SponsorFaucet } from '@/components/bounty/SponsorFaucet';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
-import { useCreatePostedBounty, useWalletBountyTx } from '@/hooks/useBounties';
+import { useCreatePostedBounty, useInviteeCheck, useWalletBountyTx } from '@/hooks/useBounties';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useI18n } from '@/i18n';
-import { txUrl } from '@/lib/explorer';
+import { shortAddress, txUrl } from '@/lib/explorer';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { lamportsToSol, POST_TEXT_LIMITS, validatePostForm, type PostField, type PostFormValues, type PostTextField } from '@/utils/bounty';
 import type { BountyLang, CreatedBounty, PostOptions, TxPhase } from '@/types/bounty';
 
-const CREATE_CODES = ['invalid_sponsor', 'invalid_text', 'invalid_reward', 'invalid_requirement', 'invalid_deadline', 'too_many_today', 'too_many_live'];
+const CREATE_CODES = ['invalid_sponsor', 'invalid_text', 'invalid_reward', 'invalid_requirement', 'invalid_deadline', 'too_many_today', 'too_many_live', 'invalid_invitee', 'own_invitee', 'direct_unavailable'];
 const LANG_NAMES: Record<BountyLang, string> = { pt: 'Português', en: 'English' };
 
 function Counter({ field, value }: { field: PostTextField; value: string }) {
@@ -23,7 +25,7 @@ function Counter({ field, value }: { field: PostTextField; value: string }) {
   return <span className={`self-end [font:500_11px_JetBrains_Mono] ${bad ? 'text-[#E0655A]' : 'text-[#5E574E]'}`}>{t('bounty.post.counter', { n: length, max })}</span>;
 }
 
-export function PostForm({ options, balanceLamports }: { options: PostOptions; balanceLamports: number | null }) {
+export function PostForm({ options, balanceLamports, initialInvitee = null }: { options: PostOptions; balanceLamports: number | null; initialInvitee?: string | null }) {
   const { t, locale } = useI18n();
   const { limits, trails } = options;
   const create = useCreatePostedBounty();
@@ -42,6 +44,8 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
   });
   const [unitId, setUnitId] = useState(trails[0]?.unitId ?? '');
   const [attempted, setAttempted] = useState(false);
+  const [invitee, setInvitee] = useState<string | null>(initialInvitee);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [created, setCreated] = useState<CreatedBounty | null>(null);
   const [phase, setPhase] = useState<TxPhase | null>(null);
   const trail = trails.find((x) => x.unitId === unitId) ?? trails[0];
@@ -55,6 +59,15 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
     totalDays: trail?.totalDays ?? null,
   });
   const shown = attempted ? check.errors : {};
+  const checkDays = useDebouncedValue(check.minDays);
+  const inviteeCheck = useInviteeCheck(invitee, unitId, checkDays);
+  const inviteeBlocked = invitee ? blockingInviteeCode(inviteeCheck) : null;
+  const inviteeReady = Boolean(invitee) && inviteeCheck.isSuccess && inviteeCheck.data.eligible;
+  const needsAck = Boolean(invitee) && !inviteeReady && !inviteeBlocked && !inviteeCheck.isPending;
+  const changeInvitee = (next: string | null) => {
+    setInvitee(next);
+    setAcknowledged(false);
+  };
   const message = (field: PostField): string | null => {
     const kind = shown[field];
     if (!kind) return null;
@@ -73,6 +86,7 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
     event.preventDefault();
     setAttempted(true);
     const { rewardLamports, minDays, expiresInDays, claimHours } = check;
+    if (invitee && (inviteeBlocked || inviteeCheck.isPending || (needsAck && !acknowledged))) return;
     if (Object.keys(check.errors).length > 0 || rewardLamports === null || minDays === null || expiresInDays === null || claimHours === null) return;
     create.mutate(
       {
@@ -86,6 +100,7 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
         minDays,
         expiresInDays,
         claimHours,
+        inviteeWallet: invitee,
       },
       {
         onSuccess: (bounty) => {
@@ -110,6 +125,12 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
             {t('bounty.post.done.mine')} →
           </Link>
         </div>
+        {created.direct && created.inviteeWallet && (
+          <p className="[font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-post-done-direct">
+            {t('bounty.post.done.direct', { wallet: shortAddress(created.inviteeWallet) })}
+            {created.inviteeEligible === false && ` ${t('bounty.post.done.directWarn')}`}
+          </p>
+        )}
       </section>
     );
   }
@@ -129,11 +150,13 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
 
   const busy = create.isPending || fund.isPending;
   const createCode = create.isError ? bountyErrorCode(create.error) : null;
-  const rent = limits.escrowRentLamports;
+  const rent = invitee && limits.directEscrowRentLamports !== null ? limits.directEscrowRentLamports : limits.escrowRentLamports;
   const reward = check.rewardLamports;
   const total = reward !== null && rent !== null ? reward + rent + limits.feeLamports : null;
 
   return (
+    <>
+    <DirectInviteeBlock invitee={invitee} onSet={changeInvitee} onRemove={() => changeInvitee(null)} check={inviteeCheck} trail={trail ? trail.title[locale] || trail.title.pt : ''} />
     <form onSubmit={onSubmit} className={`${CARD} flex flex-col gap-4 p-4 sm:p-5`} noValidate aria-labelledby="bounty-post-form" data-testid="bounty-post-form">
       <h2 id="bounty-post-form" className={SECTION_TITLE}>{t('bounty.post.form')}</h2>
       <Field id="bounty-p-lang" label={t('bounty.post.lang')}>
@@ -222,9 +245,16 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
       {phase !== null && fund.isPending && <TxPhaseNotice phase={phase} />}
       {create.isPending && <Notice testId="bounty-post-creating">{t('bounty.post.state.creating')}</Notice>}
       {fund.isError && <TxErrorNotice error={fund.error} />}
-      <button type="submit" disabled={busy || trails.length === 0} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-post-submit">
-        {busy ? t('bounty.working') : t('bounty.post.submit')}
+      {invitee && needsAck && (
+        <label className="flex min-h-11 items-start gap-3 [font:500_14px/1.45_Inter] text-[#F4EDE2]">
+          <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#3FD17F]" data-testid="bounty-post-direct-ack" />
+          <span>{t('bounty.post.direct.ack')}</span>
+        </label>
+      )}
+      <button type="submit" disabled={busy || trails.length === 0 || Boolean(invitee && (inviteeBlocked || inviteeCheck.isPending || (needsAck && !acknowledged)))} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-post-submit">
+        {busy ? t('bounty.working') : t(invitee ? 'bounty.post.submitDirect' : 'bounty.post.submit')}
       </button>
     </form>
+    </>
   );
 }

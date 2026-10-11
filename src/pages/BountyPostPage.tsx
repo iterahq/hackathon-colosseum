@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BountyShell, LINK, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { PostForm } from '@/components/bounty/PostForm';
 import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
@@ -9,6 +9,8 @@ import { useI18n } from '@/i18n';
 import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { lamportsToSol, plural } from '@/utils/bounty';
+import { parseInviteeParam } from '@/utils/directBounty';
+import { shortAddress } from '@/lib/explorer';
 import type { PostLimits } from '@/types/bounty';
 
 const STEPS = ['bounty.post.step1', 'bounty.post.step2', 'bounty.post.step3'] as const;
@@ -30,7 +32,7 @@ function Limits({ limits }: { limits: PostLimits }) {
   );
 }
 
-function Composer() {
+function Composer({ invitee }: { invitee: string | null }) {
   const { t } = useI18n();
   const options = useBountyPostOptions();
   const mine = useMyPostedBounties();
@@ -53,7 +55,7 @@ function Composer() {
   }
   if (mine.isError) return <LoadError onRetry={() => void mine.refetch()} testId="bounty-post-failed" />;
   if (options.isError) return <LoadError onRetry={() => void options.refetch()} testId="bounty-post-failed" />;
-  return <PostForm options={options.data} balanceLamports={mine.data.balanceLamports} />;
+  return <PostForm options={options.data} balanceLamports={mine.data.balanceLamports} initialInvitee={invitee} />;
 }
 
 /** /bounties/post: anyone with a wallet posts a paid task and locks the reward in escrow. */
@@ -62,10 +64,14 @@ export default function BountyPostPage() {
   usePageTitle(t('bounty.post.pageTitle'));
   const { signedIn } = useBountySession();
   const options = useBountyPostOptions();
+  const [params] = useSearchParams();
+  const to = parseInviteeParam(params);
+  const invitee = to.kind === 'ok' ? to.wallet : null;
+  const here = `/bounties/post${invitee ? `?to=${encodeURIComponent(invitee)}` : ''}`;
 
   return (
     <BountyShell>
-      <Link to="/bounties" className={LINK}>
+      <Link to="/bounties" className={`${LINK} order-[-2]`}>
         ← {t('bounty.detail.back')}
       </Link>
       <section className="flex flex-col gap-4 pt-2" aria-labelledby="bounty-post-hero">
@@ -86,12 +92,18 @@ export default function BountyPostPage() {
         <Notice testId="bounty-post-trust">{t('bounty.post.trust')}</Notice>
         {options.data && <Limits limits={options.data.limits} />}
       </section>
+      {to.kind === 'invalid' && <Notice tone="error" testId="bounty-post-to-ignored">{t('bounty.post.direct.ignored')}</Notice>}
       {signedIn ? (
-        <Composer />
+        <Composer invitee={invitee} />
       ) : (
         <div className={`${CARD} flex flex-col items-start gap-3 p-5`} data-testid="bounty-post-signin">
+          {invitee && (
+            <p className="[font:700_20px/1.2_'Barlow_Condensed'] text-[#F2C66D] [overflow-wrap:anywhere]" data-testid="bounty-post-direct-signin">
+              {t('bounty.post.directSignIn', { wallet: shortAddress(invitee) })}
+            </p>
+          )}
           <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.post.signInHint')}</p>
-          <Link to={loginHref('/bounties/post')} className={`${BTN_PRIMARY} w-full sm:w-auto`}>{t('bounty.post.signIn')}</Link>
+          <Link to={loginHref(here)} className={`${BTN_PRIMARY} w-full sm:w-auto`}>{t('bounty.post.signIn')}</Link>
         </div>
       )}
     </BountyShell>

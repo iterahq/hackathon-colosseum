@@ -5,7 +5,7 @@ import { plural } from './bounty';
 import type { JudgeInfo, MyBountyStatus } from '@/types/bounty';
 
 const bounty = { id: 'b1', status: 'open' as const, claim: null, judge: null as JudgeInfo | null, requirement: { program: 'p', unitId: 'u', trail: 'JavaScript', minDays: 3, totalDays: 5 } };
-const status = (patch: Partial<MyBountyStatus> = {}): MyBountyStatus => ({ wallet: 'W', eligible: false, reason: null, proof: null, claim: null, busyElsewhere: false, judgedBefore: false, ...patch });
+const status = (patch: Partial<MyBountyStatus> = {}): MyBountyStatus => ({ wallet: 'W', eligible: false, reason: null, proof: null, claim: null, busyElsewhere: false, judgedBefore: false, notInvited: false, inviteeWallet: null, ...patch });
 
 const render = (locale: 'pt' | 'en', title: ReturnType<typeof actionTitle>) => {
   const t = (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -44,6 +44,8 @@ describe('actionTitle', () => {
   });
   it('says it is not the turn when another bounty is in progress', () => {
     expect(render('en', actionTitle(bounty, status({ eligible: true, busyElsewhere: true })))).toBe('Not yet: finish your other bounty');
+    expect(render('en', actionTitle(bounty, status({ notInvited: true, reason: 'not_invited' })))).toBe('This bounty is not for your wallet');
+    expect(render('pt', actionTitle(bounty, status({ notInvited: true, reason: 'not_invited' })))).toBe('Esta missão não é para a sua carteira');
   });
   it('does not claim the turn on a bounty that is not open and not held', () => {
     expect(render('en', actionTitle({ ...bounty, status: 'paid' }, status({ eligible: true })))).toBe('Your bounty');

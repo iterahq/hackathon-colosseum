@@ -3,7 +3,7 @@ import { VerifySection, Labelled, P } from '@/components/verify/VerifyParts';
 import { LINK } from '@/components/bounty/bountyUi';
 import { fetchPublishedBytes, usePublishedJson } from '@/hooks/useChainRead';
 import { resources, useI18n } from '@/i18n';
-import { ESCROW_LAYOUT, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
+import { ESCROW_LAYOUT, ESCROW_STATE_BYTES, DIRECT_ESCROW_LAYOUT, DIRECT_ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
 import { sha256Hex } from '@/lib/chain/base58';
 import { BINARY_PATH, IDL_PATH, instructionRows, localizeRow, PUBLISHED_RECORD, SOURCE_PATH, type EscrowIdl } from '@/lib/chain/verifyChecks';
 import { shortAddress, txUrl } from '@/lib/explorer';
@@ -141,10 +141,12 @@ export function SourceSection() {
           <Labelled label={t('verify.source.builtBy')}>{idl.data.metadata.built_by}</Labelled>
         </>
       )}
-      <p className={P}>{t('verify.source.layout', { n: ESCROW_STATE_BYTES, gated: GATED_ESCROW_STATE_BYTES })}</p>
+      <p className={P}>{t('verify.source.layout', { n: ESCROW_STATE_BYTES, gated: GATED_ESCROW_STATE_BYTES, direct: DIRECT_ESCROW_STATE_BYTES })}</p>
       <Layout rows={ESCROW_LAYOUT} testId="escrow-layout" />
       <p className={P}>{t('verify.source.layoutGated', { n: ESCROW_STATE_BYTES, gated: GATED_ESCROW_STATE_BYTES })}</p>
       <Layout rows={GATED_ESCROW_LAYOUT.filter((row) => row.offset >= ESCROW_STATE_BYTES)} testId="gated-escrow-layout" />
+      <p className={P}>{t('verify.source.layoutDirect', { gated: GATED_ESCROW_STATE_BYTES, direct: DIRECT_ESCROW_STATE_BYTES })}</p>
+      <Layout rows={DIRECT_ESCROW_LAYOUT.filter((row) => row.offset >= GATED_ESCROW_STATE_BYTES)} testId="direct-escrow-layout" />
     </VerifySection>
   );
 }
