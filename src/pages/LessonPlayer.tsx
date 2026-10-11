@@ -470,8 +470,8 @@ export default function LessonPlayer() {
     // again must not write a second pass (and a second XP award).
     const settled = settleWriteRef.current;
     if (settled?.activityId === current.id && settled.correct) return;
-    // The ONE place a wrong answer settles: it costs a life, once per attempt.
-    if (!correct) livesRef.current?.lose(`${current.id}:${retryCount}`, current.id);
+    // The ONE place a wrong answer settles: it costs a life, once per activity, however many retries.
+    if (!correct) livesRef.current?.lose(current.id, current.id);
     // CLOSE the duration window here — this instant is when the learner settled
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
