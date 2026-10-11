@@ -24,7 +24,8 @@ export function CrystalSheet({ open, onOpenChange, data }: Props) {
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="hd-fade fixed inset-0 z-50 bg-[#0A0908]/75 backdrop-blur-sm" />
-        <Dialog.Content data-testid="crystal-sheet" className="hd-pop fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-24px)] w-[min(460px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[14px] border border-[#2E2A25] border-b-[5px] border-b-[#262320] bg-[#141210] p-5 text-[#F4EDE2] shadow-[0_24px_60px_rgba(0,0,0,.6)] sm:p-6">
+        <Dialog.Content data-testid="crystal-sheet" className="hd-pop fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-24px)] w-[min(460px,calc(100vw-24px))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[14px] border border-[#2E2A25] border-b-[5px] border-b-[#262320] bg-[#141210] text-[#F4EDE2] shadow-[0_24px_60px_rgba(0,0,0,.6)]">
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-3 sm:p-6 sm:pb-3" data-testid="crystal-sheet-body">
           <span className={`flex items-center gap-1.5 text-[#3FD17F] ${SECTION} !text-[#3FD17F]`}>
             <CrystalGlyph size={14} />
             {t('crystals.sheet.balance')}
@@ -60,7 +61,8 @@ export function CrystalSheet({ open, onOpenChange, data }: Props) {
             </ul>
           )}
 
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+          </div>
+          <div className="flex flex-col-reverse gap-2 border-t border-[#262320] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             {data.explorerUrl ? (
               <a href={data.explorerUrl} target="_blank" rel="noopener noreferrer" data-testid="crystal-sheet-explorer" className="hd-focus rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline">
                 {t('crystals.sheet.explorer')} ↗
