@@ -93,9 +93,13 @@ keys still say `passport`; only user-facing text says "Certification".
 - Without trusting us, a verifier can read from the chain: that the asset sits in one of our collections, that the
   collection's update authority is the issuer key, who owns it, that it is frozen, and its attributes
   (`GET /credential-verify/<asset>` does exactly these checks, and anyone can repeat them in Explorer).
-- Grading runs in the browser in this build, as in the original product. The server mitigates (server clock,
-  plausibility floor, fixed XP) but does not grade. So a certification proves that the issuer wrote it for that
-  wallet according to its database, not that the person learned. Mainnet would need server-side grading. Details:
+- **Grading runs on the server.** The player sends each answer to the `grade` function, which reads the exercise
+  with the learner's own session, grades it and is the only writer of a completion; the database refuses a
+  completion written by a client. Of the 234 activities of the demo program, 118 are graded on the server (choices,
+  ordering, matching, fill-in code and the HTML exercises whose tests read the page or the source), 51 need a browser
+  (gestures, computed style, simulated clicks) and are recorded as `self_reported`, and 65 have nothing to grade.
+  A stamp says what stands behind it: the certification carries `server_verified` ("10/12") on chain and each
+  capability claim commits to the hashes of the graded answers. Details and what this still does not prove:
   "Trust model" in [`docs/onchain-passport.md`](docs/onchain-passport.md).
 
 ## Architecture
@@ -209,9 +213,10 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
 
 - Devnet only. No real money moves. Prices are fixed in lamports with no live quote; mainnet would use USDC.
 - The server authority pays for and signs every mint and stamp; key custody is a function secret, not a multisig.
-- Grading of choice, fill, order, match and code checks is server-side (`grade`); the answer keys of the simple kinds
-  still reach the browser for instant feedback, so server grading stops forged completions, not copied answers. Kinds the
-  server cannot grade are recorded as self-reported and excluded from what a stamp attests.
+- Grading of choice, fill, order, match and static code checks is server-side (`grade`), 118 of 234 activities. The
+  answer keys of the simple kinds still reach the browser for instant feedback, so server grading stops forged
+  completions, not copied answers. The 51 activities the server cannot grade (gestures, computed style, simulated
+  clicks) are recorded as self-reported; a stamp states the share it verified ("10/12") instead of hiding it.
 - Avatar transfers are not tracked for equip, and the new holder gets no row. Avatar refunds are manual.
 - Some public functions have no per-IP rate limit (`credential-verify`, `credential-meta`, `learner-profile`; the
   Blink endpoint caps unpaid intents but has no per-IP limit). The public devnet RPC is rate limited.

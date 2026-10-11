@@ -95,8 +95,9 @@ Body (optional): `{ "lang": "pt" | "en", "lesson_id": "<uuid>" }` (default `pt`)
   is unknown or has no activities), else `{ "lesson_id": "…", "done": 13, "total": 16 }`. Same
   completion rule as the awards (`dayIncomplete` in `_shared/awards.ts`); nothing else changes.
 - `day_pending_review` (optional; the key is absent in the normal case):
-  `{ "lesson_id": "…", "reason": "too_fast" | "missing_results" }` when a lesson has every activity
-  completed but fails the plausibility floor (see "Trust model"). That lesson awards nothing in this
+  `{ "lesson_id": "…", "reason": "too_fast" | "missing_results" | "unverified" }` when a lesson has every
+  activity completed but is held: by the plausibility floor, or because a completion is not backed by a
+  server-recorded attempt (see "Trust model"). That lesson awards nothing in this
   call: no stamp, no medal, no mint. With a `lesson_id` in the body it speaks about that lesson only;
   without one, about the first such lesson. The UI needs no change: with no award the end of the lesson
   is the plain completion card.
@@ -276,44 +277,69 @@ exercised from the app: sign in with a wallet, complete a day, complete another.
 
 Read this before saying what a certification proves.
 
-**Grading is client-side in this build.** The player decides in the browser whether an answer is
-right and then writes two rows with the learner's own session: `itera.progress` (the activity is
-`completed`) and `itera.activity_results` (the attempt). Row level security only says "these are your
-rows". The `passport` function reads those rows and mints. So a learner who talks to the database
-directly, without the player, can write that they completed a day they never opened.
+**Grading runs on the server.** The player sends each settled answer to the `grade` edge function
+(`supabase/functions/grade`, rules in `_shared/grading.ts`). The function reads the activity with the
+learner's own session (row level security decides whether they may see it), grades the answer against
+the spec it read, and records the attempt (`itera.graded_attempts`) and the completion
+(`itera.progress`) in one call (`itera.record_graded_attempt`, migration `0192`). It is the only writer
+of a completion: a request that arrives with a client role cannot make a progress row `completed`
+(trigger `progress_client_guard`, migration `0191`, error `42501`), and clients have no write grant on
+the attempt log (migration `0190`).
+
+Every activity has one of three modes, decided from the activity alone, never from what was sent:
+
+| Mode | What the server did | Kinds (program `itera-v2`, 234 activities) |
+|---|---|---|
+| `server` | graded the answer | `single_choice` 38, `code_fill_type` 17, `code_fill_bank` 17, `code_fill_select` 10, `match` 8, `multi_choice` 3, `order` 2, and 23 `code_editor_checks` whose checks read the parsed page or the source: **118** |
+| `self_reported` | recorded the player's claim, as a claim | the scene kinds (`spot`, `xray`, `timeline`, `selector`, `inspect`, `wire`, `bucket`, `press`, `dial`, `intercept`, `arrange`, `plug`: 31, completed by a gesture that produces no answer) and 20 `code_editor_checks` that assert computed style, simulate clicks or carry a script: **51** |
+| `participation` | recorded that it was opened and finished | `concept` 32, `code_editor_ungraded` 18, `concept_reveal` 15: **65** |
+
+The HTML exercises are graded without a browser: the source is parsed with the HTML5 algorithm
+(parse5, through cheerio) and the same assertions the player runs are evaluated on the tree. Agreement
+with the player's own runner was measured on 13,104 check verdicts (30 exercises, 84 sources): no
+disagreement. Every published answer key passes the server grader and a wrong answer is refused.
+
+**What a stamp states.** `day_stamp.state.proof` and `trail_pass.state.proof` are
+`{ verified, self_reported, participation, legacy, evidence }`. `verified` counts answers the server
+graded; `legacy` counts completions from before server grading (no attempt row). `evidence` is the
+SHA-256 of the lines `activity_id|mode|answer_hash|spec_hash|created_at` of the first passing attempt
+of each activity, sorted by activity. The certification asset carries `server_verified` ("10/12":
+graded on the server, over the answers that had something to grade) in its on-chain attributes, the
+metadata shows the same share and the evidence hash, and each capability claim's evidence document
+(version 2) lists the hash of the graded answer per activity. A day whose completions are not backed
+by attempts is not stamped (`day_pending_review: unverified`).
 
 **What the chain proves:** that the Itera issuer (one authority key, one collection) wrote this
-credential to this wallet at this time, that it is frozen (cannot be transferred or edited by the
-holder), and what Itera's database said about that learner's progress when it was written. Anyone can
-check that without trusting our site.
+credential to this wallet at this time, that it is frozen, and that the issuer's server received and
+graded correct answers for the stated share of the day's exercises before writing it.
 
-**What it does not prove:** that the person learned anything, or even that a person used the player.
-It proves a database row existed, and the row is written by the learner's client.
+**What it does not prove:**
 
-**What this build does about it** (migration `0134`, `_shared/plausibility.ts`; cheap and honest, not a fix):
+- *Who produced the answers.* The answer keys of choice, fill, ordering and matching exercises still
+  reach the browser, because the player shows the verdict at once. A learner who reads the key from the
+  network panel, or is told the answers, passes. Server grading removes forged completions; it does not
+  remove copied answers. The HTML exercises ship tests, not solutions.
+- *The self-reported share.* 51 activities are recorded on the player's word. The stamp says so
+  ("10/12") instead of hiding it.
+- A completed day is still held by the **plausibility floor** when its completions span less than 20 s
+  (`day_pending_review: too_fast`), so answers replayed in one burst award nothing. Replayed slowly,
+  they do.
 
-- A completion written by a client gets the **server's clock**, whatever date the client sends, and
-  cannot be re-dated afterwards. Streaks, the weekly goal, `early_bird` and `night_owl` can no longer
-  be fabricated with invented dates. The service role and an operator in psql are not restricted.
-- A lesson counts for certification only if it passes a **plausibility floor**: the completions of the
-  whole lesson span at least 20 s for a lesson of 15 or more activities (less for shorter ones:
-  about 1.4 s per activity), and every completion recorded by a client has a passed attempt in
-  `activity_results`. A day "completed" in one burst of requests awards nothing and the answer carries
-  `day_pending_review`. Lessons with no client-recorded completion (operator seeding, rows older than
-  the guard) are not judged, and a stamp already awarded is never taken back.
-- XP is worth a fixed 10 per activity, once, only for a completed activity (migration `0133`).
+**Legacy rows.** Completions written by a client before `onchain_config.proof_cutoff` (the moment
+`0191` was applied) keep counting, judged by the old floor (server clock, span, a passed row in
+`activity_results`). A stamp built on them reports them as `legacy`, and a stamp already awarded is
+never taken back. Operator rows (service role, psql seeding) are trusted as before.
 
-**What still works for an attacker, today:** write the progress rows *and* fake attempt rows, one
-activity every couple of seconds, wait 20 s, call `passport`. The day is stamped and the authority
-pays for the mint. The floor only removes the one-request version of the attack and makes fabricated
-calendars impossible. The weekly-goal medal counts activities, not whole lessons, and is not behind
-the floor. Proof of both halves on devnet: `node scripts/hackathon/security-attacks.mjs c`.
+**Proof on the live project:** `node scripts/hackathon/proof-attacks.mjs` (forged writes and forged
+claims stamp nothing; one real day is stamped and minted with its share on chain) and
+`node scripts/hackathon/proof-browser.mjs` (the player on the live site sends answers to `grade` and
+writes no completion). Section C of `security-attacks.mjs` describes the build before this change: its
+"honest day" writes progress from the client and is now refused.
 
-**What mainnet would require:** completion written only by the server, after the server graded the
-answer (an edge function or RPC that takes `(activity_id, answer)`; `INSERT`/`UPDATE` on `progress`
-and `activity_results` revoked from clients); answer keys that never reach the browser; rate limits
-per account and per wallet on everything the authority pays for; and separate custody for the
-authority and treasury keys (they are function secrets next to the service-role key today).
+**What mainnet would still require:** answer keys that never reach the browser (the verdict would wait
+for the server); server-side execution for the exercises that need a browser; proctoring or an oral
+check if a credential must bind to a person; rate limits per account and per wallet on everything the
+authority pays for; and separate custody for the authority and treasury keys.
 
 ## End of a lesson (UI)
 
@@ -437,5 +463,6 @@ Migration `0180_claim_proofs.sql`; `_shared/capability-graph.ts`, `_shared/claim
 - The page `/u/<wallet>` does not trust that answer for its strongest label: the browser reads the asset account
   from the devnet RPC itself (`src/lib/chainClaims.ts`), checks the Core program, the owner and the attribute, and
   recomputes the SHA-256 of the evidence document. "Verified on chain" appears only after that.
-- What a claim proves is bounded by the trust model above: the evidence lists completions our database holds.
-  LANE PROOF's server grading is meant to extend the document (`v: 2`, attempt hashes per activity).
+- What a claim proves is bounded by the trust model above. Since server grading, the evidence document is version 2:
+  each activity carries the hash of the answer the server graded (`null` when it graded none) and the document states
+  the share (`verified: "10/12"`). Claims recorded before keep their version 1 document.
