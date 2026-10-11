@@ -5,6 +5,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
+import { FOCUS_BUILD } from '@/config/focus';
 import { queryKeys } from '@/lib/queryKeys';
 import { getMyVideoProgress, getVideoCourses, setLessonWatched } from '@/services/videoCourses.service';
 import type { VideoProgress } from '@/types/videoCourses';
@@ -15,14 +16,16 @@ export function useVideoCourses() {
   const { session, configured } = useAuth();
   const userId = session?.user?.id ?? 'anon';
   const signedIn = configured && Boolean(session);
-  const courses = useQuery({ queryKey: queryKeys.videoCourses.list, queryFn: getVideoCourses, enabled: configured });
-  const mine = useQuery({ queryKey: queryKeys.videoCourses.progress(userId), queryFn: getMyVideoProgress, enabled: signedIn });
+  // The focus build shows no video course anywhere: it reads none, so no page waits on them.
+  const on = configured && !FOCUS_BUILD;
+  const courses = useQuery({ queryKey: queryKeys.videoCourses.list, queryFn: getVideoCourses, enabled: on });
+  const mine = useQuery({ queryKey: queryKeys.videoCourses.progress(userId), queryFn: getMyVideoProgress, enabled: on && signedIn });
   const progress: VideoProgress = useMemo(() => new Map(Object.entries(mine.data ?? {})), [mine.data]);
 
   return {
     courses: courses.data ?? [],
     progress,
-    isPending: courses.isPending || (signedIn && mine.isPending),
+    isPending: on && (courses.isPending || (signedIn && mine.isPending)),
     isError: courses.isError || mine.isError,
     refetch: () => void Promise.all([courses.refetch(), mine.refetch()]),
   };
