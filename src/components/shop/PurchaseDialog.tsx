@@ -10,6 +10,7 @@ import { txUrl } from '@/lib/explorer';
 import type { ShopItemKind } from '@/types/shop';
 import { PENDING_DELIVERY_CODES, giftCopy, lamportsToSol, paidCopy, shortSignature, showTechnicalDetail } from '@/utils/purchaseProof';
 import { isPurchaseBusy, type PurchaseState } from '@/utils/purchaseMachine';
+import { PurchaseArt } from './PurchaseArt';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS } from './shopStyles';
 
 interface Props {
@@ -69,7 +70,7 @@ function Proof({ state, copy }: { state: PurchaseState; copy: ReturnType<typeof 
   const gift = proof?.gift ?? null;
   return (
     <div className="flex w-full flex-col items-center gap-2" data-testid="purchase-proof">
-      {proof?.imageUrl && <img src={proof.imageUrl} alt="" width={84} height={84} className="h-[84px] w-[84px] rounded-[10px] border border-[#262320]" data-testid="purchase-art" />}
+      {proof?.imageUrl && <PurchaseArt src={proof.imageUrl} />}
       {copy.note && <p className="[font:500_13px/1.4_Inter] text-[#C9BFB0]" data-testid="purchase-change">{t(copy.note.key, copy.note.params)}</p>}
       {proof?.circuitStamps ? <p className="[font:600_13px/1.4_Inter] text-[#3FD17F]" data-testid="purchase-circuit">{t('circuit.purchase', { n: proof.circuitStamps })}</p> : null}
       {signature && <ProofRow label={t('purchase.row.payment')} signature={signature} href={state.explorerUrl ?? txUrl(signature)} testId="purchase-explorer" />}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { PURCHASE_IDLE, type PurchaseState } from '@/utils/purchaseMachine';
@@ -33,6 +33,18 @@ describe('PurchaseDialog', () => {
     expect(screen.getByTestId('purchase-dialog')).toHaveTextContent('Vidas recarregadas: 5/5');
     expect(screen.getByTestId('purchase-change')).toHaveTextContent('Gravado no seu Tera on-chain.');
     expect(screen.getByTestId('purchase-art')).toHaveAttribute('src', 'https://x.test/a.svg?v=2');
+  });
+
+  it('paid: the art frame appears only once the picture loaded, and leaves when it fails', () => {
+    show({ ...PURCHASE_IDLE, phase: 'paid', explorerUrl: null, proof: { signature: 'PAY', imageUrl: 'https://x.test/a.svg', written: [], lives: null } }, 'ink');
+    const art = screen.getByTestId('purchase-art');
+    expect(art).toHaveAttribute('data-loaded', 'false');
+    expect(art.className).toContain('opacity-0');
+    fireEvent.load(art);
+    expect(art).toHaveAttribute('data-loaded', 'true');
+    expect(art.className).toContain('border');
+    fireEvent.error(art);
+    expect(screen.queryByTestId('purchase-art')).not.toBeInTheDocument();
   });
 
   it('paid without a chain write: no on-chain row', () => {

@@ -9,9 +9,9 @@ done during the competition is judged).
 - Last inherited commit: `1f5b925b` (2026-10-09 16:49 -0300), "feat: funnel events (DFL-00D3F) (#699)".
 - First hackathon commit: `34336b3` (2026-10-09 17:44 -0300), "chore: bootstrap hackathon copy (drop CI, isolation
   banner, API base build arg) (#1)". Its parent is the copy point.
-- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `77dea24`, 2026-10-11 01:45 -0300): 82 commits,
+- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `f93240f`, 2026-10-11 03:00 -0300): 110 commits,
   one per merged PR (squash merges), all by one git author account.
-- Diff against the copy point: 802 files changed, 680 added, 102 modified, 20 deleted; 64,670 lines added and 5,261 removed.
+- Diff against the copy point: 844 files changed, 719 added, 105 modified, 20 deleted; 68,189 lines added and 5,266 removed.
 - To refresh these numbers: `git rev-list --count 1f5b925b..origin/main`, `git diff --shortstat 1f5b925b origin/main`,
   `gh pr list --state merged --limit 200`.
 - Before the copy point the repository history has 721 commits. The history of the original product is included in
@@ -26,7 +26,7 @@ done during the competition is judged).
 - Subscription billing code (Stripe) and the original documentation, including the original `CLAUDE.md`.
 - Brand assets: the Tera mascot images, fonts and sound effects under `public/`.
 - `supabase/functions/` did not exist at the copy point: the original backend runs elsewhere and is not in this
-  repository. All 26 edge functions below were written during the competition.
+  repository. All 27 edge functions below were written during the competition.
 
 ## What was built during the competition
 
@@ -116,10 +116,38 @@ Merged pull requests (`gh pr list --state merged`, titles as merged; times are i
 | #81 | Proof: the database refuses a completion written by a client | Migration 0191: a completion written by a client is refused by the database; one-call attempt recording. |
 | #82 | Try-on dialog: stacked pay keys, one balance line | Try-on dialog pay buttons stacked, one balance line. |
 | #83 | Lives: one life per activity, not per retry | One life lost per activity, not per retry. |
+| #84 | Public profile: fast first paint, evidence v2 in the node panel, rate limits | Public profile: fast first paint, evidence v2 in the node panel, rate limits. |
+| #85 | Docs: counts and lists regenerated at main 77dea24 (PRs to #83, 52 migrations) | Docs: counts and lists regenerated at main 77dea24 (PRs to #83, 52 migrations). |
+| #86 | Bounty escrow program: the chain, not the server, decides where a reward can go | Bounty escrow program: the chain, not the server, decides where a reward can go. |
+| #87 | PT/EN switch on the phone header and on every public page; shop pay labels in pt | PT/EN switch on the phone header and on every public page; shop pay labels in pt. |
+| #88 | Header: six nav entries vs search field at 1440; phone header fits at 360 | Header: six nav entries vs search field at 1440; phone header fits at 360. |
+| #89 | Shop arcade: fade on scrolling strips, group price line localised | Shop arcade: fade on scrolling strips, group price line localised. |
+| #90 | Proof: the verified share names legacy completions | Proof: the verified share names legacy completions. |
+| #91 | Disclosure: list migration 0201_bounty_escrow_program | Disclosure: list migration 0201_bounty_escrow_program. |
+| #92 | Disclosure: list migration 0201_bounty_escrow_program | Disclosure: list migration 0201_bounty_escrow_program. |
+| #93 | Mobile tab bar: one column per nav entry | Mobile tab bar: one column per nav entry. |
+| #94 | Lives: the first day of a program costs no life | Lives: the first day of a program costs no life. |
+| #95 | Lesson player tests: green again (grade call and session-bound mascot) | Lesson player tests: green again (grade call and session-bound mascot). |
+| #96 | Shop: Extras without inspector or dock, invite link opens Extras | Shop: Extras without inspector or dock, invite link opens Extras. |
+| #97 | UI: no 404 flash on new routes, header search never over the nav, app header on bounty pages, wardrobe fits | UI: no 404 flash on new routes, header search never over the nav, app header on bounty pages, wardrobe fits. |
+| #98 | E2E scripts follow the product: crystals refund seed, purchase run for Shop v3, attack section C | E2E scripts follow the product: crystals refund seed, purchase run for Shop v3, attack section C. |
+| #99 | Close the loop: what you proved and what it opened, at the lesson end and on the dashboard | Close the loop: what you proved and what it opened, at the lesson end and on the dashboard. |
+| #100 | Bounties: closed test rows stay out of the sponsor console | Bounties: closed test rows stay out of the sponsor console. |
+| #101 | Course covers: designed cover under the picture until it loads | Course covers: designed cover under the picture until it loads. |
+| #102 | Catalog test: hero title assertion targets the heading | Catalog test: hero title assertion targets the heading. |
+| #103 | Bounties: back to the bounty after sign-in, expired bounties refund on their own, trust model stated plainly | Bounties: back to the bounty after sign-in, expired bounties refund on their own, trust model stated plainly. |
+| #104 | Bounties: the board follows an escrow its sponsor refunded directly on chain | Bounties: the board follows an escrow its sponsor refunded directly on chain. |
+| #105 | Lesson complete card: no phone-height fill when the loop panel follows | Lesson complete card: no phone-height fill when the loop panel follows. |
+| #106 | e2e: a whole day clicked in the live player, proven on /u/<wallet> | e2e: a whole day clicked in the live player, proven on /u/<wallet>. |
+| #107 | Bounties: fixes from the adversarial pass (escrow squat, honest funding answer, rate limits) | Bounties: fixes from the adversarial pass (escrow squat, honest funding answer, rate limits). |
+| #108 | Real numbers: test accounts are inventoried and left out of the public counters | Real numbers: test accounts are inventoried and left out of the public counters. |
+| #109 | First certification of a fresh wallet: retry the mint, certification first, failure reason kept | First certification of a fresh wallet: retry the mint, certification first, failure reason kept. |
+| #111 | Bounties: the blink label no longer needs the node; doc for the board reading the chain and the rate limits | Bounties: the blink label no longer needs the node; doc for the board reading the chain and the rate limits. |
+| #112 | Bounties: a second one-day starter bounty in the seed | Bounties: a second one-day starter bounty in the seed. |
 
 Merged after this table was written: see `gh pr list --state merged`. Nothing is open at the time of writing.
 
-## Hackathon migrations (`db/migrations/`, 52 files)
+## Hackathon migrations (`db/migrations/`, 55 files)
 
 - `0110_identity_provider_solana.sql`
 - `0111_wallet_user_provisioning.sql`
@@ -171,17 +199,20 @@ Merged after this table was written: see `gh pr list --state merged`. Nothing is
 - `0190_graded_attempts.sql`
 - `0191_progress_completion_server_only.sql`
 - `0192_record_graded_attempt.sql`
+- `0193_test_accounts.sql`
 - `0200_bounties.sql`
 - `0201_bounty_escrow_program.sql`
+- `0202_bounty_refund_schedule.sql`
 - `0210_rate_hits.sql`
 
-## Hackathon edge functions (`supabase/functions/`, 26 functions plus `_shared/`)
+## Hackathon edge functions (`supabase/functions/`, 27 functions plus `_shared/`)
 
 - `action-gift`
 - `bounty-action`
 - `bounty-board`
 - `bounty-claim`
 - `bounty-sponsor`
+- `capability-graph`
 - `circuit`
 - `class-podium`
 - `companion`
@@ -210,7 +241,7 @@ avatars, social features and the redesigned dashboard, header and profile under 
 
 ## Modified inherited code
 
-102 inherited files were modified. `git diff --diff-filter=M --name-only 1f5b925b origin/main` lists them.
+105 inherited files were modified. `git diff --diff-filter=M --name-only 1f5b925b origin/main` lists them.
 
 ## Not covered by this repository
 
