@@ -5,7 +5,7 @@ import { I18nProvider, useI18n } from '@/i18n';
 import { useLocaleSync } from './useLocaleSync';
 
 const mocks = vi.hoisted(() => ({
-  session: null as { user: { id: string } } | null,
+  session: null as { user: { id: string; created_at?: string } } | null,
   profile: undefined as { locale: 'pt' | 'en' } | undefined,
   updateMyLocale: vi.fn(async () => true),
 }));
@@ -52,6 +52,25 @@ describe('useLocaleSync', () => {
     mocks.profile = { locale: 'en' };
     const hook = render();
     expect(hook.result.current.locale).toBe('en');
+    expect(mocks.updateMyLocale).not.toHaveBeenCalled();
+  });
+
+  it('keeps the language the browser showed for a brand-new account and saves it', () => {
+    localStorage.setItem('itera.locale', 'en');
+    mocks.session = { user: { id: 'u1', created_at: new Date(Date.now() - 5_000).toISOString() } };
+    mocks.profile = { locale: 'pt' };
+    const hook = render();
+    expect(hook.result.current.locale).toBe('en');
+    expect(mocks.updateMyLocale).toHaveBeenCalledTimes(1);
+    expect(mocks.updateMyLocale).toHaveBeenCalledWith('en');
+  });
+
+  it('hydrates an established account from the profile even when the browser differs', () => {
+    localStorage.setItem('itera.locale', 'en');
+    mocks.session = { user: { id: 'u1', created_at: '2026-01-01T00:00:00Z' } };
+    mocks.profile = { locale: 'pt' };
+    const hook = render();
+    expect(hook.result.current.locale).toBe('pt');
     expect(mocks.updateMyLocale).not.toHaveBeenCalled();
   });
 

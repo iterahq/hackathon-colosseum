@@ -22,7 +22,7 @@ export function AuthShell({ title, subtitle, testId, children, sidePanel }: Auth
 
   return (
     <div
-      className="min-h-screen max-sm:min-h-svh max-sm:supports-[min-height:100dvh]:min-h-dvh flex items-center justify-center bg-background px-4 relative overflow-hidden"
+      className="min-h-screen max-sm:min-h-svh max-sm:supports-[min-height:100dvh]:min-h-dvh flex bg-background px-4 py-6 relative"
       style={
         branding.loginBg
           ? { backgroundImage: `url(${branding.loginBg})`, backgroundSize: 'cover' }
@@ -30,8 +30,8 @@ export function AuthShell({ title, subtitle, testId, children, sidePanel }: Auth
       }
       data-testid={testId}
     >
-      {!branding.loginBg && <div className="absolute inset-0 grid-pattern opacity-30" />}
-      <div className={`relative flex w-full max-w-sm items-stretch gap-6 ${sidePanel ? 'lg:max-w-3xl' : ''}`}>
+      {!branding.loginBg && <div className="pointer-events-none fixed inset-0 grid-pattern opacity-30" />}
+      <div className={`relative m-auto flex w-full max-w-sm items-stretch gap-6 ${sidePanel ? 'lg:max-w-3xl' : ''}`}>
         <div className="auth-touch w-full rounded-3xl border border-border bg-card p-8">
           <div className="mb-6 flex flex-col items-center gap-3 text-center">
             {branding.logoUrl ? (
