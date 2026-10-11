@@ -58,4 +58,9 @@ describe('planMintJobs', () => {
     ];
     expect(summary(rows)).toEqual(['create_passport:pass', 'create_medal:medal']);
   });
+
+  it('mints the certification before medals earned at the same moment', () => {
+    const rows = [row('a-medal', 'first_stamp'), row('z-pass', 'trail_pass'), row('m-stamp', 'day_stamp')];
+    expect(summary(rows)).toEqual(['create_passport:z-pass+m-stamp', 'create_medal:a-medal']);
+  });
 });

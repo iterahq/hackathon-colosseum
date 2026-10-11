@@ -19,6 +19,7 @@ import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
+import { withRetries } from '../_shared/retry.ts';
 import { loadPassingAttempts } from '../_shared/proof.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
 import { reconcileCrystals } from '../_shared/crystals-store.ts';
@@ -30,6 +31,8 @@ const MAX_JOBS_PER_CALL = 3;
 const MAX_OPERATOR_JOBS = 10;
 const MINT_BUDGET_MS = 90_000;
 const STALE_CLAIM_MS = 3 * 60_000;
+const MINT_ATTEMPTS = 3;
+const MINT_RETRY_PAUSE_MS = 1_200;
 const INVITER_MINT_ATTEMPTS = 3;
 const INVITER_MINT_PAUSE_MS = 3_000;
 const PAGE_SIZE = 1000;
@@ -247,6 +250,14 @@ async function settle(db: IteraClient, job: MintJob, patch: (row: AchievementRow
   }
 }
 
+/** Leaves `mint_retried` on the anchor row of a job that was minted only after a failed attempt. Never fatal. */
+async function noteRetries(db: IteraClient, job: MintJob, attempts: number, lastError: string): Promise<void> {
+  const { data } = await db.from('user_achievements').select('state').eq('id', job.anchor.id).maybeSingle();
+  if (!data) return;
+  const { error } = await db.from('user_achievements').update({ state: { ...data.state, mint_retried: { attempts, last_error: lastError, at: new Date().toISOString() } } }).eq('id', job.anchor.id);
+  if (error) console.error('mint_retried note failed', error.message);
+}
+
 async function collectionAddress(db: IteraClient, sdk: ChainSdk, chain: Chain, kind: CollectionKind, known: Record<string, string>): Promise<string> {
   const { configKey } = COLLECTIONS[kind];
   if (known[configKey]) return known[configKey];
@@ -302,7 +313,7 @@ async function runJob(
 
   const mintedAt = new Date().toISOString();
   await settle(db, job, (row) => {
-    const { mint_error: _cleared, ...state } = row.id === anchor.id ? anchor.state : row.state;
+    const { mint_error: _cleared, mint_attempts: _spent, ...state } = row.id === anchor.id ? anchor.state : row.state;
     return {
       mint_status: 'minted',
       asset_address: asset,
@@ -360,13 +371,21 @@ async function mintPending(
     if (!(await claim(db, job, caller.wallet))) continue;
     attempted += 1;
     for (const row of job.rows) touched.add(row.id);
-    try {
-      await runJob(db, sdk, chain, job, caller.wallet, catalog, config);
+    // Every write is idempotent (derived asset address, whole attribute list), so a failed one is sent again with a
+    // new blockhash before the learner is told to come back: the public devnet node refuses bursts now and then.
+    const run = await withRetries(() => runJob(db, sdk, chain, job, caller.wallet as string, catalog, config), {
+      attempts: MINT_ATTEMPTS,
+      pauseMs: (failed) => MINT_RETRY_PAUSE_MS * failed,
+      mayRetry: () => Date.now() - startedAt < MINT_BUDGET_MS,
+    });
+    if (run.errors.length > 0) console.error(`mint job ${job.type} for ${job.anchor.id}: ${run.ok ? 'succeeded' : 'failed'} after ${run.attempts} attempt(s)`, run.errors);
+    if (run.ok) {
       done += 1;
-    } catch (error) {
-      console.error(`mint job ${job.type} for ${job.anchor.id} failed`, error);
-      const message = String(error instanceof Error ? error.message : error).slice(0, 300);
-      await settle(db, job, (row) => ({ mint_status: 'failed', state: { ...row.state, mint_error: message } }));
+      // A mint that needed more than one attempt keeps the reason, for whoever reads the row later.
+      if (run.errors.length > 0) await noteRetries(db, job, run.attempts, run.errors[run.errors.length - 1]);
+    } else {
+      const message = run.errors[run.errors.length - 1] ?? 'unknown';
+      await settle(db, job, (row) => ({ mint_status: 'failed', state: { ...row.state, mint_error: message, mint_attempts: run.attempts } }));
     }
   }
   return outcome(attempted, done, null);
