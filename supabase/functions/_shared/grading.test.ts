@@ -196,7 +196,8 @@ describe('lessonProof', () => {
     expect(proof).toMatchObject({ verified: 2, self_reported: 1, participation: 1, legacy: 1 });
     expect(proof?.evidence).toMatch(/^[0-9a-f]{64}$/);
     expect(lessonProof(['1', '2', '3', '4', '5'], attempts)).toEqual(proof);
-    expect(verifiedShare(proof!)).toBe('2/3');
+    expect(verifiedShare(proof!)).toBe('2/3 +1 legacy');
+    expect(verifiedShare({ ...proof!, legacy: 0 })).toBe('2/3');
   });
 
   it('a lesson without attempts states nothing', () => {

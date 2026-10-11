@@ -304,7 +304,8 @@ disagreement. Every published answer key passes the server grader and a wrong an
 graded; `legacy` counts completions from before server grading (no attempt row). `evidence` is the
 SHA-256 of the lines `activity_id|mode|answer_hash|spec_hash|created_at` of the first passing attempt
 of each activity, sorted by activity. The certification asset carries `server_verified` ("10/12":
-graded on the server, over the answers that had something to grade) in its on-chain attributes, the
+graded on the server, over the answers that had something to grade; legacy completions are named
+apart, "2/2 +14 legacy") in its on-chain attributes, the
 metadata shows the same share and the evidence hash, and each capability claim's evidence document
 (version 2) lists the hash of the graded answer per activity. A day whose completions are not backed
 by attempts is not stamped (`day_pending_review: unverified`).
