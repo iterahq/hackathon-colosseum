@@ -10,7 +10,7 @@ export const PITCH_VIDEO_URL: string | null = null;
 
 /** The public "verify it yourself" page (LANE A). Hidden until it is live on main. */
 export const VERIFY_PATH = '/verify';
-export const VERIFY_PAGE_LIVE = false;
+export const VERIFY_PAGE_LIVE = true;
 
 /** The community behind Itera; the link answers on the public internet. */
 export const DEVFELLOWSHIP_URL = 'https://devfellowship.com';

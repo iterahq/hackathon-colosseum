@@ -80,9 +80,9 @@ function Accept({ bounty, status }: { bounty: BountyDetail; status: MyBountyStat
   return (
     <>
       {status.proof && (
-        <p className="[font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-proof">
+        <div className="[font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-proof">
           {t('bounty.accept.proof', { n: status.proof.daysDone })} <ExplorerAnchor href={status.proof.explorerUrl} label={t('bounty.accept.proofLink')} />
-        </p>
+        </div>
       )}
       <p className="[font:400_14px/1.5_Inter] text-[#A0978A]">{t('bounty.accept.hint', { hours: bounty.claimHours })}</p>
       {bounty.escrow?.custody === 'program' && (

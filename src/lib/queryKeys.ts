@@ -169,6 +169,14 @@ export const queryKeys = {
     posted: (userId: string) => ['bounty', 'posted', userId] as const,
     moderation: (userId: string) => ['bounty', 'moderation', userId] as const,
   },
+  // Reads made by the visitor's browser straight from the public Solana node.
+  chain: {
+    account: (address: string, slice?: { offset: number; length: number }) => ['chain', 'account', address, slice ?? null] as const,
+    transaction: (signature: string) => ['chain', 'transaction', signature] as const,
+    published: (path: string) => ['chain', 'published', path] as const,
+    archive: (asset: string) => ['chain', 'archive', asset] as const,
+    archiveOwner: (signer: string) => ['chain', 'archive-owner', signer] as const,
+  },
   referral: {
     mine: (userId: string) => ['referral', userId] as const,
   },

@@ -86,8 +86,13 @@ export default function LearnerProfilePage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <ExplorerLink address={profile.wallet} />
                 <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
+              </div>
+              <div className="flex basis-full flex-wrap items-center gap-x-4">
+                <ExplorerLink address={profile.wallet} />
+                <Link to="/verify#evidence" className={`inline-flex min-h-11 items-center rounded [font:500_12px_JetBrains_Mono] text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline ${FOCUS}`}>
+                  {t('verify.link')}
+                </Link>
               </div>
             </section>
             {capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={capabilities} />}

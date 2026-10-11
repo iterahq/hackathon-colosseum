@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
+import { ChainProof } from '@/components/chain/ChainProof';
 import { useI18n } from '@/i18n';
 import { chainUrl } from '@/lib/explorer';
 import type { CeremonyStatus } from '@/types/achievements';
@@ -63,9 +64,12 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, g
         <>
           <span className={`${line} text-[#3FD17F]`}>{t('passport.ceremony.minted')}</span>
           {href && (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
-              {t('passport.viewTx')}
-            </a>
+            <>
+              <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+                {t('passport.viewTx')}
+              </a>
+              <ChainProof kind={txSignature ? 'tx' : 'address'} value={txSignature ?? assetAddress ?? ''} raw={false} primary={false} className="justify-center" />
+            </>
           )}
         </>
       )}

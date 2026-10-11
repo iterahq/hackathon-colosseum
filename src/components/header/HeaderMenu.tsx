@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { LEGAL_AND_HELP_URLS } from '@iterahq/shell-core';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { useI18n } from '@/i18n';
+import { addressUrl } from '@/lib/explorer';
 import type { LearnerAvatar as Avatar } from '@/types/avatar';
 import type { WalletIdentity } from '@/types/headerHud';
 import { shortAddress } from '@/utils/headerHud';
@@ -22,9 +23,6 @@ interface Props {
   onExplainer: () => void;
   onSignOut: () => void;
 }
-
-const explorerUrl = (address: string, network: string | null) =>
-  `https://explorer.solana.com/address/${encodeURIComponent(address)}${network ? `?cluster=${encodeURIComponent(network)}` : ''}`;
 
 /** The account sheet: who is signed in, then account, help, staff areas and sign out, each under a mono label. */
 export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExplainer, onSignOut }: Props) {
@@ -92,7 +90,7 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
                   <HeaderIcon name="copy" size={14} className={copied ? 'text-[#3FD17F]' : undefined} />
                 </button>
                 <a
-                  href={explorerUrl(wallet.address, wallet.network)}
+                  href={addressUrl(wallet.address)}
                   target="_blank"
                   rel="noreferrer"
                   role="menuitem"

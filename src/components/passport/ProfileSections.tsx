@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ArtZoom } from '@/components/artviewer';
 import { LivesHearts } from '@/components/lives/LivesHearts';
+import { ChainProof } from '@/components/chain/ChainProof';
 import { useI18n } from '@/i18n';
-import { addressUrl, shortAddress } from '@/lib/explorer';
+import { shortAddress } from '@/lib/explorer';
 import type { ProfileCertification, ProfileCompanion, ProfileMedal } from '@/types/learnerProfile';
 import { tierLabel } from '@/utils/tier';
 import { SnapshotLine } from './SnapshotLine';
@@ -88,9 +89,5 @@ export function MedalsSection({ items }: { items: ProfileMedal[] }) {
 
 export function ExplorerLink({ address }: { address: string }) {
   const { t } = useI18n();
-  return (
-    <a href={addressUrl(address)} target="_blank" rel="noreferrer" className={`inline-flex min-h-11 items-center rounded ${MONO} text-[#3FD17F] hover:underline ${LINK}`}>
-      {t('profile.explorer')} ↗
-    </a>
-  );
+  return <ChainProof kind="address" value={address} label={t('profile.explorer')} linkClassName={`inline-flex min-h-11 items-center rounded ${MONO} text-[#3FD17F] hover:underline ${LINK}`} />;
 }
