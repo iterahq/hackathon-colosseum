@@ -106,10 +106,24 @@ export function OrderActivity({
 
   const cue = useActivitySound();
 
-  function recordMove(itemId: string, from: number, to: number) {
+  function recordMove(itemId: string, from: number, to: number, via: 'drag' | 'arrow' = 'drag') {
     cue('drop');
-    trace.record('item_moved', { item_id: itemId, from, to, via: 'drag' });
+    trace.record('item_moved', { item_id: itemId, from, to, via });
     setTouched(true);
+  }
+
+  // The arrow path of the same move: one step up or down, for a finger that
+  // would rather tap than drag and for the instruction that says "arrows".
+  function moveBy(itemId: string, delta: -1 | 1) {
+    if (locked) return;
+    const from = order.indexOf(itemId);
+    const to = from + delta;
+    if (from === -1 || to < 0 || to >= order.length) return;
+    const next = [...order];
+    next.splice(from, 1);
+    next.splice(to, 0, itemId);
+    setOrder(next);
+    recordMove(itemId, from, to, 'arrow');
   }
 
   // Only the DROP of a drag counts as a move (see useOrderDrag).
@@ -147,7 +161,7 @@ export function OrderActivity({
         axis="y"
         values={displayOrder}
         onReorder={drag.onReorder}
-        className={`mt-3 space-y-2.5 ${TOUCH_SURFACE}`}
+        className={`mt-3 space-y-2 min-[480px]:space-y-2.5 ${TOUCH_SURFACE}`}
         data-testid="order-list"
       >
         {displayOrder.map((id, idx) => {
@@ -165,6 +179,10 @@ export function OrderActivity({
                 drag.onDragStart(id);
               }}
               onDragEnd={drag.onDragEnd}
+              onMoveUp={idx > 0 ? () => moveBy(id, -1) : undefined}
+              onMoveDown={idx < displayOrder.length - 1 ? () => moveBy(id, 1) : undefined}
+              moveUpLabel={t('activity.orderMoveUp')}
+              moveDownLabel={t('activity.orderMoveDown')}
             />
           );
         })}
