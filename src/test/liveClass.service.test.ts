@@ -71,17 +71,27 @@ function makeQuery(table: string) {
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
-  getSupabase: () => ({ from: (table: string) => makeQuery(table) }),
+  getSupabase: () => ({
+    from: (table: string) => makeQuery(table),
+    auth: { getSession: async () => ({ data: { session: { user: { id: 'auth-user-1' } } } }) },
+  }),
+}));
+
+// The enable gate reads the membership rows once per user (the tenant flag rides along); the mock keeps the same two tenants.
+vi.mock('@/services/membership.service', () => ({
+  getMyMemberships: async () => [{ tenantId: membershipTenant, role: 'learner', liveClassEnabled: membershipTenant === ENABLED_TENANT }],
 }));
 
 import {
   isLiveClassEnabledForUser,
   getActiveLiveClass,
   mapSession,
+  resetLiveClassEnabledCache,
 } from '@/services/liveClass.service';
 
 beforeEach(() => {
   membershipTenant = ENABLED_TENANT;
+  resetLiveClassEnabledCache();
 });
 
 describe('live-class enable gate', () => {
