@@ -87,6 +87,14 @@ export async function anonKey() {
 }
 
 const createdLearners = [];
+// Whatever the script does afterwards, the wallets it made never count as real learners.
+process.on('exit', () => {
+  try {
+    tagOwnLearners(`e2e ${process.argv[1]?.split('/').pop() ?? ''}`.trim());
+  } catch {
+    // The run's own result stands; an untagged wallet is reported by the operator.
+  }
+});
 
 /** Marks the learners THIS run created as test accounts, by id: the public counters leave them out. Never the blanket tagger. */
 export function tagOwnLearners(reason) {

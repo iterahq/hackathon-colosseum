@@ -252,11 +252,12 @@ async function fakeProgress(context) {
   const promoted = await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}`, { status: 'completed', completed_at: new Date().toISOString() });
   check('C in_progress rows are allowed; promoting them to completed is refused', started.status < 300 && promoted.status === 403 && completedCount() === 0 && progressRow(faker.userId, last.id)[0] === 'in_progress', `${started.status} ${promoted.status} ${progressRow(faker.userId, last.id).join(' ')}`);
 
-  // 3. The residual of the old build: fake attempts beside the progress. The attempt log the stamp reads is not writable.
+  // 3. Fake attempts beside the progress: neither the result log nor the attempt log the stamp reads is writable from a browser.
   const results = await restAs(faker, 'POST', 'activity_results', activities.map((activity) => ({ user_id: faker.userId, activity_id: activity.id, passed: true, score_internal: null, feedback: {} })));
   const attempts = await restAs(faker, 'POST', 'graded_attempts', activities.map((activity) => ({ user_id: faker.userId, activity_id: activity.id, lesson_id: lesson, kind: activity.kind, mode: 'server', passed: true, claimed_passed: true, answer_hash: 'a'.repeat(64), spec_hash: 'b'.repeat(64), grader: 'v1' })));
   const forgedAttempts = Number(psql(`select count(*) from itera.graded_attempts where user_id = :'user_id'::uuid;`, { user_id: faker.userId }));
-  check('C fake rows in the telemetry log change nothing; the graded attempt log refuses a client', results.status < 300 && attempts.status >= 400 && forgedAttempts === 0, `activity_results ${results.status}, graded_attempts ${attempts.status}, rows ${forgedAttempts}`);
+  const forgedResults = Number(psql(`select count(*) from itera.activity_results where user_id = :'user_id'::uuid;`, { user_id: faker.userId }));
+  check('C the result log and the graded attempt log both refuse a client', results.status >= 400 && attempts.status >= 400 && forgedAttempts === 0 && forgedResults === 0, `activity_results ${results.status} (${forgedResults} rows), graded_attempts ${attempts.status} (${forgedAttempts} rows)`);
 
   // 4. Lying to the grader instead of to the database.
   const choice = activities.find((activity) => activity.kind === 'single_choice');
