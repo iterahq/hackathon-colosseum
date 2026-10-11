@@ -1,5 +1,6 @@
 import { CodeBlock } from '@/components/chain/RawParts';
 import { ChainProof } from '@/components/chain/ChainProof';
+import { DirectGateRefusal } from '@/components/verify/DirectGateRefusal';
 import { GateRefusal } from '@/components/verify/GateRefusal';
 import { AddressLookup, Bullets, P, VerifySection } from '@/components/verify/VerifyParts';
 import { usePublishedText } from '@/hooks/useChainRead';
@@ -31,6 +32,7 @@ export function GateSection() {
     <VerifySection id="gate" title={t('verify.gate.title')}>
       <p className={P}>{t('verify.gate.intro')}</p>
       <GateRefusal />
+      <DirectGateRefusal />
       <Bullets
         items={[
           t('verify.gate.check1', { core: MPL_CORE_PROGRAM }),

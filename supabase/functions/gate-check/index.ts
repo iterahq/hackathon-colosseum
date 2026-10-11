@@ -2,6 +2,7 @@ import { isSolanaAddress } from '../_shared/address.ts';
 import { readEscrow, acceptPlan } from '../_shared/bounty-chain.ts';
 import { ESCROW_ERRORS } from '../_shared/bounty-program.ts';
 import { explorerUrl } from '../_shared/credential.ts';
+import { loadTestAccountIds } from '../_shared/test-accounts.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, json, langOf } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
@@ -19,6 +20,9 @@ import { signMessage, treasurySigner } from '../_shared/treasury.ts';
  * A wallet with no certification of its own is given another learner's real one: the program's own
  * answer is the point. The transaction bytes are returned so the same question can be put to any node.
  *
+ * `GET /gate-check?direct=1[&wallet=<address>]`: the same question for an open DIRECT bounty (one address invited, read from the
+ * 260-byte account), asked as a wallet that is not the invitee. The program answers NotInvited (6020). Simulated only.
+ *
  * `GET /gate-check?send=1`: the same, sent for real. A key made for this one call signs as the taker and
  * Itera pays the fee; the program fails the transaction on chain and it can be opened in an explorer.
  */
@@ -31,6 +35,8 @@ const CONFIRM_BUDGET_MS = 12_000;
 const ZERO_BLOCKHASH = '11111111111111111111111111111111';
 
 interface BountyPick {
+  origin?: string;
+  created_by?: string | null;
   slug: string;
   slug_en: string | null;
   title_i18n: Record<string, string>;
@@ -54,6 +60,22 @@ async function pickBounty(db: IteraClient): Promise<BountyPick | null> {
   if (error) throw new Error(`bounties gate: ${error.message}`);
   const rows = (data ?? []) as unknown as Array<BountyPick & { template_key: string | null }>;
   return rows.find((row) => row.template_key !== null) ?? rows[0] ?? null;
+}
+
+/** The newest open direct bounty. The team's own test ones count here: the page says so through `team_test`. */
+async function pickDirectBounty(db: IteraClient): Promise<BountyPick | null> {
+  const { data, error } = await db
+    .from('bounties')
+    .select('slug,slug_en,title_i18n,escrow_address,requirement,origin,created_by,created_at')
+    .eq('status', 'open')
+    .eq('escrow_kind', 'program')
+    .not('invitee_wallet', 'is', null)
+    .is('hidden_at', null)
+    .gt('expires_at', new Date(Date.now() + 5 * 60_000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) throw new Error(`bounties direct gate: ${error.message}`);
+  return ((data ?? []) as unknown as BountyPick[])[0] ?? null;
 }
 
 type CertificationKind = 'own' | 'another_wallets' | 'not_a_certification';
@@ -132,6 +154,8 @@ Deno.serve(async (request) => {
     const send = url.searchParams.get('send') === '1';
     if (named !== null && !isSolanaAddress(named)) return json({ error: 'invalid_address' }, 400, cors);
     if (send && named !== null) return json({ error: 'send_takes_no_wallet' }, 400, cors);
+    const direct = url.searchParams.get('direct') === '1';
+    if (direct && send) return json({ error: 'direct_is_simulated_only' }, 400, cors);
 
     const db = serviceClient();
     const caller = callerAddress(request);
@@ -144,25 +168,29 @@ Deno.serve(async (request) => {
       if (!all.allowed) return tooMany(all, cors);
     }
 
-    const [config, bounty] = await Promise.all([loadConfig(db), pickBounty(db)]);
+    const missing = direct ? 'no_direct_bounty_open' : 'no_gated_bounty_open';
+    const [config, bounty] = await Promise.all([loadConfig(db), direct ? pickDirectBounty(db) : pickBounty(db)]);
     const programId = config.bounty_escrow_program;
-    if (!programId || !bounty) return json({ error: 'no_gated_bounty_open' }, 404, cors);
+    if (!programId || !bounty) return json({ error: missing }, 404, cors);
     const state = await readEscrow(programId, bounty.escrow_address);
-    if (!state || state.status !== 'open' || !state.gate) return json({ error: 'no_gated_bounty_open' }, 404, cors);
+    if (!state || state.status !== 'open' || !state.gate || (direct && !state.invitee)) return json({ error: missing }, 404, cors);
+    if (direct && named === state.invitee) return json({ error: 'named_is_the_invitee' }, 400, cors);
 
     const lang = langOf(request, 'en');
     const key = send ? await throwawayKey() : null;
     const claimant = key?.address ?? named ?? (await throwawayKey()).address;
+    const tests = direct ? await loadTestAccountIds(db) : new Set<string>();
     const certification = await pickCertification(db, claimant, bounty.requirement.unit_id);
     const payer = await treasurySigner();
     const plan = acceptPlan(state, { programId, approver: state.approver, attester: payer.address, escrow: bounty.escrow_address }, claimant, certification.address);
-    if (plan === 'closed') return json({ error: 'no_gated_bounty_open' }, 404, cors);
+    if (plan === 'closed') return json({ error: missing }, 404, cors);
 
     const facts = {
       cluster: 'devnet',
       program_id: programId,
       program_url: explorerUrl('address', programId),
       bounty: { slug: lang === 'en' && bounty.slug_en ? bounty.slug_en : bounty.slug, title: bounty.title_i18n[lang] ?? bounty.title_i18n.pt ?? bounty.slug, trail: bounty.requirement.trail_title[lang] ?? bounty.requirement.trail, min_days: bounty.requirement.min_days },
+      ...(direct ? { direct: { invitee: state.invitee, invitee_url: explorerUrl('address', state.invitee as string), team_test: bounty.origin === 'wallet' && tests.has(bounty.created_by ?? '') } } : {}),
       escrow: bounty.escrow_address,
       escrow_url: explorerUrl('address', bounty.escrow_address),
       claimant: { address: claimant, kind: named ? 'named' : 'made_for_this_check' },

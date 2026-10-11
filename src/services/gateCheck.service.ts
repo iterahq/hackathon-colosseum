@@ -26,6 +26,7 @@ export function toGateCheck(v: unknown): GateCheck {
   const claimant = row(r.claimant);
   const certification = row(r.certification);
   const kind = text(certification.kind);
+  const direct = row(r.direct);
   return {
     mode: r.mode === 'sent' ? 'sent' : 'simulated',
     programId: text(r.program_id) ?? '',
@@ -38,14 +39,16 @@ export function toGateCheck(v: unknown): GateCheck {
     repeatWith: text(r.repeat_with),
     signature: text(r.signature),
     explorerUrl: text(r.explorer_url),
+    direct: text(direct.invitee) ? { invitee: text(direct.invitee) ?? '', teamTest: direct.team_test === true } : null,
   };
 }
 
 /** `wallet`: ask about that address (simulated, no signature needed). `send`: a real transaction from a key made for the call. */
-export async function askGate(input: { wallet?: string; send?: boolean; lang: string }): Promise<GateCheck> {
+export async function askGate(input: { wallet?: string; send?: boolean; direct?: boolean; lang: string }): Promise<GateCheck> {
   if (!url || !anonKey) throw new GateCheckError('not_configured');
   const query = new URLSearchParams({ lang: input.lang });
-  if (input.send) query.set('send', '1');
+  if (input.direct) query.set('direct', '1');
+  else if (input.send) query.set('send', '1');
   else if (input.wallet) query.set('wallet', input.wallet);
   const response = await fetch(`${url}/functions/v1/gate-check?${query}`, { headers: { apikey: anonKey } });
   const body: unknown = await response.json().catch(() => null);
