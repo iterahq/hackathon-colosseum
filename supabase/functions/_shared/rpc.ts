@@ -9,6 +9,23 @@ export class RpcNodeError extends RpcError {
   }
 }
 
+/**
+ * The answer of `work` if it comes within `ms`, else `null`. The work is not cancelled: a caller that
+ * wants its effect anyway hands the same promise to the runtime's background queue. For reads of the
+ * chain that improve an answer and must never hold it.
+ */
+export async function withinMs<T>(work: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([work, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function rpcUrl(): string {
   return Deno.env.get('SOLANA_RPC_URL') ?? 'https://api.devnet.solana.com';
 }
