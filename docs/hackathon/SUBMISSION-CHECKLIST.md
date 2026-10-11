@@ -32,6 +32,12 @@ Fontes: roteiro `~/hackathon-pitch.md` (v3, pessoal), ensaio `/tmp/hk/orch/demo-
    Aceitar bounty 4 s, entregar 2 s, **aprovar → pago 40 s** (falar por cima ou cortar), loja 7–10 s até "Done!".
    Depois do take: não mexer na conta do dono até o corte estar pronto.
 8. **Pitch, talking head (30 min).** Roteiro §2, cada linha 2x. Primeira e última frase em inglês.
+   **Loop novo (talentos → missão direta), se couber no take (≈ 2 min, devnet):** `/talent` → abrir o cartão do aluno
+   (`/u/<carteira>`, confere na chain) → "Send a paid mission" → preencher e travar a recompensa na carteira de quem
+   publica → entrar como a carteira convidada: a missão aparece na caixa de convites (selo na aba Bounties) → aceitar →
+   entregar → quem publicou aprova → pago, com as transações no Explorer. Prova de que só o convidado pega:
+   `/verify#gate` → "Ask the program as a wallet that was not invited" → `not_invited` (erro `0x1784`). Roteiro de ensaio:
+   `scripts/hackathon/bounty-direct-e2e.mjs`. A missão direta aberta na demo é do próprio time e aparece rotulada assim.
 9. **Capturas estáticas (15 min).** Dashboard, duas atividades, `/u/CQzi…`, `/c/Dk35…` com a conta do dono já dourada.
 
 ## Edição (≈ 3 h)
