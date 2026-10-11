@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FOCUS, LABEL } from '@/components/world/worldStyles';
+import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
 import { EXAMPLE_WALLET, PRIMARY_CTA, SECONDARY_CTA } from './landingStyles';
 
@@ -18,6 +19,9 @@ export function LandingHero() {
         <div className="mt-1 flex flex-wrap gap-3">
           <Link to="/login" className={`${PRIMARY_CTA} ${FOCUS}`} data-testid="landing-cta-wallet">
             {t('landing.cta.wallet')}
+          </Link>
+          <Link to={TRY_PATH} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-try">
+            {t('landing.cta.try')}
           </Link>
           <Link to={`/u/${EXAMPLE_WALLET}`} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-profile">
             {t('landing.cta.profile')}
