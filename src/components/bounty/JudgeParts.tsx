@@ -149,9 +149,10 @@ export function JudgePaidBlock({ bounty }: { bounty: BountyDetail }) {
 export function JudgeBoardBlock({ judge, paidCount }: { judge: JudgeSummary; paidCount: number }) {
   const { t, locale } = useI18n();
   if (paidCount <= 0 && judge.latest.length === 0) return null;
+  const title = paidCount > 0 ? plural(t, 'bounty.judge.board.title', paidCount) : t('bounty.judge.board.title.testsOnly');
   return (
-    <section className="flex flex-col gap-2" aria-label={plural(t, 'bounty.judge.board.title', paidCount)} data-testid="bounty-judge-board">
-      <p className={`${MONO_LABEL} text-[#F2C66D]`}>{plural(t, 'bounty.judge.board.title', paidCount)}</p>
+    <section className="flex flex-col gap-2" aria-label={title} data-testid="bounty-judge-board">
+      <p className={`${MONO_LABEL} text-[#F2C66D]`}>{title}</p>
       {judge.latest.length > 0 && (
         <ul className="flex flex-col gap-1">
           {judge.latest.map((payout) => (
