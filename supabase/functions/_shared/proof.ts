@@ -61,9 +61,13 @@ export function combineProofs(proofs: readonly LessonProof[]): LessonProof | nul
   return { ...total, evidence: sha256Hex(proofs.map((proof) => proof.evidence).join('\n')) };
 }
 
-/** "12/14": answers the server graded, over the answers that had something to grade. */
-export function verifiedShare(proof: Pick<LessonProof, 'verified' | 'self_reported'>): string {
-  return `${proof.verified}/${proof.verified + proof.self_reported}`;
+/**
+ * "12/14": answers the server graded, over the answers that had something to grade. Completions from
+ * before server grading are named, never folded in: "2/2 +14 legacy".
+ */
+export function verifiedShare(proof: Pick<LessonProof, 'verified' | 'self_reported'> & { legacy?: number }): string {
+  const share = `${proof.verified}/${proof.verified + proof.self_reported}`;
+  return proof.legacy && proof.legacy > 0 ? `${share} +${proof.legacy} legacy` : share;
 }
 
 export function isLessonProof(value: unknown): value is LessonProof {
