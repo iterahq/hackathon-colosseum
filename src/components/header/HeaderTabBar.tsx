@@ -8,7 +8,7 @@ interface Props {
   active: NavId | null;
 }
 
-/** Phone navigation: a fixed bottom tab bar with five 44px+ targets, the active one lit green with a top notch. */
+/** Phone navigation: a fixed bottom tab bar, one equal column per nav entry (44px+ targets), the active one lit green with a top notch. */
 export function HeaderTabBar({ active }: Props) {
   const { t } = useI18n();
 
@@ -18,7 +18,7 @@ export function HeaderTabBar({ active }: Props) {
       className="fixed inset-x-0 bottom-0 z-30 border-t border-[#262320] bg-[#0A0908]/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       data-testid="header-tab-bar"
     >
-      <ul className="grid h-[60px] grid-cols-5">
+      <ul className="grid h-[60px]" style={{ gridTemplateColumns: `repeat(${HEADER_NAV.length}, minmax(0, 1fr))` }}>
         {HEADER_NAV.map(({ id, to, key, icon }) => {
           const on = id === active;
           return (
