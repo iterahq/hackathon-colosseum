@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { AppTopBar } from '@/components/header/AppTopBar';
@@ -56,6 +56,10 @@ export default function ShopPage() {
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
   const [section, setSection] = useState<ArcadeCategory>('avatars');
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash === '#invite') setSection('more');
+  }, [hash]);
   // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
   const pages = usePassportView().pages;
   const certs = useMemo<CertTarget[]>(() => pages.filter((p) => p.mintStatus === 'minted').map((p) => ({ trailId: p.trailId, title: p.trailTitle, daysDone: p.daysDone, totalDays: p.totalDays, tier: p.tier, credentialId: p.credentialId, assetAddress: p.assetAddress })), [pages]);
