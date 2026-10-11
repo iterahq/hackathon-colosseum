@@ -45,6 +45,7 @@ interface Props {
 }
 
 const REFILL = 'life_refill';
+const SHOP_PREFETCH_DELAY_MS = 6000;
 
 function RefillPrice({ children }: { children: (label: string | null, title: string, pending: boolean) => ReactNode }) {
   const shop = useShop();
@@ -52,9 +53,14 @@ function RefillPrice({ children }: { children: (label: string | null, title: str
   return <>{children(item?.priceLabel ?? null, item?.title ?? '', shop.isPending)}</>;
 }
 
-/** Reads the shop list while the lesson runs, so the gate's button already has its price when it opens. */
+/** Reads the shop list while the lesson runs, so the gate's button already has its price when it opens; it waits a few seconds so the lesson reads go first. */
 function ShopPrefetch() {
-  useShop();
+  const [released, setReleased] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setReleased(true), SHOP_PREFETCH_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, []);
+  useShop({ enabled: released });
   return null;
 }
 

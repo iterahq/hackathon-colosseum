@@ -12,7 +12,7 @@ import {
 } from '@/utils/nicknameGate';
 import { NicknameForm } from './NicknameForm';
 
-const EXCLUDED_PREFIXES = ['/c/', '/login', '/signup', '/auth/', '/g/'];
+const EXCLUDED_PREFIXES = ['/c/', '/login', '/signup', '/auth/', '/g/', '/lesson/', '/live/'];
 const HAPPY_HOLD_MS = 700;
 
 /**
