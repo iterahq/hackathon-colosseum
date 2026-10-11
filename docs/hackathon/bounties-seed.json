@@ -7,7 +7,10 @@
     "reward_lamports": 30000000,
     "expires_in_days": 21,
     "claim_hours": 48,
-    "title": { "pt": "Deixe o formulário de inscrição da DevFellowship acessível", "en": "Make the DevFellowship signup form accessible" },
+    "title": {
+      "pt": "Deixe o formulário de inscrição da DevFellowship acessível",
+      "en": "Make the DevFellowship signup form accessible"
+    },
     "summary": {
       "pt": "O formulário de inscrição das turmas tem campos sem rótulo e não funciona com leitor de tela. Reescreva o HTML para qualquer pessoa conseguir se inscrever.",
       "en": "The cohort signup form has unlabelled fields and does not work with a screen reader. Rewrite the HTML so anyone can sign up."
@@ -22,6 +25,31 @@
     }
   },
   {
+    "slug": "tabela-de-horarios-acessivel",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 1 · HTML",
+    "min_days": 1,
+    "reward_lamports": 30000000,
+    "expires_in_days": 21,
+    "claim_hours": 48,
+    "title": {
+      "pt": "Tabela de horários das turmas que um leitor de tela consegue ler",
+      "en": "A class timetable a screen reader can read"
+    },
+    "summary": {
+      "pt": "A grade de horários das turmas da DevFellowship hoje é uma imagem. Reescreva como tabela HTML de verdade, legível por qualquer pessoa.",
+      "en": "DevFellowship's class timetable is an image today. Rewrite it as a real HTML table anyone can read."
+    },
+    "brief": {
+      "pt": "Contexto: quem usa leitor de tela não consegue saber os horários das turmas, porque a grade é publicada como imagem.\n\nO que fazer: escreva, só com HTML, a tabela de horários de uma semana com pelo menos três turmas (nome da turma, dia, horário, quem facilita).\n\nCritérios de aceite:\n1. É uma <table> com <caption> dizendo do que a tabela trata.\n2. A primeira linha usa <th scope=\"col\"> e a primeira coluna usa <th scope=\"row\">.\n3. Os horários usam <time datetime=\"...\">.\n4. Não há célula vazia sem explicação nem tabela usada só para posicionar coisas.\n5. O HTML passa no validador da W3C sem erros.\n\nNão precisa de CSS nem de JavaScript.",
+      "en": "Context: someone using a screen reader cannot learn the class times, because the timetable is published as an image.\n\nWhat to do: write, in HTML only, one week's timetable with at least three classes (class name, day, time, facilitator).\n\nAcceptance criteria:\n1. It is a <table> with a <caption> saying what the table is about.\n2. The first row uses <th scope=\"col\"> and the first column uses <th scope=\"row\">.\n3. Times use <time datetime=\"...\">.\n4. No empty cell without an explanation, and no table used only to position things.\n5. The HTML passes the W3C validator with no errors.\n\nNo CSS or JavaScript needed."
+    },
+    "deliverable": {
+      "pt": "Um link público (CodePen, GitHub Pages ou repositório no GitHub) com o HTML da tabela.",
+      "en": "A public link (CodePen, GitHub Pages or a GitHub repository) with the table's HTML."
+    }
+  },
+  {
     "slug": "pagina-semantica-grupo-de-estudos",
     "sponsor_name": "DevFellowship",
     "unit": "Week 1 · HTML",
@@ -29,7 +57,10 @@
     "reward_lamports": 50000000,
     "expires_in_days": 21,
     "claim_hours": 72,
-    "title": { "pt": "Página semântica para um grupo de estudos da DevFellowship", "en": "Semantic page for a DevFellowship study group" },
+    "title": {
+      "pt": "Página semântica para um grupo de estudos da DevFellowship",
+      "en": "Semantic page for a DevFellowship study group"
+    },
     "summary": {
       "pt": "Monte a página de apresentação de um grupo de estudos usando HTML semântico: quem lê o código precisa entender a página sem abrir o navegador.",
       "en": "Build the landing page of a study group in semantic HTML: someone reading the code should understand the page without opening a browser."
@@ -51,7 +82,10 @@
     "reward_lamports": 80000000,
     "expires_in_days": 21,
     "claim_hours": 72,
-    "title": { "pt": "Card de evento responsivo para o site da DevFellowship", "en": "Responsive event card for the DevFellowship website" },
+    "title": {
+      "pt": "Card de evento responsivo para o site da DevFellowship",
+      "en": "Responsive event card for the DevFellowship website"
+    },
     "summary": {
       "pt": "Estilize o card que anuncia os eventos da comunidade para ele ficar bom no celular e no computador, só com CSS.",
       "en": "Style the card that announces community events so it looks right on a phone and on a desktop, with CSS only."
@@ -73,7 +107,10 @@
     "reward_lamports": 120000000,
     "expires_in_days": 21,
     "claim_hours": 72,
-    "title": { "pt": "FAQ que abre e fecha, acessível, em JavaScript puro", "en": "Accessible open-and-close FAQ in plain JavaScript" },
+    "title": {
+      "pt": "FAQ que abre e fecha, acessível, em JavaScript puro",
+      "en": "Accessible open-and-close FAQ in plain JavaScript"
+    },
     "summary": {
       "pt": "A página de perguntas frequentes da DevFellowship precisa de um acordeão que funcione com mouse, teclado e leitor de tela, sem biblioteca.",
       "en": "DevFellowship's FAQ page needs an accordion that works with mouse, keyboard and screen reader, with no library."
