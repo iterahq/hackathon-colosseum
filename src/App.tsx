@@ -356,6 +356,14 @@ const App = () => (
                 <Route path="/bounties/:slug" element={<LazyRoute><BountyPage /></LazyRoute>} />
                 {/* Public: every on-chain claim, with the steps to check it without trusting Itera. */}
                 <Route path="/verify" element={<LazyRoute><VerifyPage /></LazyRoute>} />
+                {/* Names a stranger guesses from the nav: each one lands where the nav item goes. */}
+                <Route path="/certifications" element={<Navigate to="/passport" replace />} />
+                <Route path="/certifications/*" element={<Navigate to="/passport" replace />} />
+                <Route path="/certificates" element={<Navigate to="/passport" replace />} />
+                <Route path="/trails" element={<Navigate to="/" replace />} />
+                <Route path="/trails/*" element={<Navigate to="/" replace />} />
+                <Route path="/learn" element={<Navigate to="/try" replace />} />
+                <Route path="/bounty" element={<Navigate to="/bounties" replace />} />
                 {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
                 {/* Self-serve subscribe surface (PLG). Calls itera-api
                     POST /plg/checkout (user-JWT, Stripe SANDBOX) — see

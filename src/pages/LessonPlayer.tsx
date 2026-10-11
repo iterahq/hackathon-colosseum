@@ -857,6 +857,7 @@ export default function LessonPlayer() {
         onToggleMuted={toggleMuted}
         onClose={leaveLesson}
         lives={livesView}
+        step={completed ? null : { n: index + 1, total: activities.length, day: placement.lessonOrdinal != null ? placement.lessonOrdinal + 1 : null }}
         onBack={canGoBack ? goBack : undefined}
         onForward={canNavigateForward ? goForward : undefined}
         forwardDisabled={unsettled || !canStepForward(position, frontier, finished)}

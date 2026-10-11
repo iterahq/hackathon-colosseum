@@ -5,6 +5,9 @@ import { useI18n } from '@/i18n';
 /** 36 px visual box, 44 px hit area: the pseudo-element is part of the button for pointer events. */
 export const HIT_SLOP = 'relative before:absolute before:-inset-1';
 
+/** What a careful beginner needs for a day of 18 activities, as the landing promises. Copy only, never a timer. */
+export const DAY_MINUTES = 15;
+
 /**
  * Immersive chrome of the lesson: full-width progress bar flush to the top
  * edge, close-X on the left, and on the right the mute toggle plus the hearts
@@ -22,6 +25,7 @@ export function LessonChrome({
   forwardDisabled = false,
   onJumpToCurrent,
   lives,
+  step,
 }: {
   progressPct: number;
   /** How far the learner has ever got. Drawn lighter, behind the solid fill, only while it is ahead. */
@@ -38,8 +42,11 @@ export function LessonChrome({
   onJumpToCurrent?: () => void;
   /** The learner's real lives. Absent or null keeps the decorative count. */
   lives?: { current: number; max: number } | null;
+  /** Where the learner is: the 1-based activity, how many the day has, and the day's number when known. Printed in the middle of the bar. */
+  step?: { n: number; total: number; day: number | null } | null;
 }) {
   const { t } = useI18n();
+  const stepText = step && step.total > 0 ? (step.day ? t('lesson.chrome.step', { day: step.day, min: DAY_MINUTES, n: step.n, total: step.total }) : t('lesson.chrome.stepOnly', { n: step.n, total: step.total })) : null;
 
   return (
     <header className="relative">
@@ -112,6 +119,17 @@ export function LessonChrome({
         )}
       </div>
 
+      {stepText && (
+        <p
+          className="pointer-events-none absolute left-1/2 top-2.5 max-sm:top-1.5 h-9 -translate-x-1/2 flex items-center whitespace-nowrap text-xs text-muted-foreground max-sm:text-[11px]"
+          data-testid="lesson-step"
+          data-step={step?.n}
+          data-total={step?.total}
+        >
+          <span className="max-sm:hidden">{stepText}</span>
+          <span className="sm:hidden">{t('lesson.chrome.stepShort', { n: step?.n ?? 0, total: step?.total ?? 0 })}</span>
+        </p>
+      )}
       <div className="absolute top-2.5 max-sm:top-1.5 right-3 md:right-4 h-9 flex items-center gap-2">
         <button
           type="button"

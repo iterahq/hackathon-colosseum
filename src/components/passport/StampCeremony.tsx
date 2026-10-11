@@ -24,6 +24,8 @@ interface Props {
   onConnect?: () => void;
   /** The learner's equipped outfit (item key). */
   outfit?: string | null;
+  /** False for an account with no wallet: nothing is written on Solana yet, so the copy says "saving", not "stamping". */
+  hasWallet?: boolean;
 }
 
 const GRID = {
@@ -33,7 +35,7 @@ const GRID = {
 } as const;
 
 /** Full-screen stamp ceremony of a finished day: the page lands, Tera stamps it, the chain row follows. */
-export function StampCeremony({ model, preparing = false, colorIndex, actions, onRetry, onLater, onConnect, outfit = null }: Props) {
+export function StampCeremony({ model, preparing = false, colorIndex, actions, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
   const { t } = useI18n();
   const reduce = Boolean(useReducedMotion());
   const sound = usePassportSound();
@@ -64,10 +66,10 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
   });
 
   const headline = preparing
-    ? t('passport.ceremony.headline.preparing', { n: day })
+    ? t(hasWallet ? 'passport.ceremony.headline.preparing' : 'passport.ceremony.headline.saving', { n: day })
     : last
       ? t('passport.ceremony.headline.last')
-      : t('passport.ceremony.headline.day', { n: day });
+      : t(hasWallet || model.status === 'minted' ? 'passport.ceremony.headline.day' : 'passport.ceremony.headline.dayDone', { n: day });
   const width = typeof window !== 'undefined' && window.innerWidth < 400 ? 260 : 300;
 
   return (
@@ -120,13 +122,14 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
               onRetry={onRetry}
               onLater={onLater}
               onConnect={onConnect}
+              hasWallet={hasWallet}
             />
           )}
         </div>
         <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked}>
           {locked ? (
             <button type="button" disabled data-testid="ceremony-actions-waiting" className={`mt-6 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-full px-6 opacity-50 ${TACTILE_CTA}`}>
-              {t('passport.ceremony.stamping')}
+              {t(hasWallet ? 'passport.ceremony.stamping' : 'passport.ceremony.saving')}
             </button>
           ) : (
             actions

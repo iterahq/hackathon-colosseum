@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { RawAccount } from '@/components/chain/RawAccount';
 import { SECTION_TITLE, INPUT, LABEL } from '@/components/bounty/bountyUi';
 import { BTN_SECONDARY, BTN_SMALL, CARD } from '@/components/shop/shopStyles';
@@ -8,12 +9,29 @@ import { looksLikeAddress } from '@/lib/chain/base58';
 export const P = '[font:400_14px/1.6_Inter] text-[#C9BFB0]';
 export const MONO_TEXT = 'break-all [font:500_12px/1.5_JetBrains_Mono] text-[#F4EDE2]';
 
+/** A long-form section, folded under its title; a link to its hash (from the summary card or the nav) opens it. */
 export function VerifySection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  const { t } = useI18n();
+  const { hash } = useLocation();
+  const targeted = hash === `#${id}`;
+  const [open, setOpen] = useState(targeted);
+  useEffect(() => {
+    if (targeted) setOpen(true);
+  }, [targeted]);
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={`${CARD} flex min-w-0 scroll-mt-4 flex-col gap-4 p-4 sm:p-5`} data-testid={`verify-${id}`}>
-      <h2 id={`${id}-title`} className={SECTION_TITLE}>{title}</h2>
-      {children}
-    </section>
+    <details
+      id={id}
+      open={open}
+      onToggle={(event) => setOpen((event.currentTarget as HTMLDetailsElement).open)}
+      className={`${CARD} group flex min-w-0 scroll-mt-4 flex-col p-4 sm:p-5`}
+      data-testid={`verify-${id}`}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden" data-testid={`verify-${id}-summary`}>
+        <h2 id={`${id}-title`} className={SECTION_TITLE}>{title}</h2>
+        <span className="shrink-0 [font:600_12px_JetBrains_Mono] text-[#3FD17F]">{open ? t('verify.fold.close') : t('verify.fold.open')}</span>
+      </summary>
+      <div className="flex min-w-0 flex-col gap-4 pt-4">{children}</div>
+    </details>
   );
 }
 

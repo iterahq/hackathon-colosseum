@@ -14,7 +14,7 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { WebOnly } from '@/components/shell/WebOnly';
 import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
-import { returnPathOf, returnState } from '@/lib/loginReturn';
+import { returnPathOf, returnState, signupHref } from '@/lib/loginReturn';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import type { InjectedWallet } from '@/types/solanaWallet';
 import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
@@ -81,7 +81,7 @@ export default function AuthPage() {
   const noWallet = wallets.length === 0;
   const signUp = (
     <WebOnly>
-      <Link to="/signup" state={returnState(from)} className={`${noWallet && !mobile ? PRIMARY : OUTLINE} touch-hit`} data-testid="goto-signup">
+      <Link to={signupHref(from)} state={returnState(from)} className={`${noWallet && !mobile ? PRIMARY : OUTLINE} touch-hit`} data-testid="goto-signup">
         {t('door.other.createEmail')}
       </Link>
     </WebOnly>
@@ -187,18 +187,23 @@ export default function AuthPage() {
             <WebOnly>
               <p className="text-center text-xs text-muted-foreground">
                 {t('door.other.noAccount')}{' '}
-                <Link to="/signup" state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="goto-signup-link">
+                <Link to={signupHref(from)} state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="goto-signup-link">
                   {t('door.other.createEmail')}
                 </Link>
               </p>
             </WebOnly>
           </form>
-          <div className="flex flex-col gap-1.5">
-            <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => loginWithDfl(from)} data-testid="oauth-dfl">
-              {t('auth.signInWith', { provider: 'DFL' })}
-            </Button>
-            <p className={`text-center ${LINK} no-underline hover:no-underline`}>{t('door.other.dflWhy')}</p>
-          </div>
+          <details className="group" data-testid="dfl-ways">
+            <summary className={`cursor-pointer list-none text-center ${LINK}`} data-testid="dfl-ways-summary">
+              {t('door.other.dflSummary')}
+            </summary>
+            <div className="mt-3 flex flex-col gap-1.5">
+              <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => loginWithDfl(from)} data-testid="oauth-dfl">
+                {t('auth.signInWith', { provider: 'DFL' })}
+              </Button>
+              <p className={`text-center ${LINK} no-underline hover:no-underline`}>{t('door.other.dflWhy')}</p>
+            </div>
+          </details>
         </div>
       </details>
     </AuthShell>

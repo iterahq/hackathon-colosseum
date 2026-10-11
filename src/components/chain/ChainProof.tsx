@@ -28,7 +28,7 @@ export function ChainProof({ kind, value, label, compact = false, linkClassName,
   const [first, ...others] = explorerLinks(kind, value);
   const text = label ?? t('bounty.explorer');
   return (
-    <span className={`flex min-w-0 flex-wrap items-center ${compact ? 'gap-x-1' : 'gap-x-2'} ${className} ${open ? 'w-full basis-full' : ''}`} data-testid="chain-proof">
+    <span className={`flex min-w-0 flex-wrap items-center ${compact ? 'gap-x-1' : 'gap-x-2 max-sm:grid max-sm:grid-cols-2'} ${className} ${open ? 'w-full basis-full' : ''}`} data-testid="chain-proof">
       {primary && (
         <a href={first.url} target="_blank" rel="noopener noreferrer" className={linkClassName ?? PRIMARY}>
           {/↗\s*$/.test(text) ? text : `${text} ↗`}
@@ -44,7 +44,7 @@ export function ChainProof({ kind, value, label, compact = false, linkClassName,
           {open ? t('verify.raw.hide') : t('verify.raw.show')}
         </button>
       )}
-      {raw && open && <span className="block w-full basis-full">{kind === 'tx' ? <RawTransaction signature={value} /> : <RawAccount address={value} />}</span>}
+      {raw && open && <span className="block w-full basis-full max-sm:col-span-2">{kind === 'tx' ? <RawTransaction signature={value} /> : <RawAccount address={value} />}</span>}
     </span>
   );
 }

@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { LessonCompleteActions, LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
 import { useCompanion } from '@/hooks/useCompanion';
+import { useWalletLink } from '@/hooks/useWalletLink';
 import { usePassport, usePassportPrefetch } from '@/hooks/usePassport';
 import { useI18n } from '@/i18n';
 import { preparingModel } from '@/utils/lessonEnd';
@@ -47,6 +48,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
   const { t } = useI18n();
   const passport = usePassport({ lessonId, fresh, done: doneCount, total });
   const { outfit } = useCompanion();
+  const link = useWalletLink();
   const { view } = passport;
   if (view.kind === 'hold') return <div className="min-h-[60svh]" data-testid="lesson-end-hold" aria-busy="true" />;
   if (view.kind === 'incomplete') {
@@ -73,6 +75,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
         onLater={passport.dismiss}
         onConnect={passport.connect}
         outfit={outfit}
+        hasWallet={Boolean(link.wallet) || link.pending}
       />
       {!preparing && <LoopPanel trail={trail} day={day} />}
     </div>

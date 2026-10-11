@@ -3,6 +3,7 @@ import { useCircuit } from '@/hooks/useCircuit';
 import { useI18n } from '@/i18n';
 import { plural } from '@/utils/bounty';
 import { paidHint, readAtLabel } from '@/utils/landingStats';
+import { localizeDecimal } from '@/utils/shopPrice';
 import { LandingStat } from './LandingStat';
 
 /**
@@ -24,7 +25,7 @@ export function LandingLiveStats() {
         {(board.isPending || stats) && (
           <>
             <LandingStat value={stats ? stats.openCount : null} label={t('landing.live.bountiesOpen')} />
-            <LandingStat value={stats ? stats.lockedSol : null} label={t('landing.live.lockedSol')} />
+            <LandingStat value={stats ? localizeDecimal(stats.lockedSol, locale) : null} label={t('landing.live.lockedSol')} />
             <LandingStat value={stats ? stats.paidCount : null} label={plural(t, 'landing.live.paidCount', stats?.paidCount ?? 0)} hint={stats ? paidHint(stats, t) : null} testId="landing-paid-hint" />
           </>
         )}
