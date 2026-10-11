@@ -2555,6 +2555,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof document !== 'undefined') document.documentElement.lang = locale === 'pt' ? 'pt-BR' : 'en';
+    // The readers outside React (`resolveLocalizedSpec`, the boot script) take the locale from storage: a first visit
+    // that followed the browser language writes it there once, so the content and the chrome speak the same language.
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('itera.locale') === null) localStorage.setItem('itera.locale', locale);
   }, [locale]);
 
   const value = useMemo<I18nState>(() => {
