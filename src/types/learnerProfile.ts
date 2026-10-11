@@ -53,6 +53,54 @@ export interface ProfileAvatarNft {
   explorerUrl: string | null;
 }
 
+export type CapabilityStatus = 'verified' | 'recorded' | 'open';
+
+export interface CapabilityProof {
+  asset: string;
+  attribute: string;
+  onchainValue: string | null;
+  evidenceHash: string;
+  txSignature: string | null;
+  provenAt: string | null;
+  assetExplorerUrl: string | null;
+  txExplorerUrl: string | null;
+}
+
+export interface CapabilityNode {
+  id: string;
+  trail: number;
+  day: number;
+  title: string;
+  requires: string[];
+  status: CapabilityStatus;
+  proof: CapabilityProof | null;
+}
+
+export interface CapabilityTrail {
+  trail: number;
+  title: string;
+}
+
+export interface Capabilities {
+  program: string;
+  version: number;
+  total: number;
+  verifiedCount: number;
+  next: string | null;
+  trails: CapabilityTrail[];
+  nodes: CapabilityNode[];
+}
+
+export interface ClaimEvidence {
+  wallet: string;
+  claim: string;
+  lessonId: string | null;
+  evidence: string;
+  evidenceHash: string;
+  txSignature: string | null;
+  txExplorerUrl: string | null;
+}
+
 export interface LearnerProfile {
   /** NFT avatars the wallet owns; empty when the backend sends none. */
   avatars: ProfileAvatarNft[];
@@ -65,6 +113,8 @@ export interface LearnerProfile {
   medals: ProfileMedal[];
   /** What this wallet's own shop purchases paid forward (the Circuito). */
   circuit: CircuitShare;
+  /** The capability graph; null when the backend predates it. */
+  capabilities: Capabilities | null;
 }
 
 export type ProfileLookup = { status: 'ok'; profile: LearnerProfile } | { status: 'invalid' };

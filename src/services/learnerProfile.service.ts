@@ -1,7 +1,7 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
 import { toCircuitShare } from '@/services/circuit.service';
 import { toAvatar } from '@/services/shopNormalize';
-import type { LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
+import type { Capabilities, CapabilityNode, CapabilityProof, CapabilityStatus, ClaimEvidence, LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -11,6 +11,71 @@ const row = (v: unknown): Row => (v && typeof v === 'object' && !Array.isArray(v
 const rows = (v: unknown): Row[] => (Array.isArray(v) ? v.map(row) : []);
 const text = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 const int = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : []);
+
+function parseProof(v: unknown): CapabilityProof | null {
+  const p = row(v);
+  const asset = text(p.asset);
+  const attribute = text(p.attribute);
+  const evidenceHash = text(p.evidence_hash);
+  if (!asset || !attribute || !evidenceHash) return null;
+  return {
+    asset,
+    attribute,
+    onchainValue: text(p.onchain_value),
+    evidenceHash,
+    txSignature: text(p.tx_signature),
+    provenAt: text(p.proven_at),
+    assetExplorerUrl: text(p.asset_explorer_url),
+    txExplorerUrl: text(p.tx_explorer_url),
+  };
+}
+
+export function parseCapabilities(v: unknown): Capabilities | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const c = row(v);
+  const nodes: CapabilityNode[] = rows(c.nodes)
+    .filter((r) => text(r.id) && text(r.title))
+    .map((r) => {
+      const status: CapabilityStatus = r.status === 'verified' || r.status === 'recorded' ? r.status : 'open';
+      return {
+        id: String(r.id),
+        trail: int(r.trail) ?? 0,
+        day: int(r.day) ?? 1,
+        title: String(r.title),
+        requires: strings(r.requires),
+        status,
+        proof: status === 'open' ? null : parseProof(r.proof),
+      };
+    });
+  if (nodes.length === 0) return null;
+  return {
+    program: text(c.program) ?? '',
+    version: int(c.version) ?? 1,
+    total: int(c.total) ?? nodes.length,
+    verifiedCount: int(c.verified_count) ?? nodes.filter((n) => n.status === 'verified').length,
+    next: text(c.next),
+    trails: rows(c.trails).map((r) => ({ trail: int(r.trail) ?? 0, title: text(r.title) ?? '' })),
+    nodes,
+  };
+}
+
+export function parseEvidence(body: unknown): ClaimEvidence | null {
+  const b = row(body);
+  const evidence = text(b.evidence);
+  const evidenceHash = text(b.evidence_hash);
+  if (!evidence || !evidenceHash) return null;
+  return {
+    wallet: text(b.wallet) ?? '',
+    claim: text(b.claim) ?? '',
+    lessonId: text(b.lesson_id),
+    evidence,
+    evidenceHash,
+    txSignature: text(b.tx_signature),
+    txExplorerUrl: text(b.tx_explorer_url),
+  };
+}
 
 export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): LearnerProfile {
   const b = row(body);
@@ -79,6 +144,7 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
         explorerUrl: text(r.explorer_url),
       })),
     circuit: toCircuitShare(b.circuit),
+    capabilities: parseCapabilities(b.capabilities),
   };
 }
 
@@ -90,4 +156,15 @@ export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en'): Prom
   if (res.status === 400 || res.status === 404) return { status: 'invalid' };
   if (!res.ok) throw new Error(`learner-profile failed (${res.status})`);
   return { status: 'ok', profile: parseProfile(await res.json(), wallet, lang) };
+}
+
+export async function getClaimEvidence(wallet: string, claimId: string): Promise<ClaimEvidence> {
+  if (!url || !anonKey) throw new Error('Supabase not configured.');
+  const res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}/evidence/${encodeURIComponent(claimId)}`, {
+    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+  });
+  if (!res.ok) throw new Error(`evidence failed (${res.status})`);
+  const parsed = parseEvidence(await res.json());
+  if (!parsed) throw new Error('evidence malformed');
+  return parsed;
 }
