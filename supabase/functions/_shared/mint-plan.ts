@@ -1,3 +1,4 @@
+import { hasUnwrittenClaims } from './claims.ts';
 import type { AchievementRow } from './credential.ts';
 
 export interface MintJob {
@@ -12,7 +13,8 @@ const isMinted = (row: AchievementRow) => row.mint_status === 'minted';
 
 /**
  * One transaction per asset: a passport is created with every stamp it already
- * has, or updated once for all the stamps it gained. Medals mint one by one.
+ * has, or updated once for all the stamps it gained (or for claims it proved
+ * that are not on chain yet). Medals mint one by one.
  */
 export function planMintJobs(rows: AchievementRow[], medalKeys: ReadonlySet<string>): MintJob[] {
   const jobs: MintJob[] = [];
@@ -25,7 +27,7 @@ export function planMintJobs(rows: AchievementRow[], medalKeys: ReadonlySet<stri
             (other.achievement_key === 'trail_complete' && other.ref_id === row.ref_id)),
       );
       if (!isMinted(row)) jobs.push({ type: 'create_passport', anchor: row, rows: [row, ...pending] });
-      else if (pending.length > 0) jobs.push({ type: 'update_passport', anchor: row, rows: pending });
+      else if (pending.length > 0 || hasUnwrittenClaims(row.state)) jobs.push({ type: 'update_passport', anchor: row, rows: pending });
     } else if (medalKeys.has(row.achievement_key) && !isMinted(row)) {
       jobs.push({ type: 'create_medal', anchor: row, rows: [row] });
     }

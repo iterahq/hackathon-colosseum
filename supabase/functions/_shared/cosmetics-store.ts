@@ -1,3 +1,5 @@
+import { withClaims } from './claims.ts';
+import { claimsByRow } from './claims-store.ts';
 import { withCosmetics, type CosmeticPurchase } from './cosmetics.ts';
 import type { IteraClient } from './db.ts';
 import { withEndorsements, type Endorsement } from './endorsement.ts';
@@ -52,14 +54,16 @@ export async function trailCosmeticPurchases(db: IteraClient, userId: string, re
 export async function restoreCosmetics<Row extends TrailRow>(db: IteraClient, rows: Row[]): Promise<Row[]> {
   const passports = rows.filter((row) => row.achievement_key === 'trail_pass');
   if (passports.length === 0) return rows;
-  const [paid, endorsed] = await Promise.all([
+  const rowIds = passports.flatMap((row) => (row.id ? [row.id] : []));
+  const [paid, endorsed, claims] = await Promise.all([
     paidCosmetics(db, [...new Set(passports.map((row) => row.user_id))]),
-    endorsementsByRow(db, passports.flatMap((row) => (row.id ? [row.id] : []))),
+    endorsementsByRow(db, rowIds),
+    claimsByRow(db, rowIds),
   ]);
   return rows.map((row) => {
     if (row.achievement_key !== 'trail_pass') return row;
     const worn = withCosmetics(row, paid.get(trailKey(row.user_id, row.ref_id)) ?? []);
-    return row.id ? withEndorsements(worn, endorsed.get(row.id) ?? []) : worn;
+    return row.id ? withClaims(withEndorsements(worn, endorsed.get(row.id) ?? []), claims.get(row.id) ?? []) : worn;
   });
 }
 

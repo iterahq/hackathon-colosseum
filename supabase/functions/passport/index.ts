@@ -14,6 +14,7 @@ import {
   type AchievementRow,
   type CatalogEntry,
 } from '../_shared/credential.ts';
+import { markClaimsWritten, recordClaims } from '../_shared/claims-store.ts';
 import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
@@ -304,6 +305,7 @@ async function runJob(
       state: row.id === job.anchor.id ? state : { ...state, parent_id: job.anchor.id, tx: signature },
     };
   });
+  if (job.type !== 'create_medal') await markClaimsWritten(db, job.anchor.id, signature);
 }
 
 async function mintPending(
@@ -495,6 +497,9 @@ Deno.serve(async (request) => {
     }
 
     await reconcileCrystals(db, caller.iteraUserId, rows, learning.activities);
+
+    // What each stamped day proves is recorded before the mint, so the same write that stamps the day carries its claims.
+    if (caller.wallet && (await recordClaims(db, rows, caller.wallet, learning)) > 0) rows = await loadRows(db, caller.iteraUserId);
 
     const mint = await mintPending(db, caller, rows, catalog, maxJobs);
     // After this learner's own mints, so the two do not compete for the node.
