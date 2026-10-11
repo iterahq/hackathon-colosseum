@@ -40,7 +40,9 @@ const b = await login(wallet('b-uncertified'));
 console.log('sponsor', sponsor.address, '\nA', a.address, '\nD', d.address, '\nB', b.address);
 
 // Staff: the e2e sponsor teaches in the DevFellowship tenant. B never does.
-check('non-staff is refused by the sponsor API', (await call('bounty-sponsor', b, { action: 'list' })).http === 403);
+const outsider = await call('bounty-sponsor', b, { action: 'list' });
+check('non-staff is told it manages nothing: an empty list, no bounty of anyone', outsider.http === 200 && outsider.j.staff === false && outsider.j.bounties.length === 0 && outsider.j.trails.length === 0, JSON.stringify(outsider.j).slice(0, 120));
+check('non-staff is refused every other action of the sponsor API', (await call('bounty-sponsor', b, { action: 'moderation' })).http === 403 && (await call('bounty-sponsor', b, { action: 'create' })).http === 403);
 check('anonymous is refused by the sponsor API', (await call('bounty-sponsor', null, { action: 'list' })).http === 401);
 check('anonymous is refused by the claim API', (await call('bounty-claim', null, { action: 'status', bounty: UNIT })).http === 401);
 await sql(`insert into itera.memberships (user_id, tenant_id, role) select i.user_id, '${TENANT}', 'instructor' from itera.identities i where i.provider_subject='${sponsor.authUid}' on conflict (user_id, tenant_id) do update set role = 'instructor'`);
