@@ -1,9 +1,11 @@
-import { CLAIM_COLUMNS, eligibilityOf, loadBounty, loadClaims, openClaimOf } from '../_shared/bounty-store.ts';
+import { EscrowProgramError } from '../_shared/bounty-chain.ts';
+import { CLAIM_COLUMNS, acceptOnChain, eligibilityOf, loadBounty, loadClaims, openClaimOf } from '../_shared/bounty-store.ts';
 import { parseSubmission, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { RpcError } from '../_shared/rpc.ts';
+import { TransferBroadcastError } from '../_shared/treasury.ts';
 
 type Cors = Record<string, string>;
 
@@ -66,9 +68,22 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
     p_proof: { days_done: eligibility.proof.days_done, requirement: bounty.requirement, read_at: new Date().toISOString(), source: 'chain' },
   });
   if (error) throw new Error(`bounty_accept: ${error.message}`);
-  const result = (Array.isArray(data) ? data[0] : data) as { status: string } | null;
-  if (result?.status !== 'ok') return json({ error: result?.status ?? 'not_open' }, 409, cors);
-  return json({ accepted: true, proof: eligibility.proof }, 200, cors);
+  const result = (Array.isArray(data) ? data[0] : data) as { status: string; claim_id: string | null } | null;
+  if (result?.status !== 'ok' || !result.claim_id) return json({ error: result?.status ?? 'not_open' }, 409, cors);
+  if (bounty.escrow_kind !== 'program') return json({ accepted: true, proof: eligibility.proof }, 200, cors);
+
+  // The escrow program checks the certification account itself before it records this wallet.
+  try {
+    const signature = await acceptOnChain(db, bounty, { id: result.claim_id, wallet: caller.wallet, proofAsset: eligibility.proof.asset });
+    return json({ accepted: true, proof: eligibility.proof, chain: { status: 'recorded', signature } }, 200, cors);
+  } catch (error) {
+    // Sent but not seen confirmed: the claim stands, and the payout repairs the account if this never landed.
+    if (error instanceof TransferBroadcastError) return json({ accepted: true, proof: eligibility.proof, chain: { status: 'pending', signature: error.signature } }, 200, cors);
+    const released = await db.rpc('bounty_release_claim', { p_bounty: bounty.id, p_reason: 'withdrawn', p_user_id: caller.iteraUserId });
+    if (released.error) console.error('bounty claim not released after a chain refusal', bounty.id, released.error.message);
+    if (error instanceof EscrowProgramError) return json({ error: 'refused_by_program', reason: error.code }, 403, cors);
+    throw error;
+  }
 }
 
 async function submit(db: IteraClient, caller: Caller, bounty: BountyRow, body: Record<string, unknown>, cors: Cors): Promise<Response> {

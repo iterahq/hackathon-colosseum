@@ -1,5 +1,8 @@
+import { createFor, readEscrow, sendAsApprover } from '../_shared/bounty-chain.ts';
 import { escrowAddress, escrowBalance } from '../_shared/bounty-escrow.ts';
+import { escrowPda } from '../_shared/bounty-program.ts';
 import {
+  escrowTerms,
   expireStaleClaims,
   listBounties,
   loadBounty,
@@ -23,6 +26,7 @@ const PROGRAM_SLUG = 'itera-v2';
 
 interface Sponsor {
   caller: Caller;
+  config: Record<string, string>;
   tenantIds: string[];
   /** May fund from the Itera treasury. */
   treasuryTenant: string | null;
@@ -45,11 +49,11 @@ async function loadTrails(db: IteraClient): Promise<Trail[]> {
 }
 
 /** A bounty as its sponsor sees it: the public view plus the delivery under review. */
-function sponsorView(bounty: BountyRow, claim: ClaimRow | null, now: Date, treasuryTenant: string | null, treasury: string | null) {
+function sponsorView(bounty: BountyRow, claim: ClaimRow | null, now: Date, sponsor: Sponsor, treasury: string | null) {
   return {
-    ...bountyView({ bounty, claim, lang: 'en', now, functionsBase: functionsBase() }),
+    ...bountyView({ bounty, claim, lang: 'en', now, functionsBase: functionsBase(), programId: sponsor.config.bounty_escrow_program }),
     title_i18n: bounty.title_i18n,
-    treasury_fundable: bounty.tenant_id === treasuryTenant && bounty.refund_address === treasury,
+    treasury_fundable: bounty.tenant_id === sponsor.treasuryTenant && bounty.refund_address === treasury,
     review: claim
       ? { status: claim.status, wallet: claim.wallet, submission_url: claim.submission_url, submission_note: claim.submission_note, submitted_at: claim.submitted_at, proof: claim.proof }
       : null,
@@ -70,7 +74,7 @@ async function list(db: IteraClient, sponsor: Sponsor, cors: Cors): Promise<Resp
       tenant_ids: sponsor.tenantIds,
       treasury_tenant: sponsor.treasuryTenant,
       trails: await loadTrails(db),
-      bounties: bounties.map((bounty) => sponsorView(bounty, bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, now, sponsor.treasuryTenant, treasury)),
+      bounties: bounties.map((bounty) => sponsorView(bounty, bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, now, sponsor, treasury)),
     },
     200,
     cors,
@@ -90,6 +94,7 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
   if (!refundAddress) return json({ error: 'invalid_refund_address' }, 400, cors);
 
   const id = crypto.randomUUID();
+  const program = sponsor.config.bounty_escrow_program || null;
   const requirement: Requirement = {
     program: PROGRAM_SLUG,
     unit_id: trail.unit_id,
@@ -110,7 +115,9 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
     deliverable_i18n: input.deliverable_i18n,
     requirement,
     reward_lamports: input.reward_lamports,
-    escrow_address: await escrowAddress(id),
+    // With the escrow program configured, the program holds the money; otherwise an account whose key the server derives.
+    escrow_kind: program ? 'program' : 'derived_account',
+    escrow_address: program ? await escrowPda(program, id) : await escrowAddress(id),
     refund_address: refundAddress,
     claim_hours: input.claim_hours,
     expires_at: input.expires_at,
@@ -127,11 +134,20 @@ async function fund(db: IteraClient, sponsor: Sponsor, bounty: BountyRow, cors: 
   // Treasury money only enters an escrow whose refund returns to the treasury: otherwise fund + refund would move it to any address.
   if (bounty.refund_address !== (await treasuryAddress())) return json({ error: 'treasury_not_allowed' }, 403, cors);
   if (bounty.status !== 'awaiting_funding' || Date.parse(bounty.expires_at) <= Date.now()) return json({ error: 'not_fundable' }, 409, cors);
-  const missing = fundingTarget(bounty.reward_lamports) - (await escrowBalance(bounty.escrow_address));
-  if (missing <= 0n) return json({ funded: true, status: (await refreshFunding(db, bounty)).status }, 200, cors);
+  const treasury = await treasuryAddress();
   try {
+    if (bounty.escrow_kind === 'program') {
+      const terms = await escrowTerms(bounty, sponsor.config);
+      if (!terms) return json({ error: 'treasury_unavailable' }, 503, cors);
+      if (await readEscrow(terms.programId, bounty.escrow_address)) return json({ funded: true, status: (await refreshFunding(db, bounty)).status }, 200, cors);
+      const signature = await sendAsApprover([createFor(terms, treasury)], transferMemo(bounty.id, 'fund'));
+      const after = await refreshFunding(db, bounty, { wallet: treasury, signature });
+      return json({ funded: after.status === 'open', status: after.status, signature }, 200, cors);
+    }
+    const missing = fundingTarget(bounty.reward_lamports) - (await escrowBalance(bounty.escrow_address));
+    if (missing <= 0n) return json({ funded: true, status: (await refreshFunding(db, bounty)).status }, 200, cors);
     const signature = await sendFromTreasury({ recipient: bounty.escrow_address, lamports: missing, memo: transferMemo(bounty.id, 'fund') });
-    const after = await refreshFunding(db, bounty, { wallet: await treasuryAddress(), signature });
+    const after = await refreshFunding(db, bounty, { wallet: treasury, signature });
     return json({ funded: after.status === 'open', status: after.status, signature }, 200, cors);
   } catch (error) {
     if (error instanceof TransferBroadcastError) return json({ funded: false, status: 'awaiting_funding', signature: error.signature, pending: true }, 202, cors);
@@ -180,7 +196,7 @@ Deno.serve(async (request) => {
     const tenantIds = staffTenantIds(await loadMemberships(db, caller.iteraUserId));
     if (tenantIds.length === 0) return json({ error: 'forbidden' }, 403, cors);
     const config = await loadConfig(db);
-    const sponsor: Sponsor = { caller, tenantIds, treasuryTenant: tenantIds.includes(config.bounty_treasury_tenant) ? config.bounty_treasury_tenant : null };
+    const sponsor: Sponsor = { caller, config, tenantIds, treasuryTenant: tenantIds.includes(config.bounty_treasury_tenant) ? config.bounty_treasury_tenant : null };
 
     const body = await readJsonObject(request, 16_384);
     if (!body) return json({ error: 'invalid_body' }, 400, cors);

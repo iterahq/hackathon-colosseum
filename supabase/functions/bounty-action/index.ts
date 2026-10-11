@@ -1,19 +1,22 @@
 import { isEd25519Address } from '../_shared/address.ts';
+import { createFor, readEscrow } from '../_shared/bounty-chain.ts';
 import { escrowBalance } from '../_shared/bounty-escrow.ts';
-import { loadBounty, refreshFunding } from '../_shared/bounty-store.ts';
+import { escrowTerms, loadBounty, refreshFunding } from '../_shared/bounty-store.ts';
 import {
   bountyActionCompleted,
   bountyActionError,
   bountyActionGet,
   bountyActionPost,
   bountyActionUrl,
+  fundingCost,
   fundingTarget,
   publicStatus,
   transferMemo,
   type BountyActionError,
   type BountyRow,
 } from '../_shared/bounty.ts';
-import { serviceClient, type IteraClient } from '../_shared/db.ts';
+import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
+import { compileMessage, memoInstruction } from '../_shared/solana-message.ts';
 import { actionHeaders, type Lang } from '../_shared/gift.ts';
 import { functionsBase, isUuid, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
 import { fundsCheck } from '../_shared/purchase-verify.ts';
@@ -44,25 +47,36 @@ async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
     bountyActionGet({
       bounty,
       lang,
-      missingLamports: fundingTarget(bounty.reward_lamports),
+      missingLamports: fundingCost(bounty),
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
       blocked: fundable(bounty) ? null : 'not_fundable',
     }),
   );
 }
 
-async function build(bounty: BountyRow, request: Request, lang: Lang): Promise<Response> {
+async function build(db: IteraClient, bounty: BountyRow, request: Request, lang: Lang): Promise<Response> {
   const body = await readJsonObject(request);
   const account = body?.account;
   if (!isEd25519Address(account) || account === bounty.escrow_address) return refuse('invalid_account', lang, 400);
   // Decided from our table alone: a closed bounty costs the node nothing.
   if (!fundable(bounty)) return refuse('not_fundable', lang, 400);
 
-  const [held, balance, latest] = await Promise.all([escrowBalance(bounty.escrow_address), balanceOf(account), latestBlockhash()]);
-  const missing = fundingTarget(bounty.reward_lamports) - held;
-  if (missing <= 0n) return refuse('not_fundable', lang, 400);
-  if (!fundsCheck(balance, missing).ok) return refuse('insufficient_funds', lang, 400);
-  const message = buildTransferMessage({ payer: account, recipient: bounty.escrow_address, lamports: missing, memo: transferMemo(bounty.id, 'fund'), recentBlockhash: latest.blockhash });
+  let message: Uint8Array;
+  if (bounty.escrow_kind === 'program') {
+    // The payer creates the bounty's account on the escrow program, with the terms this bounty was posted with.
+    const terms = await escrowTerms(bounty, await loadConfig(db));
+    if (!terms) return refuse('unavailable', lang, 503);
+    const [existing, balance, latest] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(account), latestBlockhash()]);
+    if (existing) return refuse('not_fundable', lang, 400);
+    if (!fundsCheck(balance, fundingCost(bounty)).ok) return refuse('insufficient_funds', lang, 400);
+    message = compileMessage(account, [createFor(terms, account), memoInstruction(transferMemo(bounty.id, 'fund'))], latest.blockhash);
+  } else {
+    const [held, balance, latest] = await Promise.all([escrowBalance(bounty.escrow_address), balanceOf(account), latestBlockhash()]);
+    const missing = fundingTarget(bounty.reward_lamports) - held;
+    if (missing <= 0n) return refuse('not_fundable', lang, 400);
+    if (!fundsCheck(balance, missing).ok) return refuse('insufficient_funds', lang, 400);
+    message = buildTransferMessage({ payer: account, recipient: bounty.escrow_address, lamports: missing, memo: transferMemo(bounty.id, 'fund'), recentBlockhash: latest.blockhash });
+  }
   return answer(
     bountyActionPost({
       bounty,
@@ -102,7 +116,7 @@ Deno.serve(async (request) => {
     const bounty = await loadBounty(db, isUuid(first) ? { id: first } : { slug: first });
     if (!bounty) return refuse('not_found', lang, 404);
     if (request.method === 'GET') return await describe(bounty, lang);
-    if (request.method === 'POST') return await build(bounty, request, lang);
+    if (request.method === 'POST') return await build(db, bounty, request, lang);
     return refuse('invalid_body', lang, 405);
   } catch (error) {
     if (error instanceof RpcError) {
