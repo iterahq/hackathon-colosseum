@@ -17,7 +17,7 @@
 // treasury a few fees and three escrow rents (about 0.02 SOL in all). Never touches the owner's
 // wallet or the demo account.
 import { buildTransferMessage } from '../../supabase/functions/_shared/solana-tx.ts';
-import { balance, call, check, completeDays, done, explorer, get, history, latestBlockhash, loadAuthority, login, passport, rpc, send, sendUnsigned, sleep, sql, wallet } from './bounty-e2e.lib.mjs';
+import { acceptBounty, balance, call, check, completeDays, done, explorer, get, history, latestBlockhash, loadAuthority, login, passport, rpc, send, sendUnsigned, sleep, sql, wallet } from './bounty-e2e.lib.mjs';
 
 const UNIT = '9624052c-4efb-49ca-8bbf-f63d0e5d6c2d';
 const TENANT = 'fe02614d-0934-40fa-96ed-1f1f63366290';
@@ -64,7 +64,7 @@ const LOCKED = PROGRAM ? REWARD + RENT : REWARD + 5000;
 const EMPTY = PROGRAM ? RENT : 0;
 console.log('escrow kind', view.escrow.kind, view.escrow.program_id ?? '');
 check('new bounty waits for funding, escrow empty', view.status === 'awaiting_funding' && (await balance(escrow1)) === 0, escrow1);
-check('unfunded bounty cannot be accepted', (await call('bounty-claim', a, { action: 'accept', bounty: id1 })).http === 409);
+check('unfunded bounty cannot be accepted', (await acceptBounty(a, id1)).http === 409);
 
 const funded = await call('bounty-sponsor', sponsor, { action: 'fund', bounty: id1 });
 check('treasury funds the escrow', funded.http === 200 && funded.j.status === 'open', JSON.stringify(funded.j));
@@ -74,14 +74,14 @@ console.log('  fund tx', explorer('tx', funded.j.signature));
 // Wallet B: no certification.
 const statusB = await call('bounty-claim', b, { action: 'status', bounty: id1 });
 check('B status: not eligible, no certification', statusB.j.eligible === false && statusB.j.reason === 'no_certification', JSON.stringify(statusB.j));
-const acceptB = await call('bounty-claim', b, { action: 'accept', bounty: id1 });
+const acceptB = await acceptBounty(b, id1);
 check('B (uncertified) is refused server-side', acceptB.http === 403 && acceptB.j.error === 'not_eligible', JSON.stringify(acceptB.j));
 
 // Wallet A: one stamped day is not enough; three are.
 await completeDays(a.authUid, 1, 1);
 let minted = await passport(a);
 check('A minted a certification (day 1)', minted.http === 200, JSON.stringify(minted.j?.mint ?? minted.j).slice(0, 200));
-const acceptEarly = await call('bounty-claim', a, { action: 'accept', bounty: id1 });
+const acceptEarly = await acceptBounty(a, id1);
 check('A with 1 day on chain is refused (needs 2)', acceptEarly.http === 403 && acceptEarly.j.reason === 'not_enough_days' && acceptEarly.j.proof?.days_done === 1, JSON.stringify(acceptEarly.j));
 await completeDays(a.authUid, 2, 3);
 minted = await passport(a);
@@ -93,9 +93,9 @@ console.log('  A certification', statusA.j.proof?.explorer_url);
 
 // Double claim: A twice and D once, all at the same time.
 const race = await Promise.all([
-  call('bounty-claim', a, { action: 'accept', bounty: id1 }),
-  call('bounty-claim', a, { action: 'accept', bounty: id1 }),
-  call('bounty-claim', d, { action: 'accept', bounty: id1 }),
+  acceptBounty(a, id1),
+  acceptBounty(a, id1),
+  acceptBounty(d, id1),
 ]);
 const winners = race.filter((r) => r.http === 200);
 const won = race.find((r) => r.http === 200);
@@ -103,7 +103,7 @@ if (PROGRAM) { check('the escrow PROGRAM recorded the claim (it read the certifi
 check('three simultaneous accepts: exactly one wins', winners.length === 1 && race.filter((r) => r.http === 409).length === 2, JSON.stringify(race.map((r) => [r.http, r.j.error ?? 'ok'])));
 const holder = race[2].http === 200 ? d : a;
 const loser = holder === a ? d : a;
-check('the loser cannot take it afterwards', (await call('bounty-claim', loser, { action: 'accept', bounty: id1 })).http === 409);
+check('the loser cannot take it afterwards', (await acceptBounty(loser, id1)).http === 409);
 const liveClaims = await sql(`select count(*)::int n from itera.bounty_claims where bounty_id='${id1}' and status in ('active','submitted','approved')`);
 check('one live claim in the database', liveClaims[0].n === 1);
 
@@ -149,7 +149,7 @@ await call('bounty-sponsor', sponsor, { action: 'fund', bounty: id2 });
 await markTest();
 const escrow2 = (await get(`bounty-board/${slug2}`)).j.escrow.address;
 check('second bounty has its own escrow account', escrow2 !== escrow1 && (await balance(escrow2)) === LOCKED);
-const acc2 = await call('bounty-claim', loser, { action: 'accept', bounty: id2 });
+const acc2 = await acceptBounty(loser, id2);
 check('another certified wallet accepts bounty 2', acc2.http === 200, JSON.stringify(acc2.j));
 await call('bounty-claim', loser, { action: 'submit', bounty: id2, url: 'https://example.com/weak' });
 const rejected = await call('bounty-sponsor', sponsor, { action: 'reject', bounty: id2, note: 'not what was asked' });
@@ -164,7 +164,7 @@ for (let i = 0; i < 20; i++) { const r = await call('bounty-sponsor', sponsor, {
 view = (await get(`bounty-board/${slug2}`)).j;
 const hist2 = (await history(escrow2)).filter((h) => h.err === null && (h.memo ?? '').includes(`itera-bounty:${id2}:refund`));
 check('refund: one transaction, escrow empty, sponsor repaid', view.status === 'refunded' && hist2.length === 1 && (await balance(escrow2)) === EMPTY && (PROGRAM ? (await balance(refundTo)) - treasuryBefore >= REWARD - 20000 : (await balance(refundTo)) - treasuryBefore === REWARD), view.refund?.explorer_url);
-check('a refunded bounty cannot be accepted', (await call('bounty-claim', loser, { action: 'accept', bounty: id2 })).http === 409);
+check('a refunded bounty cannot be accepted', (await acceptBounty(loser, id2)).http === 409);
 
 // --- Bounty 3: funded by a wallet through the Solana Action ------------------
 const slug3 = `e2e-blink-${stamp}`;

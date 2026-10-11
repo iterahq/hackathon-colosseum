@@ -11,7 +11,7 @@ import { bountyErrorCode } from '@/services/bounty.service';
 import { formatRemaining, safeHttpsUrl } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
-const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible'] as const;
+const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty'] as const;
 const SUBMIT_ERRORS = ['invalid_submission', 'not_active'] as const;
 const WITHDRAW_ERRORS = ['not_active'] as const;
 

@@ -170,3 +170,18 @@ export async function passport(learner) {
   }
   return answer;
 }
+
+/**
+ * A step the learner's wallet signs (`accept` or `withdraw`), the way the app does it: the server
+ * answers the transaction, the wallet signs the message, the server adds the fee payer and sends.
+ * Answers the last call made. `tamper` may change what is sent back.
+ */
+export async function signedStep(learner, step, bounty, tamper = (signedBody) => signedBody) {
+  const prepared = await call('bounty-claim', learner, { action: `${step}_prepare`, bounty });
+  if (prepared.http !== 200) return prepared;
+  const offer = prepared.j.sign;
+  const body = offer ? { message: offer.message_base64, signature: signatureOf(learner, Buffer.from(offer.message_base64, 'base64')) } : {};
+  return call('bounty-claim', learner, { action: `${step}_submit`, bounty, ...tamper(body, offer) });
+}
+export const acceptBounty = (learner, bounty) => signedStep(learner, 'accept', bounty);
+export const withdrawBounty = (learner, bounty) => signedStep(learner, 'withdraw', bounty);

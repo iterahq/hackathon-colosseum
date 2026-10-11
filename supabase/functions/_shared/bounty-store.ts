@@ -1,5 +1,5 @@
 import { EscrowProgramError, readEscrow, readEscrows, refundPlan, releasePlan, acceptPlan, matchesTerms, sendAsApprover, type EscrowTerms } from './bounty-chain.ts';
-import { unclaimInstruction } from './bounty-program.ts';
+import { unclaimInstruction, type EscrowState } from './bounty-program.ts';
 import { memoInstruction, type Instruction } from './solana-message.ts';
 import { escrowBalance, sendFromEscrow } from './bounty-escrow.ts';
 import {
@@ -196,11 +196,10 @@ export async function withdrawInstructions(db: IteraClient, bounty: BountyRow, w
   return [unclaimInstruction({ programId: terms.programId, authority: wallet, escrow: bounty.escrow_address }), memoInstruction(transferMemo(bounty.id, 'withdraw'))];
 }
 
-/** Whether the escrow account names `wallet` as the one holding the bounty. */
-export async function heldOnChainBy(db: IteraClient, bounty: BountyRow, wallet: string): Promise<boolean> {
+/** The escrow account of a program-held bounty as the chain has it now. `null` when there is none. */
+export async function escrowStateOf(db: IteraClient, bounty: BountyRow): Promise<EscrowState | null> {
   const terms = await escrowTerms(bounty, await loadConfig(db));
-  const state = terms ? await readEscrow(terms.programId, bounty.escrow_address) : null;
-  return state?.status === 'claimed' && state.claimant === wallet;
+  return terms ? readEscrow(terms.programId, bounty.escrow_address) : null;
 }
 
 /** Reopens an escrow account that names `wallet`, signed by Itera's attester key. Whether it did. Never throws. */

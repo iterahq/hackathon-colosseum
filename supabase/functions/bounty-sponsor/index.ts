@@ -4,6 +4,7 @@ import { escrowPda } from '../_shared/bounty-program.ts';
 import {
   escrowTerms,
   expireStaleClaims,
+  unclaimOnChain,
   listBounties,
   loadBounty,
   loadTrails,
@@ -171,7 +172,9 @@ async function review(db: IteraClient, sponsor: Sponsor, bounty: BountyRow, appr
       const moved = await loadBounty(db, { id: bounty.id });
       if (!approve || (moved?.status !== 'paying' && moved?.status !== 'paid')) return json({ error: 'not_submitted' }, 409, cors);
     } else if (!approve) {
-      return json({ rejected: true, status: 'open' }, 200, cors);
+      // The escrow account stops naming the learner whose delivery was refused.
+      const reopened = claim ? await unclaimOnChain(db, bounty, 'rejected', claim) : null;
+      return json({ rejected: true, status: 'open', reopen_signature: reopened }, 200, cors);
     }
   } else if (!approve || (bounty.status !== 'paying' && bounty.status !== 'paid')) {
     return json({ error: 'not_submitted' }, 409, cors);

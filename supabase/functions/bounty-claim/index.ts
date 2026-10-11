@@ -3,7 +3,7 @@ import {
   CLAIM_COLUMNS,
   acceptInstructions,
   eligibilityOf,
-  heldOnChainBy,
+  escrowStateOf,
   loadBounty,
   loadClaims,
   openClaimOf,
@@ -77,8 +77,11 @@ async function sendFailure(db: IteraClient, bounty: BountyRow, error: unknown, c
   if (error instanceof RpcNodeError && isExpiredBlockhash(error.nodeMessage)) return json({ error: 'expired' }, 409, cors);
   const refused = refusal(error);
   if (!refused) return null;
-  // The escrow may have moved on chain without us (a sponsor refunding from their own wallet): the board follows.
-  if (refused.code === 'not_open' || refused.code === 'not_claimed') await syncWithEscrow(db, bounty.id).catch((reason) => console.error('bounty not synced with its escrow', bounty.id, reason));
+  // Someone else's transaction landed first, or the escrow moved on chain without us (a sponsor refunding from their own wallet): the board follows.
+  if (refused.code === 'not_open' || refused.code === 'not_claimed') {
+    await syncWithEscrow(db, bounty.id).catch((reason) => console.error('bounty not synced with its escrow', bounty.id, reason));
+    return json({ error: refused.code === 'not_open' ? 'not_open' : 'not_active', reason: 'refused_by_program' }, 409, cors);
+  }
   return json({ error: 'refused_by_program', reason: refused.code }, 403, cors);
 }
 
@@ -96,6 +99,7 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
   if (!eligibility.eligible || !eligibility.proof || !caller.wallet) {
     return json({ error: 'not_eligible', reason: eligibility.reason, proof: eligibility.proof }, 403, cors);
   }
+  if (bounty.sponsor_wallet && bounty.sponsor_wallet === caller.wallet) return json({ error: 'own_bounty' }, 403, cors);
   if (await openClaimOf(db, caller.iteraUserId)) return json({ error: 'already_claiming' }, 409, cors);
   const wallet = caller.wallet;
   const proof = eligibility.proof;
@@ -122,8 +126,9 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
     instructions = await acceptInstructions(db, bounty, wallet, proof.asset);
   } catch (error) {
     if (!(error instanceof EscrowProgramError)) throw error;
-    if (error.code === 'not_open') await syncWithEscrow(db, bounty.id).catch((reason) => console.error('bounty not synced with its escrow', bounty.id, reason));
-    return json({ error: 'refused_by_program', reason: error.code }, 403, cors);
+    if (error.code !== 'not_open') return json({ error: 'refused_by_program', reason: error.code }, 403, cors);
+    await syncWithEscrow(db, bounty.id).catch((reason) => console.error('bounty not synced with its escrow', bounty.id, reason));
+    return json({ error: 'not_open', reason: 'refused_by_program' }, 409, cors);
   }
   if (!signed) return json({ sign: await offerCosigned(wallet, instructions), proof }, 200, cors);
 
@@ -133,7 +138,10 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
     signature = await sendCosigned(signed, wallet, instructions);
   } catch (error) {
     if (error instanceof TransferBroadcastError) {
-      if (!(await heldOnChainBy(db, bounty, wallet))) return json({ error: 'upstream_unavailable' }, 502, cors);
+      // Handed to the node and not seen confirmed: the account says whether it landed, or whether another wallet's did first.
+      const after = await escrowStateOf(db, bounty);
+      if (after?.status !== 'claimed') return json({ error: 'upstream_unavailable' }, 502, cors);
+      if (after.claimant !== wallet) return json({ error: 'not_open', reason: 'refused_by_program' }, 409, cors);
       signature = error.signature;
     } else {
       const failure = await sendFailure(db, bounty, error, cors);
@@ -179,7 +187,8 @@ async function withdraw(db: IteraClient, caller: Caller, bounty: BountyRow, sign
       signature = await sendCosigned(signed, claim.wallet, instructions);
     } catch (error) {
       if (error instanceof TransferBroadcastError) {
-        if (await heldOnChainBy(db, bounty, claim.wallet)) return json({ error: 'upstream_unavailable' }, 502, cors);
+        const after = await escrowStateOf(db, bounty);
+        if (after?.status === 'claimed' && after.claimant === claim.wallet) return json({ error: 'upstream_unavailable' }, 502, cors);
         signature = error.signature;
       } else {
         const failure = await sendFailure(db, bounty, error, cors);
