@@ -48,14 +48,16 @@ export function DashboardTopBar(_props: Props) {
             <HeaderNav active={active} />
           </div>
           <div className="flex min-w-0 flex-1 justify-end">
-            {/* From 1440 px the field sits on the middle of the page, not of the free space between the two groups. */}
-            <HeaderSearch className="max-sm:hidden min-[1440px]:absolute min-[1440px]:left-[calc(50%-120px)] min-[1440px]:top-3 min-[1440px]:w-[240px]" />
+            {/* From 1536 px the field sits on the middle of the page; below that it stays in the flow so the six nav entries never run under it. */}
+            <HeaderSearch className="max-sm:hidden min-[1536px]:absolute min-[1536px]:left-[calc(50%-120px)] min-[1536px]:top-3 min-[1536px]:w-[240px]" />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <HeaderLocale className="max-sm:hidden" />
             <HeaderLocaleCompact className="sm:hidden" />
             <HeaderHud />
-            <CrystalChip />
+            <div className="max-sm:hidden">
+              <CrystalChip />
+            </div>
             <HeaderIdentity />
           </div>
         </div>
