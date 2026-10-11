@@ -81,7 +81,7 @@ export default function BountiesPage() {
           {hiddenTests}
         </p>
       )}
-      {board.data && <JudgeBoardBlock judge={board.data.judge} paidCount={board.data.stats.judgePaidCount} />}
+      {board.data && <JudgeBoardBlock judge={board.data.judge} paidCount={board.data.stats.judgePaidCount} teamTestCount={board.data.stats.judgeTeamTestPaidCount ?? 0} />}
       {board.isPending && (
         <div className="flex flex-col gap-3" aria-busy="true" data-testid="bounty-loading">
           <p role="status" className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('bounty.board.reading')}</p>

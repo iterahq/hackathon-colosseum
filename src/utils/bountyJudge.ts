@@ -68,3 +68,14 @@ export function daysFooter(t: Translate, stats: BountyStats): string | null {
   if (attester === 0) return t('bounty.days.footer.all');
   return plural(t, 'bounty.days.footer.mixed', attester, { p: program, a: attester });
 }
+
+/**
+ * The heading of the judge payouts on the board: every payout of the judge bounty, split the way the tile
+ * above splits it, and how many of them the list under it shows.
+ */
+export function judgeBoardTitle(t: Translate, counts: { outside: number; teamTests: number; listed: number }): string {
+  const total = counts.outside + counts.teamTests;
+  if (total === 0) return t('bounty.judge.board.title.testsOnly');
+  const head = plural(t, 'bounty.judge.board.all', total, { outside: counts.outside, tests: counts.teamTests });
+  return counts.listed < total ? `${head} · ${t('bounty.judge.board.latest', { n: counts.listed })}` : head;
+}
