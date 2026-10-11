@@ -1,6 +1,8 @@
 import { checkClaim, type AssetRead, type ChainTarget } from '@/lib/chainClaims';
 import type { Capabilities, CapabilityNode } from '@/types/learnerProfile';
 
+export const ANONYMOUS_WALLET = '11111111111111111111111111111111';
+
 export type NodeView = 'chain' | 'checking' | 'server' | 'unconfirmed' | 'recorded' | 'open';
 export type ChainState = { phase: 'pending' } | { phase: 'error' } | { phase: 'done'; reads: Record<string, AssetRead> };
 

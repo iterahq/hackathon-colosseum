@@ -6,7 +6,7 @@ import type { Capabilities } from '@/types/learnerProfile';
 import { CapabilityGraph } from '@/components/graph/CapabilityGraph';
 import { GraphHeader } from '@/components/graph/GraphHeader';
 import { NodeDetail } from '@/components/graph/NodeDetail';
-import { chainTargets, provenCount, trailProgress, viewsOf, type ChainState } from '@/components/graph/capabilityView';
+import { ANONYMOUS_WALLET, chainTargets, provenCount, trailProgress, viewsOf, type ChainState } from '@/components/graph/capabilityView';
 
 const H2 = "[font:700_28px_'Barlow_Condensed']";
 
@@ -35,7 +35,7 @@ export function CapabilityGraphSection({ wallet, capabilities }: { wallet: strin
       <h2 id="graph-heading" className={H2}>{t('graph.title')}</h2>
       <GraphHeader capabilities={capabilities} chain={chain} proven={proven} progress={progress} hasRecorded={capabilities.nodes.some((n) => n.status === 'recorded')} onRetry={retry} />
       <div className="rounded-[14px] border border-[#262320] bg-[radial-gradient(ellipse_at_50%_0%,#16221b_0%,#141210_55%)] p-2 pb-4 sm:p-4">
-        <CapabilityGraph capabilities={capabilities} views={views} progress={progress} label={t('graph.mapLabel', { wallet: shortAddress(wallet) })} onSelect={setSelected} />
+        <CapabilityGraph capabilities={capabilities} views={views} progress={progress} label={wallet === ANONYMOUS_WALLET ? t('graph.title') : t('graph.mapLabel', { wallet: shortAddress(wallet) })} onSelect={setSelected} />
       </div>
       {node && (
         <NodeDetail wallet={wallet} capabilities={capabilities} node={node} views={views} reads={chain.phase === 'done' ? chain.reads : null} onClose={() => setSelected(null)} />
