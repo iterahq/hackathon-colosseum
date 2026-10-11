@@ -51,9 +51,9 @@ export function sealedId(secret: string, activityId: string, id: string): string
   return `s${tag(secret, activityId, `id:${id}`).slice(0, 10)}`;
 }
 
-function byTag<T>(items: readonly T[], secret: string, activityId: string, textOf: (item: T) => string): T[] {
+function byTag<T>(items: readonly T[], secret: string, activityId: string, textOf: (item: T) => string, serving = ''): T[] {
   return items
-    .map((item) => ({ item, order: tag(secret, activityId, `order:${textOf(item)}`) }))
+    .map((item) => ({ item, order: tag(secret, activityId, `order:${serving}:${textOf(item)}`) }))
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0))
     .map(({ item }) => item);
 }
@@ -75,24 +75,24 @@ function reId(items: readonly Json[], secret: string, activityId: string): Json[
   return items.map((item) => (typeof item.id === 'string' ? { ...item, id: sealedId(secret, activityId, item.id) } : item));
 }
 
-function sealChoice(spec: Json, secret: string, activityId: string): Json {
+function sealChoice(spec: Json, secret: string, activityId: string, serving: string): Json {
   const options = objects(spec.options);
-  const shown = isReferenceSet(options) ? options : byTag(options, secret, activityId, (option) => String(option.id));
+  const shown = isReferenceSet(options) ? options : byTag(options, secret, activityId, (option) => String(option.id), serving);
   return { ...without(spec, ['correct_option_id', 'correct_option_ids', 'explanation']), options: reId(shown, secret, activityId) };
 }
 
-function sealOrder(spec: Json, secret: string, activityId: string): Json {
+function sealOrder(spec: Json, secret: string, activityId: string, serving: string): Json {
   const items = objects(spec.items);
   const expected = Array.isArray(spec.correct_order) ? spec.correct_order : [];
-  let shown = byTag(items, secret, activityId, (item) => String(item.id));
+  let shown = byTag(items, secret, activityId, (item) => String(item.id), serving);
   if (shown.length > 1 && shown.every((item, index) => item.id === expected[index])) shown = rotated(shown);
   return { ...without(spec, ['correct_order', 'explanation']), items: reId(shown, secret, activityId) };
 }
 
-function sealMatch(spec: Json, secret: string, activityId: string): Json {
+function sealMatch(spec: Json, secret: string, activityId: string, serving: string): Json {
   const left = objects(spec.left);
   const pairs = objects(spec.pairs);
-  let right = byTag(objects(spec.right), secret, activityId, (item) => String(item.id));
+  let right = byTag(objects(spec.right), secret, activityId, (item) => String(item.id), serving);
   const aligned = (candidate: readonly Json[]) =>
     left.every((item, index) => pairs.some((pair) => pair.left_id === item.id && pair.right_id === candidate[index]?.id));
   if (right.length > 1 && aligned(right)) right = rotated(right);
@@ -113,9 +113,9 @@ function unique(values: readonly unknown[]): unknown[] {
   });
 }
 
-function sealFill(spec: Json, secret: string, activityId: string): Json {
+function sealFill(spec: Json, secret: string, activityId: string, serving: string): Json {
   const blanks = objects(spec.blanks);
-  const shuffle = (values: readonly unknown[]) => byTag(unique(values), secret, activityId, canonicalJson);
+  const shuffle = (values: readonly unknown[]) => byTag(unique(values), secret, activityId, canonicalJson, serving);
   const hasBank = blanks.some((blank) => blank.kind === 'bank');
   const authoredBank = Array.isArray(spec.word_bank) && spec.word_bank.length > 0 ? spec.word_bank : null;
   const bank = authoredBank ?? blanks.filter((blank) => blank.kind === 'bank').flatMap((blank) => [blank.answer, ...(Array.isArray(blank.options) ? blank.options : [])]);
@@ -136,16 +136,21 @@ function gradedBy(kind: string, spec: unknown): GradedBy {
   return mode === 'server' ? 'server' : mode === 'participation' ? 'none' : 'browser';
 }
 
-export function sealActivity(activity: ActivityContent, secret: string): SealedActivity {
+/**
+ * `serving` names one response: with a fresh value per request the order of the
+ * options is different every time, so a position learnt from one copy of the
+ * lesson says nothing about the next. The ids stay the same for an activity.
+ */
+export function sealActivity(activity: ActivityContent, secret: string, serving = ''): SealedActivity {
   const by = gradedBy(activity.kind, activity.spec);
   const spec = activity.spec;
   if (by !== 'server' || !SEALED_KINDS.has(activity.kind) || !isObject(spec)) return { spec, graded_by: by, sealed: false };
-  if (CHOICE.has(activity.kind)) return { spec: sealChoice(spec, secret, activity.id), graded_by: by, sealed: true };
-  if (activity.kind === 'order') return { spec: sealOrder(spec, secret, activity.id), graded_by: by, sealed: true };
+  if (CHOICE.has(activity.kind)) return { spec: sealChoice(spec, secret, activity.id, serving), graded_by: by, sealed: true };
+  if (activity.kind === 'order') return { spec: sealOrder(spec, secret, activity.id, serving), graded_by: by, sealed: true };
   if (activity.kind === 'match') {
-    return { spec: sealMatch(spec, secret, activity.id), graded_by: by, sealed: true, pair_count: objects(spec.pairs).length };
+    return { spec: sealMatch(spec, secret, activity.id, serving), graded_by: by, sealed: true, pair_count: objects(spec.pairs).length };
   }
-  if (FILL.has(activity.kind)) return { spec: sealFill(spec, secret, activity.id), graded_by: by, sealed: true };
+  if (FILL.has(activity.kind)) return { spec: sealFill(spec, secret, activity.id, serving), graded_by: by, sealed: true };
   return { spec: sealChecks(spec), graded_by: by, sealed: true };
 }
 

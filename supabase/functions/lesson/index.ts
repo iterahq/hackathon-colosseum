@@ -85,12 +85,13 @@ Deno.serve(async (request) => {
     }
 
     const secret = sealSecret();
+    const serving = crypto.randomUUID();
     const byId = new Map(specs.map((row) => [row.id, row]));
     const activities = visible
       .filter((row) => byId.has(row.id))
       .map((row) => {
         const full = byId.get(row.id) as { spec: unknown; rubric: unknown };
-        const sealed = sealActivity({ id: row.id, kind: row.kind, spec: full.spec }, secret);
+        const sealed = sealActivity({ id: row.id, kind: row.kind, spec: full.spec }, secret, serving);
         return staff
           ? { ...row, spec: full.spec, rubric: full.rubric, graded_by: sealed.graded_by, sealed: false }
           : { ...row, rubric: full.rubric, ...sealed };
