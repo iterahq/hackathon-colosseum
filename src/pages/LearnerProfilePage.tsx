@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { CapabilityGraphSection } from '@/components/graph/CapabilityGraphSection';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
@@ -72,6 +73,7 @@ export default function LearnerProfilePage() {
                 <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
               </div>
             </section>
+            {profile.capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={profile.capabilities} />}
             {profile.avatars.length > 0 && (
               <ul className="flex flex-wrap gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-3" aria-label={t('profile.avatars')} data-testid="profile-avatars">
                 {profile.avatars.map((a) => (

@@ -6,6 +6,7 @@ import PassportPage from '@/pages/PassportPage';
 import type { PassportMedal, PassportPageData } from '@/types/achievements';
 
 const view = vi.fn();
+vi.mock('@/components/graph/PassportGraph', () => ({ PassportGraph: ({ wallet }: { wallet: string | null }) => <div data-testid="passport-graph" data-wallet={wallet ?? ''} /> }));
 vi.mock('@/hooks/usePassportView', () => ({ usePassportView: () => view() }));
 vi.mock('@/hooks/useContent', () => ({ useUserStats: () => ({ data: { totalXp: 780, completedActivities: 20 } }) }));
 vi.mock('@/hooks/useWalletLink', () => ({ useWalletLink: () => ({ wallet: null, linked: false, pending: false, userId: 'u' }) }));
@@ -53,6 +54,12 @@ describe('PassportPage', () => {
     expect(screen.getByTestId('onchain-mark')).toHaveAttribute('href', expect.stringContaining('/tx/sig'));
     expect(screen.getByRole('button', { name: /Copiar link público/ })).toBeInTheDocument();
     expect(screen.queryByTestId('passport-no-wallet')).not.toBeInTheDocument();
+  });
+
+  it('mounts the capability graph with the learner wallet', () => {
+    view.mockReturnValue({ ...base, walletAddress: '7xKpQrstuvwxyz3Fa', pages: [page()], medals: [] });
+    show();
+    expect(screen.getByTestId('passport-graph')).toHaveAttribute('data-wallet', '7xKpQrstuvwxyz3Fa');
   });
 
   it('nothing earned: one empty page and the way to day 1', () => {

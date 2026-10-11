@@ -1,6 +1,7 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import '@/components/dashboard/dashboard.css';
+import { PassportGraph } from '@/components/graph/PassportGraph';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CopyButton } from '@/components/passport/CopyButton';
@@ -54,6 +55,7 @@ export default function PassportPage() {
             {t('passport.retry')}
           </button>
         )}
+        <PassportGraph wallet={view.walletAddress} />
         <section className="flex flex-col gap-5" aria-labelledby="passport-pages">
           <h2 id="passport-pages" className={H2}>
             {t('passport.pages')}
@@ -82,11 +84,6 @@ export default function PassportPage() {
           </h2>
           <MedalShelf medals={view.medals} color={color} size={96} />
         </section>
-        {view.walletAddress && (
-          <Link to={`/u/${view.walletAddress}`} className="self-start [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]" data-testid="passport-profile-link">
-            {t('profile.open')}
-          </Link>
-        )}
         {shared.length > 0 && (
           <section className="flex flex-col gap-3" aria-labelledby="passport-share">
             <h2 id="passport-share" className={H2}>

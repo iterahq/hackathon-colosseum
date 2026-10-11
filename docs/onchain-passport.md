@@ -414,3 +414,28 @@ goals of the catalog and, past them, only medals already earned.
   (security review, findings 1 and 3); they inherit those findings until they are fixed.
 - The learner's podium screen ranks the people the live room saw; the on-chain mark shows there only
   after a class that was really run and recorded.
+
+## Capability graph (claims proven by a stamped day)
+
+Migration `0180_claim_proofs.sql`; `_shared/capability-graph.ts`, `_shared/claims.ts`, `_shared/claims-store.ts`.
+
+- The model: each day of `itera-v2` proves one or two named **claims** ("Structures a page in semantic parts"),
+  28 in all, with prerequisite edges (a DAG authored from the published lessons, pt + en). Ids are stable and
+  never renamed once minted.
+- When `passport` stamps a day it records, per claim, an **evidence document** (`itera.claim_proofs.evidence`):
+  the JSON string `{v, issuer, claim, program, wallet, lesson_id, completed_at, activities: [[id, completed_at]…]}`.
+  Its SHA-256 is `evidence_hash`; a prefix (16 hex; 12 or 8 on an asset crowded with endorsements) is written
+  to the certification asset as the attribute `claim:<id>`, in the same `updatePlugin` that stamps the day.
+- The claims ride in `state.claims` through `restoreCosmetics` (and the shop's `loadPassport`), so every later
+  write of that asset (stamp, ink, frame, endorsement) keeps them. A minted certification whose claims have no
+  transaction yet gets one update on the next `passport` call: that is the backfill path
+  (`/tmp/hk/orch/graph-backfill.sh` ran it once for every minted certification on 2026-10-11).
+- `GET /learner-profile/<wallet>` gains `capabilities: { program, version, total, verified_count, next, trails, nodes }`.
+  A node is `verified` only when the asset read from chain in that request carries the claim, the asset passes
+  the same checks as a certification, and the chain value is a prefix of our evidence hash; `recorded` when only
+  our table has it; `open` otherwise. `GET /learner-profile/<wallet>/evidence/<claim>` serves the document.
+- The page `/u/<wallet>` does not trust that answer for its strongest label: the browser reads the asset account
+  from the devnet RPC itself (`src/lib/chainClaims.ts`), checks the Core program, the owner and the attribute, and
+  recomputes the SHA-256 of the evidence document. "Verified on chain" appears only after that.
+- What a claim proves is bounded by the trust model above: the evidence lists completions our database holds.
+  LANE PROOF's server grading is meant to extend the document (`v: 2`, attempt hashes per activity).

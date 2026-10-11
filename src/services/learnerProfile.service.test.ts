@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseProfile } from '@/services/learnerProfile.service';
+import { parseEvidence, parseProfile } from '@/services/learnerProfile.service';
 
 const body = {
   wallet: 'W1',
@@ -21,5 +21,42 @@ describe('parseProfile', () => {
   it('an unknown wallet is an empty profile', () => {
     const p = parseProfile({ wallet: 'W2', companion: null, certifications: [], medals: [] }, 'W2', 'pt');
     expect(p).toMatchObject({ companion: null, certifications: [], medals: [], verifiedCount: 0 });
+  });
+});
+
+describe('parseCapabilities', () => {
+  const caps = {
+    program: 'itera-v2', version: 1, total: 2, verified_count: 1, next: 'b',
+    trails: [{ trail: 0, title: 'Week 1' }],
+    nodes: [
+      { id: 'a', trail: 0, day: 1, title: 'A', requires: [], status: 'verified', proof: { asset: 'AS', attribute: 'claim:a', onchain_value: 'abcd', evidence_hash: 'abcd'.padEnd(64, '0'), tx_signature: 'sig', proven_at: '2026-10-11T00:00:00Z', asset_explorer_url: 'u1', tx_explorer_url: 'u2' } },
+      { id: 'b', trail: 0, day: 2, title: 'B', requires: ['a'], status: 'weird', proof: { asset: 'x' } },
+      { title: 'no id' },
+    ],
+  };
+
+  it('maps nodes and proofs to camelCase and drops malformed nodes', () => {
+    const c = parseProfile({ capabilities: caps }, 'W', 'en').capabilities;
+    expect(c).toMatchObject({ total: 2, verifiedCount: 1, next: 'b', program: 'itera-v2' });
+    expect(c?.nodes).toHaveLength(2);
+    expect(c?.nodes[0].proof).toMatchObject({ asset: 'AS', attribute: 'claim:a', onchainValue: 'abcd', txSignature: 'sig', assetExplorerUrl: 'u1' });
+  });
+
+  it('an unknown status is open and carries no proof', () => {
+    const c = parseProfile({ capabilities: caps }, 'W', 'en').capabilities;
+    expect(c?.nodes[1]).toMatchObject({ status: 'open', proof: null, requires: ['a'] });
+  });
+
+  it('a missing or empty capabilities block is null', () => {
+    expect(parseProfile({}, 'W', 'en').capabilities).toBeNull();
+    expect(parseProfile({ capabilities: { nodes: [] } }, 'W', 'en').capabilities).toBeNull();
+    expect(parseProfile({ capabilities: 'x' }, 'W', 'en').capabilities).toBeNull();
+  });
+});
+
+describe('parseEvidence', () => {
+  it('reads the evidence envelope and rejects an incomplete one', () => {
+    expect(parseEvidence({ wallet: 'W', claim: 'a', lesson_id: 'L', evidence: '{}', evidence_hash: 'h', tx_signature: 's', tx_explorer_url: 'u' })).toMatchObject({ claim: 'a', lessonId: 'L', evidence: '{}', evidenceHash: 'h' });
+    expect(parseEvidence({ wallet: 'W' })).toBeNull();
   });
 });

@@ -1,0 +1,95 @@
+.graph-medal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 9999px;
+  border: 2px solid #3a352f;
+  background: radial-gradient(circle at 50% 30%, #1d1a17, #141210 70%);
+  color: #6f675c;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.graph-node:hover .graph-medal,
+.graph-node:focus-visible .graph-medal {
+  transform: scale(1.07);
+}
+.graph-node:focus-visible {
+  outline: 2px solid #f4ede2;
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+[data-view='chain'] .graph-medal {
+  border-color: #3fd17f;
+  background: radial-gradient(circle at 50% 28%, #266e45, #0f2a1b 72%);
+  color: #8dffbc;
+  box-shadow: 0 0 0 4px rgba(63, 209, 127, 0.1), 0 0 30px rgba(63, 209, 127, 0.5), inset 0 0 16px rgba(63, 209, 127, 0.3);
+}
+[data-view='server'] .graph-medal {
+  border-color: #2fa766;
+  background: radial-gradient(circle at 50% 28%, #1d4f33, #112317 72%);
+  color: #6fe6a3;
+  box-shadow: 0 0 20px rgba(63, 209, 127, 0.25), inset 0 0 12px rgba(63, 209, 127, 0.18);
+}
+[data-view='checking'] .graph-medal {
+  border-color: #2fa766;
+  background: radial-gradient(circle at 50% 28%, #1a3a28, #112317 72%);
+  color: #4aa275;
+  animation: graph-breathe 1.6s ease-in-out infinite;
+}
+[data-view='recorded'] .graph-medal {
+  border-color: #f2c66d;
+  background: radial-gradient(circle at 50% 28%, #4a3a17, #211a0b 72%);
+  color: #f2c66d;
+  box-shadow: 0 0 22px rgba(242, 198, 109, 0.28), inset 0 0 12px rgba(242, 198, 109, 0.18);
+}
+[data-view='unconfirmed'] .graph-medal {
+  border: 2px dashed #f2c66d;
+  background: radial-gradient(circle at 50% 28%, #3a2e12, #1a1509 72%);
+  color: #f2c66d;
+}
+.graph-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 2px solid #3fd17f;
+  box-shadow: 0 0 18px rgba(63, 209, 127, 0.45);
+  animation: graph-ping 1.9s ease-out infinite;
+  pointer-events: none;
+}
+.graph-edge-flow {
+  animation: graph-flow 1.6s linear infinite;
+}
+.graph-sheet {
+  animation: graph-sheet-in 0.22s ease-out;
+}
+@keyframes graph-ping {
+  0% { transform: scale(0.94); opacity: 0.95; }
+  70% { transform: scale(1.16); opacity: 0.1; }
+  100% { transform: scale(1.16); opacity: 0; }
+}
+@keyframes graph-breathe {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+@keyframes graph-flow {
+  to { stroke-dashoffset: -22; }
+}
+@keyframes graph-sheet-in {
+  from { transform: translateY(28px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (min-width: 640px) {
+  .graph-sheet { animation-name: graph-panel-in; }
+}
+@keyframes graph-panel-in {
+  from { transform: translateX(28px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph-ring { animation: none; opacity: 0.9; }
+  .graph-edge-flow, .graph-sheet { animation: none; }
+  [data-view='checking'] .graph-medal { animation: none; }
+  .graph-medal { transition: none; }
+  .graph-node:hover .graph-medal, .graph-node:focus-visible .graph-medal { transform: none; }
+}

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { getLearnerProfile } from '@/services/learnerProfile.service';
+import { getClaimEvidence, getLearnerProfile } from '@/services/learnerProfile.service';
 
 /** The public profile of one wallet: component → hook → service → edge function. */
 export function useLearnerProfile(wallet: string, lang: 'pt' | 'en') {
@@ -10,5 +10,16 @@ export function useLearnerProfile(wallet: string, lang: 'pt' | 'en') {
     enabled: Boolean(wallet),
     retry: false,
     staleTime: 30_000,
+  });
+}
+
+/** The stored evidence behind one proven claim; fetched only when the detail panel asks for it. */
+export function useClaimEvidence(wallet: string, claimId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.achievements.evidence(wallet, claimId ?? ''),
+    queryFn: () => getClaimEvidence(wallet, claimId ?? ''),
+    enabled: Boolean(wallet && claimId),
+    retry: false,
+    staleTime: 5 * 60_000,
   });
 }
