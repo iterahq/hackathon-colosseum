@@ -11,6 +11,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { loginWithDfl } from '@/auth/dflFederation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { WebOnly } from '@/components/shell/WebOnly';
+import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
 import { returnPathOf, returnState } from '@/lib/loginReturn';
 import { isGuestAccessToken } from '@/services/guestSession.service';
@@ -122,6 +123,9 @@ export default function AuthPage() {
             {t('door.noWallet.install')}
           </a>
           <p className="text-xs text-muted-foreground">{t('door.noWallet.others')}</p>
+          <Link to={TRY_PATH} className="text-center text-sm font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="try-first-lesson">
+            {t('door.noWallet.tryFirst')}
+          </Link>
           <Button type="button" variant="outline" className="min-h-11 w-full" disabled={busy} onClick={() => void onWallet()} data-testid="web3-solana">
             {t('door.wallet.continue', { wallet: 'Phantom' })}
           </Button>

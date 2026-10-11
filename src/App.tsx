@@ -89,6 +89,7 @@ const BountyPage = lazy(() => import("./pages/BountyPage"));
 const BountyManagePage = lazy(() => import("./pages/BountyManagePage"));
 const BountyPostPage = lazy(() => import("./pages/BountyPostPage"));
 const BountyMinePage = lazy(() => import("./pages/BountyMinePage"));
+const TryLessonPage = lazy(() => import("./pages/TryLessonPage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 /* Telemetry (Sentry + OpenTelemetry, ~600 KB minified) is fetched only when it is on: the hackathon build sets
@@ -333,6 +334,8 @@ const App = () => (
                   }
                 />
                 {/* Public credential check: anyone with the link, no session, no app shell. */}
+                {/* The first lesson with no account: public, graded by the server, kept in the browser until a sign-in. */}
+                <Route path="/try" element={<LazyRoute><TryLessonPage /></LazyRoute>} />
                 <Route path="/c/:asset" element={<LazyRoute><CredentialPage /></LazyRoute>} />
                 {/* Tera's world: public lore page, readable without a session. */}
                 <Route path="/world" element={<LazyRoute><WorldPage /></LazyRoute>} />
