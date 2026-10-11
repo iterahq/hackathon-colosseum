@@ -113,3 +113,7 @@ verify_jwt = false
 # Server-side grading: the only writer of a completion. Validates the bearer token itself.
 [functions.grade]
 verify_jwt = false
+
+# Permanent copies of a credential on Arweave, signed by the mint authority. Public: GET lists, POST uploads what is new.
+[functions.credential-archive]
+verify_jwt = false
