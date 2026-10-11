@@ -3,6 +3,7 @@ import { CLUSTER, explorerUrl } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { DROP_LAMPORTS, MAX_CLAIMS, claimStep, faucetMemo, unconfirmedStep, withinDailyBudget, type ClaimRow } from '../_shared/faucet.ts';
 import { corsHeaders, json } from '../_shared/http.ts';
+import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 import { RENT_EXEMPT_MIN_LAMPORTS, fundsCheck } from '../_shared/purchase-verify.ts';
 import { RpcError, balanceOf, rpcUrl } from '../_shared/rpc.ts';
 import { TransferBroadcastError, TreasuryNotConfiguredError, sendFromTreasury, signatureFate } from '../_shared/treasury.ts';
@@ -47,6 +48,9 @@ async function send(db: IteraClient, wallet: string): Promise<{ signature: strin
   }
 }
 
+/** The learner and wallet limits live in the airdrop table; this one caps what a single address may ask. */
+const RATE = { limit: 20, windowMs: 60_000 };
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'app');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -54,7 +58,8 @@ Deno.serve(async (request) => {
 
   try {
     const db = serviceClient();
-    const caller = await resolveCaller(db, request);
+    const [caller, verdict] = await Promise.all([resolveCaller(db, request), takeRate(db, 'wallet-faucet', callerAddress(request), RATE)]);
+    if (!verdict.allowed) return tooMany(verdict, cors);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
     const blocked = (reason: string) => json({ blocked: reason }, 200, cors);
     if (!caller.wallet) return blocked('no_wallet');

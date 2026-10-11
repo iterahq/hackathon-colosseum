@@ -7,9 +7,13 @@ import { THEME_KINDS, borderOf, isThemeDefault, themeColor } from '../_shared/cr
 import { loadConfig, serviceClient } from '../_shared/db.ts';
 import { SHOP_ACCEPT_KEY, parseAccept, resolvedCurrencies } from '../_shared/shop-accept.ts';
 import { bearerToken, corsHeaders, json, langOf } from '../_shared/http.ts';
+import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 import { ITEM_COLUMNS, type ShopItem } from '../_shared/shop-items.ts';
 import { isItemKind } from '../_shared/shop-rules.ts';
 import { unlockLevelOf, unlockView } from '../_shared/unlock.ts';
+
+/** The list is readable with no session, and every call is several reads: one address gets two a second. */
+const RATE = { limit: 120, windowMs: 60_000 };
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'app', 'GET, OPTIONS');
@@ -20,9 +24,9 @@ Deno.serve(async (request) => {
     const db = serviceClient();
     const lang = langOf(request, 'pt');
     // Everything that does not depend on another read starts together: the items, the avatar catalog and
-    // supply (read fresh: the shop is where a newly inserted avatar has to show up at once), the caller, the config.
-    // A missing or foreign token (the anon key a client sends by default) just means "nobody signed in".
-    const [itemsResult, avatarsResult, caller, config] = await Promise.all([
+    // supply (read fresh: the shop is where a newly inserted avatar has to show up at once), the caller, the config,
+    // the rate counter. A missing or foreign token (the anon key a client sends by default) just means "nobody signed in".
+    const [itemsResult, avatarsResult, caller, config, verdict] = await Promise.all([
       db.from('shop_items').select(ITEM_COLUMNS).eq('active', true).order('sort').order('key'),
       Promise.all([loadAvatarCatalog(db, true), loadSupply(db)]).then(
         ([catalog, supply]) => ({ catalog, supply }),
@@ -34,7 +38,9 @@ Deno.serve(async (request) => {
       ),
       bearerToken(request) ? resolveCaller(db, request) : Promise.resolve(null),
       loadConfig(db),
+      takeRate(db, 'shop-items', callerAddress(request), RATE),
     ]);
+    if (!verdict.allowed) return tooMany(verdict, cors);
     const { data, error } = itemsResult;
     if (error) throw new Error(`shop_items: ${error.message}`);
     const shelf = (data ?? []) as ShopItem[];
