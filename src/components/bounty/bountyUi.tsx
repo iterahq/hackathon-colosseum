@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { DEVNET_BADGE, FOCUS, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
 import { useBountySession } from '@/hooks/useBounties';
+import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import { statusTone, type StatusTone } from '@/utils/bounty';
@@ -110,7 +111,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
 }
 
 export function BountyHeaderLinks() {
-  const { t, toggleLocale } = useI18n();
+  const { t } = useI18n();
   const { signedIn } = useBountySession();
   return (
     <div className="flex items-center gap-2">
@@ -120,9 +121,7 @@ export function BountyHeaderLinks() {
       <Link to={signedIn ? '/' : '/login'} className={`inline-flex h-11 items-center rounded-full border border-[#2E2A25] px-3.5 [font:700_13px_JetBrains_Mono] text-[#F4EDE2] hover:border-[#3FD17F] ${FOCUS}`}>
         {signedIn ? t('bounty.nav.app') : t('bounty.nav.signIn')}
       </Link>
-      <button type="button" onClick={toggleLocale} className={`inline-flex h-11 items-center rounded-full border border-[#262320] px-3.5 [font:500_13px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] ${FOCUS}`}>
-        {t('dash.nav.language')}
-      </button>
+      <HeaderLocale size="lg" />
     </div>
   );
 }

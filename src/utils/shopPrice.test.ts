@@ -24,3 +24,13 @@ describe('shop price', () => {
     expect(priceLabel('', 30, 0)).toBe('US$ 0.30');
   });
 });
+
+describe('localizePriceLabel', () => {
+  it('turns the backend US$ shape into Portuguese separators and leaves English alone', async () => {
+    const { localizePriceLabel } = await import('./shopPrice');
+    expect(localizePriceLabel('US$ 1,000.00 ≈ 0.5 SOL', 'pt')).toBe('US$ 1.000,00 ≈ 0.5 SOL');
+    expect(localizePriceLabel('US$ 1.00', 'pt')).toBe('US$ 1,00');
+    expect(localizePriceLabel('US$ 1,000.00', 'en')).toBe('US$ 1,000.00');
+    expect(localizePriceLabel('100 000 cristais', 'pt')).toBe('100 000 cristais');
+  });
+});

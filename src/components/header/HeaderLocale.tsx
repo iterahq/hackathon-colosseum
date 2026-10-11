@@ -1,4 +1,5 @@
 import { useI18n, type Locale } from '@/i18n';
+import './header.css';
 
 interface Props {
   /** `lg` gives the 44px touch targets of the phone menu. */

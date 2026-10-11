@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { useI18n } from '@/i18n';
+import { localizePriceLabel } from '@/utils/shopPrice';
 import type { ShopItem } from '@/types/shop';
 import type { ItemAction } from '@/types/shopView';
 import { shortPrice } from './avatarRows';
@@ -56,7 +57,7 @@ export function PayButtons({ item, action, testId, labels = 'short', walletLabel
   const short = ctx?.balance != null && ctx.balance < (item.priceCrystals ?? 0);
   const reason = short ? t('shop.pay.short', { balance: formatCount(ctx?.balance ?? 0, locale), price: priceN }) : undefined;
   const wallet = solEnabled(item) || !crystals;
-  const price = shortPrice(item.priceLabel);
+  const price = localizePriceLabel(shortPrice(item.priceLabel), locale);
   const key = `${BTN_PRIMARY} !min-h-9 min-w-0 flex-1 whitespace-nowrap !px-1.5 ![font:700_12px_Inter] ${keyClass}`;
   const walletText = !crystals ? walletLabel : labels === 'full' ? t('shop.pay.wallet', { price }) : labels === 'mid' ? t('shop.pay.walletMid', { price }) : price;
   const crystalText = labels === 'full' ? t('shop.pay.crystals', { n: priceN }) : labels === 'mid' ? t('shop.pay.crystalsMid', { n: priceN }) : t('shop.pay.crystalsShort', { n: priceN });
