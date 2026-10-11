@@ -95,6 +95,10 @@ verify_jwt = false
 [functions.bounty-board]
 verify_jwt = false
 
+# The escrow program refusing a wallet, for anyone to watch (/verify#gate). Public, rate limited in code.
+[functions.gate-check]
+verify_jwt = false
+
 [functions.bounty-action]
 verify_jwt = false
 

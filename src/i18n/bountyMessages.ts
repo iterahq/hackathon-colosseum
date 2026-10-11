@@ -337,7 +337,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.post.trust':
       'Sua carteira financia o escrow, é o endereço de devolução e a única chave que pode aprovar. As chaves da Itera não movem este dinheiro. Se ninguém entregar até o prazo, a recompensa volta para a sua carteira.',
     'bounty.post.limitsReward': 'Recompensa de {min} a {max} SOL.',
-    'bounty.post.limitsCost': 'Além da recompensa você paga o aluguel do escrow ({rent} SOL) e a taxa de rede ({fee} SOL).',
+    'bounty.post.limitsCost': 'Além da recompensa você paga o aluguel do escrow ({rent} SOL) e a taxa de rede ({fee} SOL). Numa devolução a recompensa volta; o aluguel não volta: ele fica na conta do escrow, que continua na chain como registro público da missão.',
     'bounty.post.limitsFee': 'Além da recompensa você paga a taxa de rede ({fee} SOL).',
     'bounty.post.limitsPerDay.one': 'Até {n} missão nova por dia.',
     'bounty.post.limitsPerDay.many': 'Até {n} missões novas por dia.',
@@ -378,7 +378,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.post.err.fix': 'Corrija os campos marcados.',
     'bounty.post.cost': 'Quanto sai da sua carteira',
     'bounty.post.cost.reward': 'Recompensa',
-    'bounty.post.cost.rent': 'Aluguel do escrow',
+    'bounty.post.cost.rent': 'Aluguel do escrow (não volta na devolução)',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.post.cost.rentUnknown': 'A carteira mostra o aluguel antes de você assinar.',
     'bounty.post.cost.fee': 'Taxa',
@@ -460,7 +460,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.mine.paidTx': 'Ver o pagamento',
     'bounty.mine.paidDone': 'Pago. O escrow liberou a recompensa.',
-    'bounty.mine.refunded': 'Valor devolvido para a sua carteira.',
+    'bounty.mine.refunded': 'Recompensa devolvida para a sua carteira. O aluguel do escrow ficou na conta, na chain.',
     'bounty.mine.refundedDone': 'Devolvido para a sua carteira.',
     'bounty.mine.refundTx': 'Ver a devolução',
     'bounty.mine.expired': 'Expirada.',
@@ -468,7 +468,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.mine.hidden': 'Escondida do quadro pela moderação da Itera: {reason}. O seu dinheiro está intacto; você pode pedir de volta.',
     'bounty.mine.hiddenNoReason': 'sem motivo informado',
     'bounty.mine.refund': 'Devolver para a minha carteira',
-    'bounty.mine.refundConfirm': 'Devolver o valor travado para a sua carteira? A missão será encerrada.',
+    'bounty.mine.refundConfirm': 'Devolver a recompensa travada para a sua carteira? A missão será encerrada. O aluguel do escrow não volta: fica na conta, na chain.',
     'bounty.mine.refundYes': 'Sim, devolver',
     'bounty.mine.cancel': 'Voltar',
     'bounty.mine.fundedDone': 'Travado. A missão está no ar.',
@@ -824,7 +824,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.post.trust':
       "Your wallet funds the escrow, is its refund address and is the only key that can approve. Itera's keys cannot move this money. If nobody delivers by the deadline, the reward returns to your wallet.",
     'bounty.post.limitsReward': 'Reward from {min} to {max} SOL.',
-    'bounty.post.limitsCost': 'On top of the reward you pay the escrow rent ({rent} SOL) and the network fee ({fee} SOL).',
+    'bounty.post.limitsCost': 'On top of the reward you pay the escrow rent ({rent} SOL) and the network fee ({fee} SOL). A refund returns the reward; the rent is not refunded: it stays in the escrow account, which remains on chain as the public record of the bounty.',
     'bounty.post.limitsFee': 'On top of the reward you pay the network fee ({fee} SOL).',
     'bounty.post.limitsPerDay.one': 'Up to {n} new bounty a day.',
     'bounty.post.limitsPerDay.many': 'Up to {n} new bounties a day.',
@@ -865,7 +865,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.post.err.fix': 'Fix the marked fields.',
     'bounty.post.cost': 'What leaves your wallet',
     'bounty.post.cost.reward': 'Reward',
-    'bounty.post.cost.rent': 'Escrow rent',
+    'bounty.post.cost.rent': 'Escrow rent (not refunded)',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.post.cost.rentUnknown': 'Your wallet shows the rent before you sign.',
     'bounty.post.cost.fee': 'Fee',
@@ -947,7 +947,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.mine.paidTx': 'View the payment',
     'bounty.mine.paidDone': 'Paid. The escrow released the reward.',
-    'bounty.mine.refunded': 'The money was returned to your wallet.',
+    'bounty.mine.refunded': 'The reward was returned to your wallet. The escrow rent stayed in the account, on chain.',
     'bounty.mine.refundedDone': 'Returned to your wallet.',
     'bounty.mine.refundTx': 'View the refund',
     'bounty.mine.expired': 'Expired.',
@@ -955,7 +955,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.mine.hidden': 'Hidden from the board by Itera moderation: {reason}. Your money is untouched; you can refund it.',
     'bounty.mine.hiddenNoReason': 'no reason given',
     'bounty.mine.refund': 'Refund to my wallet',
-    'bounty.mine.refundConfirm': 'Return the locked money to your wallet? The bounty will be closed.',
+    'bounty.mine.refundConfirm': 'Return the locked reward to your wallet? The bounty will be closed. The escrow rent is not refunded: it stays in the account, on chain.',
     'bounty.mine.refundYes': 'Yes, refund',
     'bounty.mine.cancel': 'Back',
     'bounty.mine.fundedDone': 'Locked. The bounty is live.',
