@@ -44,7 +44,8 @@ interface Metadata {
  * was copied from. Keys keep one order: the same facts give the same bytes.
  */
 export function archivedMetadata(metadata: Metadata, input: { asset: string; cluster: string; liveUri: string; imageId: string; imageSha256: string }): string {
-  const image = `${ARWEAVE_GATEWAYS[1]}/${input.imageId}`;
+  // The gateway that serves bundled items today; the id is the same on every gateway.
+  const image = `${ARWEAVE_GATEWAYS[0]}/${input.imageId}`;
   return JSON.stringify({
     ...metadata,
     image,

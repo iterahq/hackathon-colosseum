@@ -29,8 +29,8 @@ describe('archivedMetadata', () => {
 
   it('points the picture at the archived copy, so the copy depends on nothing of ours', () => {
     const parsed = JSON.parse(text);
-    expect(parsed.image).toBe('https://arweave.net/IMG');
-    expect(parsed.properties.files).toEqual([{ uri: 'https://arweave.net/IMG', type: 'image/svg+xml' }]);
+    expect(parsed.image).toBe('https://turbo-gateway.com/IMG');
+    expect(parsed.properties.files).toEqual([{ uri: 'https://turbo-gateway.com/IMG', type: 'image/svg+xml' }]);
     expect(text).not.toContain('image.svg');
   });
 
