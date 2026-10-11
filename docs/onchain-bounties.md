@@ -35,6 +35,8 @@ sponsor ── create ──► bounty (awaiting_funding) ── fund ──► 
 | `supabase/functions/bounty-claim` | Learner (JWT): status, accept, submit, withdraw |
 | `supabase/functions/bounty-sponsor` | Staff (JWT): list, create, fund from treasury, approve, reject, refund |
 | `supabase/functions/bounty-action` | Solana Action (blink): any wallet funds a bounty's escrow account |
+| `supabase/functions/bounty-post` | Any wallet (JWT): post a bounty, the transactions it signs to fund / approve / refund, reject, report |
+| `db/migrations/0240_bounty_wallet_sponsors.sql` | `origin`, `sponsor_wallet`, `approver_address`, English slugs, moderation, reports |
 | `docs/hackathon/bounties-seed.json` | The four bounties DevFellowship posted |
 
 ## Escrow
@@ -95,6 +97,46 @@ custodial escrow with a public ledger, and the UI says so on those bounties.
 
 Currency is **devnet SOL**. Devnet USDC only comes from a captcha faucet, which neither the sponsor nor a
 judge can refill on demand.
+
+## Bounties posted by any wallet (`origin = wallet`)
+
+`/bounties/post` is open to any signed-in wallet; `/bounties/mine` is that wallet's console. Function: `bounty-post`.
+
+- **Who holds what.** The escrow account is created by a transaction whose only signer is the sponsor's wallet. The
+  program records that wallet as `sponsor` (the refund destination) **and** as `approver` (the only key `release`
+  accepts). The Itera treasury key is in no instruction that moves this money. The server builds unsigned
+  transactions (`fund_tx`, `approve_tx`, `refund_tx`) and reads the escrow account afterwards (`confirm`); a request
+  never says what happened, the account does.
+- **Accept** needs the learner's signature plus an attester (the bounty's approver or the Itera treasury as
+  `ITERA_ATTESTER`): the sponsor is offline when a learner accepts, and the attester is how the server's "enough
+  stamped days" check stays unskippable. The attester cannot move money. See "Trust model".
+- **Payout.** The sponsor's wallet signs `release` in the browser. `recordWalletPayout` then writes the approval and
+  the payout from what the account says (also on any read of the board, so a closed tab loses nothing).
+- **Refund.** The sponsor's wallet signs `refund` at any time while nobody holds the bounty. Past `expires_at` the
+  program lets anyone send the money back to the recorded sponsor, which is how the ten-minute sweep returns an
+  outside sponsor's money without holding authority over it (`onchain_config.bounty_escrow_version = 2`).
+- **Abuse limits** (`_shared/bounty.ts`): reward 0.01 to 0.5 SOL, 3 posts a day and 5 live bounties per wallet,
+  deadline up to 30 days, hold up to 168 hours, text lengths, control and direction characters stripped, names of the
+  team refused. A wallet's bounty reaches the public board only once its escrow is funded. Any signed-in user can
+  report a bounty (`itera.bounty_reports`); Itera's staff hides or restores it in `/bounties/manage`
+  (`bounty-sponsor` `moderation` / `hide` / `unhide`). Hiding moves no money: the sponsor can still refund.
+- **The team's own bounties** keep `origin = team`: posted by staff, funded from the treasury, approved by the
+  treasury key, and labelled "posted by the Itera team" on the board.
+
+### Counters and rehearsals
+
+The three numbers above the board (`stats` of `GET /bounty-board`) are counted from the same rows the cards are drawn
+from, after the escrow accounts were read: a card that says PAID is in `paid_count`. A bounty whose payout went to an
+account in `itera.test_accounts` is a **rehearsal**: it is counted, `rehearsal_paid_count` says how many of the paid
+ones are rehearsals, the card and the page carry a "team rehearsal" label, and `delivery_mirror_url` points to a copy
+of the delivery hosted on the site (`public/rehearsal/`) so the link opens for anyone. The landing page reads the
+same `stats`.
+
+### Holds
+
+A learner who accepts holds the bounty for `claim_hours` (two hours on the one-day starter bounties, of which there
+are three so one visitor cannot lock the demo). The page says who holds it and until when. When the time runs out
+the next read of the board or of the page releases it (`expireStaleClaims`).
 
 ## The capability gate
 
@@ -315,6 +357,7 @@ Run from a clone (devnet; credentials of the hackathon project in the environmen
 source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN
 node scripts/hackathon/bounty-program-e2e.mjs   # the escrow program called directly, 27 checks, ~0.006 SOL of the treasury
 node scripts/hackathon/bounty-e2e.mjs           # the whole flow through the API, 52 checks, ~0.02 SOL (authority + treasury)
+node scripts/hackathon/bounty-wallet-sponsor-e2e.mjs  # a bounty posted, funded and refunded by an outside wallet, 32 checks, 0.05 SOL of the authority
 ```
 
 Both need Node 22.18 or newer (they import the functions' TypeScript modules as they are). Each header lists its
