@@ -21,7 +21,7 @@ export function LandingLiveStats() {
   const readAt = readAtLabel([board.data?.readAt, counter?.asOf], locale);
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" data-testid="landing-stats">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="landing-stats">
         {(board.isPending || stats) && (
           <>
             <LandingStat value={stats ? stats.openCount : null} label={t('landing.live.bountiesOpen')} />

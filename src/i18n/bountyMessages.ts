@@ -27,7 +27,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.card.langPt': 'Escrita em português',
     'bounty.card.langEn': 'Escrita em inglês',
     'bounty.stats.locked': 'Travado em escrow',
-    'bounty.stats.lockedHint': 'Guardado on-chain, esperando o trabalho.',
+    'bounty.stats.lockedHint': 'Guardado na chain, esperando o trabalho.',
     'bounty.stats.paid': 'Já pago',
     'bounty.stats.open': 'Missões abertas',
     'bounty.stats.openHint': 'Prontas para aceitar agora.',
