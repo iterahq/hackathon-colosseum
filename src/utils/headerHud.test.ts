@@ -48,6 +48,8 @@ describe('walletOf', () => {
 describe('activeNavOf', () => {
   it('maps each learner route to its tab', () => {
     expect(activeNavOf('/')).toBe('trails');
+    expect(activeNavOf('/bounties')).toBe('bounties');
+    expect(activeNavOf('/bounties/some-slug')).toBe('bounties');
     expect(activeNavOf('/catalog')).toBe('courses');
     expect(activeNavOf('/program/itera-v2')).toBe('courses');
     expect(activeNavOf('/course/react-do-zero')).toBe('courses');

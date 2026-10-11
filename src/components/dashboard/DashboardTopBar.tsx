@@ -47,9 +47,9 @@ export function DashboardTopBar(_props: Props) {
             </Link>
             <HeaderNav active={active} />
           </div>
-          <div className="flex min-w-0 flex-1 justify-end">
-            {/* From 1536 px the field sits on the middle of the page; below that it stays in the flow so the six nav entries never run under it. */}
-            <HeaderSearch className="max-sm:hidden min-[1536px]:absolute min-[1536px]:left-[calc(50%-120px)] min-[1536px]:top-3 min-[1536px]:w-[240px]" />
+          {/* Always in the flow, at every width: an absolutely centred field ran over the sixth nav entry on wide screens. */}
+          <div className="flex min-w-0 flex-1 justify-end min-[1536px]:justify-center">
+            <HeaderSearch className="max-sm:hidden" />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <HeaderLocale className="max-sm:hidden" />

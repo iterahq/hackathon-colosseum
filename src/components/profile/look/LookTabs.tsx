@@ -23,7 +23,7 @@ export function LookTabs({ tab, counts, onTab }: Props) {
     refs.current[LOOK_TABS[next]]?.focus();
   };
   return (
-    <div role="tablist" aria-label={t('avatar.look.tabs')} onKeyDown={onKey} className="flex gap-1 rounded-[14px] border border-[#262320] bg-[#0F0D0B] p-1" data-testid="look-tabs">
+    <div role="tablist" aria-label={t('avatar.look.tabs')} onKeyDown={onKey} className="flex w-full min-w-0 gap-1 rounded-[14px] border border-[#262320] bg-[#0F0D0B] p-1" data-testid="look-tabs">
       {LOOK_TABS.map((id) => (
         <button
           key={id}
@@ -36,10 +36,10 @@ export function LookTabs({ tab, counts, onTab }: Props) {
           tabIndex={tab === id ? 0 : -1}
           onClick={() => onTab(id)}
           data-testid={`look-tab-${id}`}
-          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 font-sans text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F] ${tab === id ? 'bg-[#262320] text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'}`}
+          className={`flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-[10px] px-1.5 font-sans text-[13px] font-semibold sm:gap-1.5 sm:px-2 sm:text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F] ${tab === id ? 'bg-[#262320] text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'}`}
         >
-          {t(`avatar.look.tab.${id}`)}
-          <span className="font-mono text-[11px] text-[#A0978A]">{counts[id]}</span>
+          <span className="min-w-0 truncate">{t(`avatar.look.tab.${id}`)}</span>
+          <span className="shrink-0 font-mono text-[11px] text-[#A0978A]">{counts[id]}</span>
         </button>
       ))}
     </div>

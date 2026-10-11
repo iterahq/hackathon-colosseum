@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { DEVNET_BADGE, FOCUS, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
 import { useBountySession } from '@/hooks/useBounties';
@@ -126,17 +127,26 @@ export function BountyHeaderLinks() {
   );
 }
 
+/**
+ * The frame of the bounty pages. A signed-in learner keeps the app's own top bar (nav, lives, identity);
+ * a visitor with no session gets the small public header, like the other public pages.
+ */
 export function BountyShell({ children, width = 960 }: { children: ReactNode; width?: 960 | 720 }) {
+  const { signedIn } = useBountySession();
   const max = width === 720 ? 'max-w-[720px]' : 'max-w-[960px]';
   return (
     <div className="min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="bounty-page">
-      <header className={`mx-auto flex h-16 ${max} items-center justify-between px-4 sm:px-8`}>
-        <Link to="/" className={`rounded [font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2] ${FOCUS}`}>
-          ITERA<span className="text-[#3FD17F]">/</span>
-        </Link>
-        <BountyHeaderLinks />
-      </header>
-      <main className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 pb-16 pt-4 sm:pt-8`}>{children}</main>
+      {signedIn ? (
+        <DashboardTopBar xp={null} achievements={null} activities={null} />
+      ) : (
+        <header className={`mx-auto flex h-16 ${max} items-center justify-between px-4 sm:px-8`}>
+          <Link to="/" className={`rounded [font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2] ${FOCUS}`}>
+            ITERA<span className="text-[#3FD17F]">/</span>
+          </Link>
+          <BountyHeaderLinks />
+        </header>
+      )}
+      <main className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 pt-4 sm:px-8 sm:pt-8 ${signedIn ? 'pb-28 sm:pb-16' : 'pb-16'}`}>{children}</main>
     </div>
   );
 }

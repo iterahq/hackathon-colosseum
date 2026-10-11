@@ -51,6 +51,7 @@ describe('RouteErrorBoundary', () => {
     );
     const first = render(ui);
     expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('route-error')).not.toBeInTheDocument();
     first.unmount();
     render(ui);
     expect(reload).toHaveBeenCalledTimes(1);

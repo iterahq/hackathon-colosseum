@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useI18n } from '@/i18n';
+import { TeraLoader } from './TeraLoader';
 import { TERA_BUTTON, TeraNote } from './TeraNote';
 
 interface BoundaryProps {
@@ -38,20 +39,24 @@ function reloadOnceForStaleChunk(error: Error, resetKey: string, reload: () => v
   return true;
 }
 
-class Boundary extends Component<BoundaryProps, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+class Boundary extends Component<BoundaryProps, { failed: boolean; reloading: boolean }> {
+  state = { failed: false, reloading: false };
+  // A stale chunk is about to be answered by a reload: the loader stays up instead of flashing the error page.
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, reloading: isStaleChunkError(error) };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[route] render failed:', error.message, info.componentStack);
-    reloadOnceForStaleChunk(error, this.props.resetKey, this.props.reload);
+    const reloading = reloadOnceForStaleChunk(error, this.props.resetKey, this.props.reload);
+    if (!reloading && this.state.reloading) this.setState({ reloading: false });
   }
   componentDidUpdate(prev: BoundaryProps) {
-    if (this.state.failed && prev.resetKey !== this.props.resetKey) this.setState({ failed: false });
+    if (this.state.failed && prev.resetKey !== this.props.resetKey) this.setState({ failed: false, reloading: false });
   }
   render() {
-    return this.state.failed ? this.props.fallback(() => this.setState({ failed: false })) : this.props.children;
+    if (!this.state.failed) return this.props.children;
+    if (this.state.reloading) return <TeraLoader fullScreen />;
+    return this.props.fallback(() => this.setState({ failed: false, reloading: false }));
   }
 }
 
