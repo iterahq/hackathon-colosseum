@@ -1,11 +1,12 @@
 /**
  * A bounty's escrow account as the escrow program wrote it (`programs/bounty-escrow/src/lib.rs`),
- * decoded from its raw bytes in the browser. 195 bytes, fixed offsets.
+ * decoded from its raw bytes in the browser. Two layouts, fixed offsets: 195 bytes (tag 1) and, for a gated bounty, 228 bytes (tag 2).
  */
 import { base58Encode } from '@/lib/chain/base58';
 
 export const ESCROW_PROGRAM = 'ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq';
 export const ESCROW_STATE_BYTES = 195;
+export const GATED_ESCROW_STATE_BYTES = 228;
 export const ESCROW_STATUSES = ['open', 'claimed', 'paid', 'refunded'] as const;
 export type EscrowStatus = (typeof ESCROW_STATUSES)[number];
 
@@ -24,7 +25,21 @@ export const ESCROW_LAYOUT = [
   { field: 'certification', offset: 163, length: 32 },
 ] as const;
 
+/** The fields a gated account adds after the 195 common bytes. */
+export const GATED_ESCROW_LAYOUT = [
+  ...ESCROW_LAYOUT,
+  { field: 'min days', offset: 195, length: 1 },
+  { field: 'trail', offset: 196, length: 32 },
+] as const;
+
+export interface EscrowGate {
+  minDays: number;
+  /** sha256(program attribute, line feed, trail attribute), hex. */
+  trail: string;
+}
+
 export interface EscrowAccount {
+  gate: EscrowGate | null;
   status: EscrowStatus;
   bountyId: string;
   sponsor: string;
@@ -39,12 +54,15 @@ export interface EscrowAccount {
 const NO_KEY = '11111111111111111111111111111111';
 
 export function parseEscrowAccount(data: Uint8Array): EscrowAccount | null {
-  if (data.length !== ESCROW_STATE_BYTES || data[0] !== 1 || data[2] >= ESCROW_STATUSES.length) return null;
+  const gated = data.length === GATED_ESCROW_STATE_BYTES && data[0] === 2;
+  if (!gated && (data.length !== ESCROW_STATE_BYTES || data[0] !== 1)) return null;
+  if (data[2] >= ESCROW_STATUSES.length) return null;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const keyAt = (offset: number) => base58Encode(data.subarray(offset, offset + 32));
   const optional = (offset: number) => (keyAt(offset) === NO_KEY ? null : keyAt(offset));
   const id = [...data.subarray(3, 19)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
   return {
+    gate: gated ? { minDays: data[195], trail: [...data.subarray(196, 228)].map((byte) => byte.toString(16).padStart(2, '0')).join('') } : null,
     status: ESCROW_STATUSES[data[2]],
     bountyId: `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`,
     sponsor: keyAt(19),

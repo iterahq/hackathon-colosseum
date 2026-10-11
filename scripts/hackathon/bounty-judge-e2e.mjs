@@ -36,7 +36,7 @@ const account = await escrow(judge.escrow.address);
 check('its escrow account is open on chain, gated: 1 stamped day in its own terms, and the page says the program checks the days', account?.status === 'open' && account.gate?.minDays === 1 && judge.escrow.days_checked_by === 'program');
 
 const learner = await login(wallet(`judge-${Date.now().toString(36)}`));
-await sql(`insert into itera.test_accounts (user_id) select i.user_id from itera.identities i where i.provider_subject = '${learner.authUid}' on conflict do nothing`);
+await sql(`insert into itera.test_accounts (user_id, reason) select i.user_id, 'bounty-judge-e2e' from itera.identities i where i.provider_subject = '${learner.authUid}' on conflict do nothing`);
 console.log(`learner ${learner.address} (tagged as a team test account by id)`);
 check('the wallet is new: 0 SOL', (await balance(learner.address)) === 0);
 

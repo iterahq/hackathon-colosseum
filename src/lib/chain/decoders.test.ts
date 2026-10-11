@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { base58Encode, hex, looksLikeAddress, sha256Hex } from '@/lib/chain/base58';
 import { attributeOf, parseCoreAsset } from '@/lib/chain/coreAsset';
-import { ESCROW_LAYOUT, ESCROW_STATE_BYTES, parseEscrowAccount } from '@/lib/chain/escrowAccount';
+import { ESCROW_LAYOUT, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES, parseEscrowAccount } from '@/lib/chain/escrowAccount';
 import { ASSET_BASE64, ESCROW_BASE64, PROGRAM_BASE64, PROGRAM_DATA_HEADER_BASE64 } from '@/lib/chain/fixtures';
 import { parseProgramDataHeader, programDataAddress } from '@/lib/chain/programData';
 import { curlFor } from '@/lib/chain/rpc';
@@ -43,6 +43,7 @@ describe('parseCoreAsset (a real certification from devnet)', () => {
 describe('parseEscrowAccount (a real bounty escrow from devnet)', () => {
   it('reads the state the program wrote', () => {
     expect(parseEscrowAccount(bytes(ESCROW_BASE64))).toEqual({
+      gate: null,
       status: 'open',
       bountyId: '537f05d1-2f95-4963-b61f-c86c274521f0',
       sponsor: 'AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA',
@@ -69,6 +70,33 @@ describe('parseEscrowAccount (a real bounty escrow from devnet)', () => {
     const data = bytes(ESCROW_BASE64);
     data[2] = 9;
     expect(parseEscrowAccount(data)).toBeNull();
+  });
+
+  it('reads a gated account of 228 bytes: the common fields, the minimum days and the trail hash', () => {
+    const data = new Uint8Array(GATED_ESCROW_STATE_BYTES);
+    data.set(bytes(ESCROW_BASE64));
+    data[0] = 2;
+    data[195] = 3;
+    data.set(new Uint8Array(32).fill(0xab), 196);
+    const state = parseEscrowAccount(data);
+    expect(state?.gate).toEqual({ minDays: 3, trail: 'ab'.repeat(32) });
+    expect(state?.lamports).toBe(30_000_000n);
+    expect(state?.status).toBe('open');
+  });
+
+  it('refuses a length that does not match its tag', () => {
+    const gatedLength = new Uint8Array(GATED_ESCROW_STATE_BYTES);
+    gatedLength.set(bytes(ESCROW_BASE64));
+    expect(parseEscrowAccount(gatedLength)).toBeNull();
+    const oldLength = bytes(ESCROW_BASE64);
+    oldLength[0] = 2;
+    expect(parseEscrowAccount(oldLength)).toBeNull();
+  });
+
+  it('documents a gated layout that covers the whole account', () => {
+    const last = GATED_ESCROW_LAYOUT[GATED_ESCROW_LAYOUT.length - 1];
+    expect(last.offset + last.length).toBe(GATED_ESCROW_STATE_BYTES);
+    GATED_ESCROW_LAYOUT.slice(1).forEach((entry, index) => expect(entry.offset).toBe(GATED_ESCROW_LAYOUT[index].offset + GATED_ESCROW_LAYOUT[index].length));
   });
 
   it('documents a layout that covers the whole account', () => {

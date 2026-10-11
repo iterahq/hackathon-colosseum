@@ -3,6 +3,7 @@ import { BountyActionPanel } from '@/components/bounty/ActionPanel';
 import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, RequirementChip, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
 import { EscrowPanel } from '@/components/bounty/EscrowPanel';
 import { HeldNotice } from '@/components/bounty/HeldNotice';
+import { JudgeCaption, JudgeChecksSection, JudgeChip, JudgePaidBlock } from '@/components/bounty/JudgeParts';
 import { Ledger } from '@/components/bounty/Ledger';
 import { PaidBlock } from '@/components/bounty/PaidBlock';
 import { ReportBounty } from '@/components/bounty/ReportBounty';
@@ -85,8 +86,12 @@ export default function BountyPage() {
           <section className="flex flex-col gap-4" data-testid="bounty-detail">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <PostedBy bounty={bounty} />
-              <StatusChip status={bounty.status} />
+              <span className="flex flex-wrap items-center gap-1.5">
+                {bounty.judge && <JudgeChip />}
+                <StatusChip status={bounty.status} />
+              </span>
             </div>
+            {bounty.judge && <JudgeCaption />}
             <h1 className="[font:700_44px/1.02_'Barlow_Condensed'] max-sm:text-[34px] [overflow-wrap:anywhere]">{bounty.title}</h1>
             <Reward sol={bounty.rewardSol} size="xl" />
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -97,15 +102,17 @@ export default function BountyPage() {
           {bounty.hidden && <Notice tone="error" testId="bounty-hidden-banner">{t('bounty.hidden.banner')}</Notice>}
           {bounty.rehearsal && <Notice testId="bounty-rehearsal-banner">{t('bounty.rehearsal.banner')}</Notice>}
           <PaidBlock bounty={bounty} />
+          <JudgePaidBlock bounty={bounty} />
           <HeldNotice bounty={bounty} />
           <BountyActionPanel bounty={bounty} />
           <Block title={t('bounty.detail.brief')}>{bounty.brief}</Block>
           <Block title={t('bounty.detail.deliverable')}>{bounty.deliverable}</Block>
+          <JudgeChecksSection bounty={bounty} />
           <Block title={t('bounty.detail.requirement')}>
             {plural(t, 'bounty.detail.requirementBody', bounty.requirement.totalDays, { trail: bounty.requirement.trail, min: bounty.requirement.minDays })}
           </Block>
           <EscrowPanel bounty={bounty} />
-          <Ledger events={bounty.events} />
+          <Ledger events={bounty.events} judge={bounty.judge} report={bounty.claim?.checkReport ?? null} />
           <ReportBounty bounty={bounty} />
         </>
       )}

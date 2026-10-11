@@ -6,7 +6,7 @@ export function TrustSection() {
   return (
     <VerifySection id="trust" title={t('verify.trust.title')}>
       <p className={P}>{t('verify.trust.intro')}</p>
-      <Bullets items={[t('verify.trust.days'), t('verify.trust.human'), t('verify.trust.key'), t('verify.trust.attester'), t('verify.trust.dispute')]} />
+      <Bullets items={[t('verify.trust.days'), t('verify.trust.human'), t('verify.trust.key'), t('verify.trust.attester'), t('verify.trust.old'), t('verify.trust.dispute')]} />
     </VerifySection>
   );
 }

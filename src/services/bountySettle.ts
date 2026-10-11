@@ -2,12 +2,13 @@ import type { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
-export type StepKind = 'accept' | 'withdraw';
+export type StepKind = 'accept' | 'withdraw' | 'judge';
 
 const holdsClaim = (mine: MyBountyStatus, bountyId: string) => mine.claim?.bountyId === bountyId && mine.claim.status === 'active';
 
 /** True when what the page holds already shows the signed step; a read that is not on the page does not count. */
 export function stepReflected(kind: StepKind, bountyId: string, detail: BountyDetail | null | undefined, mine: MyBountyStatus | undefined): boolean {
+  if (kind === 'judge') return !detail || detail.status === 'paid';
   if (detail && (kind === 'accept' ? detail.status === 'open' : detail.status === 'claimed')) return false;
   if (mine && holdsClaim(mine, bountyId) !== (kind === 'accept')) return false;
   return true;

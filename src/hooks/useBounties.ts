@@ -26,8 +26,12 @@ import {
   reportBounty,
   runBountyWalletTx,
   setBountyHidden,
+  requestSponsorFaucet,
   submitBounty,
+  submitJudgeCode,
   withdrawBounty,
+  type JudgeResult,
+  type SponsorFaucetResult,
   type StepPhase,
 } from '@/services/bounty.service';
 import { settleBountyStep, type StepKind } from '@/services/bountySettle';
@@ -101,6 +105,33 @@ export function useSignedBountyStep(kind: StepKind) {
   });
   return { run: mutation.mutate, pending: mutation.isPending, phase, explorerUrl, outcome, error: mutation.isError ? mutation.error : null };
 }
+
+/** The delivery of a judge bounty: the code is checked on the server, and a pass is paid in the same call. Stays pending until the page shows it paid. */
+export function useJudgeSubmit() {
+  const queryClient = useQueryClient();
+  const [phase, setPhase] = useState<'checking' | 'settling' | null>(null);
+  const [result, setResult] = useState<JudgeResult | null>(null);
+  const [outcome, setOutcome] = useState<'settled' | 'stale' | null>(null);
+  const mutation = useMutation({
+    mutationFn: async (v: { bounty: string; code: string }) => {
+      setOutcome(null);
+      setResult(null);
+      setPhase('checking');
+      const answer = await submitJudgeCode(v.bounty, v.code);
+      setResult(answer);
+      if (!answer.submitted) return;
+      setPhase('settling');
+      setOutcome((await settleBountyStep(queryClient, 'judge', v.bounty)) ? 'settled' : 'stale');
+    },
+    onSettled: () => {
+      setPhase(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.bounty.all });
+    },
+  });
+  return { run: mutation.mutate, pending: mutation.isPending, phase, result, outcome, error: mutation.isError ? mutation.error : null, reset: () => { mutation.reset(); setResult(null); } };
+}
+
+export const useSponsorFaucet = () => useWrite<void, SponsorFaucetResult>(() => requestSponsorFaucet());
 
 export const useCreateBounty = () => useWrite((input: CreateBountyInput) => createBounty(input));
 export const useFundBounty = () => useWrite((bounty: string) => fundBounty(bounty));

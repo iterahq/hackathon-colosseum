@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Field } from '@/components/bounty/CreateBountyForm';
 import { ExplorerAnchor, INPUT, Notice, SECTION_TITLE } from '@/components/bounty/bountyUi';
+import { SponsorFaucet } from '@/components/bounty/SponsorFaucet';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useCreatePostedBounty, useWalletBountyTx } from '@/hooks/useBounties';
@@ -215,6 +216,7 @@ export function PostForm({ options, balanceLamports }: { options: PostOptions; b
           {balanceLamports === null ? t('bounty.post.cost.balanceUnknown') : t('bounty.post.cost.balance', { sol: lamportsToSol(balanceLamports) })}
         </dd>
       </dl>
+      <SponsorFaucet />
       {attempted && Object.keys(check.errors).length > 0 && <Notice tone="error">{t('bounty.post.err.fix')}</Notice>}
       {create.isError && <Notice tone="error" testId="bounty-post-error">{createCode && CREATE_CODES.includes(createCode) ? t(`bounty.post.err.${createCode}`) : t('bounty.err.generic')}</Notice>}
       {phase !== null && fund.isPending && <TxPhaseNotice phase={phase} />}

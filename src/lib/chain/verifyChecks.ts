@@ -34,14 +34,16 @@ export function localizeRow(row: InstructionRow, messages: Record<string, string
   };
 }
 
-/** From the line that declares `fn accept(` to the next line that is exactly `}`. */
-export function acceptFunctionSource(source: string): string | null {
+/** From the line that declares `fn <name>(` to the next line that is exactly `}`. */
+export function functionSource(source: string, name: string): string | null {
   const lines = source.split('\n');
-  const start = lines.findIndex((line) => line.includes('fn accept('));
+  const start = lines.findIndex((line) => line.includes(`fn ${name}(`));
   if (start === -1) return null;
   const end = lines.findIndex((line, index) => index > start && line === '}');
   return end === -1 ? null : lines.slice(start, end + 1).join('\n');
 }
+
+export const acceptFunctionSource = (source: string): string | null => functionSource(source, 'accept');
 
 export interface BinaryCheck {
   onChain: string;

@@ -1,6 +1,6 @@
 export type BountyStatus = 'awaiting_funding' | 'open' | 'claimed' | 'submitted' | 'paying' | 'paid' | 'refunding' | 'refunded' | 'expired';
 
-export type LedgerKind = 'created' | 'funded' | 'accepted' | 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'expired' | 'paid' | 'refund_started' | 'refunded';
+export type LedgerKind = 'created' | 'funded' | 'accepted' | 'submitted' | 'approved' | 'rejected' | 'withdrawn' | 'expired' | 'paid' | 'refund_started' | 'refunded' | 'escrow_moved';
 
 export interface BountyRequirement {
   program: string;
@@ -19,6 +19,8 @@ export interface BountyEscrow {
   custody: 'program' | 'itera_server';
   programId: string | null;
   programExplorerUrl: string | null;
+  /** Who reads the stamped days at accept: the escrow program itself (a gated account) or Itera's attester co-signing. */
+  daysCheckedBy: 'program' | 'attester';
 }
 
 export interface BountyClaim {
@@ -33,6 +35,21 @@ export interface BountyClaim {
   proofUrl: string | null;
   submissionUrl: string | null;
   submissionMirrored: boolean;
+  /** Only on a paid judge bounty: the code that was delivered. Plain text. */
+  submissionCode: string | null;
+  checkReport: CheckReport | null;
+}
+
+export interface CheckReport {
+  version: number;
+  passed: boolean;
+  checks: Array<{ id: string; passed: boolean }>;
+  checkedAt: string | null;
+}
+
+export interface JudgeInfo {
+  checks: Array<{ id: string; label: string }>;
+  codeMax: number;
 }
 
 export interface BountyMoney {
@@ -63,6 +80,7 @@ export interface Bounty {
   postedBy: PostedBy;
   approver: 'sponsor_wallet' | 'itera';
   rehearsal: boolean;
+  judge: JudgeInfo | null;
   hidden: boolean;
   writtenIn: BountyLang | null;
   sponsor: string;
@@ -114,11 +132,32 @@ export interface BountyStats {
   outsideSponsorCount: number;
   hiddenTestCount: number | null;
   listedCount: number | null;
+  judgePaidCount: number;
+  judgePaidSol: string;
+  openOnChainCount: number | null;
+  daysByProgramCount: number | null;
+  daysByAttesterCount: number | null;
+}
+
+export interface JudgePayout {
+  slug: string;
+  paidAt: string | null;
+  wallet: string | null;
+  walletShort: string;
+  teamTest: boolean;
+  explorerUrl: string | null;
+}
+
+export interface JudgeSummary {
+  paidCount: number;
+  teamTestPaidCount: number;
+  latest: JudgePayout[];
 }
 
 export interface BountyBoard {
   readAt: string | null;
   stats: BountyStats;
+  judge: JudgeSummary;
   bounties: Bounty[];
 }
 
@@ -129,6 +168,7 @@ export interface MyBountyStatus {
   eligible: boolean;
   reason: EligibilityReason | null;
   proof: { asset: string; daysDone: number; explorerUrl: string | null } | null;
+  judgedBefore: boolean;
   claim: {
     bountyId: string;
     status: string;
@@ -138,6 +178,7 @@ export interface MyBountyStatus {
     submissionNote: string | null;
     submittedAt: string | null;
     reviewNote: string | null;
+    checkReport: CheckReport | null;
   } | null;
   busyElsewhere: boolean;
 }

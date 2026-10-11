@@ -6,7 +6,7 @@ export interface ActionTitle {
   count?: number;
 }
 
-type TitleBounty = Pick<BountyDetail, 'id' | 'status' | 'claim' | 'requirement'>;
+type TitleBounty = Pick<BountyDetail, 'id' | 'status' | 'claim' | 'requirement' | 'judge'>;
 
 const YOURS: ActionTitle = { key: 'bounty.action.titleYours', vars: {} };
 const YOUR_TURN: ActionTitle = { key: 'bounty.action.title', vars: {} };
@@ -20,6 +20,7 @@ export function actionTitle(bounty: TitleBounty, status: MyBountyStatus | null):
   if (claim?.status === 'active' && bounty.status === 'claimed') return YOUR_TURN;
   if (bounty.status !== 'open') return YOURS;
   const busy = status.busyElsewhere || (status.claim !== null && status.claim.bountyId !== bounty.id && (status.claim.status === 'active' || status.claim.status === 'submitted'));
+  if (bounty.judge && status.judgedBefore) return { key: 'bounty.action.titleJudged', vars: {} };
   if (busy) return { key: 'bounty.action.titleBusy', vars: {} };
   if (status.eligible) return YOUR_TURN;
   const { trail, minDays } = bounty.requirement;

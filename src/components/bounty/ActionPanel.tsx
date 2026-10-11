@@ -3,18 +3,20 @@ import { Link } from 'react-router-dom';
 import { ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD } from '@/components/shop/shopStyles';
 import { DeliverForm } from '@/components/bounty/DeliverForm';
+import { JudgeDeliverForm, JudgeProgress } from '@/components/bounty/JudgeParts';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { useCountdown } from '@/hooks/useCountdown';
-import { useBountySession, useMyBountyStatus, useSignedBountyStep } from '@/hooks/useBounties';
+import { useBountySession, useJudgeSubmit, useMyBountyStatus, useSignedBountyStep } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode, type StepPhase } from '@/services/bounty.service';
 import { actionTitle } from '@/utils/bountyAction';
+import { daysRuleText } from '@/utils/bountyJudge';
 import { formatRemaining, plural } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
-const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty'] as const;
+const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty', 'judged_before'] as const;
 const WITHDRAW_ERRORS = ['not_active'] as const;
 
 /** What can go wrong in a step the learner's wallet signs, whatever the step. */
@@ -58,7 +60,7 @@ function Panel({ children, title, tone = 'plain' }: { children: ReactNode; title
   );
 }
 
-function ActiveClaim({ bounty, status, withdraw }: { bounty: BountyDetail; status: NonNullable<MyBountyStatus['claim']>; withdraw: Step }) {
+function ActiveClaim({ bounty, status, withdraw, judge }: { bounty: BountyDetail; status: NonNullable<MyBountyStatus['claim']>; withdraw: Step; judge: ReturnType<typeof useJudgeSubmit> }) {
   const { t } = useI18n();
   const [confirming, setConfirming] = useState(false);
   const deadline = status.deadlineAt ? Date.parse(status.deadlineAt) : null;
@@ -69,7 +71,7 @@ function ActiveClaim({ bounty, status, withdraw }: { bounty: BountyDetail; statu
       <p className="[font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-countdown">
         {left > 0 ? t('bounty.active.left', { time: formatRemaining(left) }) : t('bounty.active.late')}
       </p>
-      <DeliverForm bountyId={bounty.id} />
+      {bounty.judge ? <JudgeDeliverForm bounty={bounty} judge={judge} /> : <DeliverForm bountyId={bounty.id} />}
       <div className="flex flex-col gap-2 border-t border-[#262320] pt-3">
         {!confirming ? (
           <button type="button" onClick={() => setConfirming(true)} className={`${BTN_SECONDARY} ${BTN_SMALL} w-full sm:w-auto sm:self-start`} data-testid="bounty-withdraw">
@@ -112,6 +114,11 @@ function Accept({ bounty, status, accept }: { bounty: BountyDetail; status: MyBo
           {t('bounty.accept.signs')}
         </p>
       )}
+      {bounty.escrow?.custody === 'program' && (
+        <p className="[font:400_13px/1.5_Inter] text-[#A0978A]" data-testid="bounty-accept-days-rule">
+          {daysRuleText(t, bounty.escrow.daysCheckedBy, bounty.requirement.minDays)}
+        </p>
+      )}
       {accept.error !== null && !accept.pending && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
       <button type="button" disabled={accept.pending} onClick={() => accept.run(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
         {accept.pending ? stepLabel(t, accept.phase) : t('bounty.accept.cta')}
@@ -147,16 +154,18 @@ function Missing({ bounty, status }: { bounty: BountyDetail; status: MyBountySta
 export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
   const accept = useSignedBountyStep('accept');
   const withdraw = useSignedBountyStep('withdraw');
+  const judge = useJudgeSubmit();
   return (
     <>
       <StepProgress kind="accept" step={accept} />
       <StepProgress kind="withdraw" step={withdraw} />
-      <PanelView bounty={bounty} accept={accept} withdraw={withdraw} />
+      <JudgeProgress judge={judge} paid={bounty.status === 'paid'} />
+      <PanelView bounty={bounty} accept={accept} withdraw={withdraw} judge={judge} />
     </>
   );
 }
 
-function PanelView({ bounty, accept, withdraw }: { bounty: BountyDetail; accept: Step; withdraw: Step }) {
+function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; accept: Step; withdraw: Step; judge: ReturnType<typeof useJudgeSubmit> }) {
   const { t } = useI18n();
   const { signedIn } = useBountySession();
   const mine = useMyBountyStatus(bounty.id);
@@ -202,11 +211,11 @@ function PanelView({ bounty, accept, withdraw }: { bounty: BountyDetail; accept:
       </Panel>
     );
   }
-  if (claim?.status === 'active' && bounty.status === 'claimed') return <Panel title={title}><ActiveClaim bounty={bounty} status={claim} withdraw={withdraw} /></Panel>;
+  if (claim?.status === 'active' && bounty.status === 'claimed') return <Panel title={title}><ActiveClaim bounty={bounty} status={claim} withdraw={withdraw} judge={judge} /></Panel>;
   if (claim?.status === 'submitted') {
     return (
       <Panel title={title}>
-        <Notice tone="good">{t('bounty.submitted.body')}</Notice>
+        <Notice tone="good">{t(bounty.judge ? 'bounty.judge.confirming' : 'bounty.submitted.body')}</Notice>
       </Panel>
     );
   }
@@ -225,9 +234,10 @@ function PanelView({ bounty, accept, withdraw }: { bounty: BountyDetail; accept:
           {open && <span className="mt-1 block">{t('bounty.rejected.reopened')}</span>}
         </Notice>
       )}
+      {open && status.judgedBefore && bounty.judge && <Notice testId="bounty-judged-before">{t('bounty.judge.judgedBefore')}</Notice>}
       {open && busy && <Notice testId="bounty-busy">{t('bounty.busy')}</Notice>}
-      {open && !busy && !status.eligible && <Missing bounty={bounty} status={status} />}
-      {open && !busy && status.eligible && <Accept bounty={bounty} status={status} accept={accept} />}
+      {open && !busy && !(status.judgedBefore && bounty.judge) && !status.eligible && <Missing bounty={bounty} status={status} />}
+      {open && !busy && !(status.judgedBefore && bounty.judge) && status.eligible && <Accept bounty={bounty} status={status} accept={accept} />}
     </Panel>
   );
 }

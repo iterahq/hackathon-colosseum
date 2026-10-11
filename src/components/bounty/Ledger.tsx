@@ -4,10 +4,11 @@ import { CARD } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import { formatWhen } from '@/utils/bounty';
-import type { LedgerEvent } from '@/types/bounty';
+import { eventLabel } from '@/utils/bountyJudge';
+import type { CheckReport, JudgeInfo, LedgerEvent } from '@/types/bounty';
 
 const MONEY_KINDS: readonly string[] = ['funded', 'paid', 'refunded'];
-const KNOWN_KINDS: readonly string[] = ['created', 'funded', 'accepted', 'submitted', 'approved', 'rejected', 'withdrawn', 'expired', 'paid', 'refund_started', 'refunded'];
+const KNOWN_KINDS: readonly string[] = ['created', 'funded', 'accepted', 'submitted', 'approved', 'rejected', 'withdrawn', 'expired', 'paid', 'refund_started', 'refunded', 'escrow_moved'];
 
 /** Who stands behind a step: the wallet that signed it on chain, or Itera's own record when it has no transaction. */
 function signedLine(event: LedgerEvent): { key: string; wallet?: string } | null {
@@ -16,7 +17,7 @@ function signedLine(event: LedgerEvent): { key: string; wallet?: string } | null
   return event.kind === 'accepted' ? { key: 'bounty.ledger.signedIteraOld' } : null;
 }
 
-export function Ledger({ events }: { events: LedgerEvent[] }) {
+export function Ledger({ events, judge = null, report = null }: { events: LedgerEvent[]; judge?: JudgeInfo | null; report?: CheckReport | null }) {
   const { t, locale } = useI18n();
   return (
     <section className={`${CARD} flex flex-col gap-4 p-4 sm:p-5`} aria-labelledby="bounty-ledger" data-testid="bounty-ledger">
@@ -33,8 +34,9 @@ export function Ledger({ events }: { events: LedgerEvent[] }) {
         <ol className="flex flex-col">
           {events.map((event, index) => {
             const money = MONEY_KINDS.includes(event.kind);
-            const label = KNOWN_KINDS.includes(event.kind) ? t(`bounty.event.${event.kind}`) : event.kind;
-            const signed = signedLine(event);
+            const named = eventLabel(event.kind, judge, report);
+            const label = KNOWN_KINDS.includes(event.kind) ? t(named.key, named.vars) : event.kind;
+            const signed = named.serverRecord ? null : signedLine(event);
             return (
               <li key={`${event.kind}-${event.at ?? index}-${index}`} className="relative flex gap-3 pb-4 last:pb-0" data-testid="bounty-event" data-kind={event.kind}>
                 <span aria-hidden className="relative flex w-4 shrink-0 justify-center">

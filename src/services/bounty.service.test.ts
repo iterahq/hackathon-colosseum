@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BountyTxError, bountyErrorCode, describeTxError, parseApprove, parseBoard, parseBounty, parseConfirm, parseDetail, parseModeration, parseMyStatus, parsePostedList, parsePostOptions, parseSponsorList, parseWalletTx } from './bounty.service';
+import { BountyTxError, bountyErrorCode, describeTxError, parseApprove, parseJudgeResult, parseBoard, parseBounty, parseConfirm, parseDetail, parseModeration, parseMyStatus, parsePostedList, parsePostOptions, parseSponsorList, parseWalletTx } from './bounty.service';
 import { WalletSignError } from './walletSign';
 import { ShopCallError } from './shopTransport';
 
@@ -78,6 +78,11 @@ describe('parseBoard', () => {
       outsideSponsorCount: 0,
       hiddenTestCount: null,
       listedCount: null,
+      judgePaidCount: 0,
+      judgePaidSol: '0 SOL',
+      openOnChainCount: null,
+      daysByProgramCount: null,
+      daysByAttesterCount: null,
     });
     expect(board.readAt).toBeNull();
   });
@@ -229,5 +234,50 @@ describe('describeTxError', () => {
     expect(describeTxError(new ShopCallError('x', 409, 'already_paid')).key).toBe('bounty.tx.err.already_paid');
     expect(describeTxError(new ShopCallError('x', 500, 'weird')).key).toBe('bounty.err.generic');
     expect(describeTxError(new Error('boom')).key).toBe('bounty.err.generic');
+  });
+});
+
+describe('judge bounty fields', () => {
+  it('reads the judge block, the days rule and the check report of a paid judge bounty', () => {
+    const b = parseDetail({
+      ...bounty,
+      status: 'paid',
+      judge: { funded_by: 'team', approval: 'automatic_check', checks: [{ id: 'c1', label: 'Has a title' }, { id: 'c2', label: 'Has a form' }], code_max: 8000 },
+      escrow: { ...bounty.escrow, days_checked_by: 'program' },
+      claim: { wallet: 'W', submission_code: '<html></html>', check_report: { version: 1, passed: true, checks: [{ id: 'c1', passed: true }, { id: 'c2', passed: true }], checked_at: '2026-10-11T00:00:00Z' } },
+    });
+    expect(b?.judge).toEqual({ checks: [{ id: 'c1', label: 'Has a title' }, { id: 'c2', label: 'Has a form' }], codeMax: 8000 });
+    expect(b?.escrow?.daysCheckedBy).toBe('program');
+    expect(b?.claim?.submissionCode).toBe('<html></html>');
+    expect(b?.claim?.checkReport?.checks).toHaveLength(2);
+  });
+  it('defaults to no judge and an attester for the days', () => {
+    const b = parseBounty(bounty);
+    expect(b?.judge).toBeNull();
+    expect(b?.escrow?.daysCheckedBy).toBe('attester');
+    expect(b?.claim).toBeNull();
+  });
+  it('reads the board counts and the judge summary, and keeps absent ones null', () => {
+    const board = parseBoard({
+      stats: { judge_paid_count: 2, judge_paid_sol: '0.04 SOL', open_on_chain_count: 7, days_by_program_count: 3, days_by_attester_count: 0 },
+      judge: { paid_count: 2, team_test_paid_count: 1, latest: [{ slug: 'a', paid_at: '2026-10-11T00:00:00Z', wallet: 'W', wallet_short: 'W…z', team_test: true, explorer_url: 'https://x/t' }, { nope: 1 }] },
+      bounties: [],
+    });
+    expect(board.stats).toMatchObject({ judgePaidCount: 2, judgePaidSol: '0.04 SOL', openOnChainCount: 7, daysByProgramCount: 3, daysByAttesterCount: 0 });
+    expect(board.judge).toEqual({ paidCount: 2, teamTestPaidCount: 1, latest: [{ slug: 'a', paidAt: '2026-10-11T00:00:00Z', wallet: 'W', walletShort: 'W…z', teamTest: true, explorerUrl: 'https://x/t' }] });
+    expect(parseBoard({ bounties: [] }).stats).toMatchObject({ judgePaidCount: 0, daysByProgramCount: null, daysByAttesterCount: null });
+  });
+  it('reads the status flag and the claim report', () => {
+    const mine = parseMyStatus({ judged_before: true, claim: { bounty_id: 'b1', check_report: { passed: false, checks: [{ id: 'c1', passed: false }] } } });
+    expect(mine.judgedBefore).toBe(true);
+    expect(mine.claim?.checkReport?.checks).toEqual([{ id: 'c1', passed: false }]);
+    expect(parseMyStatus({}).judgedBefore).toBe(false);
+  });
+  it('reads a failed and a passed delivery', () => {
+    expect(parseJudgeResult({ submitted: false, report: { passed: false, checks: [{ id: 'c1', passed: false }] } })).toMatchObject({ submitted: false });
+    expect(parseJudgeResult({ submitted: true, report: { passed: true, checks: [] }, payout: { status: 'paying', signature: 'S', explorer_url: 'https://x/t', lamports: 20_000_000 } })).toMatchObject({
+      submitted: true,
+      payout: { status: 'paying', signature: 'S', explorerUrl: 'https://x/t', lamports: 20_000_000 },
+    });
   });
 });

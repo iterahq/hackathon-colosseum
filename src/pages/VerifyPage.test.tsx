@@ -95,6 +95,13 @@ describe('VerifyPage', () => {
     for (const id of ['program', 'source', 'evidence', 'soulbound', 'gate', 'rpc', 'durable', 'trust']) expect(document.getElementById(id)).not.toBeNull();
   });
 
+  it('says what is still trusted: the stamps, the old rule, and a gated accept anyone can open', () => {
+    show();
+    expect(screen.getByText(/O que é carimbado: o servidor da Itera corrige as respostas/)).toBeInTheDocument();
+    expect(screen.getByText(/publicadas antes de 11 out 2026 mantêm a regra antiga/)).toBeInTheDocument();
+    expect(screen.getByTestId('gate-gated-sample').querySelector('a')?.getAttribute('href')).toContain('4grA3x8J');
+  });
+
   it('renders the instruction table from the IDL and the accept function from the source', async () => {
     show();
     expect(await screen.findByText(/^Aberta e não expirada; quem aceita assinou/)).toBeInTheDocument();

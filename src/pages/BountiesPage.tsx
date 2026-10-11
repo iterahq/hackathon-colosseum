@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BountyCard } from '@/components/bounty/BountyCard';
+import { JudgeBoardBlock } from '@/components/bounty/JudgeParts';
 import { BountyShell, LINK, LoadError, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TeraNote } from '@/components/tera/TeraNote';
@@ -8,6 +9,7 @@ import { useIsBountyStaff } from '@/hooks/useIsBountyStaff';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 import { formatWhen, hiddenTestsLine, plural, sortBounties } from '@/utils/bounty';
+import { daysFooter, judgePaidHint } from '@/utils/bountyJudge';
 import type { BountyStats } from '@/types/bounty';
 
 function Stat({ label, value, hint, testId }: { label: string; value: string; hint: string; testId: string }) {
@@ -40,6 +42,7 @@ export default function BountiesPage() {
   const stats = board.data?.stats;
   const items = board.data ? sortBounties(board.data.bounties) : [];
   const hiddenTests = hiddenTestsLine(t, stats, items.length);
+  const footer = stats ? daysFooter(t, stats) : null;
 
   return (
     <BountyShell>
@@ -65,7 +68,7 @@ export default function BountiesPage() {
       </section>
       <section className="grid gap-3 sm:grid-cols-3" aria-label={t('bounty.stats.aria')}>
         <Stat testId="bounty-stat-locked" label={t('bounty.stats.locked')} value={stats?.lockedSol ?? '—'} hint={t('bounty.stats.lockedHint')} />
-        <Stat testId="bounty-stat-paid" label={t('bounty.stats.paid')} value={stats?.paidSol ?? '—'} hint={paidHint(stats, t)} />
+        <Stat testId="bounty-stat-paid" label={t('bounty.stats.paid')} value={stats?.paidSol ?? '—'} hint={(stats && judgePaidHint(t, stats)) ?? paidHint(stats, t)} />
         <Stat testId="bounty-stat-open" label={t('bounty.stats.open')} value={stats ? String(stats.openCount) : '—'} hint={stats && stats.heldCount > 0 ? t('bounty.stats.openHintHeld', { held: stats.heldCount }) : t('bounty.stats.openHint')} />
       </section>
       {board.data?.readAt && (
@@ -78,6 +81,7 @@ export default function BountiesPage() {
           {hiddenTests}
         </p>
       )}
+      {board.data && <JudgeBoardBlock judge={board.data.judge} paidCount={board.data.stats.judgePaidCount} />}
       {board.isPending && (
         <div className="flex flex-col gap-3" aria-busy="true" data-testid="bounty-loading">
           <p role="status" className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('bounty.board.reading')}</p>
@@ -103,6 +107,7 @@ export default function BountiesPage() {
         </ul>
       )}
       <p className="border-t border-[#262320] pt-5 [font:400_13px/1.55_Inter] text-[#A0978A]" data-testid="bounty-custody">{t('bounty.custody')}</p>
+      {footer && <p className="[font:400_13px/1.55_Inter] text-[#A0978A]" data-testid="bounty-days-footer">{footer}</p>}
     </BountyShell>
   );
 }
