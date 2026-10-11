@@ -4,6 +4,7 @@ import { memoInstruction, type Instruction } from './solana-message.ts';
 import { escrowBalance, sendFromEscrow } from './bounty-escrow.ts';
 import {
   checkEligibility,
+  notInvited,
   drainLamports,
   fundingTarget,
   transferMemo,
@@ -23,7 +24,7 @@ import { rpc } from './rpc.ts';
 import { TransferBroadcastError, signatureFate, treasuryAddress } from './treasury.ts';
 
 export const BOUNTY_COLUMNS =
-  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by,escrow_gated,auto_check,template_key';
+  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by,escrow_gated,auto_check,template_key,invitee_wallet';
 export const CLAIM_COLUMNS =
   'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note,submission_code,check_report';
 const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,signer,created_at';
@@ -59,8 +60,20 @@ export async function listBounties(db: IteraClient, tenantIds?: string[]): Promi
   // The public board: no test row, nothing moderation hid, and a wallet's bounty only once its money is locked.
   const { data, error } = await (tenantIds
     ? query.in('tenant_id', tenantIds).or('is_test.eq.false,status.not.in.(paid,refunded)')
-    : query.eq('is_test', false).is('hidden_at', null).or('origin.eq.team,status.neq.awaiting_funding').or('template_key.is.null,status.in.(open,claimed,submitted,paying)'));
+    : query.eq('is_test', false).is('hidden_at', null).is('invitee_wallet', null).or('origin.eq.team,status.neq.awaiting_funding').or('template_key.is.null,status.in.(open,claimed,submitted,paying)'));
   if (error) throw new Error(`bounties: ${error.message}`);
+  return (data ?? []) as unknown as BountyRow[];
+}
+
+/**
+ * Direct bounties, which the public board never lists: nobody is shown a bounty they cannot take.
+ * With a `wallet`: the ones addressed to it, once funded (its inbox; test rows included, they are its own).
+ * Without: every funded one that is not a test row, for the counters that say how much money they hold.
+ */
+export async function listDirectBounties(db: IteraClient, wallet?: string): Promise<BountyRow[]> {
+  const query = db.from('bounties').select(BOUNTY_COLUMNS).is('hidden_at', null).neq('status', 'awaiting_funding').order('created_at', { ascending: false }).limit(BOARD_LIMIT);
+  const { data, error } = await (wallet ? query.eq('invitee_wallet', wallet) : query.not('invitee_wallet', 'is', null).eq('is_test', false));
+  if (error) throw new Error(`bounties direct: ${error.message}`);
   return (data ?? []) as unknown as BountyRow[];
 }
 
@@ -137,6 +150,7 @@ export async function escrowTerms(bounty: BountyRow, config: Record<string, stri
     amount: BigInt(bounty.reward_lamports),
     expiresAt: Math.floor(Date.parse(bounty.expires_at) / 1000),
     gate: bounty.escrow_gated ? await gateOf(bounty.requirement) : null,
+    invitee: bounty.invitee_wallet ?? null,
   };
 }
 
@@ -148,6 +162,11 @@ export async function gateOf(requirement: Pick<Requirement, 'program' | 'trail' 
 /** Whether the deployed program has gated escrows (`bounty_escrow_version` 3): every bounty posted from then on is one. */
 export function gatedEscrows(config: Record<string, string>): boolean {
   return Number(config.bounty_escrow_version) >= 3;
+}
+
+/** Whether the deployed program has direct escrows (`bounty_escrow_version` 4): `create_direct`, and `accept` refusing anyone but the invitee. */
+export function directEscrows(config: Record<string, string>): boolean {
+  return Number(config.bounty_escrow_version) >= 4;
 }
 
 /** What the chain holds for a bounty that is waiting for money: the lamports locked, or `null` when it is not funded yet. */
@@ -294,8 +313,11 @@ export async function expireStaleClaims(db: IteraClient, bounties: BountyRow[], 
  * The certifications of a wallet, read from chain. Our tables are used only as
  * an index of which accounts to read; nothing they say about an asset decides.
  */
-export async function eligibilityOf(db: IteraClient, wallet: string | null, bounty: BountyRow, config: Record<string, string>): Promise<Eligibility> {
-  if (!wallet) return checkEligibility({ wallet, requirement: bounty.requirement, assets: [], collection: undefined, authority: undefined });
+export async function eligibilityOf(db: IteraClient, wallet: string | null, bounty: Pick<BountyRow, 'requirement'> & { invitee_wallet?: string | null }, config: Record<string, string>): Promise<Eligibility> {
+  // A direct bounty is the invitee's alone: nobody else's certifications are even read.
+  if (!wallet || notInvited({ invitee_wallet: bounty.invitee_wallet ?? null }, wallet)) {
+    return checkEligibility({ wallet, requirement: bounty.requirement, assets: [], collection: undefined, authority: undefined, invitee: bounty.invitee_wallet });
+  }
   const { data, error } = await db
     .from('user_achievements')
     .select('asset_address')
@@ -312,7 +334,19 @@ export async function eligibilityOf(db: IteraClient, wallet: string | null, boun
     assets: [...onchain.values()],
     collection: config.collection_passports,
     authority: config.authority,
+    invitee: bounty.invitee_wallet,
   });
+}
+
+/** Whether a wallet is one Itera knows as a learner's: linked to an account, or holding something Itera minted to it. */
+export async function isLearnerWallet(db: IteraClient, wallet: string): Promise<boolean> {
+  const [linked, minted] = await Promise.all([
+    db.from('user_wallets').select('wallet', { count: 'exact', head: true }).eq('wallet', wallet),
+    db.from('user_achievements').select('wallet_address', { count: 'exact', head: true }).eq('wallet_address', wallet),
+  ]);
+  if (linked.error) throw new Error(`user_wallets: ${linked.error.message}`);
+  if (minted.error) throw new Error(`user_achievements: ${minted.error.message}`);
+  return (linked.count ?? 0) + (minted.count ?? 0) > 0;
 }
 
 export type TransferOutcome = 'settled' | 'pending' | 'stuck';

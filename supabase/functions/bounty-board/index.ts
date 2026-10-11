@@ -1,7 +1,7 @@
 import { loadTestAccountIds } from '../_shared/test-accounts.ts';
 import { isSolanaAddress } from '../_shared/address.ts';
-import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, recordWalletPayout, settleTransfer, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
-import { boardStats, bountyView, collapseJudgeBounties, earningsView, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, listDirectBounties, recordWalletPayout, settleTransfer, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
+import { boardStats, bountyView, collapseJudgeBounties, directStats, earningsView, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
 import { countOpenEscrows } from '../_shared/bounty-chain.ts';
 import { judgeHistory, refillTemplates, settleJudged } from '../_shared/bounty-judge.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
@@ -12,6 +12,7 @@ import { RpcError, withinMs } from '../_shared/rpc.ts';
 const FUNCTION = 'bounty-board';
 const SLUG = /^[a-z0-9][a-z0-9-]{2,62}$/;
 const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
+const INVITED_RATE: RateLimit = { limit: 30, windowMs: 60_000 };
 const SWEEP_ON_READ = 1;
 const SWEEP_ON_SCHEDULE = 4;
 /**
@@ -60,9 +61,12 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   inBackground(sweepExpired(db, now, SWEEP_ON_READ));
   // Before the board says "open" and counts money as locked, the escrow accounts are read: one call for all of them.
   const chainRead = await chainStep(syncOpenEscrows(db), 'escrow accounts not read');
-  const [{ bounties, claims }, config, tests] = await Promise.all([currentBounties(db, now), loadConfig(db), loadTestAccountIds(db)]);
+  // Direct bounties are on no list here, and their money is still counted: under figures of its own.
+  const [{ bounties, claims }, config, tests, direct] = await Promise.all([currentBounties(db, now), loadConfig(db), loadTestAccountIds(db), listDirectBounties(db)]);
   const rehearsals = rehearsalIds(bounties, claims, tests);
   const teamTests = teamTestSponsored(bounties, tests);
+  const directClaims = await loadClaims(db, direct.flatMap((bounty) => (bounty.status === 'paid' && bounty.claim_id ? [bounty.claim_id] : [])));
+  const directTeamTests = new Set([...teamTestSponsored(direct, tests), ...rehearsalIds(direct, directClaims, tests)]);
   const [judged, openOnChain] = await Promise.all([
     judgeHistory(db, tests),
     // The escrow accounts the chain shows as open, whether or not the board lists them: the difference is said, not hidden.
@@ -71,7 +75,7 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   const live = bounties.filter((bounty) => ['open', 'claimed', 'submitted', 'paying'].includes(publicStatus(bounty, now)));
   // The judge bounty is one card, whatever the number of escrow accounts behind it; the counts above still count every account.
   const { listed, slots } = collapseJudgeBounties(bounties, now);
-  const listedOpen = bounties.filter((bounty) => bounty.escrow_kind === 'program' && bounty.status === 'open').length;
+  const listedOpen = [...bounties, ...direct].filter((bounty) => bounty.escrow_kind === 'program' && bounty.status === 'open').length;
   return json(
     {
       cluster: 'devnet',
@@ -80,6 +84,7 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
       chain_read: chainRead,
       stats: {
         ...boardStats(bounties, now, rehearsals, teamTests, judged),
+        ...directStats(direct, now, directTeamTests),
         listed_count: live.length,
         open_on_chain_count: openOnChain,
         hidden_test_count: openOnChain === null ? null : Math.max(0, openOnChain - listedOpen),
@@ -169,6 +174,33 @@ async function freeJudgeSlug(db: IteraClient, bounty: BountyRow, lang: 'pt' | 'e
   return lang === 'en' && row.slug_en ? row.slug_en : row.slug;
 }
 
+/**
+ * The direct bounties addressed to a wallet: its inbox. Public like the page of each of them (the escrow account
+ * names the invitee on chain anyway). Before one is shown as open its escrow account is read, like the board does.
+ */
+async function invited(db: IteraClient, request: Request, wallet: string, cors: Record<string, string>): Promise<Response> {
+  const now = new Date();
+  const lang = langOf(request, 'pt');
+  const chainRead = await chainStep(syncOpenEscrows(db), 'escrow accounts not read');
+  let bounties = await listDirectBounties(db, wallet);
+  let claims = await loadClaims(db, bounties.flatMap((bounty) => (bounty.claim_id ? [bounty.claim_id] : [])));
+  if (await expireStaleClaims(db, bounties, claims, now)) {
+    bounties = await listDirectBounties(db, wallet);
+    claims = await loadClaims(db, bounties.flatMap((bounty) => (bounty.claim_id ? [bounty.claim_id] : [])));
+  }
+  const [config, tests] = await Promise.all([loadConfig(db), loadTestAccountIds(db)]);
+  const rehearsals = rehearsalIds(bounties, claims, tests);
+  const teamTests = teamTestSponsored(bounties, tests);
+  const views = bounties.map((bounty) =>
+    bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id), teamTestSponsor: teamTests.has(bounty.id) }),
+  );
+  return json(
+    { wallet, cluster: 'devnet', read_at: now.toISOString(), chain_read: chainRead, open_count: views.filter((view) => view.status === 'open').length, bounties: views },
+    200,
+    { ...cors, 'Cache-Control': 'public, max-age=5' },
+  );
+}
+
 /** What a wallet earned from bounties. Each payout is checked against the chain before it counts. */
 async function earnings(db: IteraClient, request: Request, wallet: string, cors: Record<string, string>): Promise<Response> {
   const { data, error } = await db.from('bounties').select(BOUNTY_COLUMNS).eq('status', 'paid').eq('paid_wallet', wallet).order('paid_at', { ascending: false }).limit(50);
@@ -202,6 +234,11 @@ Deno.serve(async (request) => {
     if (first === 'wallet') {
       if (!isSolanaAddress(second)) return json({ error: 'invalid_address' }, 400, cors);
       return await earnings(db, request, second, cors);
+    }
+    if (first === 'invited') {
+      if (!isSolanaAddress(second)) return json({ error: 'invalid_address' }, 400, cors);
+      const inbox = await takeRate(db, `${FUNCTION}:invited`, callerAddress(request), INVITED_RATE);
+      return inbox.allowed ? await invited(db, request, second, cors) : tooMany(inbox, cors);
     }
     if (!row) return json({ error: 'bounty_not_found' }, 404, cors);
     return await detail(db, request, await row, cors);

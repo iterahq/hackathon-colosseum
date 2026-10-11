@@ -17,6 +17,9 @@
 //!   A bounty created with `create` (195 bytes) names no days: an attester
 //!   co-signs its accept (the bounty's approver, or Itera's attester key)
 //!   and vouches for what the program does not read there.
+//!   A DIRECT bounty (`create_direct`, 260 bytes) is a gated bounty addressed to
+//!   one wallet: its terms also name an `invitee`, and `accept` refuses every
+//!   other claimant (`NotInvited`), whatever certification they hold.
 //! * `unclaim` reopens a held bounty. The claimant can always sign it (giving
 //!   up needs nobody's permission); so can the approver and the attester.
 //! * `release` pays the recorded claimant, once. Only the approver signs it.
@@ -70,8 +73,11 @@ pub const SEED: &[u8] = b"bounty";
 pub const STATE_LEN: usize = 195;
 /// A gated bounty: the same 195 bytes, then `min_days` and the trail it asks for.
 pub const GATED_STATE_LEN: usize = 228;
+/// A direct bounty: the same 228 bytes, then the one wallet that may accept it.
+pub const DIRECT_STATE_LEN: usize = 260;
 const TAG: u8 = 1;
 const TAG_GATED: u8 = 2;
+const TAG_DIRECT: u8 = 3;
 
 pub const OPEN: u8 = 0;
 pub const CLAIMED: u8 = 1;
@@ -91,6 +97,7 @@ const O_CLAIMANT: usize = 131;
 const O_CERT: usize = 163;
 const O_MIN_DAYS: usize = 195;
 const O_TRAIL: usize = 196;
+const O_INVITEE: usize = 228;
 
 #[repr(u32)]
 pub enum EscrowError {
@@ -114,6 +121,7 @@ pub enum EscrowError {
     CertificationOfAnotherTrail = 6017,
     NotEnoughStampedDays = 6018,
     InvalidRequirement = 6019,
+    NotInvited = 6020,
 }
 
 impl From<EscrowError> for ProgramError {
@@ -133,6 +141,7 @@ pub fn process_instruction(program_id: &Pubkey, accounts: &[AccountInfo], data: 
         3 => unclaim(program_id, accounts),
         4 => refund(program_id, accounts),
         5 => create_gated(program_id, accounts, rest),
+        6 => create_direct(program_id, accounts, rest),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
@@ -155,7 +164,9 @@ fn check_bounty(program_id: &Pubkey, bounty: &AccountInfo) -> ProgramResult {
         return Err(EscrowError::WrongEscrowAccount.into());
     }
     let tag = bounty.try_borrow_data()?.first().copied();
-    let known = (bounty.data_len() == STATE_LEN && tag == Some(TAG)) || (bounty.data_len() == GATED_STATE_LEN && tag == Some(TAG_GATED));
+    let known = (bounty.data_len() == STATE_LEN && tag == Some(TAG))
+        || (bounty.data_len() == GATED_STATE_LEN && tag == Some(TAG_GATED))
+        || (bounty.data_len() == DIRECT_STATE_LEN && tag == Some(TAG_DIRECT));
     if !known {
         return Err(EscrowError::WrongEscrowAccount.into());
     }
@@ -286,7 +297,7 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     if data.len() != 32 {
         return Err(ProgramError::InvalidInstructionData);
     }
-    open_bounty(program_id, accounts, data, None)
+    open_bounty(program_id, accounts, data, None, None)
 }
 
 /// data: id [16] | amount u64 LE | expires_at i64 LE | min_days u8 | trail [32]
@@ -300,10 +311,24 @@ fn create_gated(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> P
     if data[32] == 0 {
         return Err(EscrowError::InvalidRequirement.into());
     }
-    open_bounty(program_id, accounts, &data[..32], Some(&data[32..65]))
+    open_bounty(program_id, accounts, &data[..32], Some(&data[32..65]), None)
 }
 
-fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requirement: Option<&[u8]>) -> ProgramResult {
+/// data: id [16] | amount u64 LE | expires_at i64 LE | min_days u8 | trail [32] | invitee [32]
+/// accounts: the same as `create`
+/// bounty = PDA of ["bounty", id, sponsor, approver, collection, amount LE, expires_at LE, min_days, trail, invitee]
+/// `invitee` is the only wallet `accept` will record on this bounty.
+fn create_direct(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    if data.len() != 97 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    if data[32] == 0 {
+        return Err(EscrowError::InvalidRequirement.into());
+    }
+    open_bounty(program_id, accounts, &data[..32], Some(&data[32..65]), Some(&data[65..97]))
+}
+
+fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requirement: Option<&[u8]>, invitee: Option<&[u8]>) -> ProgramResult {
     let iter = &mut accounts.iter();
     let funder = next_account_info(iter)?;
     let bounty = next_account_info(iter)?;
@@ -329,6 +354,9 @@ fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requi
         seeds.push(&requirement[..1]);
         seeds.push(&requirement[1..]);
     }
+    if let Some(invitee) = invitee {
+        seeds.push(invitee);
+    }
     let (expected, bump) = Pubkey::find_program_address(&seeds, program_id);
     if expected != *bounty.key {
         return Err(EscrowError::WrongEscrowAccount.into());
@@ -343,7 +371,11 @@ fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requi
         return Err(EscrowError::InvalidExpiry.into());
     }
 
-    let len = if requirement.is_some() { GATED_STATE_LEN } else { STATE_LEN };
+    let (len, tag) = match (requirement, invitee) {
+        (Some(_), Some(_)) => (DIRECT_STATE_LEN, TAG_DIRECT),
+        (Some(_), None) => (GATED_STATE_LEN, TAG_GATED),
+        _ => (STATE_LEN, TAG),
+    };
     let lamports = Rent::get()?.minimum_balance(len).checked_add(amount).ok_or(ProgramError::ArithmeticOverflow)?;
     let bump_seed = [bump];
     seeds.push(&bump_seed);
@@ -354,7 +386,7 @@ fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requi
     )?;
 
     let mut state = bounty.try_borrow_mut_data()?;
-    state[O_TAG] = if requirement.is_some() { TAG_GATED } else { TAG };
+    state[O_TAG] = tag;
     state[O_BUMP] = bump;
     state[O_STATUS] = OPEN;
     state[O_ID..O_ID + 16].copy_from_slice(id);
@@ -366,11 +398,14 @@ fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requi
     if let Some(requirement) = requirement {
         state[O_MIN_DAYS..GATED_STATE_LEN].copy_from_slice(requirement);
     }
+    if let Some(invitee) = invitee {
+        state[O_INVITEE..DIRECT_STATE_LEN].copy_from_slice(invitee);
+    }
     Ok(())
 }
 
 /// accounts: attester, bounty (writable), claimant (signer), certification (the claimant's Core asset)
-/// attester: on a 195-byte bounty a signer, the approver or ITERA_ATTESTER. On a gated bounty nobody: the account is not read.
+/// attester: on a 195-byte bounty a signer, the approver or ITERA_ATTESTER. On a gated or direct bounty nobody: the account is not read.
 fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let iter = &mut accounts.iter();
     let attester = next_account_info(iter)?;
@@ -380,7 +415,8 @@ fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
 
     check_bounty(program_id, bounty)?;
     let mut state = bounty.try_borrow_mut_data()?;
-    let gated = state[O_TAG] == TAG_GATED;
+    let direct = state[O_TAG] == TAG_DIRECT;
+    let gated = direct || state[O_TAG] == TAG_GATED;
     if gated {
         // The terms name the days: the asset account answers below and nobody vouches for anything.
     } else if *attester.key == ITERA_ATTESTER {
@@ -393,6 +429,10 @@ fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     // Nobody can be recorded as holding a bounty without their own signature.
     if !claimant.is_signer {
         return Err(EscrowError::ClaimantMustSign.into());
+    }
+    // A direct bounty was posted for one wallet. No certification makes another wallet that one.
+    if direct && key_at(&state, O_INVITEE) != *claimant.key {
+        return Err(EscrowError::NotInvited.into());
     }
     if state[O_STATUS] != OPEN {
         return Err(EscrowError::NotOpen.into());

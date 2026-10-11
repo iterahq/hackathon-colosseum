@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DIRECT_ESCROW_STATE_BYTES,
+  ESCROW_ERRORS,
   ESCROW_STATE_BYTES,
   GATED_ESCROW_STATE_BYTES,
   acceptInstruction,
@@ -91,6 +93,7 @@ describe('escrow program client', () => {
   it('reads the account the program wrote', () => {
     expect(parseEscrowState(state(0, false))).toEqual({
       gate: null,
+      invitee: null,
       status: 'open',
       id: ID,
       sponsor: TREASURY,
@@ -163,5 +166,53 @@ describe('gated escrows: the terms name the trail and the days', () => {
     expect(parseEscrowState(gated)).toBeNull();
     old[0] = 2;
     expect(parseEscrowState(old)).toBeNull();
+  });
+});
+
+describe('direct escrows: the terms name the one wallet that may accept', () => {
+  const terms = { bountyId: ID, sponsor: TREASURY, approver: TREASURY, collection: COLLECTION, amount: 10_000_000n, expiresAt: 1_800_000_000 };
+  const gate = { minDays: 3, trail: 'ab'.repeat(32) };
+
+  it('puts the invitee in the address: another wallet, another account, and never the gated one', async () => {
+    const gated = await escrowPda(PROGRAM, { ...terms, gate });
+    const forClaimant = await escrowPda(PROGRAM, { ...terms, gate, invitee: CLAIMANT });
+    const forCert = await escrowPda(PROGRAM, { ...terms, gate, invitee: CERT });
+    expect(new Set([gated, forClaimant, forCert]).size).toBe(3);
+    expect(await escrowPda(PROGRAM, { ...terms, gate, invitee: null })).toBe(gated);
+    await expect(escrowPda(PROGRAM, { ...terms, invitee: CLAIMANT })).rejects.toThrow();
+  });
+
+  it('builds create_direct with the invitee after the gate, on the same accounts as create', () => {
+    const instruction = createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate, invitee: CLAIMANT });
+    expect(instruction.data.length).toBe(98);
+    expect(instruction.data[0]).toBe(6);
+    expect(instruction.data[33]).toBe(3);
+    expect(Buffer.from(instruction.data.slice(34, 66)).toString('hex')).toBe(gate.trail);
+    expect([...instruction.data.slice(66)]).toEqual([...key(CLAIMANT)]);
+    expect(instruction.accounts).toEqual(createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate }).accounts);
+    expect(createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate }).data).toEqual(createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate, invitee: null }).data);
+  });
+
+  it('refuses an invitee that is not an address, or a direct bounty with no gate', () => {
+    expect(() => createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate, invitee: 'not-a-wallet' })).toThrow();
+    expect(() => createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, invitee: CLAIMANT })).toThrow();
+  });
+
+  it('reads the invitee of a 260-byte account and none from the two older layouts', () => {
+    const direct = new Uint8Array(DIRECT_ESCROW_STATE_BYTES);
+    direct.set(state(0, false));
+    direct[0] = 3;
+    direct[195] = 3;
+    direct.fill(0xab, 196, 228);
+    direct.set(key(CLAIMANT), 228);
+    expect(parseEscrowState(direct)).toMatchObject({ status: 'open', gate, invitee: CLAIMANT, claimant: null, sponsor: TREASURY });
+    direct[0] = 2;
+    expect(parseEscrowState(direct)).toBeNull();
+    expect(parseEscrowState(direct.slice(0, GATED_ESCROW_STATE_BYTES))).toMatchObject({ gate, invitee: null });
+    expect(parseEscrowState(state(1, true))).toMatchObject({ gate: null, invitee: null, claimant: CLAIMANT });
+  });
+
+  it('names the refusal of a wallet that was not invited', () => {
+    expect(ESCROW_ERRORS[6020]).toBe('not_invited');
   });
 });
