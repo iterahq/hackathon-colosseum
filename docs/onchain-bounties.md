@@ -286,9 +286,10 @@ A bounty past `expires_at` that nobody holds reads as `expired` and is refunded 
   works when the refund address is a wallet the sponsor controls (a bounty funded through the blink); it is the way
   out if Itera's server disappears.
 
-A sponsor who refunds from their own wallet leaves our row behind the chain. The same sweep reads the escrow
-accounts of open bounties and retires the ones the chain already shows as refunded; a learner who tries to accept
-one first gets `refused_by_program` (`not_open`) and the row is brought in line at once.
+A sponsor who refunds from their own wallet leaves our row behind the chain, so **the board reads the chain before
+it says "open"**: the list reads the escrow accounts of every open bounty in one call, and a bounty's page reads its
+own, before answering. A row the chain shows as refunded is marked refunded first. The "locked in escrow" total is
+built after that read.
 
 The sweep route is public and takes no parameter: it can only send a bounty's money to the refund address fixed
 when the bounty was posted. A bounty someone holds is not swept; its claim ends at `claim_hours` or at
@@ -333,3 +334,8 @@ What is **not** automatic: a learner whose delivery the sponsor never reviews ha
   unfunded bounty with its own approver, its own refund address, one lamport, or another expiry. The program
   refuses each (`wrong_escrow_account`); the only `create` the address accepts carries the bounty's own terms, and
   that is funding it. The sponsor then funds and the bounty opens.
+- **Rate limit, on devnet** (adversarial pass, A8): 60 calls to `bounty-action` from one address give 30 answers and
+  30 × 429; the confirmation route that polls the chain is behind the same counter; 170 calls to `bounty-board`
+  give 120 and 50 × 429; a forged `X-Forwarded-For` opens no second bucket.
+- After the program upgrade: the direct program test again (27 checks), the four bounties funded before it still
+  accept and refund under the new program (simulated, nothing sent), and the full API flow once more.

@@ -50,7 +50,8 @@ async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
     bountyActionGet({
       bounty,
       lang,
-      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports() : 0n),
+      // The label is the only thing here that needs the node: without it the button shows the reward alone.
+      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports().catch(() => 0n) : 0n),
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
       blocked: fundable(bounty) ? null : 'not_fundable',
     }),
