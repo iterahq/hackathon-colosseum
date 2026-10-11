@@ -36,7 +36,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'landing.team.samuel.bio': 'Desenvolvedor full-stack. Dá uma aula presencial de programação com a Itera no Educar+ (Rio). Fez o app do aluno, a credencial na chain, o trilho de compra e a camada social.',
     'landing.team.tainan.role': 'Tech lead',
-    'landing.team.tainan.bio': 'Dirige a DevFellowship (Brasil), comunidade e escola de desenvolvedores; dá os cursos em vídeo dentro da Itera.',
+    'landing.team.tainan.bio': 'Dirige a DevFellowship (Brasil), comunidade e escola de desenvolvedores.',
     'landing.team.community': 'A Itera nasce da DevFellowship:',
     'landing.team.video': 'Ver o pitch de 2 minutos',
     'landing.team.verify': 'Verifique você mesmo',
@@ -118,7 +118,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'landing.team.samuel.bio': 'Full-stack developer. Teaches an in-person programming class with Itera at Educar+ (Rio). Built the learner app, the on-chain credential, the purchase rail and the social layer.',
     'landing.team.tainan.role': 'Tech lead',
-    'landing.team.tainan.bio': 'Runs DevFellowship (Brazil), a developer community and training company; teaches the video courses inside Itera.',
+    'landing.team.tainan.bio': 'Runs DevFellowship (Brazil), a developer community and training company.',
     'landing.team.community': 'Itera comes out of DevFellowship:',
     'landing.team.video': 'Watch the 2-minute pitch',
     'landing.team.verify': 'Verify it yourself',

@@ -4,10 +4,12 @@ import { useI18n } from '@/i18n';
 interface Props {
   kind: 'empty' | 'error';
   onAction: () => void;
+  /** What the button says instead of the default of its kind. */
+  actionLabel?: string;
 }
 
 /** The dashboard with nothing to show: Tera, one line, the way forward. */
-export function DashboardEmpty({ kind, onAction }: Props) {
+export function DashboardEmpty({ kind, onAction, actionLabel }: Props) {
   const { t } = useI18n();
   const error = kind === 'error';
   return (
@@ -17,7 +19,7 @@ export function DashboardEmpty({ kind, onAction }: Props) {
         title={error ? t('dash.error') : t('dash.empty.title')}
         action={
           <button type="button" onClick={onAction} className={TERA_BUTTON}>
-            {error ? t('dash.retry') : t('dash.empty.cta')}
+            {actionLabel ?? (error ? t('dash.retry') : t('dash.empty.cta'))}
           </button>
         }
       />

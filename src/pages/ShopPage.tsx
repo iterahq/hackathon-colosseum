@@ -3,6 +3,8 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { AppTopBar } from '@/components/header/AppTopBar';
+import { FOCUS_BUILD, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
+import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArcade } from '@/components/shop/arcade/ShopArcade';
 import type { ArcadeCategory } from '@/components/shop/arcade/arcadeModel';
@@ -32,7 +34,7 @@ import { withCompanionState } from '@/utils/shop';
 const TAB = `min-h-11 flex-1 rounded-[10px] px-5 [font:700_15px_Inter] sm:flex-none ${FOCUS}`;
 const isCosmetic = (item: ShopItem) => item.kind === 'ink' || item.kind === 'frame';
 
-/** /shop — "Loja do Tera": try, buy, choose and understand. Two tabs: the shop and the wardrobe ("Personalizar", `?tab=wardrobe`). */
+/** /shop — "Loja do Tera": try, buy, choose and understand. Two tabs: the shop and the wardrobe ("Personalizar", `?tab=wardrobe`). The focus build pays in SOL only, and keeps the Circuit line and the lore link in a footer. */
 export default function ShopPage() {
   const { t } = useI18n();
   usePageTitle(t('shop.title'));
@@ -66,7 +68,8 @@ export default function ShopPage() {
   const targetId = target || certs[0]?.trailId || '';
   const targetCert = certs.find((c) => c.trailId === targetId) ?? null;
 
-  const joined = useMemo(() => withCompanionState(shop.data ?? [], companion.data), [shop.data, companion.data]);
+  // The focus build sells for SOL only: the crystal price leaves every row before the shelves are built.
+  const joined = useMemo(() => withCompanionState(shop.data ?? [], companion.data).map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)), [shop.data, companion.data]);
   // On the shelf an ink or a frame is "owned" for the certification it is aimed at.
   const items = useMemo(() => joined.map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
   const byKey = (key: string | null) => items.find((i) => i.key === key);
@@ -105,7 +108,7 @@ export default function ShopPage() {
   };
 
   return (
-    <CrystalPayProvider value={{ onPayWithCrystals: crystalPay.pay, busy: crystalPay.busy, balance: crystalPay.balance, refId: targetId || undefined }}>
+    <CrystalPayProvider value={FOCUS_SOL_ONLY_SHOP ? null : { onPayWithCrystals: crystalPay.pay, busy: crystalPay.busy, balance: crystalPay.balance, refId: targetId || undefined }}>
     <div className={`dash-root min-h-screen overflow-x-hidden text-[#F4EDE2] ${wardrobe ? '' : 'lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden'}`} style={SHOP_GRID} data-testid="shop-page">
       <AppTopBar />
       <main className={`mx-auto flex w-full flex-col gap-3 px-4 pt-3 sm:px-8 ${wardrobe ? 'max-w-[1280px] pb-16 xl:pt-4' : 'max-w-[1440px] pb-20 lg:min-h-0 lg:flex-1 lg:pb-4'}`}>
@@ -120,7 +123,7 @@ export default function ShopPage() {
             );
           })}
         </div>
-          <Link to="/world" className="[font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
+          {!FOCUS_BUILD && <Link to="/world" className="[font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>}
         </div>
         {wardrobe && !hasWallet && !companion.isPending && (
           <div className={`${CARD} flex flex-wrap items-center justify-between gap-3 p-4`} data-testid="shop-no-wallet">
@@ -140,7 +143,13 @@ export default function ShopPage() {
         {shop.isSuccess && wardrobe && <Wardrobe items={joined} actions={actions} avatar={avatar} outfit={companion.outfit} certs={certs} failed={equipAvatar.isError || equipOutfit.isError} onShop={openShelf} />}
         {shop.isSuccess && !wardrobe && items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}
         {shop.isSuccess && !wardrobe && items.length > 0 && (
-          <ShopArcade items={items} actions={actions} avatar={avatar} lives={lives} companion={companion.data?.companion ?? null} wallet={companion.wallet} walletKnown={!companion.isPending} balance={crystalPay.balance} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} />
+          <ShopArcade items={items} actions={actions} avatar={avatar} lives={lives} companion={companion.data?.companion ?? null} wallet={companion.wallet} walletKnown={!companion.isPending} balance={FOCUS_SOL_ONLY_SHOP ? null : crystalPay.balance} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} extras={!FOCUS_BUILD} />
+        )}
+        {FOCUS_BUILD && shop.isSuccess && !wardrobe && (
+          <footer className="flex flex-col gap-2 max-lg:pb-[72px]" data-testid="shop-footer">
+            <CircuitStrip wallet={companion.wallet} />
+            <Link to="/world" className="self-start [font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
+          </footer>
         )}
       </main>
       {tried && crystalPhase === 'idle' && <TryOnDialog item={tried} actions={actions} avatar={avatar} target={targetCert} buyDisabled={(isCosmetic(tried) && !targetId) || (tried.kind === 'life' && !tried.lifePack && Boolean(lives && lives.current >= lives.max))} onClose={() => setTrying(null)} />}

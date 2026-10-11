@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { HEADER_NAV } from '@/consts/headerNav';
+import { FOCUS_HEADER_NAV, FULL_HEADER_NAV, HEADER_NAV } from '@/consts/headerNav';
 import { I18nProvider } from '@/i18n';
 import { HeaderTabBar } from './HeaderTabBar';
 
@@ -23,7 +23,11 @@ describe('HeaderTabBar', () => {
 
 describe('HEADER_NAV', () => {
   it('puts Verify in the signed-in nav and keeps Files in the account menu', () => {
-    expect(HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'courses', 'passport', 'shop', 'bounties', 'verify']);
+    expect(FULL_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'courses', 'passport', 'shop', 'bounties', 'verify']);
     expect(HEADER_NAV.find((n) => n.id === 'verify')?.to).toBe('/verify');
+  });
+  it('shows the five tabs of the loop on the focus build, the courses left out', () => {
+    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'bounties', 'shop', 'verify']);
+    expect(HEADER_NAV).toBe(FOCUS_HEADER_NAV);
   });
 });

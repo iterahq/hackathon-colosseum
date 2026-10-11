@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FOCUS } from '@/components/world/worldStyles';
+import { FOCUS_BUILD } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { PITCH_VIDEO_URL, VERIFY_PAGE_LIVE, VERIFY_PATH } from './landingFacts';
 
@@ -22,9 +23,11 @@ export function LandingFooter() {
         <Link to="/bounties" className={`hover:text-[#F4EDE2] ${FOCUS}`}>
           {t('landing.foot.bounties')}
         </Link>
-        <Link to="/world" className={`hover:text-[#F4EDE2] ${FOCUS}`}>
-          {t('landing.foot.world')}
-        </Link>
+        {!FOCUS_BUILD && (
+          <Link to="/world" className={`hover:text-[#F4EDE2] ${FOCUS}`}>
+            {t('landing.foot.world')}
+          </Link>
+        )}
       </span>
     </footer>
   );

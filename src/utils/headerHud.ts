@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js';
+import { FOCUS_BUILD } from '@/config/focus';
 import type { LevelView, NavId, WalletIdentity } from '@/types/headerHud';
 
 export const XP_PER_LEVEL = 200;
@@ -33,10 +34,11 @@ export function walletOf(user: Pick<User, 'identities'> | null | undefined): Wal
   return null;
 }
 
-/** Which top-level nav item owns a pathname; null outside the learner area. */
-export function activeNavOf(pathname: string): NavId | null {
+/** Which top-level nav item owns a pathname; null outside the learner area. A program page is a trail page when the courses are hidden. */
+export function activeNavOf(pathname: string, focus = FOCUS_BUILD): NavId | null {
   if (pathname === '/') return 'trails';
-  if (pathname === '/catalog' || pathname.startsWith('/catalog/') || pathname.startsWith('/program/') || pathname.startsWith('/course/')) return 'courses';
+  if (pathname.startsWith('/program/')) return focus ? 'trails' : 'courses';
+  if (pathname === '/catalog' || pathname.startsWith('/catalog/') || pathname.startsWith('/course/')) return 'courses';
   if (pathname === '/passport' || pathname.startsWith('/passport/')) return 'passport';
   if (pathname === '/artifacts' || pathname.startsWith('/artifacts/')) return 'files';
   if (pathname === '/shop' || pathname.startsWith('/shop/')) return 'shop';

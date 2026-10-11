@@ -18,6 +18,12 @@ import { MemoryRouter } from 'react-router-dom';
  */
 
 const mocks = vi.hoisted(() => ({ localeSync: vi.fn() }));
+const focus = vi.hoisted(() => ({ on: false }));
+vi.mock('@/config/focus', () => ({
+  get FOCUS_BUILD() {
+    return focus.on;
+  },
+}));
 
 vi.mock('@/hooks/useLocaleSync', () => ({ useLocaleSync: () => mocks.localeSync() }));
 vi.mock('@/components/branded/LiveClassSignal', () => ({
@@ -35,7 +41,17 @@ function renderAt(path: string) {
 }
 
 describe('AppWideMounts', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    focus.on = false;
+  });
+
+  it('the focus build keeps the locale sync and leaves the live-class signal out', () => {
+    focus.on = true;
+    renderAt('/live/abc-123');
+    expect(screen.queryByTestId('live-class-signal')).toBeNull();
+    expect(mocks.localeSync).toHaveBeenCalled();
+  });
 
   it('mounts LocaleSync + LiveClassSignal on a normal route', () => {
     renderAt('/live/abc-123');

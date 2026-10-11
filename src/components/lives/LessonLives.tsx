@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { LinkWalletDialog } from '@/components/wallet/LinkWalletDialog';
+import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { useCrystals, useSpendCrystals } from '@/hooks/useCrystals';
 import { useLives } from '@/hooks/useLives';
 import { LIFE_CRYSTALS } from '@/types/crystals';
@@ -133,7 +134,7 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
               onConnect={() => setLinking(true)}
               onLeave={onLeave}
               crystals={
-                crystals.data
+                crystals.data && !FOCUS_SOL_ONLY_SHOP
                   ? { price: crystals.data.prices.life ?? LIFE_CRYSTALS, balance: crystals.data.balance, busy: spendCrystals.isPending, failed: spendCrystals.isError, onBuy: () => spendCrystals.mutate({ itemKey: 'life', qty: 1 }, { onSuccess: () => void refetch() }) }
                   : null
               }

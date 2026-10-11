@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FOCUS_ONE_PROGRESS_STORY } from '@/config/focus';
 import { InviteCard } from '@/components/gift/InviteCard';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { LearnerAvatar as AvatarPicture } from '@/components/avatar/LearnerAvatar';
@@ -31,15 +32,17 @@ interface Props {
   claimFailed: string | null;
   active: ArcadeCategory;
   onActive: (id: ArcadeCategory) => void;
+  /** The "Extras" category (the Circuit line and the invite card); off on the focus build, where the Circuit line sits in the page footer. */
+  extras?: boolean;
 }
 
 const CHIP = `min-h-9 flex-none rounded-full border px-3 [font:700_12px_Inter] ${FOCUS}`;
 
 /** The shop as a game armoury: categories on a rail, a dense grid of slots, and one inspector where the picked item is seen and bought. */
-export function ShopArcade({ items, actions, avatar, lives, companion, wallet, walletKnown, balance, certs, targetId, onTarget, claimFailed, active, onActive }: Props) {
+export function ShopArcade({ items, actions, avatar, lives, companion, wallet, walletKnown, balance, certs, targetId, onTarget, claimFailed, active, onActive, extras = true }: Props) {
   const { t, locale } = useI18n();
   const shelves = useMemo(() => shelvesOfArcade(items), [items]);
-  const shelf = shelves.find((s) => s.id === active) ?? (active === 'more' ? null : shelves[0] ?? null);
+  const shelf = shelves.find((s) => s.id === active) ?? (active === 'more' && extras ? null : shelves[0] ?? null);
   const shown: ArcadeCategory = shelf?.id ?? 'more';
   const groups = useMemo(() => (shelf ? groupsOf(shelf, t, locale) : []), [shelf, t, locale]);
   const [picked, setPicked] = useState<Record<string, string>>({});
@@ -60,7 +63,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
             <AvatarPicture avatar={avatar} size="md" />
             <div className="flex min-w-0 flex-col">
               <span className="[font:700_20px/1.05_'Barlow_Condensed'] text-[#F4EDE2]">{t('shop.title')}</span>
-              {companion && (
+              {companion && !FOCUS_ONE_PROGRESS_STORY && (
                 <span className="truncate [font:600_11px_JetBrains_Mono] text-[#A0978A]">
                   {t('shop.companion.level', { level: companion.level })} · {companion.xp} XP
                 </span>
@@ -88,7 +91,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
             <LinkWalletButton className={`${BTN_PRIMARY} ${BTN_SMALL} flex-none`} testId="shop-connect" />
           </div>
         )}
-        <ArcadeNav shelves={shelves} active={shown} onChange={onActive} />
+        <ArcadeNav shelves={shelves} active={shown} onChange={onActive} extras={extras} />
       </div>
 
       <section id={panelId(shown)} role="tabpanel" aria-labelledby={tabId(shown)} data-testid={panelId(shown)} className="flex min-h-0 min-w-0 flex-col gap-3 lg:rounded-[14px] lg:border lg:border-[#262320] lg:bg-[#141210] lg:p-4">

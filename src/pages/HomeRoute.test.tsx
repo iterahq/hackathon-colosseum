@@ -30,6 +30,20 @@ const useVideoCourses = vi.fn();
 const useActiveLiveClass = vi.fn();
 const useNextScheduledClass = vi.fn();
 const surface = vi.hoisted(() => ({ value: 'web' as ShellSurface }));
+// The characterisations below describe the full build; one block at the end turns the focus flag on.
+const focus = vi.hoisted(() => ({ on: false }));
+vi.mock('@/config/focus', () => ({
+  get FOCUS_BUILD() {
+    return focus.on;
+  },
+  get FOCUS_ONE_PROGRESS_STORY() {
+    return focus.on;
+  },
+  get FOCUS_SOL_ONLY_SHOP() {
+    return focus.on;
+  },
+  FOCUS_HIDDEN_PATHS: [],
+}));
 
 vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => useAccessLevel() }));
 vi.mock('@/hooks/useShellSurface', () => ({ useShellSurface: () => surface.value }));
@@ -125,6 +139,7 @@ function renderHome() {
 beforeEach(() => {
   vi.clearAllMocks();
   surface.value = 'web';
+  focus.on = false;
   useTrailDashboard.mockReturnValue(dashboard());
   useUserStats.mockReturnValue({ data: { totalXp: 120, streakDays: 1, badgeCount: 0, completedActivities: 7 }, isPending: false });
   useAchievements.mockReturnValue({ items: [], earnedCount: 0, isPending: false, isError: false, refetch: vi.fn() });
@@ -336,5 +351,39 @@ describe('HomeRoute: a visitor', () => {
     expect(screen.queryByTestId('visitor-banner')).not.toBeInTheDocument();
     expect(container.querySelector('a[href^="/subscribe"]')).toBeNull();
     expect(container.textContent).not.toMatch(FORBIDDEN);
+  });
+});
+
+describe('HomeRoute: the focus build', () => {
+  beforeEach(() => {
+    focus.on = true;
+    member();
+  });
+
+  it('keeps the trails, the bounties and the certifications, and leaves the side systems out', () => {
+    useTrailDashboard.mockReturnValue(dashboard([done('a1')], { weekly: 9 }));
+    useVideoCourses.mockReturnValue({ courses: [videoCourse] });
+    useActiveLiveClass.mockReturnValue({ data: { id: 'live-1', instructorId: 'someone-else' } });
+    renderHome();
+    expect(screen.getByTestId('dashboard-main')).toBeInTheDocument();
+    expect(screen.getByTestId('achievements')).toBeInTheDocument();
+    expect(screen.queryByTestId('weekly-goal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('course-carousel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('live-classes')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('medal-shelf')).not.toBeInTheDocument();
+    const strip = screen.getByTestId('welcome-strip');
+    expect(within(strip).getByTestId('welcome-days')).toBeInTheDocument();
+    expect(strip).not.toHaveTextContent('XP');
+    expect(strip).not.toHaveTextContent('dias seguidos');
+    expect(strip).not.toHaveTextContent('conquistas');
+  });
+
+  it('empty: the way forward is a retry, never the hidden catalog', () => {
+    const refetch = vi.fn();
+    useTrailDashboard.mockReturnValue({ trails: [], featured: null, weekly: 0, isPending: false, isError: false, refetch });
+    renderHome();
+    fireEvent.click(within(screen.getByTestId('dashboard-empty')).getByRole('button', { name: 'Tentar de novo' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalledWith('/catalog');
   });
 });

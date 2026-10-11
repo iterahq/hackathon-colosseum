@@ -15,17 +15,22 @@ export interface HeaderSearchData {
   featured: Trail | null;
   achievements: readonly AchievementView[];
   videoCourses?: readonly VideoCourse[];
+  /** False on the focus build: the courses page is not offered. */
+  courses?: boolean;
 }
 
 /** The learner pages the palette can open; a fixed list, so it needs no data. */
-export function pagesSource(t: Translate): SearchSource {
+export function pagesSource(t: Translate, courses = true): SearchSource {
   return {
     id: 'pages',
     label: t('search.group.pages'),
     entries: [
       { id: 'page-trails', title: t('header.nav.trails'), href: '/', icon: 'trails', suggested: true },
-      { id: 'page-courses', title: t('header.nav.courses'), href: '/catalog', icon: 'courses', suggested: true },
+      ...(courses ? [{ id: 'page-courses', title: t('header.nav.courses'), href: '/catalog', icon: 'courses' as const, suggested: true }] : []),
       { id: 'page-passport', title: t('header.nav.passport'), href: '/passport', icon: 'passport', keywords: ['passport', 'credential'], suggested: true },
+      { id: 'page-bounties', title: t('header.nav.bounties'), href: '/bounties', icon: 'solana', keywords: ['bounty', 'bounties', 'earn', 'sol'], suggested: true },
+      { id: 'page-shop', title: t('header.nav.shop'), href: '/shop', icon: 'shop', keywords: ['shop', 'loja', 'avatar'], suggested: true },
+      { id: 'page-verify', title: t('header.nav.verify'), href: '/verify', icon: 'verify', keywords: ['verify', 'verificar', 'chain', 'program'], suggested: true },
       { id: 'page-files', title: t('header.nav.files'), href: '/artifacts', icon: 'files', keywords: ['files', 'arquivos', 'repositorio'], suggested: true },
       { id: 'page-profile', title: t('header.id.profile'), href: '/profile', icon: 'star', keywords: ['profile', 'conta', 'account'], suggested: true },
     ],
@@ -102,5 +107,6 @@ export function videoCoursesSource({ t, videoCourses = [] }: HeaderSearchData): 
 /** Every source of the header palette, in the order the groups are drawn. */
 export function buildHeaderSources(data: HeaderSearchData): SearchSource[] {
   const cont = continueSource(data);
-  return [...(cont ? [cont] : []), pagesSource(data.t), trailsSource(data), videoCoursesSource(data), daysSource(data), achievementsSource(data)];
+  const courses = data.courses ?? true;
+  return [...(cont ? [cont] : []), pagesSource(data.t, courses), trailsSource(data), ...(courses ? [videoCoursesSource(data)] : []), daysSource(data), achievementsSource(data)];
 }

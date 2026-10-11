@@ -15,12 +15,14 @@ interface Props {
   shelves: ArcadeShelf[];
   active: ArcadeCategory;
   onChange: (id: ArcadeCategory) => void;
+  /** Whether the "Extras" entry is offered after the shelves. */
+  extras?: boolean;
 }
 
 /** The categories: a rail with collection progress on a wide screen, a sticky strip of icon tabs on a phone. */
-export function ArcadeNav({ shelves, active, onChange }: Props) {
+export function ArcadeNav({ shelves, active, onChange, extras = true }: Props) {
   const { t } = useI18n();
-  const entries: { id: ArcadeCategory; owned: number | null; total: number }[] = [...shelves, { id: 'more', owned: null, total: 0 }];
+  const entries: { id: ArcadeCategory; owned: number | null; total: number }[] = extras ? [...shelves, { id: 'more', owned: null, total: 0 }] : [...shelves];
 
   return (
     <nav aria-label={t('shop.nav.label')} data-testid="shop-sections" className="sticky top-0 z-20 -mx-4 border-b border-[#262320] bg-[#0A0908]/95 px-4 py-2 backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">

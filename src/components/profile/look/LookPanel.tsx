@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
+import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
 import { loreOf } from '@/lib/teraLoreSafe';
@@ -71,7 +72,7 @@ export function LookPanel({ tab, look, currentKey, busy, onAvatar, onOutfit }: P
               ))}
             </Row>
           )}
-          {tab === 'gear' && <ThemeRows busy={busy} grid={GRID} />}
+          {tab === 'gear' && !FOCUS_SOL_ONLY_SHOP && <ThemeRows busy={busy} grid={GRID} />}
         </div>
       )}
       {hasOutfitRow && !look.outfitsAllowed && <p className="mt-2 font-sans text-xs text-[#A0978A]" data-testid="outfit-locked">{t('avatar.look.outfit.locked')}</p>}

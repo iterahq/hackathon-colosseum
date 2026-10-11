@@ -50,12 +50,16 @@ describe('activeNavOf', () => {
     expect(activeNavOf('/')).toBe('trails');
     expect(activeNavOf('/bounties')).toBe('bounties');
     expect(activeNavOf('/bounties/some-slug')).toBe('bounties');
-    expect(activeNavOf('/catalog')).toBe('courses');
-    expect(activeNavOf('/program/itera-v2')).toBe('courses');
-    expect(activeNavOf('/course/react-do-zero')).toBe('courses');
+    expect(activeNavOf('/catalog', false)).toBe('courses');
+    expect(activeNavOf('/program/itera-v2', false)).toBe('courses');
+    expect(activeNavOf('/course/react-do-zero', false)).toBe('courses');
     expect(activeNavOf('/passport')).toBe('passport');
     expect(activeNavOf('/artifacts/abc')).toBe('files');
     expect(activeNavOf('/verify')).toBe('verify');
+  });
+  it('files a program page under the trails when the courses are hidden', () => {
+    expect(activeNavOf('/program/itera-v2', true)).toBe('trails');
+    expect(activeNavOf('/catalog', true)).toBe('courses');
   });
   it('owns nothing outside the learner area', () => {
     expect(activeNavOf('/profile')).toBeNull();

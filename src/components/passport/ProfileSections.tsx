@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArtZoom } from '@/components/artviewer';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { ChainProof } from '@/components/chain/ChainProof';
+import { FOCUS_ONE_PROGRESS_STORY } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import type { ProfileCertification, ProfileCompanion, ProfileMedal } from '@/types/learnerProfile';
@@ -15,9 +16,9 @@ const MONO = '[font:500_13px_JetBrains_Mono]';
 export function CompanionSection({ companion }: { companion: ProfileCompanion }) {
   const { t } = useI18n();
   const facts = [
-    companion.level != null && `${t('passport.credential.level')} ${companion.level}`,
-    companion.streak != null && companion.streak > 0 && `${t('passport.credential.streak')} ${companion.streak}`,
-    companion.xp != null && companion.xp > 0 && `${companion.xp} XP`,
+    !FOCUS_ONE_PROGRESS_STORY && companion.level != null && `${t('passport.credential.level')} ${companion.level}`,
+    !FOCUS_ONE_PROGRESS_STORY && companion.streak != null && companion.streak > 0 && `${t('passport.credential.streak')} ${companion.streak}`,
+    !FOCUS_ONE_PROGRESS_STORY && companion.xp != null && companion.xp > 0 && `${companion.xp} XP`,
     companion.outfit && t(`ux.outfit.${companion.outfit}`),
   ].filter(Boolean) as string[];
   return (
