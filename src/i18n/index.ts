@@ -24,6 +24,7 @@ import { AVATAR_MESSAGES } from './avatarMessages';
 import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
 import { BOUNTY_MESSAGES } from './bountyMessages';
+import { VERIFY_MESSAGES } from './verifyMessages';
 import { LANDING_MESSAGES } from './landingMessages';
 import { DOOR_MESSAGES } from './doorMessages';
 import { LOOP_MESSAGES } from './loopMessages';
@@ -1247,6 +1248,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...LINK_MESSAGES.pt,
     ...GIFT_MESSAGES.pt,
     ...BOUNTY_MESSAGES.pt,
+    ...VERIFY_MESSAGES.pt,
     ...LANDING_MESSAGES.pt,
     ...DOOR_MESSAGES.pt,
     ...LOOP_MESSAGES.pt,
@@ -2447,6 +2449,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...LINK_MESSAGES.en,
     ...GIFT_MESSAGES.en,
     ...BOUNTY_MESSAGES.en,
+    ...VERIFY_MESSAGES.en,
     ...LANDING_MESSAGES.en,
     ...DOOR_MESSAGES.en,
     ...LOOP_MESSAGES.en,

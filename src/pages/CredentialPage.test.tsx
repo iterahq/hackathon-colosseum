@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
 import CredentialPage from '@/pages/CredentialPage';
 import type { CredentialLookup } from '@/types/achievements';
 import { parseCredential } from '@/services/credential.service';
+
+const readAccount = vi.fn();
+vi.mock('@/lib/chain/rpc', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/chain/rpc')>()), readAccount: (...args: unknown[]) => readAccount(...args) }));
 
 const useCredential = vi.fn();
 vi.mock('@/hooks/useCredential', () => ({ useCredential: (a: string, l: string) => useCredential(a, l), useRecheckCredential: () => ({ mutate: vi.fn(), isPending: false }) }));
@@ -19,19 +23,25 @@ const verified = (over = {}): CredentialLookup => ({
 });
 
 function show(path = '/c/Asset1111111111') {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <I18nProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/c/:asset" element={<CredentialPage />} />
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/c/:asset" element={<CredentialPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     </I18nProvider>
   );
 }
 
 describe('CredentialPage (public)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    readAccount.mockResolvedValue(null);
+  });
 
   it('loading: skeleton and the reading caption', () => {
     useCredential.mockReturnValue({ isPending: true, isError: false });
@@ -49,6 +59,16 @@ describe('CredentialPage (public)', () => {
     expect(card).toHaveTextContent('lido da chain em 412 ms');
     expect(screen.getByRole('link', { name: /Ver na Solana Explorer/ })).toHaveAttribute('href', 'https://explorer.solana.com/address/Asset1111111111?cluster=devnet');
     expect(screen.getByRole('link', { name: 'Quero minha certificação' })).toHaveAttribute('href', '/');
+  });
+
+  it('verified: reads the asset account from the chain on its own, below the card', async () => {
+    useCredential.mockReturnValue({ isPending: false, isError: false, data: verified() });
+    show();
+    expect(screen.getByTestId('read-without-itera')).toHaveTextContent('não do servidor da Itera');
+    expect(await screen.findByText('Esta conta não existe na devnet.')).toBeInTheDocument();
+    expect(readAccount).toHaveBeenCalledTimes(1);
+    expect(readAccount.mock.calls[0][0]).toBe('Asset1111111111');
+    expect(screen.getByRole('link', { name: /O que dura/ })).toHaveAttribute('href', '/verify#durable');
   });
 
   it('companion: lives, outfit, level, xp, streak and the art; no trail rows', () => {

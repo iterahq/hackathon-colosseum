@@ -1,4 +1,5 @@
-import { CopyAddress, ExplorerAnchor, SECTION_TITLE, ShortWallet } from '@/components/bounty/bountyUi';
+import { Link } from 'react-router-dom';
+import { CopyAddress, ExplorerAnchor, LINK, SECTION_TITLE, ShortWallet } from '@/components/bounty/bountyUi';
 import { CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
 import { lamportsToSol } from '@/utils/bounty';
@@ -60,6 +61,11 @@ export function EscrowPanel({ bounty }: { bounty: Bounty }) {
         )}
       </dl>
       <p className="border-t border-[#262320] pt-3 [font:400_13px/1.5_Inter] text-[#A0978A]">{t(sponsorWallet ? 'bounty.custody.wallet' : program ? 'bounty.custody.program' : 'bounty.custody.server')}</p>
+      {program && (
+        <Link to="/verify#program" className={LINK} data-testid="bounty-verify-link">
+          {t('verify.link')} →
+        </Link>
+      )}
     </section>
   );
 }

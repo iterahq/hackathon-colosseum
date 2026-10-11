@@ -1,8 +1,9 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ChainProof } from '@/components/chain/ChainProof';
 import { useI18n } from '@/i18n';
-import { addressUrl, shortAddress } from '@/lib/explorer';
+import { shortAddress } from '@/lib/explorer';
 import type { CredentialLookup } from '@/types/achievements';
 import { tierLabel } from '@/utils/tier';
 import { companionFacts, credentialFacts, isCompanion } from '@/utils/credential';
@@ -116,9 +117,15 @@ export function CredentialCard({ lookup, onRecheck, rechecking = false }: { look
       </dl>
       <div className="mt-4 flex flex-col gap-2 [font:500_12px_JetBrains_Mono] text-[#A0978A]">
         <ChainReadLine read={lookup.read} ms={lookup.ms} onRecheck={onRecheck} rechecking={rechecking} />
-        <a href={addressUrl(data.asset)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
-          {t('passport.credential.explorer')}
-        </a>
+        <ChainProof
+          kind="address"
+          value={data.asset}
+          label={t('passport.credential.explorer')}
+          linkClassName="inline-flex min-h-[44px] items-center text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]"
+        />
+        <Link to="/verify#trust" className="inline-flex min-h-[44px] items-center text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+          {t('verify.link')}
+        </Link>
       </div>
     </motion.section>
   );

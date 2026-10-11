@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArtZoom } from '@/components/artviewer';
 import { TeraNote } from '@/components/tera/TeraNote';
 import { TeraLoader } from '@/components/tera/TeraLoader';
+import { ArchiveCopies } from '@/components/chain/ArchiveCopies';
+import { ReadWithoutItera } from '@/components/verify/ReadWithoutItera';
 import { CredentialCard } from '@/components/passport/CredentialCard';
 import { PassportArt } from '@/components/passport/PassportArt';
 import { useCredential, useRecheckCredential } from '@/hooks/useCredential';
@@ -115,6 +117,8 @@ export default function CredentialPage() {
             )}
             {found.status === 'unverified' && <TeraNote mood="oops" size="bubble" title={t('tera.credential.unverified')} className="!pt-2" data-testid="credential-tera" />}
             <CredentialCard lookup={found} onRecheck={() => recheck.mutate()} rechecking={recheck.isPending} />
+            {found.data.asset && <ReadWithoutItera asset={found.data.asset} />}
+            {found.data.asset && found.status === 'verified' && <ArchiveCopies asset={found.data.asset} />}
           </>
         )}
         <Link to="/" className={BTN}>

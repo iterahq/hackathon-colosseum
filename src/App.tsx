@@ -86,6 +86,7 @@ const LearnerProfilePage = lazy(() => import("./pages/LearnerProfilePage"));
 const GiftPage = lazy(() => import("./pages/GiftPage"));
 const BountiesPage = lazy(() => import("./pages/BountiesPage"));
 const BountyPage = lazy(() => import("./pages/BountyPage"));
+const VerifyPage = lazy(() => import("./pages/VerifyPage"));
 const BountyManagePage = lazy(() => import("./pages/BountyManagePage"));
 const BountyPostPage = lazy(() => import("./pages/BountyPostPage"));
 const BountyMinePage = lazy(() => import("./pages/BountyMinePage"));
@@ -346,6 +347,8 @@ const App = () => (
                 <Route path="/bounties/post" element={<LazyRoute><BountyPostPage /></LazyRoute>} />
                 <Route path="/bounties/mine" element={<LazyRoute><BountyMinePage /></LazyRoute>} />
                 <Route path="/bounties/:slug" element={<LazyRoute><BountyPage /></LazyRoute>} />
+                {/* Public: every on-chain claim, with the steps to check it without trusting Itera. */}
+                <Route path="/verify" element={<LazyRoute><VerifyPage /></LazyRoute>} />
                 {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
                 {/* Self-serve subscribe surface (PLG). Calls itera-api
                     POST /plg/checkout (user-JWT, Stripe SANDBOX) — see

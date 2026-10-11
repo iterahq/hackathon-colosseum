@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ChainProof } from '@/components/chain/ChainProof';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { DEVNET_BADGE, FOCUS, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
@@ -7,7 +8,7 @@ import { useBountySession } from '@/hooks/useBounties';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useI18n } from '@/i18n';
 import { loginHref } from '@/lib/loginReturn';
-import { shortAddress } from '@/lib/explorer';
+import { parseExplorerUrl, shortAddress } from '@/lib/explorer';
 import { statusTone, type StatusTone } from '@/utils/bounty';
 import type { BountyStatus } from '@/types/bounty';
 
@@ -73,9 +74,11 @@ export function RequirementChip({ trail, minDays }: { trail: string; minDays: nu
   return <Chip>{t(minDays === 1 ? 'bounty.req.one' : 'bounty.req.many', { trail, n: minDays })}</Chip>;
 }
 
-export function ExplorerAnchor({ href, label }: { href: string | null; label?: string }) {
+export function ExplorerAnchor({ href, label, compact }: { href: string | null; label?: string; compact?: boolean }) {
   const { t } = useI18n();
   if (!href) return null;
+  const target = parseExplorerUrl(href);
+  if (target) return <ChainProof kind={target.kind} value={target.value} label={label} compact={compact} />;
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className={LINK}>
       {label ?? t('bounty.explorer')} ↗

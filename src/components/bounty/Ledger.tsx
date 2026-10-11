@@ -1,4 +1,5 @@
-import { ExplorerAnchor, SECTION_TITLE, ShortWallet } from '@/components/bounty/bountyUi';
+import { Link } from 'react-router-dom';
+import { ExplorerAnchor, LINK, SECTION_TITLE, ShortWallet } from '@/components/bounty/bountyUi';
 import { CARD } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
@@ -22,6 +23,9 @@ export function Ledger({ events }: { events: LedgerEvent[] }) {
       <div className="flex flex-col gap-1">
         <h2 id="bounty-ledger" className={SECTION_TITLE}>{t('bounty.ledger.title')}</h2>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.ledger.plain')}</p>
+        <Link to="/verify#trust" className={LINK}>
+          {t('verify.link')} →
+        </Link>
       </div>
       {events.length === 0 ? (
         <p className="[font:500_14px_Inter] text-[#A0978A]">{t('bounty.ledger.empty')}</p>
