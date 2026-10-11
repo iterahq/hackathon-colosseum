@@ -1,0 +1,491 @@
+import { isEd25519Address } from './address.ts';
+import { APP_URL, CLUSTER, explorerUrl, pickText } from './credential.ts';
+import { ACTION_VERSION, dialToUrl, shortWallet, solAmount, type Lang } from './gift.ts';
+import { isVerified, type OnchainAsset } from './profile.ts';
+import { BASE_FEE_LAMPORTS } from './purchase-verify.ts';
+import type { SignatureFate } from './treasury.ts';
+
+export { ACTION_VERSION };
+
+export type BountyStatus = 'awaiting_funding' | 'open' | 'claimed' | 'submitted' | 'paying' | 'paid' | 'refunding' | 'refunded';
+export type PublicStatus = BountyStatus | 'expired';
+export type ClaimStatus = 'active' | 'submitted' | 'approved' | 'rejected' | 'expired' | 'withdrawn';
+export type I18n = Record<string, string>;
+
+export const MIN_REWARD_LAMPORTS = 1_000_000n;
+export const MAX_REWARD_LAMPORTS = 500_000_000n;
+/** A transfer whose signature the node does not know is sent again only after its blockhash is surely dead. */
+export const TRANSFER_LEASE_MS = 150_000;
+const TRAIL_ATTRIBUTE_MAX = 80;
+const SLUG = /^[a-z0-9][a-z0-9-]{2,62}$/;
+
+/** What a wallet must hold on chain to take a bounty: `min_days` stamped days of one trail. */
+export interface Requirement {
+  program: string;
+  unit_id: string;
+  /** The `trail` attribute the certification carries on chain. */
+  trail: string;
+  trail_title: I18n;
+  min_days: number;
+  total_days: number;
+}
+
+export interface BountyRow {
+  id: string;
+  slug: string;
+  tenant_id: string;
+  sponsor_name: string;
+  title_i18n: I18n;
+  summary_i18n: I18n;
+  brief_i18n: I18n;
+  deliverable_i18n: I18n;
+  requirement: Requirement;
+  reward_lamports: number;
+  escrow_kind: 'derived_account' | 'program';
+  escrow_address: string;
+  refund_address: string;
+  status: BountyStatus;
+  claim_id: string | null;
+  claim_hours: number;
+  expires_at: string;
+  funded_at: string | null;
+  funded_lamports: number | null;
+  funding_signature: string | null;
+  transfer_signature: string | null;
+  transfer_sent_at: string | null;
+  transfer_lamports: number | null;
+  paid_at: string | null;
+  paid_wallet: string | null;
+  payout_lamports: number | null;
+  payout_signature: string | null;
+  refunded_at: string | null;
+  refund_lamports: number | null;
+  refund_signature: string | null;
+  created_at: string;
+}
+
+export interface ClaimRow {
+  id: string;
+  bounty_id: string;
+  user_id: string;
+  wallet: string;
+  proof_asset: string;
+  proof: Record<string, unknown>;
+  status: ClaimStatus;
+  accepted_at: string;
+  deadline_at: string;
+  submission_url: string | null;
+  submission_note: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+}
+
+export interface EventRow {
+  id: number;
+  bounty_id: string;
+  kind: string;
+  wallet: string | null;
+  lamports: number | null;
+  signature: string | null;
+  created_at: string;
+}
+
+/** The value `credential.ts` writes in a certification's `trail` attribute. */
+export function trailAttribute(titleEn: string): string {
+  return titleEn.length <= TRAIL_ATTRIBUTE_MAX ? titleEn : `${titleEn.slice(0, TRAIL_ATTRIBUTE_MAX - 1).trimEnd()}…`;
+}
+
+/** What the escrow account must hold for a bounty to open: the reward and the fee of the one transfer that empties it. */
+export function fundingTarget(rewardLamports: bigint | number): bigint {
+  return BigInt(rewardLamports) + BASE_FEE_LAMPORTS;
+}
+
+/**
+ * What leaves an escrow account holding `balance`: everything but the fee, so
+ * the account ends at zero and a second transfer has nothing to send. `null`
+ * when there is nothing to send.
+ */
+export function drainLamports(balance: bigint): bigint | null {
+  const lamports = balance - BASE_FEE_LAMPORTS;
+  return lamports > 0n ? lamports : null;
+}
+
+export function transferMemo(bountyId: string, kind: 'fund' | 'payout' | 'refund'): string {
+  return `itera-bounty:${bountyId}:${kind}`;
+}
+
+export function publicStatus(bounty: Pick<BountyRow, 'status' | 'expires_at'>, now: Date): PublicStatus {
+  const expired = Date.parse(bounty.expires_at) <= now.getTime();
+  return expired && (bounty.status === 'open' || bounty.status === 'awaiting_funding') ? 'expired' : bounty.status;
+}
+
+function attribute(asset: OnchainAsset, key: string): string {
+  return asset.attributes.find((entry) => entry.key === key)?.value ?? '';
+}
+
+export type IneligibleReason = 'no_wallet' | 'no_certification' | 'not_enough_days';
+
+export interface Eligibility {
+  eligible: boolean;
+  reason: IneligibleReason | null;
+  /** The certification that satisfies (or comes closest to) the requirement, as read from chain. */
+  proof: { asset: string; days_done: number; explorer_url: string | null } | null;
+}
+
+/**
+ * Whether a wallet may take a bounty. Every fact comes from `assets`, the Core
+ * accounts as read from chain: the owner, our collection under our authority,
+ * the soulbound freeze, and the `program` / `trail` / `days_done` attributes.
+ */
+export function checkEligibility(input: {
+  wallet: string | null;
+  requirement: Requirement;
+  assets: readonly OnchainAsset[];
+  collection: string | undefined;
+  authority: string | undefined;
+}): Eligibility {
+  const { wallet, requirement } = input;
+  if (!wallet) return { eligible: false, reason: 'no_wallet', proof: null };
+  let best: { asset: string; days: number } | null = null;
+  for (const asset of input.assets) {
+    if (!isVerified(asset, { wallet, collection: input.collection, authority: input.authority })) continue;
+    if (attribute(asset, 'kind') !== 'trail_passport') continue;
+    if (attribute(asset, 'program') !== requirement.program || attribute(asset, 'trail') !== requirement.trail) continue;
+    const text = attribute(asset, 'days_done');
+    const days = /^\d{1,4}$/.test(text) ? Number(text) : 0;
+    if (!best || days > best.days) best = { asset: asset.address, days };
+  }
+  if (!best) return { eligible: false, reason: 'no_certification', proof: null };
+  const proof = { asset: best.asset, days_done: best.days, explorer_url: explorerUrl('address', best.asset) };
+  return best.days >= requirement.min_days ? { eligible: true, reason: null, proof } : { eligible: false, reason: 'not_enough_days', proof };
+}
+
+export type TransferStep = 'settled' | 'wait' | 'send';
+
+/**
+ * What to do with a payout or refund that may already have been sent.
+ * `settled`: the recorded signature landed. `wait`: it may still land, or
+ * another request holds the lease. `send`: nothing is in flight.
+ */
+export function transferStep(facts: { signature: string | null; fate: SignatureFate | null; sentAt: string | null; now: Date }): TransferStep {
+  if (facts.signature && facts.fate === 'landed') return 'settled';
+  if (facts.signature && facts.fate === 'in_flight') return 'wait';
+  const leased = facts.sentAt !== null && facts.now.getTime() - Date.parse(facts.sentAt) < TRANSFER_LEASE_MS;
+  if (facts.signature && facts.fate === 'failed') return 'send';
+  return leased ? 'wait' : 'send';
+}
+
+function text(value: unknown, min: number, max: number): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length >= min && trimmed.length <= max ? trimmed : null;
+}
+
+function i18n(value: unknown, min: number, max: number): I18n | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const pt = text(record.pt, min, max);
+  const en = text(record.en, min, max);
+  return pt && en ? { pt, en } : null;
+}
+
+export interface NewBounty {
+  slug: string;
+  sponsor_name: string;
+  title_i18n: I18n;
+  summary_i18n: I18n;
+  brief_i18n: I18n;
+  deliverable_i18n: I18n;
+  reward_lamports: number;
+  unit_id: string;
+  min_days: number;
+  claim_hours: number;
+  expires_at: string;
+  refund_address: string | null;
+}
+
+export type NewBountyError =
+  | 'invalid_slug'
+  | 'invalid_sponsor'
+  | 'invalid_text'
+  | 'invalid_reward'
+  | 'invalid_requirement'
+  | 'invalid_deadline'
+  | 'invalid_refund_address';
+
+/** A sponsor's form, checked. Nothing here trusts the caller for who they are: only for what the bounty says. */
+export function parseNewBounty(body: Record<string, unknown>, now: Date): { ok: true; value: NewBounty } | { ok: false; error: NewBountyError } {
+  const slug = text(body.slug, 3, 63);
+  if (!slug || !SLUG.test(slug)) return { ok: false, error: 'invalid_slug' };
+  const sponsor = text(body.sponsor_name, 1, 80);
+  if (!sponsor) return { ok: false, error: 'invalid_sponsor' };
+  const title = i18n(body.title, 4, 90);
+  const summary = i18n(body.summary, 10, 220);
+  const brief = i18n(body.brief, 20, 2400);
+  const deliverable = i18n(body.deliverable, 5, 400);
+  if (!title || !summary || !brief || !deliverable) return { ok: false, error: 'invalid_text' };
+  const reward = typeof body.reward_lamports === 'number' && Number.isSafeInteger(body.reward_lamports) ? BigInt(body.reward_lamports) : null;
+  if (reward === null || reward < MIN_REWARD_LAMPORTS || reward > MAX_REWARD_LAMPORTS) return { ok: false, error: 'invalid_reward' };
+  const unitId = text(body.unit_id, 36, 36);
+  const minDays = body.min_days;
+  if (!unitId || typeof minDays !== 'number' || !Number.isInteger(minDays) || minDays < 1 || minDays > 60) return { ok: false, error: 'invalid_requirement' };
+  const days = body.expires_in_days;
+  const claimHours = body.claim_hours ?? 72;
+  if (typeof days !== 'number' || !Number.isInteger(days) || days < 1 || days > 90) return { ok: false, error: 'invalid_deadline' };
+  if (typeof claimHours !== 'number' || !Number.isInteger(claimHours) || claimHours < 1 || claimHours > 720) return { ok: false, error: 'invalid_deadline' };
+  const refund = body.refund_address ?? null;
+  if (refund !== null && !isEd25519Address(refund)) return { ok: false, error: 'invalid_refund_address' };
+  return {
+    ok: true,
+    value: {
+      slug,
+      sponsor_name: sponsor,
+      title_i18n: title,
+      summary_i18n: summary,
+      brief_i18n: brief,
+      deliverable_i18n: deliverable,
+      reward_lamports: Number(reward),
+      unit_id: unitId,
+      min_days: minDays,
+      claim_hours: claimHours,
+      expires_at: new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString(),
+      refund_address: refund as string | null,
+    },
+  };
+}
+
+/** The learner's delivery: an https link and an optional note. */
+export function parseSubmission(body: Record<string, unknown>): { url: string; note: string | null } | null {
+  const raw = text(body.url, 8, 500);
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || !url.hostname.includes('.') || url.username || url.password) return null;
+  const note = body.note === undefined || body.note === null || body.note === '' ? null : text(body.note, 1, 1000);
+  if (body.note && note === null) return null;
+  return { url: url.toString(), note };
+}
+
+function transferView(signature: string | null, lamports: number | null, at: string | null, wallet: string | null) {
+  if (!signature && lamports === null) return null;
+  return { signature, lamports, sol: lamports === null ? null : solAmount(lamports), at, wallet, explorer_url: explorerUrl('tx', signature) };
+}
+
+export function bountyPageUrl(slug: string): string {
+  return `${APP_URL}/bounties/${slug}`;
+}
+
+export function bountyActionUrl(functionsBase: string, slug: string, lang?: Lang): string {
+  return `${functionsBase}/bounty-action/${slug}${lang ? `?lang=${lang}` : ''}`;
+}
+
+/** What anyone may read about a bounty. No user id, no e-mail, no review note. */
+export function bountyView(input: {
+  bounty: BountyRow;
+  claim: ClaimRow | null;
+  events?: EventRow[];
+  lang: Lang;
+  now: Date;
+  functionsBase: string;
+}) {
+  const { bounty, claim, lang } = input;
+  const status = publicStatus(bounty, input.now);
+  const paid = bounty.status === 'paid';
+  return {
+    id: bounty.id,
+    slug: bounty.slug,
+    sponsor: bounty.sponsor_name,
+    title: pickText(bounty.title_i18n, lang),
+    summary: pickText(bounty.summary_i18n, lang),
+    brief: pickText(bounty.brief_i18n, lang),
+    deliverable: pickText(bounty.deliverable_i18n, lang),
+    status,
+    cluster: CLUSTER,
+    reward_lamports: bounty.reward_lamports,
+    reward_sol: solAmount(bounty.reward_lamports),
+    requirement: {
+      program: bounty.requirement.program,
+      unit_id: bounty.requirement.unit_id,
+      trail: pickText(bounty.requirement.trail_title, lang),
+      min_days: bounty.requirement.min_days,
+      total_days: bounty.requirement.total_days,
+    },
+    escrow: {
+      kind: bounty.escrow_kind,
+      custody: bounty.escrow_kind === 'program' ? 'program' : 'itera_server',
+      address: bounty.escrow_address,
+      explorer_url: explorerUrl('address', bounty.escrow_address),
+      target_lamports: Number(fundingTarget(bounty.reward_lamports)),
+      refund_address: bounty.refund_address,
+    },
+    claim_hours: bounty.claim_hours,
+    expires_at: bounty.expires_at,
+    created_at: bounty.created_at,
+    claim: claim
+      ? {
+          wallet: claim.wallet,
+          wallet_short: shortWallet(claim.wallet),
+          profile_url: `${APP_URL}/u/${claim.wallet}`,
+          status: claim.status,
+          accepted_at: claim.accepted_at,
+          deadline_at: claim.deadline_at,
+          submitted_at: claim.submitted_at,
+          proof_asset: claim.proof_asset,
+          proof_url: `${APP_URL}/c/${claim.proof_asset}`,
+          submission_url: paid ? claim.submission_url : null,
+        }
+      : null,
+    funding: transferView(bounty.funding_signature, bounty.funded_lamports, bounty.funded_at, null),
+    payout: transferView(bounty.payout_signature, bounty.payout_lamports, bounty.paid_at, bounty.paid_wallet),
+    refund: transferView(bounty.refund_signature, bounty.refund_lamports, bounty.refunded_at, bounty.refund_address),
+    page_url: bountyPageUrl(bounty.slug),
+    fund:
+      bounty.status === 'awaiting_funding' && status !== 'expired'
+        ? { action_url: bountyActionUrl(input.functionsBase, bounty.slug), blink_url: dialToUrl(bountyActionUrl(input.functionsBase, bounty.slug)) }
+        : null,
+    ...(input.events
+      ? {
+          events: input.events.map((event) => ({
+            kind: event.kind,
+            wallet: event.wallet,
+            lamports: event.lamports,
+            sol: event.lamports === null ? null : solAmount(event.lamports),
+            signature: event.signature,
+            explorer_url: explorerUrl('tx', event.signature),
+            at: event.created_at,
+          })),
+        }
+      : {}),
+  };
+}
+
+export type BountyView = ReturnType<typeof bountyView>;
+
+export function boardStats(bounties: readonly BountyRow[], now: Date) {
+  let paid = 0n;
+  let locked = 0n;
+  let paidCount = 0;
+  let openCount = 0;
+  for (const bounty of bounties) {
+    const status = publicStatus(bounty, now);
+    if (status === 'paid') {
+      paid += BigInt(bounty.payout_lamports ?? 0);
+      paidCount += 1;
+    } else if (status === 'open' || status === 'claimed' || status === 'submitted' || status === 'paying') {
+      locked += BigInt(bounty.funded_lamports ?? bounty.reward_lamports);
+      if (status === 'open') openCount += 1;
+    }
+  }
+  return { paid_lamports: Number(paid), paid_sol: solAmount(paid), paid_count: paidCount, locked_lamports: Number(locked), locked_sol: solAmount(locked), open_count: openCount };
+}
+
+/** What a wallet earned: the paid bounties whose payout went to it. `verified` is the chain's word on each payout. */
+export function earningsView(input: { wallet: string; bounties: readonly BountyRow[]; landed: ReadonlySet<string>; lang: Lang }) {
+  const items = input.bounties
+    .filter((bounty) => bounty.status === 'paid' && bounty.paid_wallet === input.wallet && bounty.payout_signature)
+    .map((bounty) => ({
+      slug: bounty.slug,
+      title: pickText(bounty.title_i18n, input.lang),
+      sponsor: bounty.sponsor_name,
+      lamports: bounty.payout_lamports ?? 0,
+      sol: solAmount(bounty.payout_lamports ?? 0),
+      paid_at: bounty.paid_at,
+      signature: bounty.payout_signature,
+      verified: input.landed.has(bounty.payout_signature as string),
+      explorer_url: explorerUrl('tx', bounty.payout_signature),
+      page_url: bountyPageUrl(bounty.slug),
+    }));
+  const verified = items.filter((item) => item.verified);
+  const total = verified.reduce((sum, item) => sum + BigInt(item.lamports), 0n);
+  return { wallet: input.wallet, cluster: CLUSTER, earned_lamports: Number(total), earned_sol: solAmount(total), bounties_paid: verified.length, items };
+}
+
+const ACTION_TEXT = {
+  pt: {
+    title: (name: string) => `Financie a missão: ${name}`,
+    description: (sponsor: string, trail: string, days: number) =>
+      `Missão paga da Itera (devnet), publicada por ${sponsor}. O valor fica travado numa conta de escrow própria desta missão e só sai para quem tem ${days} dia(s) carimbados de "${trail}" na certificação on-chain e entregar o trabalho aprovado. Sem entrega, volta para o patrocinador.`,
+    label: 'Financiar',
+    button: (price: string) => `Travar ${price} no escrow`,
+    message: (name: string) => `Escrow da missão: ${name}`,
+    doneTitle: 'Missão financiada ✓',
+    doneDescription: 'O valor está travado no escrow e a missão está aberta para quem tem a certificação.',
+    doneLabel: 'Financiada',
+    pendingDescription: 'A transação foi enviada. A missão abre assim que a rede confirmar o saldo do escrow.',
+    errors: {
+      not_found: 'Esta missão não existe.',
+      not_fundable: 'Esta missão já está financiada ou foi encerrada.',
+      invalid_account: 'A carteira que paga não é um endereço Solana válido.',
+      insufficient_funds: 'Saldo insuficiente em devnet para travar o valor e pagar a taxa.',
+      unavailable: 'A rede Solana (devnet) não respondeu. Tente de novo.',
+      invalid_body: 'Pedido inválido.',
+    },
+  },
+  en: {
+    title: (name: string) => `Fund the bounty: ${name}`,
+    description: (sponsor: string, trail: string, days: number) =>
+      `A paid bounty at Itera (devnet), posted by ${sponsor}. The amount is locked in an escrow account of this bounty alone and only leaves to a wallet with ${days} stamped day(s) of "${trail}" in its on-chain certification that delivers approved work. With no delivery it returns to the sponsor.`,
+    label: 'Fund',
+    button: (price: string) => `Lock ${price} in escrow`,
+    message: (name: string) => `Bounty escrow: ${name}`,
+    doneTitle: 'Bounty funded ✓',
+    doneDescription: 'The amount is locked in escrow and the bounty is open to certified wallets.',
+    doneLabel: 'Funded',
+    pendingDescription: 'The transaction was sent. The bounty opens as soon as the network confirms the escrow balance.',
+    errors: {
+      not_found: 'This bounty does not exist.',
+      not_fundable: 'This bounty is already funded or closed.',
+      invalid_account: 'The paying wallet is not a valid Solana address.',
+      insufficient_funds: 'Not enough devnet SOL to lock the amount and pay the fee.',
+      unavailable: 'Solana (devnet) did not answer. Try again.',
+      invalid_body: 'Invalid request.',
+    },
+  },
+} as const;
+
+export type BountyActionError = keyof (typeof ACTION_TEXT)['en']['errors'];
+
+export function bountyActionError(code: BountyActionError, lang: Lang): { message: string } {
+  return { message: ACTION_TEXT[lang].errors[code] };
+}
+
+export const BOUNTY_ACTION_ICON = `${APP_URL}/mascot/tera-happy.webp`;
+
+export function bountyActionGet(input: { bounty: BountyRow; lang: Lang; missingLamports: bigint; href: string; blocked: BountyActionError | null }) {
+  const copy = ACTION_TEXT[input.lang];
+  const { bounty } = input;
+  return {
+    type: 'action' as const,
+    icon: BOUNTY_ACTION_ICON,
+    title: copy.title(pickText(bounty.title_i18n, input.lang)),
+    description: copy.description(bounty.sponsor_name, pickText(bounty.requirement.trail_title, input.lang), bounty.requirement.min_days),
+    label: copy.label,
+    ...(input.blocked ? { disabled: true, error: bountyActionError(input.blocked, input.lang) } : {}),
+    links: { actions: [{ type: 'transaction' as const, label: copy.button(solAmount(input.missingLamports)), href: input.href }] },
+  };
+}
+
+export function bountyActionPost(input: { bounty: BountyRow; lang: Lang; transactionBase64: string; callbackHref: string }) {
+  return {
+    type: 'transaction' as const,
+    transaction: input.transactionBase64,
+    message: ACTION_TEXT[input.lang].message(pickText(input.bounty.title_i18n, input.lang)),
+    links: { next: { type: 'post' as const, href: input.callbackHref } },
+  };
+}
+
+export function bountyActionCompleted(input: { lang: Lang; funded: boolean }) {
+  const copy = ACTION_TEXT[input.lang];
+  return {
+    type: 'completed' as const,
+    icon: BOUNTY_ACTION_ICON,
+    title: copy.doneTitle,
+    description: input.funded ? copy.doneDescription : copy.pendingDescription,
+    label: copy.doneLabel,
+  };
+}

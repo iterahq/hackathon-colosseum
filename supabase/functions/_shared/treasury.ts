@@ -3,34 +3,43 @@ import { base58Decode, base58Encode, base64Encode, buildTransferMessage, seriali
 
 const CONFIRM_TIMEOUT_MS = 30_000;
 const CONFIRM_POLL_MS = 700;
-const PKCS8_ED25519_PREFIX = [0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20];
+export const PKCS8_ED25519_PREFIX = [0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20];
 
 export class TreasuryNotConfiguredError extends Error {}
 
-interface Treasury {
+export interface TransferSigner {
   address: string;
   key: CryptoKey;
 }
 
-/** The treasury keypair from `SOLANA_TREASURY_SECRET` (64 bytes as a JSON array or base58). */
-async function loadTreasury(): Promise<Treasury> {
-  const raw = Deno.env.get('SOLANA_TREASURY_SECRET')?.trim();
-  if (!raw) throw new TreasuryNotConfiguredError('SOLANA_TREASURY_SECRET is not set');
+function secretFrom(name: string): Uint8Array {
+  const raw = Deno.env.get(name)?.trim();
+  if (!raw) throw new TreasuryNotConfiguredError(`${name} is not set`);
   let secret: Uint8Array | null;
   try {
     secret = raw.startsWith('[') ? Uint8Array.from(JSON.parse(raw)) : base58Decode(raw, 64);
   } catch {
     secret = null;
   }
-  if (!secret || secret.length !== 64) throw new TreasuryNotConfiguredError('SOLANA_TREASURY_SECRET must be a 64-byte secret key');
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    Uint8Array.from([...PKCS8_ED25519_PREFIX, ...secret.slice(0, 32)]),
-    { name: 'Ed25519' },
-    false,
-    ['sign'],
-  );
-  return { address: base58Encode(secret.slice(32)), key };
+  if (!secret || secret.length !== 64) throw new TreasuryNotConfiguredError(`${name} must be a 64-byte secret key`);
+  return secret;
+}
+
+/** The 32-byte seed of the treasury key. Only ever used to derive other keys (`bounty-escrow.ts`). */
+export function treasurySeed(): Uint8Array {
+  return secretFrom('SOLANA_TREASURY_SECRET').slice(0, 32);
+}
+
+export function signerFromSeed(seed: Uint8Array, address: string): Promise<TransferSigner> {
+  return crypto.subtle
+    .importKey('pkcs8', Uint8Array.from([...PKCS8_ED25519_PREFIX, ...seed]), { name: 'Ed25519' }, false, ['sign'])
+    .then((key) => ({ address, key }));
+}
+
+/** The treasury keypair from `SOLANA_TREASURY_SECRET` (64 bytes as a JSON array or base58). */
+function loadTreasury(): Promise<TransferSigner> {
+  const secret = secretFrom('SOLANA_TREASURY_SECRET');
+  return signerFromSeed(secret.slice(0, 32), base58Encode(secret.slice(32)));
 }
 
 /**
@@ -53,21 +62,21 @@ export interface TreasuryTransfer {
 }
 
 /**
- * Sends lamports from the treasury and waits for confirmation. Returns the
- * signature. Throws `TransferBroadcastError` for any failure after the node
- * accepted the transaction; any other error means nothing was sent.
+ * Sends lamports from `signer` (fee payer and source) and waits for
+ * confirmation. Returns the signature. Throws `TransferBroadcastError` for any
+ * failure after the node accepted the transaction; any other error means
+ * nothing was sent.
  */
-export async function sendFromTreasury(input: TreasuryTransfer): Promise<string> {
-  const treasury = await loadTreasury();
+export async function sendTransfer(signer: TransferSigner, input: TreasuryTransfer): Promise<string> {
   const { blockhash } = await latestBlockhash();
   const message = buildTransferMessage({
-    payer: treasury.address,
+    payer: signer.address,
     recipient: input.recipient,
     lamports: input.lamports,
     memo: input.memo,
     recentBlockhash: blockhash,
   });
-  const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', treasury.key, message as Uint8Array<ArrayBuffer>));
+  const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', signer.key, message as Uint8Array<ArrayBuffer>));
   const sent = await rpc<string>('sendTransaction', [
     base64Encode(serializeTransaction(message, signature)),
     { encoding: 'base64', preflightCommitment: 'confirmed' },
@@ -105,18 +114,14 @@ export async function signatureFate(signature: string): Promise<SignatureFate> {
   return status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized' ? 'landed' : 'in_flight';
 }
 
+/** Sends lamports from the treasury. Same contract as `sendTransfer`. */
+export async function sendFromTreasury(input: TreasuryTransfer): Promise<string> {
+  return sendTransfer(await loadTreasury(), input);
+}
+
 /** The mint authority's address, read from the authority's own secret (bytes 32..64 are the public key). */
 export function authorityAddress(): string {
-  const raw = Deno.env.get('SOLANA_AUTHORITY_SECRET')?.trim();
-  if (!raw) throw new TreasuryNotConfiguredError('SOLANA_AUTHORITY_SECRET is not set');
-  let secret: Uint8Array | null;
-  try {
-    secret = raw.startsWith('[') ? Uint8Array.from(JSON.parse(raw)) : base58Decode(raw, 64);
-  } catch {
-    secret = null;
-  }
-  if (!secret || secret.length !== 64) throw new TreasuryNotConfiguredError('SOLANA_AUTHORITY_SECRET must be a 64-byte secret key');
-  return base58Encode(secret.slice(32));
+  return base58Encode(secretFrom('SOLANA_AUTHORITY_SECRET').slice(32));
 }
 
 export async function treasuryAddress(): Promise<string> {
