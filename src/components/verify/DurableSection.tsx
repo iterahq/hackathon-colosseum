@@ -7,7 +7,7 @@ export function DurableSection() {
     <VerifySection id="durable" title={t('verify.durable.title')}>
       <div className="flex min-w-0 flex-col gap-2">
         <h3 className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#3FD17F]">{t('verify.durable.yes')}</h3>
-        <Bullets items={[t('verify.durable.yes1'), t('verify.durable.yes2')]} />
+        <Bullets items={[t('verify.durable.yes1'), t('verify.durable.yes3'), t('verify.durable.yes2')]} />
       </div>
       <div className="flex min-w-0 flex-col gap-2">
         <h3 className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#F2C66D]">{t('verify.durable.no')}</h3>

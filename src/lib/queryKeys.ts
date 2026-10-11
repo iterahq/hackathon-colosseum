@@ -174,6 +174,8 @@ export const queryKeys = {
     account: (address: string, slice?: { offset: number; length: number }) => ['chain', 'account', address, slice ?? null] as const,
     transaction: (signature: string) => ['chain', 'transaction', signature] as const,
     published: (path: string) => ['chain', 'published', path] as const,
+    archive: (asset: string) => ['chain', 'archive', asset] as const,
+    archiveOwner: (signer: string) => ['chain', 'archive-owner', signer] as const,
   },
   referral: {
     mine: (userId: string) => ['referral', userId] as const,
