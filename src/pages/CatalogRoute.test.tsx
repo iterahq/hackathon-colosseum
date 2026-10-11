@@ -49,7 +49,7 @@ describe('CatalogRoute', () => {
     ready([['a1', 10], ['b1', 50]]);
     renderPage();
     const hero = screen.getByTestId('featured-course');
-    expect(within(hero).getByText('Course b')).toBeInTheDocument();
+    expect(within(hero).getByRole('heading', { name: 'Course b' })).toBeInTheDocument();
     expect(within(hero).getByTestId('featured-course-cta')).toHaveAttribute('href', '/course/b');
   });
 
