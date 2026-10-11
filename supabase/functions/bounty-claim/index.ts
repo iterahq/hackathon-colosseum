@@ -269,7 +269,7 @@ Deno.serve(async (request) => {
     const db = serviceClient();
     const caller = await resolveCaller(db, request);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
-    const body = await readJsonObject(request, 8192);
+    const body = await readJsonObject(request, 40_000);
     const bountyId = body?.bounty;
     if (!body || typeof bountyId !== 'string' || !isUuid(bountyId)) return json({ error: 'invalid_body' }, 400, cors);
     const bounty = await loadBounty(db, { id: bountyId });
