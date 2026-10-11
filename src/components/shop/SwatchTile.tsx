@@ -21,7 +21,7 @@ function ringStyle(b: ItemBorder): React.CSSProperties {
   return { background: first, ...glow };
 }
 
-function Preview({ item, avatar }: { item: ShopItem; avatar: Avatar }) {
+export function SwatchPreview({ item, avatar }: { item: ShopItem; avatar: Avatar }) {
   const colors = swatchColors(item);
   if (item.kind === 'border') {
     const b = borderOf(item);
@@ -46,7 +46,7 @@ export function SwatchTile({ item, actions, avatar, note }: { item: ShopItem; ac
 
   return (
     <article data-testid="shop-item" data-item={item.key} data-kind={item.kind} data-state={item.owned ? (item.equipped ? 'equipped' : 'owned') : idle ? 'included' : 'buy'} className={`${CARD} flex min-w-0 flex-col items-center gap-1.5 p-3 ${idle ? 'opacity-70' : ''}`}>
-      <Preview item={item} avatar={avatar} />
+      <SwatchPreview item={item} avatar={avatar} />
       <h3 className="line-clamp-1 w-full text-center [font:700_17px/1.1_'Barlow_Condensed'] text-[#F4EDE2]" title={item.title}>
         {item.title}
       </h3>

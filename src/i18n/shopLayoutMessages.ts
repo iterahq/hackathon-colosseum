@@ -1,6 +1,15 @@
 /** Strings of the compact shop: category chips, carousel rows, seasons, includes, crystal price line and life packs. */
 export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'arcade.collection': 'Coleção',
+    'arcade.all': 'Tudo',
+    'arcade.free': 'Grátis',
+    'arcade.more': 'Extras',
+    'arcade.signature': 'Assinadas · vêm com um avatar',
+    'arcade.details': 'Ver detalhes',
+    'arcade.minted': '{minted} de {max} emitidos',
+    'arcade.pick': 'Toque em um item para ver no seu Tera.',
+    'arcade.infinite': 'Infinitas',
     'tryon.outfitBase': 'A prévia de roupa só funciona no Tera base. Troque de ícone para ver a peça.',
     'shop.pay.wallet': 'Pagar com a wallet · {price}',
     'shop.pay.crystals': 'Pagar com cristais · {n}',
@@ -49,6 +58,15 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'shop.borders.title': 'Bordas de perfil',
   },
   en: {
+    'arcade.collection': 'Collection',
+    'arcade.all': 'All',
+    'arcade.free': 'Free',
+    'arcade.more': 'Extras',
+    'arcade.signature': 'Signature · they come with an avatar',
+    'arcade.details': 'See details',
+    'arcade.minted': '{minted} of {max} minted',
+    'arcade.pick': 'Tap an item to see it on your Tera.',
+    'arcade.infinite': 'Infinite',
     'tryon.outfitBase': 'Outfit previews only work on the base Tera. Switch icons to see the piece.',
     'shop.pay.wallet': 'Pay with wallet · {price}',
     'shop.pay.crystals': 'Pay with crystals · {n}',
