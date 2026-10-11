@@ -90,6 +90,11 @@ describe('lessonEndView', () => {
     expect(tier).toMatchObject({ kind: 'ceremony', model: { last: true } });
   });
 
+  it('the server holds the day (plausibility floor): the card carries the reason, nothing is claimed', () => {
+    const held: PassportResult = { awards: [], updated: [], remaining: 0, mint: { wallet: 'W', cluster: 'devnet', attempted: 0, blocked: null }, day_incomplete: null, day_pending_review: { lesson_id: 'l5', reason: 'too_fast', eta: null } };
+    expect(lessonEndView(input({ call: answered(held) }))).toEqual({ kind: 'card', note: 'pendingReview', reason: 'too_fast', eta: null });
+  });
+
   it('the server stamped nothing for this lesson: the plain card, no note', () => {
     const nothing: PassportResult = { awards: [], updated: [], remaining: 0, day_incomplete: null };
     expect(lessonEndView(input({ call: answered(nothing) }))).toEqual({ kind: 'card', note: null });

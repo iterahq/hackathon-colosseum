@@ -9,7 +9,8 @@ import { OnChainMark } from './OnChainMark';
 import { PassportArt } from './PassportArt';
 import { PassportPage } from './PassportPage';
 import { pageColor, pageVariant } from './pageVariant';
-import { isGold } from '@/utils/passport';
+import { isGold, pendingOf } from '@/utils/passport';
+import { countOf } from '@/utils/plural';
 
 const formatDate = (iso: string | null, locale: string): string | null => {
   const at = iso ? new Date(iso) : null;
@@ -23,27 +24,34 @@ export function PassportFullCard({ page }: { page: PassportPageData }) {
   const { t, locale } = useI18n();
   const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
   const date = formatDate(page.earnedAt, locale);
-  const art = page.credentialId ? credentialImageUrl(page.credentialId, locale, `${page.daysDone}-${page.tier ?? ''}`) : null;
+  const art = page.credentialId ? credentialImageUrl(page.credentialId, locale, `${page.daysAwarded}-${page.tier ?? ''}`) : null;
+  const pending = pendingOf(page);
 
   return (
     <article data-testid="passport-full-card" className="flex w-full max-w-[300px] flex-col gap-3 justify-self-center">
-      <ArtZoom title={page.trailTitle} line={t('viewer.cert.line', { done: page.daysDone, total: page.totalDays })} src={art} asset={minted ? page.assetAddress : null} aspect={3 / 4} full={art ? undefined : <PassportPage title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysDone} variant={pageVariant(page)} ribbon={t('passport.ribbon')} />}>
+      <ArtZoom title={page.trailTitle} line={t('viewer.cert.line', { done: page.daysStamped, total: page.totalDays })} src={art} asset={minted ? page.assetAddress : null} aspect={3 / 4} full={art ? undefined : <PassportPage title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysStamped} variant={pageVariant(page)} ribbon={t('passport.ribbon')} />}>
       <PassportArt
         src={art}
         title={page.trailTitle}
         color={pageColor(page)}
         total={page.totalDays}
-        done={page.daysDone}
+        done={page.daysStamped}
         variant={pageVariant(page)}
+        pulseNext={pending > 0}
         ribbon={t('passport.ribbon')}
       />
       </ArtZoom>
       <div className="flex flex-col gap-1.5 [font:500_13px_JetBrains_Mono] text-[#C9BFB0]">
         <span className="[font:700_24px/1_'Barlow_Condensed'] text-[#F4EDE2]">{page.trailTitle}</span>
         <span>
-          {t('passport.days', { done: page.daysDone, total: page.totalDays })}
+          {t('passport.days', { done: page.daysStamped, total: page.totalDays })}
           {page.tier && ` · ${t('passport.tier', { tier: tierLabel(t, page.tier) })}`}
         </span>
+        {pending > 0 && (
+          <span className="text-[#F2C66D]" data-testid="passport-card-pending">
+            {t(`passport.card.pending.${pending === 1 ? 'one' : 'other'}`, { n: pending })}
+          </span>
+        )}
         {date && <span className="text-[#A0978A]">{t(isGold(page) ? 'passport.earnedOn' : 'passport.startedOn', { date })}</span>}
         {minted && (
           <span className="flex flex-wrap items-center gap-2 pt-1">

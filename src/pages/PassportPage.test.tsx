@@ -23,11 +23,11 @@ vi.mock('@/hooks/useCrystals', () => ({ useCrystals: () => ({ data: undefined })
 vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ user: { email: 'a@b.c' }, signOut: vi.fn(), signInWithSolana: vi.fn() }) }));
 
 const page = (over: Partial<PassportPageData> = {}): PassportPageData => ({
-  credentialId: null, trailId: 't1', trailTitle: 'HTML', colorIndex: 1, daysDone: 4, totalDays: 5, tier: 'bronze', mintStatus: 'unclaimed',
+  credentialId: null, trailId: 't1', trailTitle: 'HTML', colorIndex: 1, daysDone: 4, daysAwarded: over.daysDone ?? 4, daysStamped: over.daysDone ?? 4, totalDays: 5, tier: 'bronze', mintStatus: 'unclaimed',
   assetAddress: null, txSignature: null, earnedAt: '2026-10-09T10:00:00Z', locked: false, lockedBy: null, ...over,
 });
 const medal = (over: Partial<PassportMedal> = {}): PassportMedal => ({ key: 'm', kind: 'streak', credentialId: 'row-m', title: 'Streak 3', description: '3 dias seguidos', glyph: 'D3', earned: true, mintStatus: 'unclaimed', assetAddress: null, txSignature: null, ...over });
-const base = { earnedCount: 3, totals: { pages: 1, stamps: 4, medals: 1 }, featuredId: 't1', walletAddress: null, isPending: false, isError: false, refetch: vi.fn() };
+const base = { earnedCount: 3, totals: { pages: 1, stamps: 4, pending: 0, held: 0, medals: 1 }, featuredId: 't1', walletAddress: null, isPending: false, isError: false, refetch: vi.fn() };
 
 const show = () => render(<I18nProvider><MemoryRouter><PassportPage /></MemoryRouter></I18nProvider>);
 

@@ -5,6 +5,7 @@ import { usePassport, usePassportPrefetch } from '@/hooks/usePassport';
 import { useI18n } from '@/i18n';
 import { preparingModel } from '@/utils/lessonEnd';
 import { LoopPanel } from '@/components/loop/LoopPanel';
+import { LessonHeldNotice } from './HeldStampNotice';
 import { StampCeremony } from './StampCeremony';
 
 interface BoundaryProps {
@@ -54,7 +55,8 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
   if (view.kind === 'card') {
     return (
       <div className="flex flex-col gap-4">
-        <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note ? t('lessonEnd.stampLater') : undefined} fill={false} />
+        {view.note === 'pendingReview' && <LessonHeldNotice reason={view.reason} eta={view.eta} />}
+        <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note === 'stampLater' ? t('lessonEnd.stampLater') : undefined} fill={false} />
         <LoopPanel trail={trail} day={day} />
       </div>
     );

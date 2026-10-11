@@ -27,7 +27,7 @@ vi.mock('@/auth/AuthContext', () => ({
     user: authUser,
   }),
 }));
-vi.mock('@/lib/supabase/client', () => ({ getSupabase: () => ({ auth: { updateUser: (patch: unknown) => updateUser(patch) } }) }));
+vi.mock('@/lib/supabase/client', () => ({ getSupabase: () => ({ auth: { updateUser: (patch: unknown) => updateUser(patch), getUser: () => Promise.resolve({ data: { user: { user_metadata: {} } } }) } }) }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 
 function renderGate(path = '/dashboard') {

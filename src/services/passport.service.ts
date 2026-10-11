@@ -1,6 +1,6 @@
 /** Calls the `passport` edge function: it awards what the learner's progress earned and mints what it can. */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
-import type { DayIncomplete, PassportResult } from '@/types/achievements';
+import type { DayIncomplete, DayPendingReview, PassportResult, ReviewReason } from '@/types/achievements';
 
 /** Carries the HTTP status of a failed call, so callers can tell "function missing / not allowed" from "try again". */
 export class PassportCallError extends Error {
@@ -19,6 +19,15 @@ function dayIncomplete(raw: unknown): DayIncomplete | null | undefined {
   return { lesson_id: String(v.lesson_id ?? ''), done: v.done, total: v.total };
 }
 
+const REASONS: readonly ReviewReason[] = ['too_fast', 'missing_results', 'unverified'];
+
+function dayPendingReview(raw: unknown): DayPendingReview | null {
+  const v = raw as Partial<DayPendingReview> | null | undefined;
+  if (!v || typeof v !== 'object') return null;
+  const reason = REASONS.find((r) => r === v.reason) ?? 'unverified';
+  return { lesson_id: String(v.lesson_id ?? ''), reason, eta: typeof v.eta === 'string' ? v.eta : null };
+}
+
 /** `lessonId` is the lesson just finished: the answer then says whether that day is whole (`day_incomplete`). */
 export async function callPassport(lang: string, lessonId?: string, maxJobs?: number): Promise<PassportResult> {
   if (!isSupabaseConfigured) throw new PassportCallError('Supabase not configured.', null);
@@ -35,5 +44,6 @@ export async function callPassport(lang: string, lessonId?: string, maxJobs?: nu
     remaining: typeof answer.remaining === 'number' ? answer.remaining : 0,
     mint: answer.mint,
     day_incomplete: dayIncomplete(answer.day_incomplete),
+    day_pending_review: dayPendingReview(answer.day_pending_review),
   };
 }

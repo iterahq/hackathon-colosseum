@@ -27,7 +27,7 @@ export function PassportMiniCard({ page, pulseNext, caption, onOpen }: Props) {
         title={page.trailTitle}
         color={color}
         total={page.totalDays}
-        done={page.daysDone}
+        done={page.daysStamped}
         variant={variant}
         width={180}
         pulseNext={pulseNext}
@@ -38,7 +38,7 @@ export function PassportMiniCard({ page, pulseNext, caption, onOpen }: Props) {
           <span className="text-[#A0978A]">{t('passport.unlocksAfter', { name: shortName(page.lockedBy ?? page.trailTitle) })}</span>
         ) : (
           <>
-            <span className="text-[#C9BFB0]">{t('passport.days', { done: page.daysDone, total: page.totalDays })}</span>
+            <span className="text-[#C9BFB0]">{t('passport.days', { done: page.daysStamped, total: page.totalDays })}</span>
             {variant === 'fresh' && (
               <span className="text-[#A0978A]">
                 <span className="group-hover:hidden group-focus-visible:hidden">{t('passport.notStarted')}</span>

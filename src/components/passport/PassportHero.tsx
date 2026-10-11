@@ -6,11 +6,12 @@ interface Props {
   wallet: string | null;
   pages: number;
   stamps: number;
+  pending?: number;
   medals: number;
 }
 
 /** The chunky green band at the top of /passport. */
-export function PassportHero({ wallet, pages, stamps, medals }: Props) {
+export function PassportHero({ wallet, pages, stamps, pending = 0, medals }: Props) {
   const { t } = useI18n();
   return (
     <header
@@ -22,7 +23,12 @@ export function PassportHero({ wallet, pages, stamps, medals }: Props) {
         <span className={`rounded-full px-3 py-1.5 ${wallet ? 'bg-[#0A0908] text-[#F4EDE2]' : 'border border-[#0A0908]/35 bg-[#F4EDE2]/90 text-[#3A352F]'}`} data-testid="passport-wallet">
           {wallet ? shortAddress(wallet) : t('passport.wallet.none')}
         </span>
-        <span>{t('passport.hero.totals', { pages: countOf(t, pages, 'page'), stamps: countOf(t, stamps, 'stamp'), medals: countOf(t, medals, 'medal') })}</span>
+        <span data-testid="passport-hero-totals">{t('passport.hero.totals', { pages: countOf(t, pages, 'page'), stamps: countOf(t, stamps, 'stamp'), medals: countOf(t, medals, 'medal') })}</span>
+        {pending > 0 && (
+          <span className="rounded-full bg-[#0A0908]/15 px-3 py-1.5" data-testid="passport-hero-pending">
+            {t(`passport.hero.pending.${pending === 1 ? 'one' : 'other'}`, { n: pending })}
+          </span>
+        )}
       </span>
     </header>
   );

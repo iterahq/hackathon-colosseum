@@ -71,15 +71,37 @@ export function NicknameGate() {
   const otherDialog = useOtherDialogOpen(due && !opened);
   const userId = user?.id;
 
+  // A session restored from storage carries the user as it was when it was saved: the account mark is read
+  // fresh from the server before the question goes up, so a tab opened from an old session never asks again.
+  const [fresh, setFresh] = useState<'unknown' | 'asked' | 'free'>('unknown');
+  useEffect(() => {
+    if (!due || otherDialog || opened || !userId || fresh !== 'unknown') return;
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => getSupabase().auth.getUser())
+      .then(({ data }) => {
+        if (cancelled) return;
+        const asked = data?.user?.user_metadata?.[NICKNAME_ASKED_FLAG] === true;
+        if (asked) rememberNicknameSkipped(userId);
+        setFresh(asked ? 'asked' : 'free');
+      })
+      .catch(() => {
+        if (!cancelled) setFresh('free');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [due, otherDialog, opened, userId, fresh]);
+
   // Asked once: marked on the account when the question goes up, not when it is answered.
   useEffect(() => {
-    if (!due || otherDialog || opened || !userId) return;
+    if (!due || otherDialog || opened || !userId || fresh !== 'free') return;
     setOpened(true);
     rememberNicknameSkipped(userId);
     void getSupabase()
       .auth.updateUser({ data: { [NICKNAME_ASKED_FLAG]: true } })
       .catch(() => undefined);
-  }, [due, otherDialog, opened, userId]);
+  }, [due, otherDialog, opened, userId, fresh]);
 
   // A generated name follows the language of the account ("Tera Ousado 477" / "Tera Bold 477").
   const displayName = profile.data?.displayName;

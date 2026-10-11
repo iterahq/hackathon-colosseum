@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { I18nProvider } from '@/i18n';
 import { PASSPORT_TIMEOUT_MS, TRAIL_HOLD_MS, usePassport } from '@/hooks/usePassport';
 import type { PassportResult } from '@/types/achievements';
@@ -38,8 +40,13 @@ const gold: PassportResult = {
   day_incomplete: null,
 };
 
+const Providers = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient()}>
+    <I18nProvider>{children}</I18nProvider>
+  </QueryClientProvider>
+);
 const mount = (over: Partial<Parameters<typeof usePassport>[0]> = {}) =>
-  renderHook(() => usePassport({ lessonId: 'l5', fresh: true, done: 16, total: 16, ...over }), { wrapper: I18nProvider });
+  renderHook(() => usePassport({ lessonId: 'l5', fresh: true, done: 16, total: 16, ...over }), { wrapper: Providers });
 const flush = () => act(async () => void (await vi.advanceTimersByTimeAsync(0)));
 
 describe('usePassport', () => {

@@ -73,6 +73,17 @@ export interface PassportResult {
    * activities (nothing was stamped for it), null when it is whole. Absent on an older backend.
    */
   day_incomplete?: DayIncomplete | null;
+  /** A finished day the server holds instead of stamping (plausibility floor): the reason, in neutral terms. Absent when nothing is held. */
+  day_pending_review?: DayPendingReview | null;
+}
+
+export type ReviewReason = 'too_fast' | 'missing_results' | 'unverified';
+
+export interface DayPendingReview {
+  lesson_id: string;
+  reason: ReviewReason;
+  /** When the server expects to decide, if it says. */
+  eta?: string | null;
 }
 
 export interface DayIncomplete {
@@ -89,7 +100,12 @@ export interface PassportPageData {
   trailId: string;
   trailTitle: string;
   colorIndex: number;
+  /** Days whose activities are all done, as the trail counts them. */
   daysDone: number;
+  /** Days the server awarded a stamp for (the plausibility check passed). */
+  daysAwarded: number;
+  /** Days whose stamp is written on chain. The only number the UI calls "stamped". */
+  daysStamped: number;
   totalDays: number;
   tier: string | null;
   mintStatus: MintStatus;
