@@ -274,17 +274,18 @@ fn an_eligible_wallet_that_was_not_invited_is_refused() {
     assert_eq!(bounty.escrow.data[O_STATUS], OPEN);
     assert_eq!(bounty.escrow.data[O_CLAIMANT..195], [0u8; 64]);
 
-    let mut invitee = Account { key: bounty.invitee.key, ..wallet(0) };
-    assert_eq!(accept(&mut bounty, &mut stranger, &mut certification_of(&invitee.key), true), Err(custom(EscrowError::NotInvited)));
+    let mut of_the_invitee = certification_of(&bounty.invitee.key);
+    assert_eq!(accept(&mut bounty, &mut stranger, &mut of_the_invitee, true), Err(custom(EscrowError::NotInvited)));
 }
 
 #[test]
 fn the_invitee_still_needs_the_stamped_days() {
     let mut bounty = direct(4);
     let mut invitee = Account { key: bounty.invitee.key, ..wallet(0) };
-    assert_eq!(accept(&mut bounty, &mut invitee, &mut certification_of(&invitee.key), true), Err(custom(EscrowError::NotEnoughStampedDays)));
-    let mut stranger = wallet(0);
-    assert_eq!(accept(&mut bounty, &mut invitee, &mut certification_of(&stranger.key), true), Err(custom(EscrowError::CertificationNotOwnedByClaimant)));
+    let mut own = certification_of(&invitee.key);
+    assert_eq!(accept(&mut bounty, &mut invitee, &mut own, true), Err(custom(EscrowError::NotEnoughStampedDays)));
+    let mut of_a_stranger = certification_of(&Pubkey::new_unique());
+    assert_eq!(accept(&mut bounty, &mut invitee, &mut of_a_stranger, true), Err(custom(EscrowError::CertificationNotOwnedByClaimant)));
 }
 
 #[test]
@@ -298,7 +299,8 @@ fn giving_up_keeps_the_invitation() {
     assert_eq!(bounty.escrow.data[O_INVITEE..], invitee.key.to_bytes());
 
     let mut stranger = wallet(0);
-    assert_eq!(accept(&mut bounty, &mut stranger, &mut certification_of(&stranger.key), true), Err(custom(EscrowError::NotInvited)));
+    let mut of_the_stranger = certification_of(&stranger.key);
+    assert_eq!(accept(&mut bounty, &mut stranger, &mut of_the_stranger, true), Err(custom(EscrowError::NotInvited)));
     accept(&mut bounty, &mut invitee, &mut certification, true).unwrap();
 }
 
@@ -311,7 +313,8 @@ fn past_its_expiry_anyone_returns_the_reward_to_the_sponsor() {
     assert_eq!(refund(&mut bounty, &mut stranger), Err(custom(EscrowError::NotAuthorized)));
     chain_at(EXPIRES);
     let mut invitee = Account { key: bounty.invitee.key, ..wallet(0) };
-    assert_eq!(accept(&mut bounty, &mut invitee, &mut certification_of(&invitee.key), true), Err(custom(EscrowError::Expired)));
+    let mut certification = certification_of(&invitee.key);
+    assert_eq!(accept(&mut bounty, &mut invitee, &mut certification, true), Err(custom(EscrowError::Expired)));
     assert_eq!(call(&[4], &mut [(&mut stranger, true), (&mut bounty.escrow, false), (&mut invitee, false)]), Err(custom(EscrowError::WrongSponsor)));
 
     refund(&mut bounty, &mut stranger).unwrap();
