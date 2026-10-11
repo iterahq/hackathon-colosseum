@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { PASSPORT_MESSAGES } from './passportMessages';
+import { GRAPH_MESSAGES } from './graphMessages';
 import { SHOP_MESSAGES } from './shopMessages';
 import { CRYSTALS_MESSAGES } from './crystalsMessages';
 import { UX_MESSAGES } from './uxMessages';
@@ -1226,6 +1227,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.language': 'English',
     'header.id.signOut': 'Sair',
     ...PASSPORT_MESSAGES.pt,
+    ...GRAPH_MESSAGES.pt,
     ...TERA_MESSAGES.pt,
     ...WORLD_MESSAGES.pt,
     ...SHOP_MESSAGES.pt,
@@ -2416,6 +2418,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.language': 'Português',
     'header.id.signOut': 'Sign out',
     ...PASSPORT_MESSAGES.en,
+    ...GRAPH_MESSAGES.en,
     ...TERA_MESSAGES.en,
     ...WORLD_MESSAGES.en,
     ...SHOP_MESSAGES.en,
