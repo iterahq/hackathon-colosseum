@@ -3,6 +3,8 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'dash.welcome': 'Bem-vindo de volta',
     'dash.welcome.named': 'Bem-vindo de volta, {name}',
+    'dash.welcome.first': 'Bem-vindo à Itera',
+    'dash.welcome.first.named': 'Bem-vindo, {name}',
     'dash.welcome.prompt': '> dia {day} de {total} · {trail}',
     'dash.welcome.streak': '{n} dias seguidos',
     'dash.welcome.xp': '{xp} XP · nível {level}',
@@ -51,6 +53,8 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   en: {
     'dash.welcome': 'Welcome back',
     'dash.welcome.named': 'Welcome back, {name}',
+    'dash.welcome.first': 'Welcome to Itera',
+    'dash.welcome.first.named': 'Welcome, {name}',
     'dash.welcome.prompt': '> day {day} of {total} · {trail}',
     'dash.welcome.streak': '{n}-day streak',
     'dash.welcome.xp': '{xp} XP · level {level}',

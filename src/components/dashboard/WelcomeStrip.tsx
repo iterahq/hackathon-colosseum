@@ -26,6 +26,8 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
   const nickname = isGenericName(displayName) ? null : greetingName(displayName);
   const current = trail ? currentDayOf(trail) : null;
   const day = trail && current ? String(trail.days.indexOf(current) + 1).padStart(2, '0') : null;
+  const firstVisit = (stats.xp ?? 0) === 0 && (stats.achievements ?? 0) === 0;
+  const welcomeKey = firstVisit ? 'dash.welcome.first' : 'dash.welcome';
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-3" data-testid="welcome-strip">
@@ -33,7 +35,7 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
         {outfitTera ? <HeroTera /> : <LearnerAvatar avatar={avatar} size="lg" thumb={false} />}
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="truncate [font:700_30px/1_'Barlow_Condensed'] max-sm:text-[24px]" data-testid="welcome-title">
-            {nickname ? t('dash.welcome.named', { name: nickname }) : t('dash.welcome')}
+            {nickname ? t(`${welcomeKey}.named`, { name: nickname }) : t(welcomeKey)}
           </h1>
           {trail && day && (
             <span className="truncate [font:500_12px_JetBrains_Mono] text-[#A0978A]">

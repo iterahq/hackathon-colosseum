@@ -36,8 +36,22 @@ function writePending(l: Locale | null): void {
   else localStorage.removeItem(PENDING_LOCALE_KEY);
 }
 
+/**
+ * A profile row younger than this has never had its locale chosen by the
+ * learner: the value in the DB is the column default, not a preference. For
+ * such an account the language the browser was already showing wins and is
+ * saved, so a wallet sign-up from an English browser does not flip to Portuguese.
+ */
+export const FRESH_ACCOUNT_WINDOW_MS = 15 * 60 * 1000;
+
+export function isFreshAccount(createdAt: string | undefined, now = Date.now()): boolean {
+  if (!createdAt) return false;
+  const t = Date.parse(createdAt);
+  return Number.isFinite(t) && now - t >= 0 && now - t < FRESH_ACCOUNT_WINDOW_MS;
+}
+
 export function useLocaleSync(): void {
-  const { setLocale, registerPersistSink } = useI18n();
+  const { locale, setLocale, registerPersistSink } = useI18n();
   const { data: profile } = useProfile();
   const { session } = useAuth();
   // Guard so we hydrate from the DB only once per session (otherwise a later
@@ -46,6 +60,8 @@ export function useLocaleSync(): void {
 
   const signedIn = useRef(false);
   signedIn.current = !!session?.user?.id;
+  const shownLocale = useRef(locale);
+  shownLocale.current = locale;
 
   // 1. Register the DB persist sink for user-initiated changes. The sink only
   // runs for explicit choices (hydration passes persist=false). Signed out
@@ -78,6 +94,8 @@ export function useLocaleSync(): void {
       if (pending && pending !== profile.locale) {
         // The choice made while signed out wins and is saved to the profile.
         setLocale(pending, true);
+      } else if (!pending && isFreshAccount(session?.user?.created_at) && shownLocale.current !== profile.locale) {
+        setLocale(shownLocale.current, true);
       } else {
         setLocale(profile.locale, false); // hydrate — do NOT echo back to the DB
       }

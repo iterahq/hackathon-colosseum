@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // location.state is client-controlled and `from` reaches the DFL federate URL
@@ -46,6 +47,7 @@ export default function AuthPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setWalletError(null);
     const { error } = await signInWithPassword(email.trim(), password);
     setBusy(false);
     if (error) {
@@ -58,15 +60,16 @@ export default function AuthPage() {
   async function onSolana() {
     setBusy(true);
     setError(null);
+    setWalletError(null);
     const { error, noWallet } = await signInWithSolana();
     setBusy(false);
     if (error) {
       if (noWallet && isTouchBrowser()) {
-        setError(t('auth.solana.openInPhantom'));
+        setWalletError(t('auth.solana.openInPhantom'));
         window.location.assign(phantomBrowseUrl(window.location.href, window.location.origin));
         return;
       }
-      setError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'));
+      setWalletError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'));
       return;
     }
     navigate(from, { replace: true });
@@ -131,8 +134,27 @@ export default function AuthPage() {
         <span className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Federated IdP — DFL is the primary CTA. Google login removed. */}
+      {/* Wallet first: the account that is also the certificate and the inventory. DFL is the federated IdP. */}
       <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-11 w-full whitespace-normal py-2.5 text-center leading-snug"
+          disabled={busy}
+          onClick={onSolana}
+          aria-describedby={walletError ? 'wallet-error' : 'web3-solana-why'}
+          data-testid="web3-solana"
+        >
+          {t('auth.wallet.cta')}
+        </Button>
+        <p id="web3-solana-why" className="-mt-1 text-center text-xs text-muted-foreground" data-testid="web3-solana-why">
+          {t('auth.wallet.why')}
+        </p>
+        {walletError && (
+          <p id="wallet-error" role="alert" className="text-center text-sm text-destructive" data-testid="wallet-error">
+            {walletError}
+          </p>
+        )}
         <Button
           type="button"
           variant="outline"
@@ -142,19 +164,6 @@ export default function AuthPage() {
         >
           {t('auth.signInWith', { provider: 'DFL' })}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-auto min-h-11 w-full whitespace-normal py-2.5 text-center leading-snug"
-          disabled={busy}
-          onClick={onSolana}
-          data-testid="web3-solana"
-        >
-          {t('auth.wallet.cta')}
-        </Button>
-        <p className="-mt-1 text-center text-xs text-muted-foreground" data-testid="web3-solana-why">
-          {t('auth.wallet.why')}
-        </p>
         <Link
           to="/auth/code"
           className="text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
