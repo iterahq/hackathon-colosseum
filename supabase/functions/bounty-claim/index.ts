@@ -1,5 +1,5 @@
 import { EscrowProgramError } from '../_shared/bounty-chain.ts';
-import { CLAIM_COLUMNS, acceptOnChain, eligibilityOf, loadBounty, loadClaims, openClaimOf } from '../_shared/bounty-store.ts';
+import { CLAIM_COLUMNS, acceptOnChain, eligibilityOf, syncWithEscrow, loadBounty, loadClaims, openClaimOf } from '../_shared/bounty-store.ts';
 import { parseSubmission, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
@@ -81,7 +81,11 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
     if (error instanceof TransferBroadcastError) return json({ accepted: true, proof: eligibility.proof, chain: { status: 'pending', signature: error.signature } }, 200, cors);
     const released = await db.rpc('bounty_release_claim', { p_bounty: bounty.id, p_reason: 'withdrawn', p_user_id: caller.iteraUserId });
     if (released.error) console.error('bounty claim not released after a chain refusal', bounty.id, released.error.message);
-    if (error instanceof EscrowProgramError) return json({ error: 'refused_by_program', reason: error.code }, 403, cors);
+    if (error instanceof EscrowProgramError) {
+      // The escrow may have been closed on chain without us (a sponsor refunding from their own wallet): the board follows.
+      if (error.code === 'not_open') await syncWithEscrow(db, bounty.id).catch((reason) => console.error('bounty not synced with its escrow', bounty.id, reason));
+      return json({ error: 'refused_by_program', reason: error.code }, 403, cors);
+    }
     throw error;
   }
 }

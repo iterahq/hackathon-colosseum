@@ -32,6 +32,19 @@ export async function readEscrow(programId: string, address: string): Promise<Es
   return parseEscrowState(Uint8Array.from(atob(value.data[0]), (char) => char.charCodeAt(0)));
 }
 
+/** Many escrow accounts in one call, by address. An address that holds no escrow of the program is absent. */
+export async function readEscrows(programId: string, addresses: string[]): Promise<Map<string, EscrowState>> {
+  const found = new Map<string, EscrowState>();
+  if (addresses.length === 0) return found;
+  const { value } = await rpc<{ value: Array<AccountInfo | null> }>('getMultipleAccounts', [addresses.slice(0, 100), { encoding: 'base64', commitment: 'confirmed' }]);
+  value.forEach((info, index) => {
+    if (!info || info.owner !== programId) return;
+    const state = parseEscrowState(Uint8Array.from(atob(info.data[0]), (char) => char.charCodeAt(0)));
+    if (state) found.set(addresses[index], state);
+  });
+  return found;
+}
+
 function refusal(error: unknown): EscrowProgramError | null {
   if (!(error instanceof RpcNodeError)) return null;
   const match = /custom program error: 0x([0-9a-f]+)/i.exec(error.nodeMessage);

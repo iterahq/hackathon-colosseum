@@ -282,6 +282,10 @@ A bounty past `expires_at` that nobody holds reads as `expired` and is refunded 
   works when the refund address is a wallet the sponsor controls (a bounty funded through the blink); it is the way
   out if Itera's server disappears.
 
+A sponsor who refunds from their own wallet leaves our row behind the chain. The same sweep reads the escrow
+accounts of open bounties and retires the ones the chain already shows as refunded; a learner who tries to accept
+one first gets `refused_by_program` (`not_open`) and the row is brought in line at once.
+
 The sweep route is public and takes no parameter: it can only send a bounty's money to the refund address fixed
 when the bounty was posted. A bounty someone holds is not swept; its claim ends at `claim_hours` or at
 `expires_at`, whichever comes first, and the bounty is swept after that. A delivery waiting for review is never
@@ -319,3 +323,6 @@ What is **not** automatic: a learner whose delivery the sponsor never reviews ha
   to the sweep, to the refund address fixed at creation; a held bounty and a bounty inside its date are left
   alone; a second sweep pays nothing again.
 - **Sign-in return**: `loginReturn.test.ts`, `AuthPage.return.test.tsx` (a foreign `next` never leaves the app).
+- **Attack, on devnet**: a sponsor funds a bounty from their own wallet, signs the program's `refund` directly and
+  leaves the bounty looking open. The next learner's accept is refused by the program, the row reads `refunded`, and
+  it cannot be taken afterwards (6 checks).
