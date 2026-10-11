@@ -39,7 +39,7 @@ export function CredentialCard({ lookup, onRecheck, rechecking = false }: { look
   const ok = lookup.status === 'verified';
   const f = credentialFacts(data, tText, locale);
   const companion = isCompanion(data) ? companionFacts(data) : null;
-  const date = f.date ? new Date(f.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'pt-BR', { timeZone: 'UTC' }) : null;
+  const date = f.date ? new Date(f.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'pt-BR', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }) : null;
 
   return (
     <motion.section
