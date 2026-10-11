@@ -1,4 +1,4 @@
-import { EscrowProgramError, readEscrow, refundPlan, releasePlan, acceptPlan, matchesTerms, sendAsApprover, type EscrowTerms } from './bounty-chain.ts';
+import { EscrowProgramError, readEscrow, readEscrows, refundPlan, releasePlan, acceptPlan, matchesTerms, sendAsApprover, type EscrowTerms } from './bounty-chain.ts';
 import { escrowBalance, sendFromEscrow } from './bounty-escrow.ts';
 import {
   checkEligibility,
@@ -337,6 +337,36 @@ export async function refundBounty(db: IteraClient, bounty: BountyRow, actorWall
   return settleTransfer(db, bounty.id);
 }
 
+/**
+ * Brings our row in line with an escrow that closed without us: the sponsor's
+ * own wallet may refund an unclaimed bounty straight on the program. Only ever
+ * moves an open bounty to refunded, and only when the chain already says so.
+ */
+export async function syncWithEscrow(db: IteraClient, bountyId: string): Promise<void> {
+  const bounty = await loadBounty(db, { id: bountyId });
+  if (!bounty || bounty.escrow_kind !== 'program' || bounty.status !== 'open') return;
+  const terms = await escrowTerms(bounty, await loadConfig(db));
+  if (!terms) return;
+  const state = await readEscrow(terms.programId, bounty.escrow_address);
+  if (state?.status === 'refunded') await refundBounty(db, bounty, null);
+}
+
+/**
+ * Open bounties whose escrow the chain already shows as refunded (see
+ * `syncWithEscrow`) leave the board: one read of the accounts, then one row each.
+ */
+async function syncOpenEscrows(db: IteraClient): Promise<number> {
+  const config = await loadConfig(db);
+  if (!config.bounty_escrow_program) return 0;
+  const { data, error } = await db.from('bounties').select('id,escrow_address').eq('status', 'open').eq('escrow_kind', 'program').limit(100);
+  if (error) throw new Error(`bounties sync: ${error.message}`);
+  const open = (data ?? []) as Array<{ id: string; escrow_address: string }>;
+  const states = await readEscrows(config.bounty_escrow_program, open.map((row) => row.escrow_address));
+  const gone = open.filter((row) => states.get(row.escrow_address)?.status === 'refunded');
+  for (const row of gone) await syncWithEscrow(db, row.id).catch((reason) => console.error('bounty not synced with its escrow', row.id, reason));
+  return gone.length;
+}
+
 /** Lets work outlive the response. Its failure is logged, never thrown. */
 export function inBackground(work: Promise<unknown>): void {
   const guarded = work.catch((error) => console.error('bounty background work failed', error));
@@ -368,7 +398,7 @@ export async function sweepExpired(db: IteraClient, now: Date, max: number): Pro
         console.error('bounty sweep failed', bounty.slug, error instanceof Error ? error.message : error);
       }
     }
-    return due.length;
+    return due.length + (await syncOpenEscrows(db));
   } catch (error) {
     console.error('bounty sweep failed', error instanceof Error ? error.message : error);
     return 0;
