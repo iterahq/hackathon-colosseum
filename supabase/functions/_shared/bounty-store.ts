@@ -181,7 +181,7 @@ export async function eligibilityOf(db: IteraClient, wallet: string | null, boun
     .not('asset_address', 'is', null)
     .limit(CERTIFICATION_LIMIT);
   if (error) throw new Error(`user_achievements: ${error.message}`);
-  const addresses = [...new Set<string>((data ?? []).map((row) => String(row.asset_address)))];
+  const addresses = [...new Set<string>((data ?? []).map((row: { asset_address: unknown }) => String(row.asset_address)))];
   const onchain = config.collection_passports ? await readAssets(addresses, [config.collection_passports]) : new Map();
   return checkEligibility({
     wallet,

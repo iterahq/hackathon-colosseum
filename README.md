@@ -46,6 +46,7 @@ example to open without playing: certificate
 | Tera companion (one per wallet learner) | Core asset, collection "Itera Companions" | Yes | Mirrors `lives`, `max_lives`, `outfit`, `level`, `xp`, `streak`, `avatar`. Written on purchase, equip, lesson end and when the last life is lost, rate limited. A gifted life shows as 6/5 | `/c/<asset>`, `/u/<wallet>` |
 | Collectible Tera avatar | Core asset, collection "Itera Avatars" | **No**, transferable | Minted on a paid purchase, numbered, rarity pyramid with supply caps | `/c/<asset>`, Explorer |
 | Shop payment | System transfer + Memo (intent id) | n/a | Learner wallet to treasury | Explorer, `purchase-confirm` |
+| Bounty escrow (one account per bounty) | Program-derived account of the Itera escrow program (`programs/bounty-escrow`, native Solana program) | n/a | Created when a sponsor locks a reward. `accept` records the claimant after the **program** reads their certification account; `release` pays that wallet once; `refund` returns to the sponsor. The account stays on chain saying `paid` and to whom | `/bounties/<slug>`, Explorer |
 | Circuito | System transfer + Memo `circuit:<purchase id>` | n/a | 50 % of each paid purchase, treasury to mint authority, to fund the stamps the server pays; public counter at `GET /circuit` | Explorer |
 
 Addresses (devnet):
@@ -53,16 +54,19 @@ Addresses (devnet):
 | Role | Address |
 |---|---|
 | Mint authority (pays and updates, update authority of every collection) | `CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B` |
-| Treasury (receives payments, funds the faucet) | `AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA` |
+| Treasury (receives payments, funds the faucet, funds DevFellowship's bounties, signs the escrow program's calls) | `AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA` |
 | Collection "Itera Passports" (certifications) | `Eu6EyWEiDdCT7cKmVaGMeRFWvoNdUMGPVe1eou2du91b` |
 | Collection "Itera Medals" | `2frN2YFtKLWK4LCiqWMHppoGexSye9qk9xWue6ARsmDb` |
 | Collection "Itera Companions" | `BSRAqgdY6dUPgY2iFWY2SRrzs58ptRWTtpHQSsYzYcPu` (third entry of `issuer.collections` in the live `credential-verify` answer) |
 | Collection "Itera Avatars" | `Gy4mSSquMaH278zLbGvCvaLS2RTPoZvAFTfHsw7qHAvr` |
+| Bounty escrow program (upgrade authority: the mint authority above; approver of every bounty: the treasury above) | `ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq` |
 
 Example assets:
 
 - Gold certification, 5/5 HTML:
   [`4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG`](https://explorer.solana.com/address/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG?cluster=devnet)
+- A bounty paid by the escrow program (accept, delivery, approval, payout, each with its transaction):
+  [`/bounties/e2e-ui-mv3bd099`](https://hackathon-colosseum.178-105-2-230.sslip.io/bounties/e2e-ui-mv3bd099)
 - Collectible avatar, "Tera · Iniciante #1" (transferable):
   [`CPA9cX4BTNbCWcJC2wsnFNdKTZdHdbCaukP1ueqSZiYw`](https://explorer.solana.com/address/CPA9cX4BTNbCWcJC2wsnFNdKTZdHdbCaukP1ueqSZiYw?cluster=devnet)
 - Collection page of certifications:
@@ -93,6 +97,18 @@ keys still say `passport`; only user-facing text says "Certification".
 - Without trusting us, a verifier can read from the chain: that the asset sits in one of our collections, that the
   collection's update authority is the issuer key, who owns it, that it is frozen, and its attributes
   (`GET /credential-verify/<asset>` does exactly these checks, and anyone can repeat them in Explorer).
+- **Bounties: what the chain decides and what the server decides.** The reward of a bounty sits in an account of
+  the escrow program `ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq`. The program decides where that money can go:
+  only to a wallet that owns a certification of the "Itera Passports" collection (it reads the asset account
+  itself), only once, or back to the sponsor recorded when the bounty was funded. The server decides everything
+  else: how many stamped days a bounty asks for (read from the same on-chain asset), which of two simultaneous
+  claimants wins, the deadlines, and when to call the program; a person on the sponsor's staff decides whether a
+  delivery is approved. The server's key (the treasury) is the program's approver: it can delay, reopen a claim or
+  refund an unclaimed bounty early, and it cannot redirect a reward. **The program is upgradeable and its upgrade
+  authority is the Itera authority key**, a single key held as a function secret: whoever holds it could replace
+  the program and, with it, every rule above. On devnet that is deliberate, to fix bugs during the hackathon; it is
+  the first thing to remove (or hand to a multisig) before real money. Full model:
+  [`docs/onchain-bounties.md`](docs/onchain-bounties.md).
 - **Grading runs on the server.** The player sends each answer to the `grade` function, which reads the exercise
   with the learner's own session, grades it and is the only writer of a completion; the database refuses a
   completion written by a client. Of the 234 activities of the demo program, 118 are graded on the server (choices,
@@ -183,7 +199,9 @@ migrations 0110 to 0210; counts as of main `77dea24`, see the disclosure file fo
 - Proof of learning: server-side grading (`grade`), attempt rows with answer hashes, the share of server-verified
   activities written on the certification asset.
 - Capability graph: named claims proven by a stamped day, written on the certification, lit on `/u/<wallet>` from chain data.
-- Earn: bounties a certification opens, escrow per bounty on devnet, chain-gated accept, payout to the learner's wallet.
+- Earn: bounties a certification opens. An on-chain escrow program (`programs/bounty-escrow`) holds each reward, checks
+  the certification account in `accept` and pays only that wallet; sponsor console, funding blink, automatic refund
+  of expired bounties.
 - Share and ship: link previews for the public pages, offline state, a manual test plan for a real Phantom
   (`docs/hackathon/PHANTOM-TEST.md`).
 
@@ -217,6 +235,9 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
   answer keys of the simple kinds still reach the browser for instant feedback, so server grading stops forged
   completions, not copied answers. The 51 activities the server cannot grade (gestures, computed style, simulated
   clicks) are recorded as self-reported; a stamp states the share it verified ("10/12") instead of hiding it.
+- Bounties: the escrow program does not read the stamped days (the server does), has one approver key and is
+  upgradeable by one key. There is no dispute path: a rejected delivery reopens the bounty and the learner sees the
+  sponsor's note. Rewards are devnet SOL. An approved delivery is a human judgement, not a proof.
 - Avatar transfers are not tracked for equip, and the new holder gets no row. Avatar refunds are manual.
 - Some public functions have no per-IP rate limit (`credential-verify`, `credential-meta`, `learner-profile`; the
   Blink endpoint caps unpaid intents but has no per-IP limit). The public devnet RPC is rate limited.
