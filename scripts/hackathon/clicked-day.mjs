@@ -107,18 +107,30 @@ async function handle(page, activity, ordinal, ctx) {
   const footer = page.getByTestId('feedback-footer');
   const footerContinue = page.getByTestId('feedback-footer-continue');
   const settle = async (what) => {
-    await footer.waitFor({ state: 'visible', timeout: 30_000 }).catch(async (error) => {
-      await shot(page, `no-footer-${ordinal}-${activity.kind}`);
-      throw error;
-    });
-    const correct = await footer.getAttribute('data-correct');
-    ctx.done.push(what);
-    if (correct !== 'true') {
+    // The verdict surfaces as the global footer, or (code kinds) as the activity's own checks panel.
+    const ownContinue = root.locator('[data-testid="code-checks-continue"], [data-testid="guided-continue"]').first();
+    let path = null;
+    for (let wait = 0; wait < 120 && !path; wait += 1) {
+      if (await footer.isVisible().catch(() => false)) path = 'footer';
+      else if (await ownContinue.isVisible().catch(() => false)) path = 'own';
+      else if ((await root.getAttribute('data-activity-id').catch(() => activity.id)) !== activity.id) path = 'advanced';
+      else await page.waitForTimeout(250);
+    }
+    if (!path) {
+      await shot(page, `no-verdict-${ordinal}-${activity.kind}`);
+      throw new Error(`activity ${ordinal} (${activity.kind}): no verdict surface appeared`);
+    }
+    ctx.done.push(`${what}:${path}`);
+    log(`verdict surface for ${ordinal}: ${path}`);
+    if (path === 'advanced') return;
+    const surface = path === 'footer' ? footer : root.locator('[data-testid="code-checks-feedback"], [data-testid="guided-feedback"]').first();
+    if (path === 'footer' && (await footer.getAttribute('data-correct')) !== 'true') {
       await shot(page, `wrong-${ordinal}-${activity.kind}`);
       throw new Error(`activity ${ordinal} (${activity.kind}) was answered wrong: ${await footer.innerText()}`);
     }
     await shot(page, `activity-${ordinal}-${activity.kind}-ok`);
-    await footerContinue.click();
+    await (path === 'footer' ? footerContinue : ownContinue).click();
+    void surface;
   };
 
   switch (activity.kind) {
@@ -372,6 +384,9 @@ async function publicGraphProof(wallet, mint) {
       await page.locator('[data-node-id="html-tags"]').click();
       const detail = page.getByTestId('graph-detail');
       await detail.waitFor({ state: 'visible', timeout: 20_000 });
+      await page.getByTestId('graph-detail-status').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+      log(`panel text (${label}): ${(await detail.innerText().catch(() => 'DETAIL GONE')).replace(/\s+/g, ' ').slice(0, 400)}`);
+      await shot(page, `panel-open-${label}`);
       const hashOk = await page.getByTestId('graph-hash-ok').waitFor({ state: 'visible', timeout: 30_000 }).then(() => true, () => false);
       const status = await page.getByTestId('graph-detail-status').innerText().catch(() => '');
       const graded = page.getByTestId('graph-evidence-graded');
@@ -379,6 +394,7 @@ async function publicGraphProof(wallet, mint) {
       const version = gradedPresent ? await graded.getAttribute('data-version') : null;
       const gradedText = gradedPresent ? await graded.innerText() : '';
       result[label] = { states, status, hashOk, gradedPresent, version, gradedText };
+      log(`panel still open after the evidence wait (${label}): ${await detail.isVisible().catch(() => false)}`);
       const path = await shot(page, `public-profile-${label}`);
       log(`public profile ${label}: nodes ${JSON.stringify(states)} · status "${status}" · hash-ok ${hashOk} · graded present ${gradedPresent} v${version} "${gradedText}" · ${path}`);
       await context.close();
@@ -450,6 +466,10 @@ async function main() {
   const passing = psql(`select count(distinct activity_id) from itera.graded_attempts where user_id = :'user'::uuid and passed;`, { user: wallet.userId });
   proof('18 activities completed, each with a passing graded attempt (server rows)', Number(completedRows) === activities.length && Number(passing) === activities.length, `progress completed ${completedRows}/${activities.length} · activities with a passing attempt ${passing}`);
 
+  const attemptRows = psql(`select a.ordinal || '|' || a.kind || '|' || count(g.id) || '|' || count(g.id) filter (where g.passed) || '|' || coalesce(min(g.mode), '') from itera.activities a left join itera.graded_attempts g on g.activity_id = a.id and g.user_id = :'user'::uuid where a.lesson_id = :'lesson'::uuid and a.status = 'published' group by a.id, a.ordinal, a.kind order by a.ordinal, a.id;`, { user: wallet.userId, lesson: LESSON_ID });
+  log('server-side graded attempts per activity (ordinal|kind|attempts|passed|mode):');
+  for (const row of attemptRows.split('\n')) log(`  ${row}`);
+  run.attempts = attemptRows.split('\n');
   const mint = await waitMinted(wallet.userId);
   proof('trail_pass minted (user_achievements.mint_status = minted)', mint.status === 'minted', `${mint.status} asset ${mint.asset} tx ${mint.tx}`);
   let graph = null;
@@ -459,7 +479,7 @@ async function main() {
     api = await apiProof(wallet, mint);
   }
   const failed = proofs.filter((entry) => !entry.pass);
-  writeFileSync(`${OUT}/result.json`, JSON.stringify({ wallet: wallet.address, userId: wallet.userId, asset: mint.asset, tx: mint.tx, activities: run.table, proofs, graph, api, failed: failed.map((f) => f.name) }, null, 2));
+  writeFileSync(`${OUT}/result.json`, JSON.stringify({ wallet: wallet.address, userId: wallet.userId, asset: mint.asset, tx: mint.tx, activities: run.table, attempts: run.attempts, proofs, graph, api, failed: failed.map((f) => f.name) }, null, 2));
   log(`${proofs.length - failed.length}/${proofs.length} proofs passed`);
   process.exit(failed.length === 0 ? 0 : 1);
 }
