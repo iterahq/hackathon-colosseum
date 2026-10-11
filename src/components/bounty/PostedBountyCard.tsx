@@ -7,7 +7,7 @@ import { useDeleteDraft, useRejectPosted, useWalletBountyTx } from '@/hooks/useB
 import { useI18n } from '@/i18n';
 import { txUrl } from '@/lib/explorer';
 import { describeTxError } from '@/services/bounty.service';
-import { formatWhen, isDraft, plural, safeHttpsUrl } from '@/utils/bounty';
+import { formatWhen, isDraft, lamportsToSol, plural, safeHttpsUrl } from '@/utils/bounty';
 import type { PostedBounty, TxPhase } from '@/types/bounty';
 
 function DeleteDraftAction({ bounty }: { bounty: PostedBounty }) {
@@ -91,6 +91,8 @@ function Review({ bounty }: { bounty: PostedBounty }) {
   const reject = useRejectPosted();
   const [phase, setPhase] = useState<TxPhase | null>(null);
   const [note, setNote] = useState('');
+  const [confirmingApprove, setConfirmingApprove] = useState(false);
+  const sol = lamportsToSol(bounty.rewardLamports);
   const review = bounty.review;
   const learner = review?.wallet ?? bounty.claim?.wallet ?? null;
   const link = safeHttpsUrl(review?.submissionUrl ?? bounty.claim?.submissionUrl);
@@ -149,9 +151,23 @@ function Review({ bounty }: { bounty: PostedBounty }) {
       {rejectError && <Notice tone="error">{t(rejectError.key, rejectError.vars)}</Notice>}
       {learner && <p className="[font:400_13px/1.5_Inter] text-[#A0978A]">{t('bounty.mine.approveHint', { wallet: bounty.claim?.walletShort ?? learner })}</p>}
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={() => approve.mutate({ bounty: bounty.id, note, onPhase: setPhase })} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-mine-approve">
-          {approve.isPending ? t('bounty.working') : t('bounty.mine.approve')}
-        </button>
+        {confirmingApprove || approve.isPending ? (
+          <div className="flex w-full flex-col gap-2" data-testid="bounty-mine-approve-step">
+            <Notice>{t('bounty.mine.approveConfirm', { sol, wallet: bounty.claim?.walletShort ?? learner ?? '' })}</Notice>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy} onClick={() => approve.mutate({ bounty: bounty.id, note, onPhase: setPhase })} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-mine-approve-confirm">
+                {approve.isPending ? t('bounty.working') : t('bounty.mine.approveYes', { sol })}
+              </button>
+              <button type="button" disabled={busy} onClick={() => setConfirmingApprove(false)} className={`${BTN_SECONDARY} ${BTN_SMALL}`} data-testid="bounty-mine-approve-cancel">
+                {t('bounty.mine.approveCancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" disabled={busy} onClick={() => setConfirmingApprove(true)} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-mine-approve">
+            {t('bounty.mine.approve')}
+          </button>
+        )}
         <button type="button" disabled={busy} onClick={() => reject.mutate({ bounty: bounty.id, note })} className={`${BTN_SECONDARY} ${BTN_SMALL}`} data-testid="bounty-mine-reject">
           {reject.isPending ? t('bounty.working') : t('bounty.mine.reject')}
         </button>

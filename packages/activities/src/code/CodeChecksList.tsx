@@ -48,14 +48,14 @@ export function CodeChecksList({
             {result.passed ? (
               <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-menta" />
             ) : (
-              <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
             )}
             <div className="min-w-0">
-              <p className={result.passed ? 'text-foreground' : 'text-muted-foreground'}>
+              <p className={result.passed ? 'text-muted-foreground' : 'font-medium text-foreground'}>
                 {check.label}
               </p>
               {!result.passed && check.hint && (
-                <p className="mt-0.5 text-xs text-clay" data-testid="code-check-hint">
+                <p className="mt-0.5 text-[13px] leading-snug text-clay" data-testid="code-check-hint">
                   {check.hint}
                 </p>
               )}
