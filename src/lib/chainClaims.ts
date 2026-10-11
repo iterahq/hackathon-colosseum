@@ -114,16 +114,25 @@ export async function sha256Hex(textValue: string): Promise<string> {
 }
 
 export interface EvidenceFacts {
+  version: number;
   completedAt: string | null;
   activityCount: number;
+  /** Evidence v2: answers the server graded over answers that had something to grade, e.g. "10/12". */
+  serverVerified: string | null;
+  /** Evidence v2: activities that carry the hash of the graded answer. */
+  answerHashes: number;
 }
 
 export function evidenceFacts(evidence: string): EvidenceFacts | null {
   try {
-    const parsed = JSON.parse(evidence) as { completed_at?: unknown; activities?: unknown };
+    const parsed = JSON.parse(evidence) as { v?: unknown; completed_at?: unknown; activities?: unknown; verified?: unknown };
+    const activities = Array.isArray(parsed.activities) ? parsed.activities : [];
     return {
+      version: typeof parsed.v === 'number' ? parsed.v : 1,
       completedAt: typeof parsed.completed_at === 'string' ? parsed.completed_at : null,
-      activityCount: Array.isArray(parsed.activities) ? parsed.activities.length : 0,
+      activityCount: activities.length,
+      serverVerified: typeof parsed.verified === 'string' && /^\d{1,3}\/\d{1,3}$/.test(parsed.verified) ? parsed.verified : null,
+      answerHashes: activities.filter((entry) => Array.isArray(entry) && typeof entry[2] === 'string' && entry[2].length > 0).length,
     };
   } catch {
     return null;

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { getClaimEvidence, getLearnerProfile } from '@/services/learnerProfile.service';
+import { getClaimEvidence, getLearnerProfile, getWalletGraph } from '@/services/learnerProfile.service';
 
 /** The public profile of one wallet: component → hook → service → edge function. */
 export function useLearnerProfile(wallet: string, lang: 'pt' | 'en') {
@@ -21,5 +21,16 @@ export function useClaimEvidence(wallet: string, claimId: string | null) {
     enabled: Boolean(wallet && claimId),
     retry: false,
     staleTime: 5 * 60_000,
+  });
+}
+
+/** The fast graph of a wallet (database only), shown while the full profile reads the chain. */
+export function useWalletGraph(wallet: string, lang: 'pt' | 'en') {
+  return useQuery({
+    queryKey: queryKeys.achievements.graph(wallet, lang),
+    queryFn: () => getWalletGraph(wallet, lang),
+    enabled: Boolean(wallet),
+    retry: false,
+    staleTime: 30_000,
   });
 }

@@ -4,9 +4,9 @@ import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
-import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
-import { useLearnerProfile } from '@/hooks/useLearnerProfile';
+import { useLearnerProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
+import { staticCapabilities } from '@/services/learnerProfile.service';
 import { useI18n } from '@/i18n';
 import { loreOf } from '@/lib/teraLoreSafe';
 import { shortAddress } from '@/lib/explorer';
@@ -28,6 +28,9 @@ export default function LearnerProfilePage() {
   const query = useLearnerProfile(valid ? wallet : '', locale);
   const lookup = query.data;
   const profile = lookup?.status === 'ok' ? lookup.profile : null;
+  const graph = useWalletGraph(valid ? wallet : '', locale);
+  const loading = valid && query.isPending;
+  const capabilities = profile?.capabilities ?? graph.data ?? (valid && lookup?.status !== 'invalid' ? staticCapabilities(locale) : null);
   const empty = profile && !profile.companion && profile.certifications.length === 0 && profile.medals.length === 0;
 
   return (
@@ -41,7 +44,16 @@ export default function LearnerProfilePage() {
         </button>
       </header>
       <main className="mx-auto flex w-full max-w-[1180px] flex-col gap-8 px-4 pb-14 pt-4 sm:pt-8">
-        {valid && query.isPending && <TeraLoader size="md" label={t('passport.credential.loading')} />}
+        {loading && (
+          <section className="flex items-center gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-4 sm:p-5" data-testid="profile-band-loading">
+            <span className="h-[72px] w-[72px] shrink-0 animate-pulse rounded-full bg-[#1C1916]" aria-hidden="true" />
+            <div className="min-w-0">
+              <h1 className="truncate [font:700_34px/1_'Barlow_Condensed'] max-sm:text-[28px]" title={wallet}>{shortAddress(wallet)}</h1>
+              <p className="mt-2 [font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('passport.credential.loading')}</p>
+            </div>
+          </section>
+        )}
+        {loading && capabilities && <CapabilityGraphSection wallet={wallet} capabilities={capabilities} />}
         {valid && query.isError && (
           <div role="alert" className="rounded-[14px] border border-[#262320] bg-[#141210] p-5 [font:500_14px_Inter] text-[#C9BFB0]" data-testid="profile-failed">
             {t('passport.credential.failed')}
@@ -76,7 +88,7 @@ export default function LearnerProfilePage() {
                 <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
               </div>
             </section>
-            {profile.capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={profile.capabilities} />}
+            {capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={capabilities} />}
             {profile.avatars.length > 0 && (
               <ul className="flex flex-wrap gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-3" aria-label={t('profile.avatars')} data-testid="profile-avatars">
                 {profile.avatars.map((a) => (

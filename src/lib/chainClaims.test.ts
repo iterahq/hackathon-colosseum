@@ -68,7 +68,20 @@ describe('evidence helpers', () => {
     expect(await sha256Hex('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
   });
   it('reads the completion date and activity count, and tolerates garbage', () => {
-    expect(evidenceFacts('{"completed_at":"2026-10-11T00:00:00Z","activities":[["a","t"],["b","t"]]}')).toEqual({ completedAt: '2026-10-11T00:00:00Z', activityCount: 2 });
+    expect(evidenceFacts('{"completed_at":"2026-10-11T00:00:00Z","activities":[["a","t"],["b","t"]]}')).toMatchObject({ completedAt: '2026-10-11T00:00:00Z', activityCount: 2 });
     expect(evidenceFacts('nope')).toBeNull();
+  });
+});
+
+describe('evidenceFacts', () => {
+  it('reads a version 1 document', () => {
+    expect(evidenceFacts(JSON.stringify({ v: 1, completed_at: '2026-10-11T03:00:00.000Z', activities: [['a', 't'], ['b', 't']] }))).toEqual({ version: 1, completedAt: '2026-10-11T03:00:00.000Z', activityCount: 2, serverVerified: null, answerHashes: 0 });
+  });
+
+  it('reads the graded share and the answer hashes of a version 2 document', () => {
+    const facts = evidenceFacts(JSON.stringify({ v: 2, verified: '10/12', completed_at: 'x', activities: [['a', 't', 'h1'], ['b', 't', null], ['c', 't', 'h3']] }));
+    expect(facts).toMatchObject({ version: 2, serverVerified: '10/12', answerHashes: 2, activityCount: 3 });
+    expect(evidenceFacts(JSON.stringify({ v: 2, verified: '<b>all</b>', activities: [] }))?.serverVerified).toBeNull();
+    expect(evidenceFacts('not json')).toBeNull();
   });
 });

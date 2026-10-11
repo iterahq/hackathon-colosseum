@@ -132,6 +132,7 @@ export const queryKeys = {
     credential: (asset: string, lang: string) => ['achievements', 'credential', asset, lang] as const,
     profile: (wallet: string, lang: string) => ['achievements', 'profile', wallet, lang] as const,
     evidence: (wallet: string, claimId: string) => ['achievements', 'evidence', wallet, claimId] as const,
+    graph: (wallet: string, lang: string) => ['achievements', 'graph', wallet, lang] as const,
     chain: (wallet: string, assets: string[]) => ['achievements', 'chain', wallet, assets] as const,
   },
   // Video courses: the public library (with lessons) and the learner's watched lessons.

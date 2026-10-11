@@ -1,6 +1,7 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
 import { toCircuitShare } from '@/services/circuit.service';
 import { toAvatar } from '@/services/shopNormalize';
+import { ITERA_V2_GRAPH } from '../../supabase/functions/_shared/capability-graph';
 import type { Capabilities, CapabilityNode, CapabilityProof, CapabilityStatus, ClaimEvidence, LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -167,4 +168,43 @@ export async function getClaimEvidence(wallet: string, claimId: string): Promise
   const parsed = parseEvidence(await res.json());
   if (!parsed) throw new Error('evidence malformed');
   return parsed;
+}
+
+/** The graph with nothing proven, from the model the app ships with: drawn before any answer arrives. */
+export function staticCapabilities(lang: 'pt' | 'en'): Capabilities {
+  return {
+    source: 'static',
+    program: ITERA_V2_GRAPH.program,
+    version: ITERA_V2_GRAPH.version,
+    total: ITERA_V2_GRAPH.claims.length,
+    verifiedCount: 0,
+    next: null,
+    trails: ITERA_V2_GRAPH.trails.map((title, trail) => ({ trail, title: title[lang] ?? title.en })),
+    nodes: ITERA_V2_GRAPH.claims.map((c) => ({ id: c.id, trail: c.trail, day: c.day, title: c.title[lang] ?? c.title.en, requires: c.requires, status: 'open', proof: null })),
+  };
+}
+
+interface GraphPreload {
+  wallet: string;
+  lang: string;
+  response: Promise<Response>;
+}
+
+/** `index.html` starts this request for `/u/<wallet>` before the bundle loads; it is used once. */
+function takePreload(wallet: string, lang: string): Promise<Response> | null {
+  const holder = window as unknown as { __iteraGraph?: GraphPreload | null };
+  const preload = holder.__iteraGraph;
+  holder.__iteraGraph = null;
+  return preload && preload.wallet === wallet && preload.lang === lang ? preload.response : null;
+}
+
+/** What our tables hold for a wallet, with no chain read: fast, and never `verified` by itself. */
+export async function getWalletGraph(wallet: string, lang: 'pt' | 'en'): Promise<Capabilities | null> {
+  if (!url) throw new Error('Supabase not configured.');
+  const fresh = () => fetch(`${url}/functions/v1/capability-graph/${encodeURIComponent(wallet)}?lang=${lang}`);
+  const res = await (takePreload(wallet, lang) ?? fresh()).catch(fresh);
+  if (res.status === 400) return null;
+  if (!res.ok) throw new Error(`capability-graph failed (${res.status})`);
+  const parsed = parseCapabilities(row(await res.json()).capabilities);
+  return parsed && { ...parsed, source: 'database' };
 }

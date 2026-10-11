@@ -43,6 +43,10 @@ verify_jwt = false
 [functions.learner-profile]
 verify_jwt = false
 
+# The capability graph of a wallet as our tables hold it (no chain read): the fast first paint of /u/<wallet>.
+[functions.capability-graph]
+verify_jwt = false
+
 # An e-mail account binds one Solana wallet by signing a challenge.
 [functions.link-wallet]
 verify_jwt = false

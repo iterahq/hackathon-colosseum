@@ -82,6 +82,8 @@ export interface CapabilityTrail {
 }
 
 export interface Capabilities {
+  /** `database`: the fast answer that read no chain; its recorded claims are candidates until the browser reads the asset. */
+  source?: 'chain' | 'database' | 'static';
   program: string;
   version: number;
   total: number;
