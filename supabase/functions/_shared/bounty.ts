@@ -14,6 +14,14 @@ export type I18n = Record<string, string>;
 
 export const MIN_REWARD_LAMPORTS = 1_000_000n;
 export const MAX_REWARD_LAMPORTS = 500_000_000n;
+/** A bounty posted by a wallet: what it must lock at least, how many it may post a day and keep live at once. */
+export const WALLET_MIN_REWARD_LAMPORTS = 10_000_000n;
+export const WALLET_POSTS_PER_DAY = 3;
+export const WALLET_LIVE_BOUNTIES = 5;
+export const WALLET_MAX_EXPIRY_DAYS = 30;
+export const WALLET_MAX_CLAIM_HOURS = 168;
+/** Names a wallet may not post under: they are the team's. */
+const RESERVED_SPONSORS = /itera|dev\s*fellowship|\bdfl\b|solana\s*foundation|colosseum/i;
 /** A transfer whose signature the node does not know is sent again only after its blockhash is surely dead. */
 export const TRANSFER_LEASE_MS = 150_000;
 const TRAIL_ATTRIBUTE_MAX = 80;
@@ -62,6 +70,16 @@ export interface BountyRow {
   refund_lamports: number | null;
   refund_signature: string | null;
   created_at: string;
+  /** `team`: posted by Itera's staff and funded from the treasury. `wallet`: posted, funded and approved by `sponsor_wallet`. */
+  origin: 'team' | 'wallet';
+  sponsor_wallet: string | null;
+  /** The key the escrow program lets approve. `null`: the Itera treasury key. */
+  approver_address: string | null;
+  slug_en: string | null;
+  source_lang: 'pt' | 'en' | null;
+  hidden_at: string | null;
+  hidden_reason: string | null;
+  delivery_mirror_url: string | null;
 }
 
 export interface ClaimRow {
@@ -263,6 +281,76 @@ export function parseNewBounty(body: Record<string, unknown>, now: Date): { ok: 
   };
 }
 
+/** Lowercase ASCII words of a title, joined by dashes: the readable part of a slug. */
+export function slugify(title: string, max = 48): string {
+  const words = title
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return words.slice(0, max).replace(/-+$/, '') || 'bounty';
+}
+
+function clean(value: unknown): unknown {
+  // deno-lint-ignore no-control-regex
+  return typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '') : value;
+}
+
+/** A text given in one language or in both. The missing one repeats the other, and `source` says which was written. */
+function oneOrBoth(value: unknown, min: number, max: number): { texts: I18n; source: 'pt' | 'en' } | null {
+  const record = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  const pt = text(clean(record.pt), min, max);
+  const en = text(clean(record.en), min, max);
+  if ((record.pt && !pt) || (record.en && !en)) return null;
+  if (!pt && !en) return null;
+  return { texts: { pt: (pt ?? en) as string, en: (en ?? pt) as string }, source: en ? 'en' : 'pt' };
+}
+
+export interface NewWalletBounty extends Omit<NewBounty, 'slug' | 'refund_address'> {
+  source_lang: 'pt' | 'en';
+}
+
+/**
+ * The form of a wallet that posts a bounty. Stricter than the staff form: a
+ * floor on the reward, shorter deadlines, no name of the team, and the slug
+ * and every address are decided by the server.
+ */
+export function parseWalletBounty(body: Record<string, unknown>, now: Date): { ok: true; value: NewWalletBounty } | { ok: false; error: NewBountyError } {
+  const sponsor = text(clean(body.sponsor_name), 2, 40);
+  if (!sponsor || RESERVED_SPONSORS.test(sponsor)) return { ok: false, error: 'invalid_sponsor' };
+  const title = oneOrBoth(body.title, 8, 90);
+  const summary = oneOrBoth(body.summary, 20, 220);
+  const brief = oneOrBoth(body.brief, 60, 2400);
+  const deliverable = oneOrBoth(body.deliverable, 10, 400);
+  if (!title || !summary || !brief || !deliverable) return { ok: false, error: 'invalid_text' };
+  const reward = typeof body.reward_lamports === 'number' && Number.isSafeInteger(body.reward_lamports) ? BigInt(body.reward_lamports) : null;
+  if (reward === null || reward < WALLET_MIN_REWARD_LAMPORTS || reward > MAX_REWARD_LAMPORTS) return { ok: false, error: 'invalid_reward' };
+  const unitId = text(body.unit_id, 36, 36);
+  const minDays = body.min_days;
+  if (!unitId || typeof minDays !== 'number' || !Number.isInteger(minDays) || minDays < 1 || minDays > 60) return { ok: false, error: 'invalid_requirement' };
+  const days = body.expires_in_days;
+  const claimHours = body.claim_hours ?? 48;
+  if (typeof days !== 'number' || !Number.isInteger(days) || days < 1 || days > WALLET_MAX_EXPIRY_DAYS) return { ok: false, error: 'invalid_deadline' };
+  if (typeof claimHours !== 'number' || !Number.isInteger(claimHours) || claimHours < 1 || claimHours > WALLET_MAX_CLAIM_HOURS) return { ok: false, error: 'invalid_deadline' };
+  return {
+    ok: true,
+    value: {
+      sponsor_name: sponsor,
+      title_i18n: title.texts,
+      summary_i18n: summary.texts,
+      brief_i18n: brief.texts,
+      deliverable_i18n: deliverable.texts,
+      reward_lamports: Number(reward),
+      unit_id: unitId,
+      min_days: minDays,
+      claim_hours: claimHours,
+      expires_at: new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString(),
+      source_lang: title.source,
+    },
+  };
+}
+
 /** The learner's delivery: an https link and an optional note. */
 export function parseSubmission(body: Record<string, unknown>): { url: string; note: string | null } | null {
   const raw = text(body.url, 8, 500);
@@ -302,15 +390,31 @@ export function bountyView(input: {
   functionsBase: string;
   /** The escrow program's id, for bounties it holds. */
   programId?: string;
+  /** The payout went to one of the team's own test accounts: a rehearsal, shown as one. */
+  rehearsal?: boolean;
 }) {
   const { bounty, claim, lang } = input;
+  const byWallet = bounty.origin === 'wallet' && bounty.sponsor_wallet !== null;
   const program = bounty.escrow_kind === 'program' ? (input.programId ?? null) : null;
   const status = publicStatus(bounty, input.now);
   const paid = bounty.status === 'paid';
   return {
     id: bounty.id,
-    slug: bounty.slug,
+    slug: lang === 'en' && bounty.slug_en ? bounty.slug_en : bounty.slug,
+    slugs: { pt: bounty.slug, en: bounty.slug_en ?? bounty.slug },
     sponsor: bounty.sponsor_name,
+    posted_by: {
+      kind: bounty.origin,
+      name: bounty.sponsor_name,
+      wallet: byWallet ? bounty.sponsor_wallet : null,
+      wallet_short: byWallet ? shortWallet(bounty.sponsor_wallet as string) : null,
+      profile_url: byWallet ? `${APP_URL}/u/${bounty.sponsor_wallet}` : null,
+    },
+    /** Who signs the approval on chain: the sponsor's own wallet, or the Itera treasury key for the team's bounties. */
+    approver: byWallet ? 'sponsor_wallet' : 'itera',
+    rehearsal: input.rehearsal === true,
+    hidden: bounty.hidden_at !== null,
+    written_in: bounty.source_lang,
     title: pickText(bounty.title_i18n, lang),
     summary: pickText(bounty.summary_i18n, lang),
     brief: pickText(bounty.brief_i18n, lang),
@@ -350,15 +454,16 @@ export function bountyView(input: {
           submitted_at: claim.submitted_at,
           proof_asset: claim.proof_asset,
           proof_url: `${APP_URL}/c/${claim.proof_asset}`,
-          submission_url: paid ? claim.submission_url : null,
+          submission_url: paid ? (bounty.delivery_mirror_url ?? claim.submission_url) : null,
+          submission_mirrored: paid && bounty.delivery_mirror_url !== null,
         }
       : null,
     funding: transferView(bounty.funding_signature, bounty.funded_lamports, bounty.funded_at, null),
     payout: transferView(bounty.payout_signature, bounty.payout_lamports, bounty.paid_at, bounty.paid_wallet),
     refund: transferView(bounty.refund_signature, bounty.refund_lamports, bounty.refunded_at, bounty.refund_address),
-    page_url: bountyPageUrl(bounty.slug),
+    page_url: bountyPageUrl(lang === 'en' && bounty.slug_en ? bounty.slug_en : bounty.slug),
     fund:
-      bounty.status === 'awaiting_funding' && status !== 'expired'
+      bounty.status === 'awaiting_funding' && status !== 'expired' && !byWallet
         ? { action_url: bountyActionUrl(input.functionsBase, bounty.slug), blink_url: dialToUrl(bountyActionUrl(input.functionsBase, bounty.slug)) }
         : null,
     ...(input.events
@@ -379,24 +484,52 @@ export function bountyView(input: {
 
 export type BountyView = ReturnType<typeof bountyView>;
 
-/** `paidToTests`: bounties whose payout went to one of the team's test accounts. On chain and listed, not counted as paid. */
-export function boardStats(bounties: readonly BountyRow[], now: Date, paidToTests: ReadonlySet<string> = new Set()) {
+/**
+ * The numbers above the board, counted from the very rows the cards are drawn
+ * from: a card that says PAID is in `paid_count`. `rehearsals`: bounties whose
+ * payout went to one of the team's own test accounts. They are on chain and
+ * counted, and the split says how many of the paid ones they are.
+ */
+export function boardStats(bounties: readonly BountyRow[], now: Date, rehearsals: ReadonlySet<string> = new Set()) {
   let paid = 0n;
+  let rehearsed = 0n;
   let locked = 0n;
   let paidCount = 0;
+  let rehearsalCount = 0;
   let openCount = 0;
+  let heldCount = 0;
+  let outsideCount = 0;
   for (const bounty of bounties) {
     const status = publicStatus(bounty, now);
     if (status === 'paid') {
-      if (paidToTests.has(bounty.id)) continue;
-      paid += BigInt(bounty.payout_lamports ?? 0);
+      const lamports = BigInt(bounty.payout_lamports ?? 0);
+      paid += lamports;
       paidCount += 1;
+      if (rehearsals.has(bounty.id)) {
+        rehearsed += lamports;
+        rehearsalCount += 1;
+      }
     } else if (status === 'open' || status === 'claimed' || status === 'submitted' || status === 'paying') {
       locked += BigInt(bounty.funded_lamports ?? bounty.reward_lamports);
       if (status === 'open') openCount += 1;
+      else heldCount += 1;
+      if (bounty.origin === 'wallet') outsideCount += 1;
     }
   }
-  return { paid_lamports: Number(paid), paid_sol: solAmount(paid), paid_count: paidCount, locked_lamports: Number(locked), locked_sol: solAmount(locked), open_count: openCount };
+  return {
+    paid_lamports: Number(paid),
+    paid_sol: solAmount(paid),
+    paid_count: paidCount,
+    rehearsal_paid_count: rehearsalCount,
+    rehearsal_paid_sol: solAmount(rehearsed),
+    outside_paid_count: paidCount - rehearsalCount,
+    outside_paid_sol: solAmount(paid - rehearsed),
+    locked_lamports: Number(locked),
+    locked_sol: solAmount(locked),
+    open_count: openCount,
+    held_count: heldCount,
+    outside_sponsor_count: outsideCount,
+  };
 }
 
 /** What a wallet earned: the paid bounties whose payout went to it. `verified` is the chain's word on each payout. */

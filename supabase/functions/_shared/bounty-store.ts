@@ -20,7 +20,7 @@ import { rpc } from './rpc.ts';
 import { TransferBroadcastError, signatureFate, treasuryAddress } from './treasury.ts';
 
 export const BOUNTY_COLUMNS =
-  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at';
+  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url';
 export const CLAIM_COLUMNS =
   'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note';
 const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,created_at';
@@ -29,21 +29,48 @@ const EVENT_LIMIT = 60;
 const ESCROW_HISTORY = 20;
 const CERTIFICATION_LIMIT = 20;
 
+export const PROGRAM_SLUG = 'itera-v2';
+
+export interface Trail {
+  unit_id: string;
+  title: Record<string, string>;
+  total_days: number;
+}
+
+/** The trails a bounty can require stamped days of. */
+export async function loadTrails(db: IteraClient): Promise<Trail[]> {
+  const { data, error } = await db.from('units').select('id,title_i18n,ordinal,programs!inner(slug),lessons(count)').eq('programs.slug', PROGRAM_SLUG).order('ordinal');
+  if (error) throw new Error(`units: ${error.message}`);
+  return ((data ?? []) as unknown as Array<{ id: string; title_i18n: Record<string, string>; lessons: Array<{ count: number }> }>).map((unit) => ({
+    unit_id: unit.id,
+    title: unit.title_i18n,
+    total_days: unit.lessons[0]?.count ?? 0,
+  }));
+}
+
 /** The public board, or every bounty of the given tenants (a sponsor's own, test rows included). */
 export async function listBounties(db: IteraClient, tenantIds?: string[]): Promise<BountyRow[]> {
   const query = db.from('bounties').select(BOUNTY_COLUMNS).order('created_at', { ascending: false }).limit(BOARD_LIMIT);
   // A sponsor keeps seeing a test row while it is live, so an automated run can be driven from the console; closed ones only add noise.
-  const { data, error } = await (tenantIds ? query.in('tenant_id', tenantIds).or('is_test.eq.false,status.not.in.(paid,refunded)') : query.eq('is_test', false));
+  // The public board: no test row, nothing moderation hid, and a wallet's bounty only once its money is locked.
+  const { data, error } = await (tenantIds
+    ? query.in('tenant_id', tenantIds).or('is_test.eq.false,status.not.in.(paid,refunded)')
+    : query.eq('is_test', false).is('hidden_at', null).or('origin.eq.team,status.neq.awaiting_funding'));
   if (error) throw new Error(`bounties: ${error.message}`);
   return (data ?? []) as unknown as BountyRow[];
 }
 
-/** One bounty by id or slug. */
+/** One bounty by id or by either of its slugs. */
 export async function loadBounty(db: IteraClient, key: { id: string } | { slug: string }): Promise<BountyRow | null> {
   const query = db.from('bounties').select(BOUNTY_COLUMNS);
-  const { data, error } = await ('id' in key ? query.eq('id', key.id) : query.eq('slug', key.slug)).maybeSingle();
+  const { data, error } = await ('id' in key ? query.eq('id', key.id) : query.or(`slug.eq.${key.slug},slug_en.eq.${key.slug}`).limit(1)).maybeSingle();
   if (error) throw new Error(`bounty: ${error.message}`);
   return data as unknown as BountyRow | null;
+}
+
+/** The key the escrow program lets approve a bounty: the sponsor's wallet when it posted it, otherwise the Itera treasury key. */
+export async function approverOf(bounty: Pick<BountyRow, 'approver_address'>): Promise<string> {
+  return bounty.approver_address ?? (await treasuryAddress());
 }
 
 export async function loadClaims(db: IteraClient, claimIds: string[]): Promise<Map<string, ClaimRow>> {
@@ -95,7 +122,7 @@ export async function escrowTerms(bounty: BountyRow, config: Record<string, stri
   return {
     programId: config.bounty_escrow_program,
     escrow: bounty.escrow_address,
-    approver: await treasuryAddress(),
+    approver: await approverOf(bounty),
     sponsor: bounty.refund_address,
     collection: config.collection_passports,
     bountyId: bounty.id,
@@ -278,7 +305,15 @@ async function sendThroughProgram(db: IteraClient, transfer: Transfer): Promise<
     await mark(db, bounty.id, ['refunding'], 'refunded', { wallet: recipient, lamports: 0n, signature: null });
     return 'settled';
   }
-  const plan = claim ? releasePlan(state, terms, claim.wallet, claim.proof_asset) : refundPlan(state, terms);
+  // A bounty a wallet posted: this server holds no key of it. It can record what the sponsor's wallet already did,
+  // and return expired money to that wallet (`walletRefundable`); it can never pay anyone.
+  const treasury = await treasuryAddress();
+  const ours = terms.approver === treasury;
+  const plan = claim ? releasePlan(state, terms, claim.wallet, claim.proof_asset) : refundPlan(state, ours ? terms : { ...terms, approver: treasury });
+  if (!ours && claim && Array.isArray(plan)) {
+    console.error('bounty payout waits for its sponsor wallet', bounty.id);
+    return 'stuck';
+  }
   if (plan === 'closed') {
     console.error('bounty transfer stuck: the escrow account is closed another way', bounty.id, state.status);
     return 'stuck';
@@ -344,9 +379,24 @@ export async function settleTransfer(db: IteraClient, bountyId: string): Promise
   }
 }
 
+/**
+ * Whether this server can finish the refund of a bounty a wallet posted. It holds no key of that escrow, so only:
+ * the account is not there (never funded), the sponsor's wallet already refunded it, or the bounty is past its
+ * date and the deployed program lets anyone send expired money back to its sponsor (`bounty_escrow_version` 2).
+ */
+async function walletRefundable(db: IteraClient, bounty: BountyRow): Promise<boolean> {
+  const config = await loadConfig(db);
+  const terms = await escrowTerms(bounty, config);
+  if (!terms) return false;
+  const state = await readEscrow(terms.programId, bounty.escrow_address);
+  if (!state || state.status === 'refunded') return true;
+  return config.bounty_escrow_version === '2' && state.status !== 'paid' && state.expiresAt * 1000 <= Date.now();
+}
+
 /** Starts the refund of a bounty nobody is working on, and tries to finish it. */
 export async function refundBounty(db: IteraClient, bounty: BountyRow, actorWallet: string | null): Promise<TransferOutcome | 'not_refundable'> {
   if (bounty.status !== 'refunding') {
+    if (bounty.origin === 'wallet' && !(await walletRefundable(db, bounty))) return 'not_refundable';
     const started = await mark(db, bounty.id, ['awaiting_funding', 'open'], 'refunding', { wallet: actorWallet });
     if (!started) return 'not_refundable';
   }
@@ -368,6 +418,29 @@ export async function syncWithEscrow(db: IteraClient, bountyId: string): Promise
 }
 
 /**
+ * Records the payout a sponsor's wallet signed on the program: the account says `paid` to the learner whose
+ * delivery waits for review, so the review is written as approved and the bounty closes as paid. The chain
+ * moved first; this only makes our tables say so. Returns the bounty's status afterwards.
+ */
+export async function recordWalletPayout(db: IteraClient, bountyId: string, review?: { reviewer: string; note: string | null }): Promise<BountyStatus | null> {
+  const bounty = await loadBounty(db, { id: bountyId });
+  if (!bounty) return null;
+  if (bounty.origin !== 'wallet' || bounty.escrow_kind !== 'program' || (bounty.status !== 'submitted' && bounty.status !== 'paying')) return bounty.status;
+  const terms = await escrowTerms(bounty, await loadConfig(db));
+  const claim = bounty.claim_id ? (await loadClaims(db, [bounty.claim_id])).get(bounty.claim_id) : undefined;
+  if (!terms || !claim) return bounty.status;
+  const state = await readEscrow(terms.programId, bounty.escrow_address);
+  if (state?.status !== 'paid' || state.claimant !== claim.wallet) return bounty.status;
+  if (bounty.status === 'submitted') {
+    const { data, error } = await db.rpc('bounty_review', { p_bounty: bounty.id, p_reviewer: review?.reviewer ?? null, p_approve: true, p_note: review?.note ?? null });
+    if (error) throw new Error(`bounty_review: ${error.message}`);
+    if (data !== 'ok') return (await loadBounty(db, { id: bountyId }))?.status ?? null;
+  }
+  await settleTransfer(db, bounty.id);
+  return (await loadBounty(db, { id: bountyId }))?.status ?? null;
+}
+
+/**
  * Open bounties whose escrow the chain already shows as refunded (see
  * `syncWithEscrow`) leave the board: one read of the accounts, then one row each.
  */
@@ -380,6 +453,14 @@ export async function syncOpenEscrows(db: IteraClient): Promise<number> {
   const states = await readEscrows(config.bounty_escrow_program, open.map((row) => row.escrow_address));
   const gone = open.filter((row) => states.get(row.escrow_address)?.status === 'refunded');
   for (const row of gone) await syncWithEscrow(db, row.id).catch((reason) => console.error('bounty not synced with its escrow', row.id, reason));
+  const reviewing = await db.from('bounties').select('id,escrow_address').in('status', ['submitted', 'paying']).eq('origin', 'wallet').eq('escrow_kind', 'program').limit(100);
+  if (reviewing.error) throw new Error(`bounties sync: ${reviewing.error.message}`);
+  const waiting = (reviewing.data ?? []) as Array<{ id: string; escrow_address: string }>;
+  const paid = waiting.length === 0 ? new Map() : await readEscrows(config.bounty_escrow_program, waiting.map((row) => row.escrow_address));
+  for (const row of waiting) {
+    if (paid.get(row.escrow_address)?.status !== 'paid') continue;
+    await recordWalletPayout(db, row.id).catch((reason) => console.error('bounty payout not recorded', row.id, reason));
+  }
   return gone.length;
 }
 
