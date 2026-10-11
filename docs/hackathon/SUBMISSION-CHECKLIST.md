@@ -42,10 +42,11 @@ Rascunhos prontos em `/home/samuel/hackathon-pitch.md`, seção 4 (em inglês): 
 
 - [ ] Conferir os limites de tamanho e os campos reais do formulário **(confirmar no site do Colosseum)**.
 - [ ] Preencher os números que faltam (ver seção 6) e rodar `grep '\[\[' /home/samuel/hackathon-pitch.md` sem resultado.
-- [ ] Ajustar o texto "PRs #1 a #36" do rascunho: o intervalo atual é #1 a #57 (55 commits; ver
-  `docs/hackathon/BUILT-DURING-HACKATHON.md`). A contagem de funções (20) e de migrations (41) do rascunho também está
-  desatualizada: no código são 19 funções e 34 migrations (0110 a 0143).
-- [ ] Não afirmar que o "Cristal de Fênix" existe enquanto o PR #43 não estiver em `main` (só o chip de saldo do PR #56 está lá, sem backend).
+- [ ] Ajustar o texto "PRs #1 a #36" do rascunho: o intervalo atual é #1 a #77 (76 commits; ver
+  `docs/hackathon/BUILT-DURING-HACKATHON.md`). No código são 26 funções e 50 migrations (0110 a 0210). Antes de enviar,
+  rodar `gh pr list --state merged --limit 200 | head -3` e `ls supabase/functions | grep -vc _shared` e corrigir o texto.
+- [ ] O "Cristal de Fênix" está em `main` (PR #43, #61, #62): pode ser citado. Também em `main`: correção no servidor
+  (#77), grafo de capacidades (#63, #66), bounties (#73), prévias de link (#71).
 
 ## 4. Vídeos
 
@@ -79,9 +80,9 @@ Rascunhos prontos em `/home/samuel/hackathon-pitch.md`, seção 4 (em inglês): 
 
 ## 6. Pendências do dono (segundo os arquivos de status e decisões)
 
-- [ ] **Compra com Phantom real.** Nenhum teste automático usou uma Phantom de verdade (só uma fake). Fazer uma compra
-  real com a conta 2 (por exemplo os fones, US$ 0.20) em navegador anônimo, anotar o tempo até "paid" e se caiu no
-  caminho de só assinar.
+- [ ] **Compra com Phantom real.** Nenhum teste automático usou uma Phantom de verdade (só uma fake). Seguir o roteiro
+  de 6 passos em `docs/hackathon/PHANTOM-TEST.md` (carteira vazia + torneira, compra normal, rejeitar, conta errada,
+  entrega pendente) e anotar o que apareceu em cada passo e as linhas `[wallet]` do console.
 - [ ] **DNS de `hackathon.iterahq.dev`.** Opcional: o site funciona em `hackathon-colosseum.178-105-2-230.sslip.io`.
   O código aceita as duas origens; se o DNS sair, trocar os links. Se não sair, usar o endereço sslip.io em todo lugar.
 - [ ] **Números do pitch** (marcados `[[NÚMERO: ...]]` em `/home/samuel/hackathon-pitch.md`, seção 8): mês/ano em
