@@ -14,7 +14,7 @@ const data = vi.hoisted(() => ({
   circuit: {
     isPending: false,
     isError: false,
-    data: { stampsFunded: 3465, purchases: 29, sharePercent: 50, stampFeeLamports: 5000, asOf: '2026-10-11T14:06:00Z', shop: { minUsdCents: 20, maxUsdCents: 1000, items: 40 } },
+    data: { stampsFunded: 3465, stampsIssued: 276, purchases: 29, sharePercent: 50, stampFeeLamports: 5000, asOf: '2026-10-11T14:06:00Z', shop: { minUsdCents: 20, maxUsdCents: 1000, items: 40 } },
   } as Record<string, unknown>,
   profile: {
     isPending: false,
@@ -57,10 +57,13 @@ describe('LandingPage', () => {
       '4open bounties',
       '0.28 SOLin escrow',
       '1bounty paid0 to outside learners · 1 team rehearsal',
-      '3,465stamps the shop can already pay fora capacity, not a count: 50% of 29 purchases ÷ 5,000 lamports per stamp',
+      '276stamps written on chainnetwork fee paid by Itera, with help from the shop',
       "29shop purchaseson devnet, the team's test runs included",
     ]);
-    expect(screen.getByTestId('landing-live-readat')).toHaveTextContent(/Read at .*never go down/);
+    expect(screen.getByTestId('landing-live-readat')).toHaveTextContent(/^Read at [^.]*\.$/);
+    expect(screen.getByTestId('landing-live')).not.toHaveTextContent(/never go down|capacity/);
+    expect(screen.getByTestId('landing-hero-time')).toHaveTextContent('Day 1 takes about 15 minutes');
+    expect(screen.getByTestId('landing-hero-bounties')).toHaveAttribute('href', '/bounties');
     expect(screen.getByTestId('landing-live')).not.toHaveTextContent(/left out/);
     expect(screen.getByTestId('landing-lede')).toHaveTextContent('Learn to code in 5-day trails. Each finished day is stamped on a credential in your wallet. That credential unlocks paid work.');
     expect(screen.getByTestId('landing-hero')).not.toHaveTextContent(/soulbound|Metaplex|escrow|evidence hash/i);
@@ -77,15 +80,14 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-story')).toHaveTextContent('People learning to code from zero');
     expect(screen.getByTestId('landing-story')).toHaveTextContent('people who never wrote code');
     expect(screen.getByTestId('landing-story')).not.toHaveTextContent(/production|cohort/);
-    expect(screen.getByTestId('landing-model')).toHaveTextContent('Itera pays for the stamp');
-    expect(screen.getByTestId('landing-model')).not.toHaveTextContent(/Stripe|subscription/);
-    expect(screen.getByTestId('landing-model')).toHaveTextContent('nothing is charged today');
-    expect(screen.getByTestId('landing-model-shop')).toHaveTextContent('from US$ 0.20 to US$ 10.00');
+    expect(screen.getByTestId('landing-model')).toHaveTextContent('Itera pays the network fee of every stamp');
+    expect(screen.getByTestId('landing-model')).not.toHaveTextContent(/Stripe|subscription|lives/);
+    expect(screen.getByTestId('landing-model')).toHaveTextContent("Itera's server moves half of each purchase, in a public transfer");
     expect(screen.getByTestId('landing-steps')).toHaveTextContent('the program on chain reads them from the credential in your wallet before it lets you accept.');
     expect(screen.getByTestId('landing-model-build')).toHaveTextContent('no real money moves');
-    const members = screen.getAllByTestId('landing-team-member').map((m) => m.textContent);
-    expect(members[0]).toContain('Samuel Stefano');
-    expect(members[1]).toContain('Tainan Fidelis');
+    const team = screen.getByTestId('landing-team-member').textContent ?? '';
+    expect(team).toContain('Samuel Stefano');
+    expect(team).toContain('Tainan Fidelis');
     expect(screen.getByTestId('landing-team')).not.toHaveTextContent(/\d+ (students|learners|followers|years)/);
     expect(screen.queryByTestId('landing-pitch-video')).toBeNull();
     expect(screen.getByTestId('landing-verify')).toHaveAttribute('href', '/verify');
@@ -107,7 +109,6 @@ describe('LandingPage', () => {
     expect(screen.queryAllByTestId('landing-stat')).toHaveLength(0);
     expect(screen.queryByTestId('landing-example')).toBeNull();
     expect(screen.getByText('No reading right now.')).toBeInTheDocument();
-    expect(screen.getByTestId('landing-model-shop')).toHaveTextContent('priced in the shop itself');
     localStorage.clear();
   });
 });

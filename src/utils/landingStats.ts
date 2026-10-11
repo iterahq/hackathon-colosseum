@@ -1,5 +1,4 @@
 import type { BountyStats } from '@/types/bounty';
-import type { CircuitCounter } from '@/types/circuit';
 import { plural } from '@/utils/bounty';
 import { judgePaidHint } from '@/utils/bountyJudge';
 
@@ -12,11 +11,6 @@ export function paidHint(stats: BountyStats, t: Translate): string {
   if (judged) return judged;
   if (stats.rehearsalPaidCount === 0) return t('bounty.stats.paidHint.outside');
   return plural(t, 'bounty.stats.paidHint.mixed', stats.rehearsalPaidCount, { outside: stats.outsidePaidCount });
-}
-
-/** The arithmetic behind the stamps number, in the same card as the number: share of each purchase and the fee of one stamp. */
-export function stampsHint(counter: CircuitCounter, t: Translate, numberLocale: string): string {
-  return t('landing.live.stampsHint', { purchases: counter.purchases.toLocaleString(numberLocale), share: counter.sharePercent, fee: counter.stampFeeLamports.toLocaleString(numberLocale) });
 }
 
 /** The time the numbers were read, in the viewer's clock, so a number that moves between two visits has a visible "as of". */

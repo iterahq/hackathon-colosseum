@@ -15,7 +15,4 @@ export const VERIFY_PAGE_LIVE = true;
 /** The community behind Itera; the link answers on the public internet. */
 export const DEVFELLOWSHIP_URL = 'https://devfellowship.com';
 
-export const TEAM: readonly TeamMember[] = [
-  { name: 'Samuel Stefano', roleKey: 'landing.team.samuel.role', bioKey: 'landing.team.samuel.bio' },
-  { name: 'Tainan Fidelis', roleKey: 'landing.team.tainan.role', bioKey: 'landing.team.tainan.bio' },
-];
+export const TEAM: readonly [TeamMember, TeamMember] = [{ name: 'Samuel Stefano' }, { name: 'Tainan Fidelis' }];
