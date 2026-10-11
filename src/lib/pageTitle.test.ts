@@ -16,6 +16,9 @@ describe('pageTitleKey', () => {
     ['/catalog/', 'catalog.title'],
     ['/artifacts', 'artifacts.title'],
     ['/profile', 'profile.title'],
+    ['/passport', 'passport.title'],
+    ['/c/4Gghfa7Hq2Z6hetdDizmd3VGSw3MjNueMG35UnR2ZBXx', 'passport.credential.title'],
+    ['/u/CuVeEAWzJhEqibA8TG74fSzPyr73bS7xB7sDJ5GZtmVB', 'passport.publicProfile.title'],
     ['/subscribe', 'subscribe.title'],
   ])('%s is named by %s, a string both locales have', (pathname, key) => {
     expect(pageTitleKey(pathname)).toBe(key);

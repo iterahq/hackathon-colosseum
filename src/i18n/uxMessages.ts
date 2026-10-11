@@ -1,6 +1,8 @@
 /** Strings added by the UX pass: companion facts, lives rule, proof of purchase, login reason. */
 export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'offline.banner': 'Sem conexão. O que você fizer agora fica guardado e sobe quando a internet voltar.',
+    'offline.retry': 'Tentar de novo',
     'dash.welcome': 'Bem-vindo de volta',
     'dash.welcome.named': 'Bem-vindo de volta, {name}',
     'dash.welcome.first': 'Bem-vindo à Itera',
@@ -51,6 +53,8 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'ux.outfit.outfit_headphones': 'Fones',
   },
   en: {
+    'offline.banner': 'You are offline. What you do now is kept and sent when the connection is back.',
+    'offline.retry': 'Try again',
     'dash.welcome': 'Welcome back',
     'dash.welcome.named': 'Welcome back, {name}',
     'dash.welcome.first': 'Welcome to Itera',
