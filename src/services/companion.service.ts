@@ -32,7 +32,8 @@ function toRevived(data: unknown, mocked: boolean): CompanionSnapshot {
 }
 
 export async function getCompanion(lang: string): Promise<CompanionSnapshot> {
-  const { data, mocked } = await callShop('companion', { body: { lang } });
+  // The app's own reads never put the companion in a wallet before the certification: the server mints it once one is on chain.
+  const { data, mocked } = await callShop('companion', { body: { lang, mint: 'after_credential' } });
   return toRevived(data, mocked);
 }
 
