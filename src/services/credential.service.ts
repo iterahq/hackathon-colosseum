@@ -5,6 +5,7 @@
 import { toPublicEndorsements } from '@/services/endorsement.service';
 import type { CredentialLookup, CredentialVerification } from '@/types/achievements';
 import { parseChainRead } from '@/types/chainRead';
+import { takePreload } from '@/services/learnerProfile.service';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -45,9 +46,11 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
 export async function verifyCredential(asset: string, lang = 'pt', { fresh = false }: { fresh?: boolean } = {}): Promise<CredentialLookup> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
   const started = Date.now();
-  const res = await fetch(`${url}/functions/v1/credential-verify/${encodeURIComponent(asset)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
-    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
-  });
+  const live = () =>
+    fetch(`${url}/functions/v1/credential-verify/${encodeURIComponent(asset)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    });
+  const res = await ((fresh ? null : takePreload('__iteraCredential', asset, lang)) ?? live()).catch(live);
   const ms = Date.now() - started;
   if (res.status === 404 || res.status === 400) return { status: 'not_found', ms };
   if (!res.ok) throw new Error(`credential-verify failed (${res.status})`);
