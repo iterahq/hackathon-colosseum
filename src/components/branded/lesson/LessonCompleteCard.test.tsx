@@ -87,4 +87,12 @@ describe('LessonCompleteCard', () => {
     actions();
     expect(screen.getAllByRole('link')[1]).toBe(screen.getByTestId('lesson-finish-cta'));
   });
+
+  it('stops filling the phone screen when something follows it below', () => {
+    const filled = renderCard({ doneCount: 3, total: 3 });
+    expect(screen.getByTestId('lesson-complete').className).toContain('max-sm:min-h-');
+    filled.unmount();
+    renderCard({ doneCount: 3, total: 3, fill: false });
+    expect(screen.getByTestId('lesson-complete').className).not.toContain('max-sm:min-h-');
+  });
 });
