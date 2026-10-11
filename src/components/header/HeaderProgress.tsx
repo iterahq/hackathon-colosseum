@@ -4,13 +4,11 @@ import { useI18n } from '@/i18n';
 import { HeaderIcon } from './HeaderIcon';
 
 /**
- * The header leads with the progress story: days stamped (and, where the bar has room, capabilities proven).
- * Hidden between 1024 and 1439 px, where the six tabs, the search and the pills already fill the bar; the
- * welcome strip on the dashboard carries both numbers at every width. Opens the certifications page.
+ * The header leads with the progress story: days stamped, in its short form; the capabilities proven sit in
+ * the chip's title and aria-label and, in full, first on the dashboard's welcome strip. Hidden between 1024
+ * and 1439 px, where the six tabs, the search and the pills already fill the bar. Opens the certifications page.
  */
 const SHOW = 'hidden md:flex lg:hidden min-[1440px]:flex';
-/** The capabilities part only where the tabs are not on the bar (tablet widths). */
-const PROVEN = 'hidden md:block lg:hidden';
 export function HeaderProgress() {
   const { t } = useI18n();
   const story = useProgressStory();
@@ -33,12 +31,6 @@ export function HeaderProgress() {
     >
       <HeaderIcon name="passport" size={16} className="text-[#3FD17F]" />
       <span className="whitespace-nowrap">{short}</span>
-      {proven && (
-        <>
-          <span aria-hidden className={`${PROVEN} h-4 w-px bg-[#2E2A25]`} />
-          <span className={`${PROVEN} whitespace-nowrap text-[#C9BFB0]`}>{proven}</span>
-        </>
-      )}
     </Link>
   );
 }
