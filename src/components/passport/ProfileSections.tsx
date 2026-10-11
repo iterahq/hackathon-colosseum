@@ -16,8 +16,8 @@ export function CompanionSection({ companion }: { companion: ProfileCompanion })
   const { t } = useI18n();
   const facts = [
     companion.level != null && `${t('passport.credential.level')} ${companion.level}`,
-    companion.streak != null && `${t('passport.credential.streak')} ${companion.streak}`,
-    companion.xp != null && `${companion.xp} XP`,
+    companion.streak != null && companion.streak > 0 && `${t('passport.credential.streak')} ${companion.streak}`,
+    companion.xp != null && companion.xp > 0 && `${companion.xp} XP`,
     companion.outfit && t(`ux.outfit.${companion.outfit}`),
   ].filter(Boolean) as string[];
   return (

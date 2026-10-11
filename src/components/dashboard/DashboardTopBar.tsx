@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CrystalChip } from '@/components/crystals/CrystalChip';
 import { HeaderHud } from '@/components/header/HeaderHud';
 import { HeaderIdentity } from '@/components/header/HeaderIdentity';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { HeaderLocaleCompact } from '@/components/header/HeaderLocaleCompact';
 import { HeaderNav } from '@/components/header/HeaderNav';
+import { HeaderProgress } from '@/components/header/HeaderProgress';
 import { HeaderSearch } from '@/components/header/HeaderSearch';
 import { HeaderTabBar } from '@/components/header/HeaderTabBar';
 import '@/components/header/header.css';
@@ -19,7 +19,7 @@ interface Props {
   streak?: number | null;
 }
 
-/** The learner's top bar: wordmark, route tabs, search, the lives chip and the identity pill; a bottom tab bar on phones. Callers may still pass their numbers: they live in the welcome strip and the account menu now. */
+/** The learner's top bar: wordmark, route tabs, search, the progress story, one pill of lives and crystals, and the identity pill; a bottom tab bar on phones. Callers may still pass their numbers: they live in the welcome strip and the account menu now. */
 export function DashboardTopBar(_props: Props) {
   const { pathname } = useLocation();
   const active = activeNavOf(pathname);
@@ -54,10 +54,8 @@ export function DashboardTopBar(_props: Props) {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <HeaderLocale className="max-sm:hidden" />
             <HeaderLocaleCompact className="sm:hidden" />
+            <HeaderProgress />
             <HeaderHud />
-            <div className="max-sm:hidden">
-              <CrystalChip />
-            </div>
             <HeaderIdentity />
           </div>
         </div>

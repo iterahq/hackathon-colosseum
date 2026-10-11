@@ -20,3 +20,10 @@ describe('HeaderTabBar', () => {
     expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/shop');
   });
 });
+
+describe('HEADER_NAV', () => {
+  it('puts Verify in the signed-in nav and keeps Files in the account menu', () => {
+    expect(HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'courses', 'passport', 'shop', 'bounties', 'verify']);
+    expect(HEADER_NAV.find((n) => n.id === 'verify')?.to).toBe('/verify');
+  });
+});

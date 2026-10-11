@@ -11,9 +11,9 @@ import { useLearnerProfile, useRecheckProfile, useWalletGraph } from '@/hooks/us
 import { ChainReadLine } from '@/components/passport/ChainReadLine';
 import { staticCapabilities } from '@/services/learnerProfile.service';
 import { useI18n } from '@/i18n';
-import { loreOf } from '@/lib/teraLoreSafe';
 import { shortAddress } from '@/lib/explorer';
 import { looksLikeAddress } from '@/utils/credential';
+import { profileProgress } from '@/utils/profileProgress';
 
 const GRID = {
   backgroundColor: '#0A0908',
@@ -81,9 +81,7 @@ export default function LearnerProfilePage() {
                 <LearnerAvatar avatar={profile.avatar} size="lg" thumb={false} />
                 <div className="min-w-0">
                   <h1 className="truncate [font:700_34px/1_'Barlow_Condensed'] max-sm:text-[28px]" title={profile.wallet}>{shortAddress(profile.wallet)}</h1>
-                  {loreOf(profile.avatar.key, locale) && (
-                    <p className="mt-1 [font:500_13px_Inter] text-[#C9BFB0]" data-testid="profile-avatar-name">{loreOf(profile.avatar.key, locale)?.name} · {loreOf(profile.avatar.key, locale)?.epithet}</p>
-                  )}
+                  <p className="mt-1 [font:500_13px_Inter] text-[#C9BFB0]" data-testid="profile-progress">{profileProgress(profile.certifications, t)}</p>
                   <p className="mt-1 [font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
                   <ChainReadLine read={lookup?.status === 'ok' ? lookup.read : undefined} ms={0} onRecheck={() => recheck.mutate()} rechecking={recheck.isPending} className="mt-1" />
                 </div>

@@ -41,6 +41,7 @@ export function activeNavOf(pathname: string): NavId | null {
   if (pathname === '/artifacts' || pathname.startsWith('/artifacts/')) return 'files';
   if (pathname === '/shop' || pathname.startsWith('/shop/')) return 'shop';
   if (pathname === '/bounties' || pathname.startsWith('/bounties/')) return 'bounties';
+  if (pathname === '/verify' || pathname.startsWith('/verify/')) return 'verify';
   return null;
 }
 
