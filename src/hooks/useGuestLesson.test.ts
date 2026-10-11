@@ -57,6 +57,19 @@ describe('useGuestLesson', () => {
     expect(result.current.progressPct).toBe(100);
   });
 
+  it('records a verdict the kind settles itself without a second grade on continue, and hides the answer until a retry', async () => {
+    const { result } = renderHook(() => useGuestLesson(lesson));
+    act(() => result.current.handleComplete(true));
+    expect(result.current.hidesAnswer).toBe(true);
+    await act(async () => result.current.handleVerdict(false, { response: 'a' }));
+    expect(grade.submitForGrading).toHaveBeenCalledTimes(1);
+    await act(async () => result.current.handleComplete(false, { response: 'a' }));
+    expect(grade.submitForGrading).toHaveBeenCalledTimes(1);
+    expect(result.current.pending?.correct).toBe(false);
+    act(() => result.current.retryPending());
+    expect(result.current.hidesAnswer).toBe(false);
+  });
+
   it('redoMissed goes back to the first activity not passed', () => {
     writeGuestAnswer('c1', { correct: true, settledAt: 1 });
     writeGuestAnswer('q1', { correct: false, settledAt: 2 });

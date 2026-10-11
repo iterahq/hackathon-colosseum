@@ -23,7 +23,9 @@ export function useGuestLesson(activities: readonly Activity[]) {
   const [pending, setPending] = useState<FooterResult | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [retriedIds, setRetriedIds] = useState<ReadonlySet<string>>(new Set());
   const positionedRef = useRef(false);
+  const settledRef = useRef<{ activityId: string; correct: boolean } | null>(null);
 
   useEffect(() => {
     if (positionedRef.current || activities.length === 0) return;
@@ -43,6 +45,7 @@ export function useGuestLesson(activities: readonly Activity[]) {
     [activities, answers]
   );
   const progressPct = total ? Math.round(((finished ? total : index) / total) * 100) : 0;
+  const hidesAnswer = !!current && !retriedIds.has(current.id);
 
   const advance = useCallback(() => {
     setPending(null);
@@ -70,10 +73,24 @@ export function useGuestLesson(activities: readonly Activity[]) {
     });
   }, []);
 
+  const handleVerdict = useCallback(
+    (correct: boolean, detail?: ActivityCompleteDetail) => {
+      if (!current) return;
+      if (settledRef.current?.activityId === current.id && settledRef.current.correct) return;
+      settledRef.current = { activityId: current.id, correct };
+      settle(current, correct, detail);
+    },
+    [current, settle]
+  );
+
   const handleComplete = useCallback(
     (correct: boolean, detail?: ActivityCompleteDetail) => {
       if (!current) return;
-      settle(current, correct, detail);
+      const already = settledRef.current?.activityId === current.id && settledRef.current.correct === correct;
+      if (!already) {
+        settledRef.current = { activityId: current.id, correct };
+        settle(current, correct, detail);
+      }
       if (!holdsOnFooter(current)) {
         advance();
         return;
@@ -89,6 +106,8 @@ export function useGuestLesson(activities: readonly Activity[]) {
       const target = activities[at];
       if (!target) return;
       setAnswers(forgetGuestAnswer(target.id));
+      setRetriedIds((prev) => (prev.has(target.id) ? prev : new Set(prev).add(target.id)));
+      settledRef.current = null;
       setPending(null);
       setRetryCount((c) => c + 1);
       setFinished(false);
@@ -101,5 +120,5 @@ export function useGuestLesson(activities: readonly Activity[]) {
   const retryPending = useCallback(() => reopen(index), [reopen, index]);
   const redoMissed = useCallback(() => reopen(activities.findIndex((a) => !answers[a.id]?.correct)), [reopen, activities, answers]);
 
-  return { muted, toggleMuted, current, index, total, finished, pending, retryCount, counts, progressPct, handleComplete, advance, retryPending, redoMissed };
+  return { muted, toggleMuted, current, index, total, finished, pending, retryCount, counts, progressPct, hidesAnswer, handleVerdict, handleComplete, advance, retryPending, redoMissed };
 }

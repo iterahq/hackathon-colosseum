@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HostExplainsMisses, HostOwnsSettledAction } from '@iterahq/activities';
+import { HostExplainsMisses, HostHidesAnswerOnMiss, HostOwnsSettledAction, HostRecordsVerdict, HostUnlimitedAttempts } from '@iterahq/activities';
 import { useAuth } from '@/auth/AuthContext';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
@@ -76,7 +76,13 @@ export default function TryLessonPage() {
             <div className="mt-3" data-testid="try-activity" data-activity-id={current.id}>
               <HostExplainsMisses>
                 <HostOwnsSettledAction>
-                  <ActivityRenderer key={`${current.id}:${lesson.retryCount}`} activity={current} onComplete={lesson.handleComplete} />
+                  <HostUnlimitedAttempts>
+                    <HostRecordsVerdict onVerdict={lesson.handleVerdict}>
+                      <HostHidesAnswerOnMiss hide={lesson.hidesAnswer}>
+                        <ActivityRenderer key={`${current.id}:${lesson.retryCount}`} activity={current} onComplete={lesson.handleComplete} />
+                      </HostHidesAnswerOnMiss>
+                    </HostRecordsVerdict>
+                  </HostUnlimitedAttempts>
                 </HostOwnsSettledAction>
               </HostExplainsMisses>
             </div>
