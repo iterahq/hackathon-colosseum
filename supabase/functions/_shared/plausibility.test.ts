@@ -123,8 +123,8 @@ describe('the floor inside the awards', () => {
     const ids = activitiesOf('d1');
     const fake = input(byClient(ids, '2026-10-10T18:00:00.000Z', 0.2), [], ids);
     expect(core(computeAwards(fake))).toEqual([]);
-    expect(dayPendingReview(fake, 'd1')).toEqual({ lesson_id: 'd1', reason: 'too_fast' });
-    expect(dayPendingReview(fake, null)).toEqual({ lesson_id: 'd1', reason: 'too_fast' });
+    expect(dayPendingReview(fake, 'd1')).toEqual({ lesson_id: 'd1', reason: 'too_fast', min_seconds: 20, clears_by: 'redo_one_activity' });
+    expect(dayPendingReview(fake, null)).toEqual({ lesson_id: 'd1', reason: 'too_fast', min_seconds: 20, clears_by: 'redo_one_activity' });
     expect(dayPendingReview(fake, 'd2')).toBeNull();
   });
 
@@ -140,6 +140,6 @@ describe('the floor inside the awards', () => {
     const mixed = input([...seeded('d1', '2026-10-05'), ...burstDay], [], activitiesOf('d2'));
     expect(keys(computeAwards(mixed))).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
     expect(computeAwards(mixed).find((award) => award.key === 'trail_pass')?.state).toMatchObject({ days_done: 1, stamped_lesson_ids: ['d1'] });
-    expect(dayPendingReview(mixed, null)).toEqual({ lesson_id: 'd2', reason: 'too_fast' });
+    expect(dayPendingReview(mixed, null)).toEqual({ lesson_id: 'd2', reason: 'too_fast', min_seconds: 20, clears_by: 'redo_one_activity' });
   });
 });

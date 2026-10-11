@@ -299,7 +299,7 @@ describe('server-graded completions', () => {
     expect(dayPendingReview(input, 'l1')).toBeNull();
     const awards = computeAwards(input);
     expect(keys(awards)).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
-    expect(find(awards, 'day_stamp')?.earned_at).toBe('2026-10-12T15:00:00Z');
+    expect(new Date(find(awards, 'day_stamp')?.earned_at ?? 0).toISOString()).toBe('2026-10-12T15:00:00.000Z');
   });
 
   it('a legacy day from before the cutoff keeps counting and carries no proof', () => {
