@@ -181,7 +181,7 @@ export async function eligibilityOf(db: IteraClient, wallet: string | null, boun
     .not('asset_address', 'is', null)
     .limit(CERTIFICATION_LIMIT);
   if (error) throw new Error(`user_achievements: ${error.message}`);
-  const addresses: string[] = [...new Set((data ?? []).map((row) => String(row.asset_address)))];
+  const addresses = [...new Set<string>((data ?? []).map((row) => String(row.asset_address)))];
   const onchain = config.collection_passports ? await readAssets(addresses, [config.collection_passports]) : new Map();
   return checkEligibility({
     wallet,
@@ -335,6 +335,44 @@ export async function refundBounty(db: IteraClient, bounty: BountyRow, actorWall
     if (!started) return 'not_refundable';
   }
   return settleTransfer(db, bounty.id);
+}
+
+/** Lets work outlive the response. Its failure is logged, never thrown. */
+export function inBackground(work: Promise<unknown>): void {
+  const guarded = work.catch((error) => console.error('bounty background work failed', error));
+  (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil?.(guarded);
+}
+
+/**
+ * Returns the money of bounties nobody finished in time: past `expires_at` and
+ * held by no one, or a refund that was started and never confirmed. Anyone may
+ * set this off (a reader of the board, the scheduler): the destination is the
+ * refund address fixed when the bounty was posted, whoever asks. Never throws;
+ * answers how many it took on.
+ */
+export async function sweepExpired(db: IteraClient, now: Date, max: number): Promise<number> {
+  try {
+    const { data, error } = await db
+      .from('bounties')
+      .select(BOUNTY_COLUMNS)
+      .or(`and(status.in.(open,awaiting_funding),expires_at.lte.${now.toISOString()}),status.eq.refunding`)
+      .order('expires_at')
+      .limit(max);
+    if (error) throw new Error(`bounties sweep: ${error.message}`);
+    const due = (data ?? []) as unknown as BountyRow[];
+    for (const bounty of due) {
+      try {
+        const outcome = await refundBounty(db, bounty, null);
+        console.log('bounty sweep', bounty.slug, outcome);
+      } catch (error) {
+        console.error('bounty sweep failed', bounty.slug, error instanceof Error ? error.message : error);
+      }
+    }
+    return due.length;
+  } catch (error) {
+    console.error('bounty sweep failed', error instanceof Error ? error.message : error);
+    return 0;
+  }
 }
 
 /** Which of these payout signatures the chain confirms, in one call. */

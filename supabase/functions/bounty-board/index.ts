@@ -1,5 +1,5 @@
 import { isSolanaAddress } from '../_shared/address.ts';
-import { BOUNTY_COLUMNS, expireStaleClaims, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
+import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, sweepExpired, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
 import { boardStats, bountyView, earningsView, type BountyRow } from '../_shared/bounty.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
@@ -7,6 +7,8 @@ import { RpcError } from '../_shared/rpc.ts';
 
 const FUNCTION = 'bounty-board';
 const SLUG = /^[a-z0-9][a-z0-9-]{2,62}$/;
+const SWEEP_ON_READ = 1;
+const SWEEP_ON_SCHEDULE = 4;
 
 /** The board as it stands now: a learner who ran out of time no longer holds a bounty. */
 async function currentBounties(db: IteraClient, now: Date) {
@@ -22,6 +24,8 @@ async function currentBounties(db: IteraClient, now: Date) {
 async function board(db: IteraClient, request: Request, cors: Record<string, string>): Promise<Response> {
   const now = new Date();
   const lang = langOf(request, 'pt');
+  // A bounty past its date goes back to its sponsor without anyone asking: this read sets it off, after answering.
+  inBackground(sweepExpired(db, now, SWEEP_ON_READ));
   const [{ bounties, claims }, config] = await Promise.all([currentBounties(db, now), loadConfig(db)]);
   return json(
     {
@@ -71,6 +75,11 @@ Deno.serve(async (request) => {
     const db = serviceClient();
     if (rest.length > 0) return json({ error: 'not_found' }, 404, cors);
     if (first === undefined) return await board(db, request, cors);
+    // The scheduler's door (`0202_bounty_refund_schedule.sql`). Public on purpose: all it can do is return expired money to its sponsor.
+    if (first === 'sweep' && second === undefined) {
+      inBackground(sweepExpired(db, new Date(), SWEEP_ON_SCHEDULE));
+      return json({ sweeping: true }, 202, { ...cors, 'Cache-Control': 'no-store' });
+    }
     if (first === 'wallet') {
       if (!isSolanaAddress(second)) return json({ error: 'invalid_address' }, 400, cors);
       return await earnings(db, request, second, cors);

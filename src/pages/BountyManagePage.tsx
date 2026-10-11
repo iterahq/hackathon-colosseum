@@ -8,6 +8,7 @@ import { TeraNote } from '@/components/tera/TeraNote';
 import { useBountySession, useSponsorBounties } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
+import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode } from '@/services/bounty.service';
 import type { SponsorBounty } from '@/types/bounty';
 
@@ -48,7 +49,7 @@ export default function BountyManagePage() {
       {!signedIn && (
         <div className={`${CARD} flex flex-col items-start gap-3 p-5`} data-testid="bounty-manage-signin">
           <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.manage.signIn')}</p>
-          <Link to="/login" className={BTN_PRIMARY}>{t('bounty.signIn.cta')}</Link>
+          <Link to={loginHref('/bounties/manage')} className={BTN_PRIMARY}>{t('bounty.signIn.cta')}</Link>
         </div>
       )}
       {signedIn && list.isPending && (

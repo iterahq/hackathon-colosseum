@@ -11,7 +11,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { useI18n } from '@/i18n';
 import { sendLoginCode, verifyLoginCode } from '@/services/otpAuth.service';
-import { safeInternalPath } from '@/lib/safeInternalPath';
+import { returnPathOf } from '@/lib/loginReturn';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 
 export default function OtpLoginPage() {
@@ -25,7 +25,7 @@ export default function OtpLoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const from = safeInternalPath((location.state as { from?: { pathname?: string } } | null)?.from?.pathname);
+  const from = returnPathOf(location);
 
   // A guest session must NOT count here — same trap as AuthPage.
   if (!loading && session && !isGuestAccessToken(session.access_token)) {

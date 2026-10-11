@@ -15,7 +15,7 @@ import { loginWithDfl } from '@/auth/dflFederation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { WebOnly } from '@/components/shell/WebOnly';
 import { useI18n } from '@/i18n';
-import { safeInternalPath } from '@/lib/safeInternalPath';
+import { returnPathOf, returnState } from '@/lib/loginReturn';
 import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 
@@ -32,7 +32,7 @@ export default function AuthPage() {
 
   // location.state is client-controlled and `from` reaches the DFL federate URL
   // as the post-login redirect — only a same-origin in-app path may pass through.
-  const from = safeInternalPath((location.state as { from?: { pathname?: string } } | null)?.from?.pathname);
+  const from = returnPathOf(location);
 
   // Already signed in → straight to the app; without this the persisted session
   // LOOKS lost and the user "logs in again". A GUEST session must NOT count: it
@@ -166,6 +166,7 @@ export default function AuthPage() {
         </Button>
         <Link
           to="/auth/code"
+          state={returnState(from)}
           className="text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="goto-otp"
         >
