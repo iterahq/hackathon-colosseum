@@ -1,4 +1,5 @@
 import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
+import { COMPANION_FOLLOWS_CREDENTIAL } from '../_shared/focus.ts';
 import {
   claimMint,
   companionResponse,
@@ -47,7 +48,7 @@ async function companionIsDue(db: IteraClient, userId: string): Promise<boolean>
   ]);
   if (certified.error) throw new Error(`user_achievements minted: ${certified.error.message}`);
   if (bought.error) throw new Error(`purchases paid: ${bought.error.message}`);
-  return (certified.data ?? []).length > 0 || (bought.data ?? []).length > 0;
+  return (COMPANION_FOLLOWS_CREDENTIAL && (certified.data ?? []).length > 0) || (bought.data ?? []).length > 0;
 }
 
 /** `undefined`: no equip requested. `false`: malformed. Otherwise the outfit to wear (`null` takes it off). */

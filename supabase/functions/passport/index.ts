@@ -22,6 +22,7 @@ import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
 import { withRetries } from '../_shared/retry.ts';
 import { loadPassingAttempts } from '../_shared/proof.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
+import { MEDALS_MINTED } from '../_shared/focus.ts';
 import { reconcileCrystals } from '../_shared/crystals-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
 import { referralNote } from '../_shared/referral.ts';
@@ -292,17 +293,32 @@ async function runJob(
 
   let asset = job.anchor.asset_address;
   let signature: string | null;
+  // The learner is looking at "stamping": the rows still to be stamped carry the signature from the moment it is sent,
+  // so the page can link the transaction before it is confirmed. A row already minted keeps its own.
+  const pendingIds = job.rows.filter((row) => row.mint_status !== 'minted').map((row) => row.id);
+  const onSent = (sent: string) => {
+    if (pendingIds.length === 0) return;
+    inBackground(
+      Promise.resolve(db.from('user_achievements').update({ tx_signature: sent }).in('id', pendingIds).neq('mint_status', 'minted')).then(({ error }) => {
+        if (error) console.error('passport: sent signature not recorded', error.message);
+      }),
+    );
+  };
   if (job.type === 'update_passport') {
-    signature = await sdk.updateCredentialAttributes(chain, { asset: asset as string, collection, attributes });
+    signature = await sdk.updateCredentialAttributes(chain, { asset: asset as string, collection, attributes }, onSent);
   } else {
-    const created = await sdk.createCredential(chain, {
-      rowId: job.anchor.id,
-      collection,
-      owner: wallet,
-      name: assetName(job.anchor, anchorCatalog),
-      uri: metadataUrl(functionsBase(), job.anchor.id),
-      attributes,
-    });
+    const created = await sdk.createCredential(
+      chain,
+      {
+        rowId: job.anchor.id,
+        collection,
+        owner: wallet,
+        name: assetName(job.anchor, anchorCatalog),
+        uri: metadataUrl(functionsBase(), job.anchor.id),
+        attributes,
+      },
+      onSent,
+    );
     asset = created.asset;
     signature = created.signature;
     // An asset left by an interrupted call may predate the stamps it should carry now.
@@ -334,7 +350,8 @@ async function mintPending(
   maxJobs: number,
 ): Promise<{ attempted: number; remaining: number; blocked: MintBlock | null; touched: Set<string> }> {
   const medalKeys = new Set([...catalog.values()].filter((entry) => entry.kind === 'streak' || entry.kind === 'milestone').map((entry) => entry.key));
-  const jobs = planMintJobs(rows, medalKeys);
+  // In the focus build a finished day writes the certification and nothing else to the wallet: medals stay as records.
+  const jobs = planMintJobs(rows, MEDALS_MINTED ? medalKeys : new Set());
   const touched = new Set<string>();
   const outcome = (attempted: number, done: number, blocked: MintBlock | null) => ({
     attempted,

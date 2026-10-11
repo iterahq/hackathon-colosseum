@@ -73,7 +73,14 @@ async function main() {
   const minted = [...(stamped.body.awards ?? []), ...(stamped.body.updated ?? [])].find((award) => award.asset_address || award.mint?.address || award.state?.asset);
   const certified = psql(`select count(*) from itera.user_achievements where user_id = :'u'::uuid and achievement_key = 'trail_pass' and mint_status = 'minted';`, { u: learner.userId });
   const late = await learner.call('companion', { lang: 'en', mint: 'after_credential' });
-  check('once the certification is on chain the same read starts the companion', certified === '1' && ['pending', 'minted'].includes(late.body.companion?.mint_status), `certifications minted ${certified} · companion ${late.body.companion?.mint_status}`);
+  // Focus build (the server's default): the certification is the only thing a finished day writes to the wallet.
+  if (process.env.ITERA_FOCUS_BUILD === 'off') check('once the certification is on chain the same read starts the companion', certified === '1' && ['pending', 'minted'].includes(late.body.companion?.mint_status), `certifications minted ${certified} · companion ${late.body.companion?.mint_status}`);
+  else {
+    check('with the certification on chain the app\'s companion read still mints nothing', certified === '1' && late.body.companion?.mint_status === 'unclaimed' && late.body.companion?.asset_address === null, `certifications minted ${certified} · companion ${late.body.companion?.mint_status}`);
+    const medals = psql(`select count(*) from itera.user_achievements where user_id = :'u'::uuid and achievement_key <> 'trail_pass' and achievement_key <> 'day_stamp' and mint_status = 'minted';`, { u: learner.userId });
+    const again = await learner.call('passport', { lang: 'en' });
+    check('and no medal is minted next to it: nothing is left to mint', medals === '0' && again.body.remaining === 0 && !(again.body.mint?.attempted > 0), `medals minted ${medals} · remaining ${again.body.remaining} · attempted ${again.body.mint?.attempted ?? 0}`);
+  }
   console.log(`stamp: ${JSON.stringify(minted ?? stamped.body.awards?.[0] ?? null).slice(0, 300)}`);
 
   // 3. A claim with no receipts is a burst like any other: recorded, held, and the answer says how it is released.

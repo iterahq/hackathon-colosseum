@@ -52,3 +52,24 @@ export async function getMyAchievements(): Promise<UserAchievement[]> {
     txSignature: orNull(r.tx_signature),
   }));
 }
+
+/**
+ * The signature of the stamp transaction the server has SENT for this learner and not yet confirmed: the server
+ * writes it on the rows being stamped the moment the node takes it. `null`: nothing sent in the last minutes.
+ */
+export async function getSentStampSignature(): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const userId = await getIteraUserId();
+  if (!userId) return null;
+  const { data, error } = await getSupabase()
+    .from('user_achievements')
+    .select('tx_signature, mint_status, earned_at')
+    .eq('user_id', userId)
+    .neq('mint_status', 'minted')
+    .not('tx_signature', 'is', null)
+    .gte('earned_at', new Date(Date.now() - 10 * 60_000).toISOString())
+    .order('earned_at', { ascending: false })
+    .limit(1);
+  if (error) return null;
+  return orNull(asRows(data)[0]?.tx_signature);
+}

@@ -73,11 +73,17 @@ export async function derivedSigner(chain: Chain, label: string): Promise<Keypai
   return createSignerFromKeypair(chain.umi, chain.umi.eddsa.createKeypairFromSeed(digest));
 }
 
-export async function sendAndConfirm(chain: Chain, builder: TransactionBuilder): Promise<string> {
+/** `onSent`: told the signature the moment the node took the transaction, before it is confirmed. Never awaited. */
+export async function sendAndConfirm(chain: Chain, builder: TransactionBuilder, onSent?: (signature: string) => void): Promise<string> {
   const { umi } = chain;
   const transaction = await builder.setLatestBlockhash(umi).then((ready) => ready.buildAndSign(umi));
   const signature = await umi.rpc.sendTransaction(transaction, { commitment: 'confirmed' });
   const encoded = base58.deserialize(signature)[0];
+  try {
+    onSent?.(encoded);
+  } catch {
+    // Telling someone a transaction left is never a reason to lose it.
+  }
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const [status] = await umi.rpc.getSignatureStatuses([signature]);
@@ -121,6 +127,7 @@ export interface CreateCredentialInput {
 export async function createCredential(
   chain: Chain,
   input: CreateCredentialInput,
+  onSent?: (signature: string) => void,
 ): Promise<{ asset: string; signature: string | null; alreadyExisted: boolean }> {
   const asset = await derivedSigner(chain, `asset:${input.rowId}`);
   if (await chain.umi.rpc.accountExists(asset.publicKey)) {
@@ -139,6 +146,7 @@ export async function createCredential(
         { type: 'Attributes', attributeList: input.attributes },
       ],
     }),
+    onSent,
   );
   return { asset: asset.publicKey, signature, alreadyExisted: false };
 }
@@ -172,6 +180,7 @@ export async function createCollectible(
 export function updateCredentialAttributes(
   chain: Chain,
   input: { asset: string; collection: string; attributes: OnchainAttribute[] },
+  onSent?: (signature: string) => void,
 ): Promise<string> {
   return sendAndConfirm(
     chain,
@@ -180,6 +189,7 @@ export function updateCredentialAttributes(
       collection: publicKey(input.collection),
       plugin: { type: 'Attributes', attributeList: input.attributes },
     }),
+    onSent,
   );
 }
 

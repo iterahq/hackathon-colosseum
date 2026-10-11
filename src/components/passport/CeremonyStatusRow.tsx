@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChainProof } from '@/components/chain/ChainProof';
 import { useI18n } from '@/i18n';
 import { chainUrl } from '@/lib/explorer';
+import { getSentStampSignature } from '@/services/achievements.service';
 import type { CeremonyStatus } from '@/types/achievements';
 import type { CeremonyMedal } from '@/utils/ceremony';
 import { MedalArt } from './MedalArt';
@@ -35,11 +37,32 @@ function Spinner() {
   );
 }
 
+const SENT_POLL_MS = 1200;
+
+/** While the stamp is being written: the signature of the transaction as soon as the server has sent it. */
+function useSentSignature(waiting: boolean): string | null {
+  const [signature, setSignature] = useState<string | null>(null);
+  useEffect(() => {
+    if (!waiting || signature) return;
+    let alive = true;
+    const read = () => void getSentStampSignature().then((found) => alive && found && setSignature(found), () => undefined);
+    read();
+    const id = window.setInterval(read, SENT_POLL_MS);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [waiting, signature]);
+  return waiting ? signature : null;
+}
+
 /** Under the page: what the chain is doing, and the one or two actions that fit that state. */
 export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, goldTrail = null, accent, accentDark, locked, onRetry, onLater, onConnect }: Props) {
   const { t, locale } = useI18n();
   const reduce = useReducedMotion();
   const href = chainUrl(txSignature, assetAddress);
+  const sent = useSentSignature(status === 'minting');
+  const sentHref = sent ? chainUrl(sent, null) : null;
   const line = 'text-center [font:600_16px/1.3_Inter]';
   return (
     <motion.div
@@ -58,6 +81,11 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, g
             {t('passport.ceremony.minting')}
           </span>
           <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.ceremony.mintingSub')}</span>
+          {sentHref && (
+            <a href={sentHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]" data-testid="ceremony-sent-tx">
+              {t('passport.ceremony.sent')}
+            </a>
+          )}
         </>
       )}
       {status === 'minted' && (
