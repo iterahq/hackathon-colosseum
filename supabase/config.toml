@@ -85,6 +85,7 @@ verify_jwt = false
 
 # Link previews for /c, /u and /gift: nginx hands crawlers to it by user agent. Public, read-only.
 [functions.share-meta]
+verify_jwt = false
 
 # Bounties. The board is public; the blink that funds an escrow account is public by specification.
 [functions.bounty-board]
