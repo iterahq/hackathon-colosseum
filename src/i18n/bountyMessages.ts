@@ -70,6 +70,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.ledger.signedItera': 'Assinado pela chave da Itera ({wallet}). O programa só deixa essa chave reabrir a missão, nunca mover o dinheiro dela.',
     'bounty.ledger.signedTreasury': 'Assinado pela chave da tesouraria da Itera ({wallet}). Esta missão é da própria Itera: o SOL travado saiu dessa carteira. Nenhum aluno assinou este passo.',
     'bounty.ledger.signedSponsor': 'Assinado pela carteira de quem publicou a missão ({wallet}).',
+    'bounty.ledger.signerOnChain': 'Esta página não guardou quem assinou este passo. A transação está no link e mostra os assinantes.',
     'bounty.ledger.signedIteraPlain': 'Assinado por uma chave da Itera ({wallet}), não por um aluno.',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.ledger.signedIteraOld': 'Assinado só pela chave da Itera: este aceite é anterior a 11/10/2026, quando o programa passou a exigir a assinatura do aluno.',
@@ -577,6 +578,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.ledger.signedItera': "Signed by Itera's key ({wallet}). The program lets that key reopen the bounty, never move its money.",
     'bounty.ledger.signedTreasury': "Signed by Itera's treasury key ({wallet}). This bounty is Itera's own: the SOL locked came from that wallet. No learner signed this step.",
     'bounty.ledger.signedSponsor': "Signed by the wallet that posted the bounty ({wallet}).",
+    'bounty.ledger.signerOnChain': 'This page did not record who signed this step. The transaction is linked and shows its signers.',
     'bounty.ledger.signedIteraPlain': "Signed by a key of Itera ({wallet}), not by a learner.",
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.ledger.signedIteraOld': "Signed by Itera's key alone: this acceptance is from before 11 Oct 2026, when the program started requiring the learner's signature.",

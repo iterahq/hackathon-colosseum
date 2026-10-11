@@ -13,6 +13,7 @@ const KNOWN_KINDS: readonly string[] = ['created', 'funded', 'accepted', 'submit
 /** Who stands behind a step: the wallet that signed it on chain, or Itera's own record when it has no transaction. */
 function signedLine(event: LedgerEvent): { key: string; wallet?: string } | null {
   if (!event.signature) return MONEY_KINDS.includes(event.kind) ? null : { key: 'bounty.ledger.offchain' };
+  if (!event.signedBy && MONEY_KINDS.includes(event.kind)) return { key: 'bounty.ledger.signerOnChain' };
   if (event.signedBy) return { key: signerCaptionKey(event), wallet: event.signedBy };
   return event.kind === 'accepted' ? { key: 'bounty.ledger.signedIteraOld' } : null;
 }
