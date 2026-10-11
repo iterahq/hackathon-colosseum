@@ -6,7 +6,7 @@ name: bounty-escrow-build
 on:
   workflow_dispatch:
   push:
-    branches: [feat/bounty-escrow-program]
+    branches: [feat/bounty-escrow-program, feat/r2-escrow-program]
     paths:
       - programs/bounty-escrow/**
       - .github/workflows/bounty-escrow-build.yml
