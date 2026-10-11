@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
+import { lamportsToSol } from '@/utils/bounty';
+import type { BountyDetail, CheckReport, MyBountyStatus } from '@/types/bounty';
 
 export type StepKind = 'accept' | 'withdraw' | 'judge';
 
@@ -35,4 +36,41 @@ export async function settleBountyStep(
     if (attempt < tries - 1) await sleep(delayMs);
   }
   return false;
+}
+
+/** What the server answered when a delivery passed the automatic check. */
+export interface JudgePass {
+  report: CheckReport | null;
+  payout: { status: string; signature: string | null; explorerUrl: string | null; lamports: number | null };
+}
+
+/**
+ * The bounty as the server's answer to a passed delivery describes it: paid (or paying) with the code and the
+ * verdict, so the page never shows the delivery form beside "paid" while the next read is on its way.
+ */
+export function withJudgePass(detail: BountyDetail, pass: JudgePass, code: string, at: string): BountyDetail {
+  const paid = pass.payout.status === 'paid' && pass.payout.signature !== null;
+  const lamports = pass.payout.lamports ?? detail.rewardLamports;
+  const claim = detail.claim ? { ...detail.claim, status: paid ? 'approved' : 'submitted', submittedAt: detail.claim.submittedAt ?? at, submissionCode: paid ? code : null, checkReport: paid ? pass.report : null } : null;
+  if (!paid) return { ...detail, status: 'paying', claim };
+  return {
+    ...detail,
+    status: 'paid',
+    claim,
+    payout: { signature: pass.payout.signature as string, lamports, sol: `${lamportsToSol(lamports)} SOL`, at, wallet: detail.claim?.wallet ?? null, explorerUrl: pass.payout.explorerUrl },
+  };
+}
+
+/** The learner's own status after the same answer: the claim is no longer one to deliver. */
+export function withJudgePassMine(mine: MyBountyStatus, bountyId: string, pass: JudgePass): MyBountyStatus {
+  if (mine.claim?.bountyId !== bountyId) return mine;
+  const paid = pass.payout.status === 'paid' && pass.payout.signature !== null;
+  return { ...mine, judgedBefore: true, claim: { ...mine.claim, status: paid ? 'approved' : 'submitted', checkReport: pass.report } };
+}
+
+/** Writes a passed delivery into every read of that bounty the page holds, ahead of the next read. */
+export async function showJudgePass(queryClient: QueryClient, bountyId: string, pass: JudgePass, code: string, at = new Date().toISOString()): Promise<void> {
+  await queryClient.cancelQueries({ queryKey: queryKeys.bounty.all });
+  queryClient.setQueriesData<BountyDetail | null>({ queryKey: ['bounty', 'detail'] }, (held) => (held && held.id === bountyId ? withJudgePass(held, pass, code, at) : held));
+  queryClient.setQueriesData<MyBountyStatus>({ queryKey: ['bounty', 'mine'] }, (held) => (held ? withJudgePassMine(held, bountyId, pass) : held));
 }

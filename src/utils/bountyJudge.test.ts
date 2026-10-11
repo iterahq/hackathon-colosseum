@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
-import { checkRows, daysFooter, daysRuleText, eventLabel, judgeBoardTitle, judgePaidHint, judgeSlotsText } from './bountyJudge';
+import { checkRows, daysFooter, daysRuleText, eventLabel, judgeBoardTitle, judgePaidHint, judgeSlotsText, signerCaptionKey } from './bountyJudge';
 import type { BountyStats, JudgeInfo } from '@/types/bounty';
 
 const t = (locale: 'pt' | 'en') => (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -82,5 +82,26 @@ describe('where the days are checked', () => {
     expect(daysFooter(t('en'), stats({ daysByProgramCount: 3, daysByAttesterCount: 0 }))).toMatch(/^Every bounty listed here names its trail/);
     expect(daysFooter(t('en'), stats({ daysByProgramCount: 3, daysByAttesterCount: 1 }))).toBe("3 of the bounties listed name their days in the escrow account and the program reads them; 1 older one relies on Itera's key co-signing for the days.");
     expect(daysFooter(t('en'), stats({ daysByProgramCount: 3, daysByAttesterCount: 2 }))).toContain('2 older ones rely');
+  });
+});
+
+describe('signerCaptionKey', () => {
+  const TREASURY = 'AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA';
+  const LEARNER = 'CreJgdt1nhqgqqxNkFXgLFokCucdTwKQWProuhcH7X4W';
+
+  it('never calls a funding step the learner`s, even when the step names the wallet that signed it', () => {
+    expect(signerCaptionKey({ kind: 'funded', wallet: TREASURY, signedBy: TREASURY, signedRole: null })).toBe('bounty.ledger.signedIteraPlain');
+    expect(signerCaptionKey({ kind: 'escrow_moved', wallet: TREASURY, signedBy: TREASURY, signedRole: 'itera_treasury' })).toBe('bounty.ledger.signedTreasury');
+  });
+
+  it('follows the role the server resolved', () => {
+    expect(signerCaptionKey({ kind: 'accepted', wallet: LEARNER, signedBy: LEARNER, signedRole: 'learner' })).toBe('bounty.ledger.signedLearner');
+    expect(signerCaptionKey({ kind: 'funded', wallet: LEARNER, signedBy: LEARNER, signedRole: 'sponsor' })).toBe('bounty.ledger.signedSponsor');
+    expect(signerCaptionKey({ kind: 'rejected', wallet: LEARNER, signedBy: TREASURY, signedRole: 'itera_key' })).toBe('bounty.ledger.signedItera');
+  });
+
+  it('without the role, a learner step signed by the wallet it names is the learner`s', () => {
+    expect(signerCaptionKey({ kind: 'accepted', wallet: LEARNER, signedBy: LEARNER, signedRole: null })).toBe('bounty.ledger.signedLearner');
+    expect(signerCaptionKey({ kind: 'accepted', wallet: LEARNER, signedBy: TREASURY, signedRole: null })).toBe('bounty.ledger.signedIteraPlain');
   });
 });

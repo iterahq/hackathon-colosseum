@@ -199,7 +199,7 @@ interface Preload {
 }
 
 /** `index.html` starts these requests for `/u/<wallet>` and `/c/<asset>` before the bundle loads; each is used once. */
-export function takePreload(name: '__iteraGraph' | '__iteraProfile' | '__iteraCredential' | '__iteraBoard' | '__iteraCircuit', key: string, lang: string): Promise<Response> | null {
+export function takePreload(name: '__iteraGraph' | '__iteraProfile' | '__iteraCredential' | '__iteraBoard' | '__iteraBounty' | '__iteraCircuit', key: string, lang: string): Promise<Response> | null {
   if (typeof window === 'undefined') return null;
   const holder = window as unknown as Record<string, Preload | null | undefined>;
   const preload = holder[name];

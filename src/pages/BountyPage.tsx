@@ -9,7 +9,7 @@ import { PaidBlock } from '@/components/bounty/PaidBlock';
 import { ReportBounty } from '@/components/bounty/ReportBounty';
 import { CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TeraNote, TERA_BUTTON } from '@/components/tera/TeraNote';
-import { useBounty } from '@/hooks/useBounties';
+import { useBounty, useBountyRecord } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 import { addressUrl } from '@/lib/explorer';
@@ -53,7 +53,11 @@ export default function BountyPage() {
   const { slug = '' } = useParams();
   const { t, locale } = useI18n();
   const query = useBounty(slug);
-  const bounty = query.data ?? null;
+  const record = useBountyRecord(slug, query.isPending);
+  // Itera's own record paints first; what depends on the escrow account (status, accept, held) waits for the read of the chain.
+  const bounty = query.data ?? (query.isPending ? record.data : null) ?? null;
+  const confirming = Boolean(bounty) && !query.data;
+  const missing = query.data === null || (query.isPending && record.data === null);
   usePageTitle(bounty?.title ?? t('bounty.pageTitle'));
 
   return (
@@ -61,7 +65,7 @@ export default function BountyPage() {
       <Link to="/bounties" className={LINK}>
         ← {t('bounty.detail.back')}
       </Link>
-      {query.isPending && (
+      {query.isPending && !bounty && !missing && (
         <div className="flex flex-col gap-4" aria-busy="true" data-testid="bounty-loading">
           <p role="status" className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.reading')}</p>
           <Skeleton className="h-10 w-3/4" />
@@ -70,7 +74,7 @@ export default function BountyPage() {
         </div>
       )}
       {query.isError && <LoadError onRetry={() => void query.refetch()} testId="bounty-failed" />}
-      {query.data === null && (
+      {missing && (
         <div className={`${CARD} p-5`} data-testid="bounty-not-found">
           <TeraNote
             mood="oops"
@@ -83,12 +87,12 @@ export default function BountyPage() {
       )}
       {bounty && (
         <>
-          <section className="flex flex-col gap-4" data-testid="bounty-detail">
+          <section className="flex flex-col gap-4" data-testid="bounty-detail" data-chain={confirming ? 'reading' : 'read'}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <PostedBy bounty={bounty} />
               <span className="flex flex-wrap items-center gap-1.5">
                 {bounty.judge && <JudgeChip />}
-                <StatusChip status={bounty.status} />
+                {!confirming && <StatusChip status={bounty.status} />}
               </span>
             </div>
             {bounty.judge && <JudgeCaption />}
@@ -103,8 +107,14 @@ export default function BountyPage() {
           {bounty.rehearsal && <Notice testId="bounty-rehearsal-banner">{t('bounty.rehearsal.banner')}</Notice>}
           <PaidBlock bounty={bounty} />
           <JudgePaidBlock bounty={bounty} />
-          <HeldNotice bounty={bounty} />
-          <BountyActionPanel bounty={bounty} />
+          {confirming ? (
+            <p role="status" aria-busy="true" className="[font:500_13px/1.5_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-chain-reading">{t('bounty.detail.confirming')}</p>
+          ) : (
+            <>
+              <HeldNotice bounty={bounty} />
+              <BountyActionPanel bounty={bounty} />
+            </>
+          )}
           <Block title={t('bounty.detail.brief')}>{bounty.brief}</Block>
           <Block title={t('bounty.detail.deliverable')}>{bounty.deliverable}</Block>
           <JudgeChecksSection bounty={bounty} />

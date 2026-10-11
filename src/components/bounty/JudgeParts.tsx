@@ -114,7 +114,7 @@ export function JudgeDeliverForm({ bounty, judge }: { bounty: BountyDetail; judg
 export function JudgeProgress({ judge, paid }: { judge: JudgeSubmit; paid: boolean }) {
   const { t } = useI18n();
   const result = judge.result;
-  if (!result || !result.submitted) return null;
+  if (!result || !result.submitted || paid) return null;
   const payout = result.payout;
   const settled = paid || payout.status === 'paid';
   const link = payout.explorerUrl ? <ExplorerAnchor href={payout.explorerUrl} label={t('bounty.paid.tx')} /> : null;

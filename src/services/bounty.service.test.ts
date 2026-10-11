@@ -80,6 +80,7 @@ describe('parseBoard', () => {
       listedCount: null,
       judgePaidCount: 0,
       judgePaidSol: '0 SOL',
+      judgeTeamTestPaidCount: 0,
       openOnChainCount: null,
       daysByProgramCount: null,
       daysByAttesterCount: null,
@@ -142,6 +143,10 @@ describe('sponsor answers', () => {
     expect(list.trails).toEqual([{ unitId: 'u1', title: { pt: 'Semana 1', en: 'Week 1' }, totalDays: 5 }]);
     expect(list.bounties[0]).toMatchObject({ treasuryFundable: true, titleI18n: { pt: 'FAQ pt', en: 'FAQ en' } });
     expect(list.bounties[0].review).toMatchObject({ wallet: 'W', proofDays: 4, submissionUrl: 'https://c' });
+  });
+  it('knows a caller who manages nothing as staff', () => {
+    expect(parseSponsorList({ staff: false, trails: [], bounties: [] }).staff).toBe(false);
+    expect(parseSponsorList({ trails: [], bounties: [] }).staff).toBe(true);
   });
   it('tells a settled approval from a pending one', () => {
     expect(parseApprove({ approved: true, outcome: 'settled', status: 'paid', payout_signature: 'S' })).toEqual({ outcome: 'settled', status: 'paid', signature: 'S' });
@@ -230,6 +235,10 @@ describe('describeTxError', () => {
     const error = new ShopCallError('x', 402, 'insufficient_funds', false, null, null, { required_lamports: 120005000, balance_lamports: 1000 });
     expect(describeTxError(error)).toMatchObject({ key: 'bounty.tx.err.insufficient_funds', vars: { need: '0.120005', have: '0.000001' }, faucet: true });
   });
+  it('says the cost the form showed and, apart, what the wallet must keep', () => {
+    const error = new ShopCallError('x', 402, 'insufficient_funds', false, null, null, { required_lamports: 12704360, balance_lamports: 0, cost_lamports: 11813480, keep_lamports: 890880 });
+    expect(describeTxError(error)).toMatchObject({ key: 'bounty.tx.err.insufficient_funds.split', vars: { cost: '0.01181348', keep: '0.00089088', have: '0' }, faucet: true });
+  });
   it('maps known codes and falls back to the generic text', () => {
     expect(describeTxError(new ShopCallError('x', 409, 'already_paid')).key).toBe('bounty.tx.err.already_paid');
     expect(describeTxError(new ShopCallError('x', 500, 'weird')).key).toBe('bounty.err.generic');
@@ -246,7 +255,7 @@ describe('judge bounty fields', () => {
       escrow: { ...bounty.escrow, days_checked_by: 'program' },
       claim: { wallet: 'W', submission_code: '<html></html>', check_report: { version: 1, passed: true, checks: [{ id: 'c1', passed: true }, { id: 'c2', passed: true }], checked_at: '2026-10-11T00:00:00Z' } },
     });
-    expect(b?.judge).toEqual({ checks: [{ id: 'c1', label: 'Has a title' }, { id: 'c2', label: 'Has a form' }], codeMax: 8000 });
+    expect(b?.judge).toEqual({ checks: [{ id: 'c1', label: 'Has a title' }, { id: 'c2', label: 'Has a form' }], codeMax: 8000, freeSlug: null, openCount: null, slotCount: null });
     expect(b?.escrow?.daysCheckedBy).toBe('program');
     expect(b?.claim?.submissionCode).toBe('<html></html>');
     expect(b?.claim?.checkReport?.checks).toHaveLength(2);

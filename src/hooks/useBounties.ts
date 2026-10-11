@@ -14,6 +14,7 @@ import {
   fundBounty,
   getBounty,
   getBountyBoard,
+  getBountyRecord,
   getModeration,
   getMyBountyStatus,
   getPostedList,
@@ -34,7 +35,7 @@ import {
   type SponsorFaucetResult,
   type StepPhase,
 } from '@/services/bounty.service';
-import { settleBountyStep, type StepKind } from '@/services/bountySettle';
+import { settleBountyStep, showJudgePass, type StepKind } from '@/services/bountySettle';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import type { CreateBountyInput, CreatePostedInput, TxPhase, WalletTxKind } from '@/types/bounty';
 
@@ -53,6 +54,12 @@ export function useBountyBoard() {
 export function useBounty(slug: string) {
   const { locale } = useI18n();
   return useQuery({ queryKey: queryKeys.bounty.detail(slug, locale), queryFn: () => getBounty(slug, locale), enabled: slug.length > 0 });
+}
+
+/** The same bounty from Itera's tables alone: it answers before the read that waits on the chain, and is dropped once that one lands. */
+export function useBountyRecord(slug: string, enabled: boolean) {
+  const { locale } = useI18n();
+  return useQuery({ queryKey: queryKeys.bounty.record(slug, locale), queryFn: () => getBountyRecord(slug, locale), enabled: enabled && slug.length > 0, retry: false, staleTime: 30_000 });
 }
 
 export function useMyBountyStatus(bountyId: string | null) {
@@ -120,6 +127,7 @@ export function useJudgeSubmit() {
       const answer = await submitJudgeCode(v.bounty, v.code);
       setResult(answer);
       if (!answer.submitted) return;
+      await showJudgePass(queryClient, v.bounty, answer, v.code);
       setPhase('settling');
       setOutcome((await settleBountyStep(queryClient, 'judge', v.bounty)) ? 'settled' : 'stale');
     },

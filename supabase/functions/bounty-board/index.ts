@@ -97,10 +97,12 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   );
 }
 
-async function detail(db: IteraClient, request: Request, key: string, cors: Record<string, string>): Promise<Response> {
+async function detail(db: IteraClient, request: Request, found: BountyRow | null, cors: Record<string, string>): Promise<Response> {
   const now = new Date();
-  let bounty: BountyRow | null = await loadBounty(db, isUuid(key) ? { id: key } : { slug: key });
+  let bounty = found;
   if (!bounty) return json({ error: 'bounty_not_found' }, 404, cors);
+  // `read=record`: what the tables hold, at once and without asking the Solana node. The page paints it and asks again for the chain's word.
+  if (new URL(request.url).searchParams.get('read') === 'record') return await detailAnswer(db, request, bounty, null, false, cors);
   let claims = await loadClaims(db, bounty.claim_id ? [bounty.claim_id] : []);
   let chainRead = true;
   if (await expireStaleClaims(db, [bounty], claims, now)) {
@@ -127,7 +129,14 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
     await chainStep(recordWalletPayout(db, bounty.id), 'payout not recorded');
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }
-  const [events, config, tests, freeSlug] = await Promise.all([
+  return await detailAnswer(db, request, bounty, claims, chainRead, cors);
+}
+
+/** `held`: the claims already read for this bounty; `null` reads them here, beside everything else the answer needs. */
+async function detailAnswer(db: IteraClient, request: Request, bounty: BountyRow, held: Map<string, ClaimRow> | null, chainRead: boolean, cors: Record<string, string>): Promise<Response> {
+  const now = new Date();
+  const [claims, events, config, tests, freeSlug] = await Promise.all([
+    held ?? loadClaims(db, bounty.claim_id ? [bounty.claim_id] : []),
     loadEvents(db, bounty.id),
     loadConfig(db),
     bounty.status === 'paid' || bounty.origin === 'wallet' ? loadTestAccountIds(db) : new Set<string>(),
@@ -176,6 +185,10 @@ Deno.serve(async (request) => {
   try {
     const [first, second, ...rest] = pathAfter(request, FUNCTION);
     const db = serviceClient();
+    // One bounty: its row is asked for beside the rate check, not after it.
+    const one = rest.length === 0 && first !== undefined && second === undefined && first !== 'sweep' && (isUuid(first) || SLUG.test(first));
+    const row = one ? loadBounty(db, isUuid(first) ? { id: first } : { slug: first }) : null;
+    row?.catch(() => null);
     const verdict = await takeRate(db, FUNCTION, callerAddress(request), RATE);
     if (!verdict.allowed) return tooMany(verdict, cors);
     if (rest.length > 0) return json({ error: 'not_found' }, 404, cors);
@@ -190,8 +203,8 @@ Deno.serve(async (request) => {
       if (!isSolanaAddress(second)) return json({ error: 'invalid_address' }, 400, cors);
       return await earnings(db, request, second, cors);
     }
-    if (second !== undefined || !(isUuid(first) || SLUG.test(first))) return json({ error: 'bounty_not_found' }, 404, cors);
-    return await detail(db, request, first, cors);
+    if (!row) return json({ error: 'bounty_not_found' }, 404, cors);
+    return await detail(db, request, await row, cors);
   } catch (error) {
     if (error instanceof RpcError) {
       console.error('bounty-board rpc failed', error.message);

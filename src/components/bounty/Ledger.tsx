@@ -4,7 +4,7 @@ import { CARD } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import { formatWhen } from '@/utils/bounty';
-import { eventLabel } from '@/utils/bountyJudge';
+import { eventLabel, signerCaptionKey } from '@/utils/bountyJudge';
 import type { CheckReport, JudgeInfo, LedgerEvent } from '@/types/bounty';
 
 const MONEY_KINDS: readonly string[] = ['funded', 'paid', 'refunded'];
@@ -13,7 +13,7 @@ const KNOWN_KINDS: readonly string[] = ['created', 'funded', 'accepted', 'submit
 /** Who stands behind a step: the wallet that signed it on chain, or Itera's own record when it has no transaction. */
 function signedLine(event: LedgerEvent): { key: string; wallet?: string } | null {
   if (!event.signature) return MONEY_KINDS.includes(event.kind) ? null : { key: 'bounty.ledger.offchain' };
-  if (event.signedBy) return event.signedBy === event.wallet ? { key: 'bounty.ledger.signedLearner', wallet: event.signedBy } : { key: 'bounty.ledger.signedItera', wallet: event.signedBy };
+  if (event.signedBy) return { key: signerCaptionKey(event), wallet: event.signedBy };
   return event.kind === 'accepted' ? { key: 'bounty.ledger.signedIteraOld' } : null;
 }
 
