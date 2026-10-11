@@ -35,6 +35,15 @@ export function StatusChip({ status }: { status: BountyStatus }) {
   );
 }
 
+export function RehearsalChip() {
+  const { t } = useI18n();
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 ${MONO_LABEL} ${TONES.muted}`} data-testid="bounty-rehearsal-chip">
+      {t('bounty.card.rehearsal')}
+    </span>
+  );
+}
+
 export function DevnetTag() {
   const { t } = useI18n();
   return <span className={DEVNET_BADGE}>{t('bounty.devnet')}</span>;

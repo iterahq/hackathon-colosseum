@@ -18,7 +18,10 @@ export function LandingLiveStats() {
           <>
             <LandingStat value={stats ? stats.openCount : null} label={t('landing.live.bountiesOpen')} />
             <LandingStat value={stats ? stats.lockedSol : null} label={t('landing.live.lockedSol')} />
-            <LandingStat value={stats ? stats.paidCount : null} label={t('landing.live.paidCount')} />
+            <div className="flex flex-col gap-1">
+              <LandingStat value={stats ? stats.paidCount : null} label={t('landing.live.paidCount')} />
+              {stats && stats.paidCount > 0 && stats.outsidePaidCount === 0 && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="landing-paid-rehearsal">{t('bounty.card.rehearsal')}</span>}
+            </div>
           </>
         )}
         {(circuit.isPending || counter) && (

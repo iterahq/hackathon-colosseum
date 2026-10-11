@@ -8,19 +8,27 @@ import {
   approveBounty,
   bountyErrorCode,
   createBounty,
+  createPostedBounty,
   fundBounty,
   getBounty,
   getBountyBoard,
+  getModeration,
   getMyBountyStatus,
+  getPostedList,
+  getPostOptions,
   getSponsorList,
   refreshBounty,
   refundBounty,
   rejectBounty,
+  rejectPosted,
+  reportBounty,
+  runBountyWalletTx,
+  setBountyHidden,
   submitBounty,
   withdrawBounty,
 } from '@/services/bounty.service';
 import { isGuestAccessToken } from '@/services/guestSession.service';
-import type { CreateBountyInput } from '@/types/bounty';
+import type { CreateBountyInput, CreatePostedInput, TxPhase, WalletTxKind } from '@/types/bounty';
 
 export function useBountySession() {
   const { session, configured } = useAuth();
@@ -73,3 +81,35 @@ export const useRefreshBounty = () => useWrite((bounty: string) => refreshBounty
 export const useApproveBounty = () => useWrite((v: { bounty: string; note: string }) => approveBounty(v.bounty, v.note));
 export const useRejectBounty = () => useWrite((v: { bounty: string; note: string }) => rejectBounty(v.bounty, v.note));
 export const useRefundBounty = () => useWrite((bounty: string) => refundBounty(bounty));
+
+export function useBountyPostOptions() {
+  return useQuery({ queryKey: queryKeys.bounty.postOptions, queryFn: getPostOptions, staleTime: 60_000 });
+}
+
+export function useMyPostedBounties() {
+  const { signedIn, userId } = useBountySession();
+  return useQuery({
+    queryKey: queryKeys.bounty.posted(userId),
+    queryFn: getPostedList,
+    enabled: signedIn,
+    retry: (count, error) => bountyErrorCode(error) !== 'no_wallet' && count < 1,
+  });
+}
+
+export function useModeration() {
+  const { signedIn, userId } = useBountySession();
+  return useQuery({
+    queryKey: queryKeys.bounty.moderation(userId),
+    queryFn: getModeration,
+    enabled: signedIn,
+    retry: (count, error) => bountyErrorCode(error) !== 'forbidden' && count < 1,
+  });
+}
+
+export const useCreatePostedBounty = () => useWrite((input: CreatePostedInput) => createPostedBounty(input));
+export const useRejectPosted = () => useWrite((v: { bounty: string; note: string }) => rejectPosted(v.bounty, v.note));
+export const useReportBounty = () => useWrite((v: { bounty: string; reason: string }) => reportBounty(v.bounty, v.reason));
+export const useSetHidden = () => useWrite((v: { bounty: string; hidden: boolean; reason: string }) => setBountyHidden(v.bounty, v.hidden, v.reason));
+
+export const useWalletBountyTx = (kind: WalletTxKind) =>
+  useWrite((v: { bounty: string; note?: string; onPhase?: (phase: TxPhase) => void }) => runBountyWalletTx(kind, v.bounty, v.note ?? '', v.onPhase ?? (() => undefined)));

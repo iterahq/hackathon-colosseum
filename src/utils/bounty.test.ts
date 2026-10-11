@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createErrorField, formatRemaining, isRewardInRange, isValidSlug, safeHttpsUrl, slugify, solToLamports, sortBounties, statusTone } from './bounty';
+import { checkDeliveryUrl, checkPostText, createErrorField, formatRemaining, isRewardInRange, isValidSlug, lamportsToSol, plural, safeHttpsUrl, slugify, solToLamports, sortBounties, statusTone, validatePostForm } from './bounty';
 
 describe('solToLamports', () => {
   it('converts without float drift', () => {
@@ -70,5 +70,71 @@ describe('createErrorField', () => {
     expect(createErrorField('invalid_deadline')).toBe('deadline');
     expect(createErrorField('boom')).toBeNull();
     expect(createErrorField(null)).toBeNull();
+  });
+});
+
+describe('checkDeliveryUrl', () => {
+  it('names what is wrong', () => {
+    expect(checkDeliveryUrl('')).toBe('empty');
+    expect(checkDeliveryUrl('   ')).toBe('empty');
+    expect(checkDeliveryUrl('codepen.io/you/pen/abc')).toBe('not_url');
+    expect(checkDeliveryUrl('https://')).toBe('not_url');
+    expect(checkDeliveryUrl('ftp://x.io/a')).toBe('not_url');
+    expect(checkDeliveryUrl('http://example.com/x')).toBe('http');
+    expect(checkDeliveryUrl('HTTP://example.com/x')).toBe('http');
+    expect(checkDeliveryUrl(`https://x.io/${'a'.repeat(500)}`)).toBe('too_long');
+  });
+  it('accepts a plain https link, even with spaces around it', () => {
+    expect(checkDeliveryUrl('https://codepen.io/you/pen/abc')).toBeNull();
+    expect(checkDeliveryUrl('  https://codepen.io/you/pen/abc  ')).toBeNull();
+    expect(checkDeliveryUrl(`https://x.io/${'a'.repeat(487)}`)).toBeNull();
+  });
+});
+
+describe('plural', () => {
+  const t = (key: string, vars: Record<string, string | number> = {}) => `${key}|${JSON.stringify(vars)}`;
+  it('uses the one form only for exactly 1', () => {
+    expect(plural(t, 'k', 1)).toBe('k.one|{"n":1}');
+    expect(plural(t, 'k', 0)).toBe('k.many|{"n":0}');
+    expect(plural(t, 'k', 2)).toBe('k.many|{"n":2}');
+  });
+  it('passes the other variables on', () => {
+    expect(plural(t, 'k', 3, { trail: 'W1' })).toBe('k.many|{"n":3,"trail":"W1"}');
+  });
+});
+
+describe('lamportsToSol', () => {
+  it('prints exact decimals', () => {
+    expect(lamportsToSol(0)).toBe('0');
+    expect(lamportsToSol(1_000_000_000)).toBe('1');
+    expect(lamportsToSol(120_005_000)).toBe('0.120005');
+    expect(lamportsToSol(5_000)).toBe('0.000005');
+  });
+  it('round-trips with solToLamports', () => {
+    for (const sol of ['0.05', '0.123456789', '2', '0.001']) expect(lamportsToSol(solToLamports(sol) ?? -1)).toBe(sol);
+  });
+});
+
+describe('post form', () => {
+  const ok = { sponsor: 'Acme Inc', title: 'Accessible FAQ page', summary: 'A small FAQ with keyboard support.', brief: 'x'.repeat(60), deliverable: 'A public link.', reward: '0.05', minDays: '2', expires: '7', claimHours: '24' };
+  const ctx = { minRewardLamports: 1_000_000, maxRewardLamports: 500_000_000, maxExpiryDays: 30, maxClaimHours: 168, totalDays: 5 };
+  it('checks the length of a text', () => {
+    expect(checkPostText('title', 'short')).toBe('short');
+    expect(checkPostText('title', 'x'.repeat(8))).toBeNull();
+    expect(checkPostText('title', 'x'.repeat(91))).toBe('long');
+    expect(checkPostText('sponsor', '  a  ')).toBe('short');
+  });
+  it('accepts a complete form and converts the numbers', () => {
+    const check = validatePostForm(ok, ctx);
+    expect(check.errors).toEqual({});
+    expect(check).toMatchObject({ rewardLamports: 50_000_000, minDays: 2, expiresInDays: 7, claimHours: 24 });
+  });
+  it('flags each bad field', () => {
+    const check = validatePostForm({ ...ok, sponsor: 'A', brief: 'x', reward: '0.0001', minDays: '6', expires: '31', claimHours: '0' }, ctx);
+    expect(check.errors).toEqual({ sponsor: 'short', brief: 'short', reward: 'invalid', requirement: 'invalid', expires: 'invalid', claimHours: 'invalid' });
+  });
+  it('refuses a reward above the cap and a form with no trail', () => {
+    expect(validatePostForm({ ...ok, reward: '0.6' }, ctx).errors.reward).toBe('invalid');
+    expect(validatePostForm(ok, { ...ctx, totalDays: null }).errors.requirement).toBe('invalid');
   });
 });

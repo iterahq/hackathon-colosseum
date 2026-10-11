@@ -165,6 +165,9 @@ export const queryKeys = {
     detail: (slug: string, locale: string) => ['bounty', 'detail', slug, { locale }] as const,
     mine: (userId: string, bountyId: string) => ['bounty', 'mine', userId, bountyId] as const,
     sponsor: (userId: string) => ['bounty', 'sponsor', userId] as const,
+    postOptions: ['bounty', 'post-options'] as const,
+    posted: (userId: string) => ['bounty', 'posted', userId] as const,
+    moderation: (userId: string) => ['bounty', 'moderation', userId] as const,
   },
   referral: {
     mine: (userId: string) => ['referral', userId] as const,

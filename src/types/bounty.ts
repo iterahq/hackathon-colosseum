@@ -32,6 +32,7 @@ export interface BountyClaim {
   proofAsset: string | null;
   proofUrl: string | null;
   submissionUrl: string | null;
+  submissionMirrored: boolean;
 }
 
 export interface BountyMoney {
@@ -43,9 +44,25 @@ export interface BountyMoney {
   explorerUrl: string | null;
 }
 
+export interface PostedBy {
+  kind: 'team' | 'wallet';
+  name: string;
+  wallet: string | null;
+  walletShort: string | null;
+  profileUrl: string | null;
+}
+
+export type BountyLang = 'pt' | 'en';
+
 export interface Bounty {
   id: string;
   slug: string;
+  slugs: { pt: string; en: string };
+  postedBy: PostedBy;
+  approver: 'sponsor_wallet' | 'itera';
+  rehearsal: boolean;
+  hidden: boolean;
+  writtenIn: BountyLang | null;
   sponsor: string;
   title: string;
   summary: string;
@@ -87,9 +104,16 @@ export interface BountyStats {
   lockedSol: string;
   paidCount: number;
   openCount: number;
+  rehearsalPaidCount: number;
+  rehearsalPaidSol: string;
+  outsidePaidCount: number;
+  outsidePaidSol: string;
+  heldCount: number;
+  outsideSponsorCount: number;
 }
 
 export interface BountyBoard {
+  readAt: string | null;
   stats: BountyStats;
   bounties: Bounty[];
 }
@@ -164,4 +188,106 @@ export interface ApproveResult {
   outcome: 'settled' | 'pending';
   status: string;
   signature: string | null;
+}
+
+export interface PostLimits {
+  minRewardLamports: number;
+  maxRewardLamports: number;
+  escrowRentLamports: number | null;
+  feeLamports: number;
+  postsPerDay: number;
+  liveBounties: number;
+  maxExpiryDays: number;
+  maxClaimHours: number;
+}
+
+export interface PostOptions {
+  cluster: string;
+  programId: string | null;
+  trails: SponsorTrail[];
+  limits: PostLimits;
+}
+
+export interface PostedReview {
+  status: string;
+  wallet: string | null;
+  submissionUrl: string | null;
+  submissionNote: string | null;
+  submittedAt: string | null;
+  proofDays: number | null;
+  proofAsset: string | null;
+}
+
+export interface PostedBounty extends Bounty {
+  hiddenReason: string | null;
+  review: PostedReview | null;
+}
+
+export interface PostedList {
+  wallet: string;
+  balanceLamports: number | null;
+  bounties: PostedBounty[];
+}
+
+export interface CreatePostedInput {
+  sponsorName: string;
+  title: Partial<LocalizedText>;
+  summary: Partial<LocalizedText>;
+  brief: Partial<LocalizedText>;
+  deliverable: Partial<LocalizedText>;
+  rewardLamports: number;
+  unitId: string;
+  minDays: number;
+  expiresInDays: number;
+  claimHours: number;
+}
+
+export interface CreatedBounty {
+  id: string;
+  slug: string;
+}
+
+export type WalletTxKind = 'fund' | 'approve' | 'refund';
+
+export interface WalletTx {
+  kind: WalletTxKind;
+  payer: string;
+  messageBase58: string;
+  messageBase64: string;
+  transactionBase58: string;
+  transactionBase64: string;
+  costLamports: number;
+  rentLamports: number;
+  escrow: string | null;
+  pays: string | null;
+  lamports: number | null;
+}
+
+export interface ConfirmResult {
+  status: string;
+  changed: boolean;
+  payoutSignature: string | null;
+  refundSignature: string | null;
+  fundingSignature: string | null;
+}
+
+export type TxPhase = 'preparing' | 'wallet' | 'confirming';
+
+export interface ModerationReport {
+  reason: string;
+  createdAt: string | null;
+}
+
+export interface ModerationBounty {
+  id: string;
+  slug: string;
+  sponsorName: string;
+  sponsorWallet: string | null;
+  title: string;
+  status: string;
+  rewardLamports: number;
+  hiddenAt: string | null;
+  hiddenReason: string | null;
+  createdAt: string | null;
+  reports: ModerationReport[];
 }

@@ -5,7 +5,7 @@ import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/compo
 import { useApproveBounty, useFundBounty, useRefreshBounty, useRefundBounty, useRejectBounty } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { bountyErrorCode } from '@/services/bounty.service';
-import { REFUNDABLE, safeHttpsUrl } from '@/utils/bounty';
+import { plural, REFUNDABLE, safeHttpsUrl } from '@/utils/bounty';
 import type { ApproveResult, SponsorBounty } from '@/types/bounty';
 
 const SPONSOR_ERRORS = ['forbidden', 'not_submitted', 'self_review', 'treasury_not_allowed', 'not_fundable', 'not_refundable', 'bounty_not_found'];
@@ -85,7 +85,7 @@ export function ReviewItem({ bounty }: { bounty: SponsorBounty }) {
         <div className="flex flex-wrap items-center gap-2">
           <dt className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.sponsor.learner')}</dt>
           <dd>{review?.wallet && <ShortWallet address={review.wallet} />}</dd>
-          {review?.proofDays != null && <dd className="[font:500_12px_JetBrains_Mono] text-[#3FD17F]">{t('bounty.sponsor.proofDays', { n: review.proofDays })}</dd>}
+          {review?.proofDays != null && <dd className="[font:500_12px_JetBrains_Mono] text-[#3FD17F]">{plural(t, 'bounty.sponsor.proofDays', review.proofDays)}</dd>}
         </div>
         <div className="flex flex-col gap-1">
           <dt className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.sponsor.delivery')}</dt>
