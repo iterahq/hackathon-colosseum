@@ -72,6 +72,7 @@ async function main() {
 
   // 3. A claim with no receipts is a burst like any other: recorded, held, and the answer says how it is released.
   const burst = await newLearner(apikey, 'burst-claim');
+  const burstAt = Date.now();
   const bare = await burst.call('grade', { claim: activities.map((activity) => item(activity, { settled_at: Date.now() - 3_600_000 })) });
   check('a claim with no receipts is recorded', bare.status === 200 && bare.body.claimed.every((row) => row.landed), `HTTP ${bare.status}`);
   check('but its times are the server\'s own: one burst', completions(burst.userId, lesson).span_ms < FLOOR_MS, `${completions(burst.userId, lesson).span_ms} ms`);
@@ -107,7 +108,7 @@ async function main() {
   check('the same activity twice in one claim is refused', twice.status === 400, `HTTP ${twice.status}`);
 
   // 6. The hold is not for good: one exercise passed again after the floor releases the day.
-  await sleep(Math.max(0, FLOOR_MS + 2_000 - (Date.now() - startedAt)));
+  await sleep(Math.max(0, FLOOR_MS + 3_000 - (Date.now() - burstAt)));
   const redo = activities.find((activity) => activity.kind === 'single_choice');
   const again = await burst.call('grade', { ...item(redo), passed: true, results: 'server' });
   const released = await burst.call('passport', { lang: 'en', lesson_id: lesson, max_jobs: 1 });
