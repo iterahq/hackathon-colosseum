@@ -114,4 +114,18 @@ describe('OrderActivity', () => {
     expect(ids()).toEqual(lockedOrder);
     expect(screen.getByTestId('order-list').innerHTML).not.toMatch(/destructive|red-/);
   });
+
+  it('moves a row one step with its arrows, records the move via arrow and unlocks submit', () => {
+    const onComplete = vi.fn();
+    render(<OrderActivity activity={activity} onComplete={onComplete} />);
+    const before = ids();
+    const rows = screen.getAllByTestId('order-item');
+    expect(rows[0].querySelector('[data-testid="order-move-up"]')).toBeDisabled();
+    expect(rows[rows.length - 1].querySelector('[data-testid="order-move-down"]')).toBeDisabled();
+    fireEvent.click(rows[0].querySelector('[data-testid="order-move-down"]')!);
+    const after = ids();
+    expect(after[1]).toBe(before[0]);
+    expect(after[0]).toBe(before[1]);
+    expect(screen.getByTestId('order-submit')).not.toBeDisabled();
+  });
 });

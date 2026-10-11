@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Reorder, useDragControls, useReducedMotion } from 'framer-motion';
-import { GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import type { ChoiceOption } from '../specs.js';
 import { SPRING_SETTLE } from './tactile.js';
 import { tactileSurface } from './tactileSurface.js';
@@ -19,6 +19,10 @@ export function OrderRow({
   verdict,
   onDragStart,
   onDragEnd,
+  onMoveUp,
+  onMoveDown,
+  moveUpLabel,
+  moveDownLabel,
 }: {
   id: string;
   option: ChoiceOption | undefined;
@@ -27,6 +31,12 @@ export function OrderRow({
   verdict: 'right' | 'miss' | null;
   onDragStart: () => void;
   onDragEnd: () => void;
+  /** Absent on the first row: there is nowhere up to go. */
+  onMoveUp?: () => void;
+  /** Absent on the last row. */
+  onMoveDown?: () => void;
+  moveUpLabel: string;
+  moveDownLabel: string;
 }) {
   const reduced = useReducedMotion();
   const controls = useDragControls();
@@ -62,7 +72,7 @@ export function OrderRow({
       data-option-id={id}
       data-position={position}
       data-verdict={verdict ?? undefined}
-      className={`relative flex items-center gap-2 min-[480px]:gap-2.5 py-2.5 pl-1.5 pr-3 min-[480px]:pl-2 ${tactileSurface(surface, false, true)} ${
+      className={`relative flex items-center gap-1.5 min-[480px]:gap-2.5 py-1.5 pl-1 pr-1.5 min-[480px]:py-2.5 min-[480px]:pl-2 min-[480px]:pr-2 ${tactileSurface(surface, false, true)} ${
         locked ? '' : dragging ? 'cursor-grabbing' : 'cursor-grab'
       } ${dragging ? 'z-10' : ''}`}
     >
@@ -85,6 +95,30 @@ export function OrderRow({
         {option?.label && <span className="flex-1 min-w-0 break-words text-sm min-[480px]:text-base"><InlineLabel text={option.label} /></span>}
         {option?.audio_url && <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" />}
       </div>
+      {!locked && (
+        <span className="flex flex-shrink-0 items-center" data-testid="order-arrows">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={!onMoveUp}
+            aria-label={moveUpLabel}
+            data-testid="order-move-up"
+            className="inline-flex h-9 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground disabled:opacity-25 coarse:h-11 coarse:w-9"
+          >
+            <ChevronUp className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={!onMoveDown}
+            aria-label={moveDownLabel}
+            data-testid="order-move-down"
+            className="inline-flex h-9 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground disabled:opacity-25 coarse:h-11 coarse:w-9"
+          >
+            <ChevronDown className="h-4 w-4" aria-hidden />
+          </button>
+        </span>
+      )}
       <VerdictMark verdict={verdict} delay={position * 0.04} />
     </Reorder.Item>
   );
