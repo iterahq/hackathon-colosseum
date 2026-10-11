@@ -96,6 +96,10 @@ verify_jwt = false
 verify_jwt = false
 
 # The escrow program refusing a wallet, for anyone to watch (/verify#gate). Public, rate limited in code.
+# The talent board: public read, rate limited in code. The POST actions check the bearer token in code.
+[functions.talent-board]
+verify_jwt = false
+
 [functions.gate-check]
 verify_jwt = false
 

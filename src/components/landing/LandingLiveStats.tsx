@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useBountyBoard } from '@/hooks/useBounties';
 import { useCircuit } from '@/hooks/useCircuit';
 import { useI18n } from '@/i18n';
@@ -43,6 +44,11 @@ export function LandingLiveStats() {
           {t('landing.live.readAt', { time: readAt })}
         </p>
       )}
+      <p className="[font:500_13px/1.5_Inter] text-[#A0978A]" data-testid="landing-talent-line">
+        <Link to="/talent" className="inline-flex min-h-11 items-center rounded text-[#C9BFB0] underline underline-offset-4 hover:text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+          {t('talent.landing.line')} →
+        </Link>
+      </p>
       {board.isError && circuit.isError && <p className="[font:400_14px_Inter] text-[#A0978A]">{t('landing.live.unavailable')}</p>}
     </div>
   );

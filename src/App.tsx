@@ -85,6 +85,7 @@ const WorldPage = lazy(() => import("./pages/WorldPage"));
 const LearnerProfilePage = lazy(() => import("./pages/LearnerProfilePage"));
 const GiftPage = lazy(() => import("./pages/GiftPage"));
 const BountiesPage = lazy(() => import("./pages/BountiesPage"));
+const TalentPage = lazy(() => import("./pages/TalentPage"));
 const BountyPage = lazy(() => import("./pages/BountyPage"));
 const VerifyPage = lazy(() => import("./pages/VerifyPage"));
 const BountyManagePage = lazy(() => import("./pages/BountyManagePage"));
@@ -350,6 +351,7 @@ const App = () => (
                 <Route path="/u/:wallet" element={<LazyRoute><LearnerProfilePage /></LazyRoute>} />
                 <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
                 <Route path="/bounties" element={<LazyRoute><BountiesPage /></LazyRoute>} />
+                <Route path="/talent" element={<LazyRoute><TalentPage /></LazyRoute>} />
                 <Route path="/bounties/manage" element={<LazyRoute><BountyManagePage /></LazyRoute>} />
                 <Route path="/bounties/post" element={<LazyRoute><BountyPostPage /></LazyRoute>} />
                 <Route path="/bounties/mine" element={<LazyRoute><BountyMinePage /></LazyRoute>} />

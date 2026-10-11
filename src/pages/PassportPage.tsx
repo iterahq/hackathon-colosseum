@@ -1,3 +1,4 @@
+import { TalentOptIn } from '@/components/talent/TalentOptIn';
 import { Link, useNavigate } from 'react-router-dom';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import '@/components/dashboard/dashboard.css';
@@ -68,6 +69,7 @@ export default function PassportPage() {
           </button>
         )}
         <PassportGraph wallet={view.walletAddress} />
+        <TalentOptIn />
         <section className="flex flex-col gap-5" aria-labelledby="passport-pages">
           <h2 id="passport-pages" className={H2}>
             {t('passport.pages')}

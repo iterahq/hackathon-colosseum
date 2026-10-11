@@ -61,6 +61,9 @@ export default function BountiesPage() {
             </Link>
           )}
         </div>
+        <Link to="/talent" className={LINK} data-testid="bounty-talent-link">
+          {t('talent.bounties.line')} →
+        </Link>
         {staff && (
           <Link to="/bounties/manage" className={LINK} data-testid="bounty-manage-link">
             {t('bounty.manage.link')} →

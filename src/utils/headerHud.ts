@@ -44,6 +44,7 @@ export function activeNavOf(pathname: string, focus = FOCUS_BUILD): NavId | null
   if (pathname === '/artifacts' || pathname.startsWith('/artifacts/')) return 'files';
   if (pathname === '/shop' || pathname.startsWith('/shop/')) return 'shop';
   if (pathname === '/bounties' || pathname.startsWith('/bounties/')) return 'bounties';
+  if (pathname === '/talent' || pathname.startsWith('/talent/')) return 'talent';
   if (pathname === '/verify' || pathname.startsWith('/verify/')) return 'verify';
   return null;
 }
