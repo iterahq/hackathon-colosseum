@@ -57,4 +57,17 @@ describe('graphLayout', () => {
     expect(graphLayout([], 'wide', 900).nodes).toEqual([]);
     expect(graphLayout(nodes, 'narrow', 100).width).toBeGreaterThanOrEqual(280);
   });
+
+  it('routes an edge that skips a row through the free centre channel', () => {
+    const chain = [
+      { id: 'p', trail: 0, day: 1, requires: [] },
+      { id: 'q', trail: 0, day: 2, requires: ['p'] },
+      { id: 'r', trail: 0, day: 3, requires: ['p'] },
+    ];
+    const l = graphLayout(chain, 'narrow', 360);
+    expect(l.edges.find((e) => e.to === 'r')?.path).toContain('L180 ');
+    expect(l.edges.find((e) => e.to === 'q')?.path).not.toContain('L');
+    expect(l.nodes.find((n) => n.id === 'q')?.x).toBeLessThan(180);
+    expect(l.nodes.find((n) => n.id === 'r')?.x).toBe(180);
+  });
 });
