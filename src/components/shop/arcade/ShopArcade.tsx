@@ -100,7 +100,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
             </span>
           )}
           {shown === 'avatars' && groups.length > 1 && (
-            <div className="-mx-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:justify-end lg:px-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label={t('arcade.collection')} data-testid="shop-rarity-filter">
+            <div className="-mx-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] max-lg:[mask-image:linear-gradient(90deg,#000_calc(100%-32px),transparent)] lg:mx-0 lg:justify-end lg:px-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label={t('arcade.collection')} data-testid="shop-rarity-filter">
               {[{ id: 'all', title: t('arcade.all'), edge: '#3FD17F' }, ...groups].map((g) => (
                 <button key={g.id} type="button" aria-pressed={filter === g.id} onClick={() => setFilter(g.id)} data-testid={`shop-filter-${g.id}`} className={`${CHIP} ${filter === g.id ? 'bg-[#262320] text-[#F4EDE2]' : 'bg-transparent text-[#A0978A] hover:text-[#F4EDE2]'}`} style={{ borderColor: filter === g.id ? g.edge : '#2E2A25' }}>
                   {g.id === 'free' ? t('arcade.free') : g.title}
@@ -120,7 +120,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
                     {strips && <span className="ml-auto [font:700_11px_JetBrains_Mono] text-[#A0978A] lg:hidden">{group.items.length}</span>}
                   </div>
                 )}
-                <div className={`${strips ? '-mx-4 flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:overflow-visible lg:p-0' : 'grid grid-cols-4 sm:grid-cols-6'} gap-2 lg:grid-cols-[repeat(auto-fill,minmax(84px,1fr))]`} data-strip={strips || undefined}>
+                <div className={`${strips ? '-mx-4 flex snap-x scroll-pl-4 gap-2 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] max-lg:[mask-image:linear-gradient(90deg,#000_calc(100%-32px),transparent)] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:overflow-visible lg:p-0' : 'grid grid-cols-4 sm:grid-cols-6'} gap-2 lg:grid-cols-[repeat(auto-fill,minmax(84px,1fr))]`} data-strip={strips || undefined}>
                   {group.items.map((item) => (
                     <ArcadeTile key={item.key} item={item} selected={selected?.key === item.key} avatar={avatar} lives={lives} onSelect={select} className={strips ? 'w-[84px] flex-none snap-start lg:w-auto' : ''} />
                   ))}

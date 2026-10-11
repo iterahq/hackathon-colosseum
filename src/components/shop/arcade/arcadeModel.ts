@@ -54,7 +54,7 @@ export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string): Arca
     const tiers = rows.map((row): ArcadeGroup => {
       const crystals = row.priceCrystals != null ? ` · ${t('shop.crystals', { n: formatCount(row.priceCrystals, locale) })}` : '';
       const supply = row.supply.max == null ? t('shop.avatar.unlimited') : t('arcade.minted', { minted: row.supply.minted, max: row.supply.max });
-      return { id: row.rarity, title: row.tierName, note: `${row.priceShort}${crystals} · ${supply}`, edge: RARITY_EDGE[row.rarity], items: row.items };
+      return { id: row.rarity, title: row.tierName, note: `${localizePriceLabel(row.priceShort, locale)}${crystals} · ${supply}`, edge: RARITY_EDGE[row.rarity], items: row.items };
     });
     return free.length ? [...tiers, { id: 'free', title: t('shop.avatar.free'), note: t('shop.avatar.freeHint'), edge: '#2E2A25', items: free }] : tiers;
   }

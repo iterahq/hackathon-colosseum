@@ -24,7 +24,7 @@ export function ArcadeNav({ shelves, active, onChange }: Props) {
 
   return (
     <nav aria-label={t('shop.nav.label')} data-testid="shop-sections" className="sticky top-0 z-20 -mx-4 border-b border-[#262320] bg-[#0A0908]/95 px-4 py-2 backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-      <div role="tablist" aria-label={t('shop.nav.label')} aria-orientation="vertical" className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] lg:flex-col lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+      <div role="tablist" aria-label={t('shop.nav.label')} aria-orientation="vertical" className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] max-lg:[mask-image:linear-gradient(90deg,#000_calc(100%-32px),transparent)] lg:flex-col lg:overflow-visible [&::-webkit-scrollbar]:hidden">
         {entries.map(({ id, owned, total }) => {
           const Icon = ICON[id];
           const selected = id === active;
