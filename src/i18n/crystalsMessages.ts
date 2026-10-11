@@ -13,6 +13,7 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'crystals.sheet.shop': 'Gastar na loja',
     'crystals.sheet.close': 'Fechar',
     'crystals.sheet.earnedOnly': 'Só se ganha estudando. Não se compra nem se transfere.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.reason.spend': 'Compra',
     'crystals.reason.lesson_completed': 'Lição concluída',
     'crystals.reason.lesson_clean': 'Lição sem perder vida',
@@ -24,6 +25,7 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'crystals.reason.podium_1': '1º lugar na aula ao vivo',
     'crystals.reason.podium_2': '2º lugar na aula ao vivo',
     'crystals.reason.podium_3': '3º lugar na aula ao vivo',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.reason.spendLife': 'Compra · 1 vida',
     'crystals.reason.unknown': 'Movimento',
     'crystals.reason.refund': 'Estorno',
@@ -31,13 +33,19 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'crystals.unit.one': '1 cristal',
     'crystals.earned': '+{n} cristais',
     'crystals.earned.one': '+1 cristal',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.buy': 'Comprar · {n}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.title': 'Comprar {name}?',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.body': 'Custa {price} cristais. Você tem {balance}.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.yes': 'Comprar',
     'crystals.confirm.no': 'Agora não',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.previewing': 'Veja como fica antes de comprar.',
     'crystals.missing': 'Faltam {n} cristais.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.buyFailed': 'Não deu para comprar agora. Tente de novo.',
     'crystals.alreadyOwned': 'Você já tem esse item.',
     'crystals.bought': '{name} é seu.',
@@ -56,8 +64,11 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wardrobe.theme.price': '{n} cristais',
     'lives.hud.unlimited': 'Vidas ilimitadas',
     'lives.hud.reserve': '{current} vidas (reserva acima de {max})',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.buyCrystals': 'Comprar 1 vida · {n} cristais',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.buyCrystalsMissing': 'Faltam cristais para comprar 1 vida',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.buyFailed': 'Não deu para comprar a vida. Tente de novo.',
   },
   en: {
@@ -73,6 +84,7 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'crystals.sheet.shop': 'Spend in the shop',
     'crystals.sheet.close': 'Close',
     'crystals.sheet.earnedOnly': 'Earned by studying only. Not for sale, not transferable.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.reason.spend': 'Purchase',
     'crystals.reason.lesson_completed': 'Lesson completed',
     'crystals.reason.lesson_clean': 'Lesson with no life lost',
@@ -84,6 +96,7 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'crystals.reason.podium_1': '1st place in a live class',
     'crystals.reason.podium_2': '2nd place in a live class',
     'crystals.reason.podium_3': '3rd place in a live class',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.reason.spendLife': 'Purchase · 1 life',
     'crystals.reason.unknown': 'Movement',
     'crystals.reason.refund': 'Refund',
@@ -91,13 +104,19 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'crystals.unit.one': '1 crystal',
     'crystals.earned': '+{n} crystals',
     'crystals.earned.one': '+1 crystal',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.buy': 'Buy · {n}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.title': 'Buy {name}?',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.body': 'It costs {price} crystals. You have {balance}.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.yes': 'Buy',
     'crystals.confirm.no': 'Not now',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.confirm.previewing': 'See how it looks before you buy.',
     'crystals.missing': 'You need {n} more crystals.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'crystals.buyFailed': 'Could not buy right now. Try again.',
     'crystals.alreadyOwned': 'You already own this.',
     'crystals.bought': '{name} is yours.',
@@ -116,8 +135,11 @@ export const CRYSTALS_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wardrobe.theme.price': '{n} crystals',
     'lives.hud.unlimited': 'Unlimited lives',
     'lives.hud.reserve': '{current} lives (reserve above {max})',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.buyCrystals': 'Buy 1 life · {n} crystals',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.buyCrystalsMissing': 'Not enough crystals to buy 1 life',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.buyFailed': 'Could not buy the life. Try again.',
   },
 };

@@ -215,6 +215,7 @@ export function toShopItems(v: unknown): ShopItem[] {
 export function toIntent(v: unknown): PurchaseIntent {
   const r = row(v);
   const intentId = str(r.intent_id);
+  // not-commerce: an internal error code, never shown as a price
   if (!intentId) throw new Error('purchase-intent: no intent_id in the answer');
   const priceUsdCents = num(r.price_usd_cents);
   const priceLamports = num(r.price_lamports);

@@ -11,9 +11,11 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'arcade.pick': 'Toque em um item para ver no seu Tera.',
     'arcade.infinite': 'Infinitas',
     'tryon.outfitBase': 'A prévia de roupa só funciona no Tera base. Troque de ícone para ver a peça.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.pay.wallet': 'Pagar com a carteira · {price}',
     'shop.pay.crystals': 'Pagar com cristais · {n}',
     'shop.pay.crystalsShort': '{n} cristais',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.crystals.insufficient': 'Cristais insuficientes: você tem {balance} e o preço é {price}.',
     'shop.crystals.failed': 'Não deu pra pagar com cristais agora.',
     'shop.nav.backgrounds': 'Fundos',
@@ -23,9 +25,11 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'shop.swatch.sectionBorders': 'Bordas de perfil. As assinadas só vêm com o avatar.',
     'shop.swatch.sectionBackgrounds': 'Fundos para a sua foto e telas.',
     'shop.swatch.sectionIcons': 'Cor do ícone do app.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.pay.walletMid': 'Carteira · {price}',
     'shop.pay.crystalsMid': 'Cristais · {n}',
     'shop.pay.balance': 'Saldo: {n} cristais',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.pay.short': 'Saldo {balance}, preço {price}',
     'purchase.error.sold_out': 'Este item esgotou.',
     'purchase.error.out_of_season': 'Este avatar está fora de temporada.',
@@ -53,6 +57,7 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'shop.lives.packDays': '{n} dias',
     'shop.lives.packInfinite': 'Vidas infinitas',
     'shop.lives.packInfiniteHint': 'Nenhuma vida se perde',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.lives.perLife': '{price} por vida',
     'shop.lives.best': 'Melhor valor',
     'shop.borders.title': 'Bordas de perfil',
@@ -68,9 +73,11 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'arcade.pick': 'Tap an item to see it on your Tera.',
     'arcade.infinite': 'Infinite',
     'tryon.outfitBase': 'Outfit previews only work on the base Tera. Switch icons to see the piece.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.pay.wallet': 'Pay with wallet · {price}',
     'shop.pay.crystals': 'Pay with crystals · {n}',
     'shop.pay.crystalsShort': '{n} crystals',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.crystals.insufficient': 'Not enough crystals: you have {balance} and the price is {price}.',
     'shop.crystals.failed': 'Could not pay with crystals right now.',
     'shop.nav.backgrounds': 'Backgrounds',
@@ -80,9 +87,11 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'shop.swatch.sectionBorders': 'Profile borders. Signature ones only come with their avatar.',
     'shop.swatch.sectionBackgrounds': 'Backgrounds for your picture and screens.',
     'shop.swatch.sectionIcons': 'Colour of the app icon.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.pay.walletMid': 'Wallet · {price}',
     'shop.pay.crystalsMid': 'Crystals · {n}',
     'shop.pay.balance': 'Balance: {n} crystals',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.pay.short': 'Balance {balance}, price {price}',
     'purchase.error.sold_out': 'This item is sold out.',
     'purchase.error.out_of_season': 'This avatar is out of season.',
@@ -110,6 +119,7 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'shop.lives.packDays': '{n} days',
     'shop.lives.packInfinite': 'Infinite lives',
     'shop.lives.packInfiniteHint': 'No life is lost',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.lives.perLife': '{price} per life',
     'shop.lives.best': 'Best value',
     'shop.borders.title': 'Profile borders',

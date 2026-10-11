@@ -98,6 +98,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
       } else if (confirmation.status === 'expired') {
         // Nothing landed and nothing can: the next try starts a fresh intent.
         payment.current = null;
+        // not-commerce: an internal error code, never shown as a price
         dispatch({ type: 'failed', detail: 'purchase-confirm: expired', code: 'intent_expired' });
       } else {
         dispatch({ type: 'failed', ...timedOut(confirmation), explorerUrl: confirmation.explorerUrl ?? (broadcast ? txUrl(broadcast) : null) });

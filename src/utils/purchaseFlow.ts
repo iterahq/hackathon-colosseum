@@ -16,6 +16,7 @@ const textOf = (e: unknown): string => (e instanceof Error ? e.message : String(
 /** The failure a pending confirmation turned into once the polling window closed. */
 export function timedOut(last: PurchaseConfirmation): { code: string; detail: string } {
   if (last.paymentSettled) return { code: 'apply_failed', detail: `purchase-confirm: ${last.pendingCode ?? 'apply_failed'}` };
+  // not-commerce: an internal error code, never shown as a price
   if (last.pendingCode === 'tx_not_found') return { code: 'tx_not_found', detail: 'purchase-confirm: tx_not_found' };
   return { code: last.pendingCode ?? 'rpc_unavailable', detail: `purchase-confirm: ${last.pendingCode ?? 'pending'}` };
 }

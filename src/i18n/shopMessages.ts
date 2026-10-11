@@ -15,6 +15,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'lives.gate.title': 'O Tera ficou sem fôlego',
     'lives.gate.body': 'Suas vidas acabaram. Recarregue agora ou espere a próxima chegar. Seu progresso está guardado.',
     'lives.gate.next': 'Próxima vida em',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.refill': 'Recarregar vidas · {price}',
     'lives.gate.refillPlain': 'Recarregar vidas',
     'lives.gate.wait': 'Esperar {time}',
@@ -22,6 +23,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'lives.gate.shop': 'Abrir a Loja do Tera',
     'lives.bonus': '+{n} vida · dia sem erros',
     'shop.title': 'Loja do Tera',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.subtitle': 'Itens de centavos, pagos pela sua carteira Solana e gravados no seu Tera on-chain. Metade de cada compra paga os carimbos que o servidor grava para outros alunos: é assim que as lições continuam grátis.',
     'shop.devnet': 'devnet',
     'shop.section.lives': 'Vidas',
@@ -33,11 +35,15 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.lives.full': 'Vidas cheias',
     'shop.lives.fullReason': 'Suas vidas estão cheias',
     'shop.lives.next': 'Próxima vida em {time}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.buy': 'Comprar · {price}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.buyShort': 'Comprar',
     'shop.claim': 'Resgatar',
     'shop.claim.error': 'Não deu pra resgatar agora. Tente de novo.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.unlock.progress': 'Nível {current} de {level} para liberar · ou compre agora',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.unlock.ready': 'Você chegou ao nível {level}: é seu, sem pagar.',
     'shop.owned': 'Seu',
     'shop.equipped': 'Em uso',
@@ -47,6 +53,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.previewing': 'Experimentando: {name}',
     'shop.wearing': 'Usando: {name}',
     'shop.wearingNone': 'Sem acessório',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.connectHint': 'Vincule uma carteira Solana à sua conta para comprar. Sem cartão de crédito.',
     'shop.loading': 'Abrindo a loja…',
     'shop.error': 'A loja não abriu agora.',
@@ -63,6 +70,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.connecting': 'Conectando a carteira…',
     'purchase.slowHint': 'Demorando? Olhe a extensão da carteira: ela pode estar esperando você.',
     'purchase.signing': 'Aprove na sua carteira',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.signingHint': 'A carteira abriu um pedido de assinatura.',
     'purchase.confirming': 'Confirmando na Solana…',
     'purchase.paid.title': 'Pronto!',
@@ -73,16 +81,19 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.paid.cosmetic': '{name} aplicada na sua certificação de {trail}',
     'purchase.paid.cosmeticBare': '{name} aplicada na sua certificação',
     'purchase.note.cosmetic': 'Gravado on-chain na certificação.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.row.payment': 'Pagamento',
     'purchase.row.chain': 'Gravado on-chain',
     'purchase.viewTx': 'Ver transação ↗',
     'purchase.done': 'Continuar',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.failed.title': 'A compra não passou',
     'purchase.failed.body': 'Nada foi cobrado. Você pode tentar de novo.',
     'purchase.retry': 'Tentar de novo',
     'purchase.close': 'Fechar',
     'purchase.insufficient.title': 'Saldo insuficiente',
     'purchase.insufficient.body': 'Sua carteira não tem SOL de teste suficiente. Pegue um pouco, é grátis na devnet.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.insufficient.need': 'Saldo insuficiente na devnet: esta compra precisa de cerca de {amount} SOL, taxas incluídas.',
     'purchase.faucet': 'Pegar SOL de teste',
     'purchase.insufficient.showcase': 'Esta peça é de vitrine: experimente à vontade.',
@@ -109,6 +120,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.no_wallet': 'Conecte uma carteira Solana para comprar.',
     'purchase.noWallet.title': 'Nenhuma carteira encontrada',
     'purchase.noWallet.body': 'Instale a Phantom ou outra carteira Solana neste navegador e tente de novo.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.pending.title': 'Pagamento enviado, entrega pendente',
     'purchase.error.tx_not_found': 'A carteira enviou o pagamento, mas a Solana ainda não o confirmou. Espere alguns segundos e toque em Tentar de novo: a mesma transação é conferida, você não paga duas vezes.',
     'purchase.error.wallet_failed': 'A carteira não concluiu a transação. Confira se a Phantom está na devnet (Configurações → Developer Settings → Testnet Mode) e tente de novo. Nada foi cobrado.',
@@ -126,6 +138,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'lives.gate.title': 'Tera is out of breath',
     'lives.gate.body': "You're out of lives. Refill now or wait for the next one. Your progress is saved.",
     'lives.gate.next': 'Next life in',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'lives.gate.refill': 'Refill lives · {price}',
     'lives.gate.refillPlain': 'Refill lives',
     'lives.gate.wait': 'Wait {time}',
@@ -133,6 +146,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'lives.gate.shop': "Open Tera's Shop",
     'lives.bonus': '+{n} life · mistake-free day',
     'shop.title': "Tera's Shop",
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.subtitle': 'Cent-sized items, paid from your Solana wallet and written on your Tera on chain. Half of every purchase pays for the stamps the server writes for other learners: that is how the lessons stay free.',
     'shop.devnet': 'devnet',
     'shop.section.lives': 'Lives',
@@ -144,11 +158,15 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.lives.full': 'Lives are full',
     'shop.lives.fullReason': 'Your lives are full',
     'shop.lives.next': 'Next life in {time}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.buy': 'Buy · {price}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.buyShort': 'Buy',
     'shop.claim': 'Claim',
     'shop.claim.error': 'Could not claim it right now. Try again.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.unlock.progress': 'Level {current} of {level} to unlock · or buy it now',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.unlock.ready': 'You reached level {level}: it is yours, no payment.',
     'shop.owned': 'Yours',
     'shop.equipped': 'In use',
@@ -158,6 +176,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.previewing': 'Trying on: {name}',
     'shop.wearing': 'Wearing: {name}',
     'shop.wearingNone': 'No accessory',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'shop.connectHint': 'Link a Solana wallet to your account to buy. No credit card.',
     'shop.loading': 'Opening the shop…',
     'shop.error': "The shop didn't open right now.",
@@ -174,6 +193,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.connecting': 'Connecting your wallet…',
     'purchase.slowHint': 'Taking long? Check your wallet extension: it may be waiting for you.',
     'purchase.signing': 'Approve in your wallet',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.signingHint': 'Your wallet opened a signature request.',
     'purchase.confirming': 'Confirming on Solana…',
     'purchase.paid.title': 'Done!',
@@ -184,16 +204,19 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.paid.cosmetic': '{name} applied to your {trail} certification',
     'purchase.paid.cosmeticBare': '{name} applied to your certification',
     'purchase.note.cosmetic': 'Written on-chain to the certification.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.row.payment': 'Payment',
     'purchase.row.chain': 'Written on-chain',
     'purchase.viewTx': 'View transaction ↗',
     'purchase.done': 'Continue',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.failed.title': "The purchase didn't go through",
     'purchase.failed.body': 'Nothing was charged. You can try again.',
     'purchase.retry': 'Try again',
     'purchase.close': 'Close',
     'purchase.insufficient.title': 'Not enough balance',
     'purchase.insufficient.body': "Your wallet doesn't have enough test SOL. Grab some, it's free on devnet.",
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.insufficient.need': 'Not enough devnet balance: this purchase needs about {amount} SOL, fees included.',
     'purchase.faucet': 'Get test SOL',
     'purchase.insufficient.showcase': 'This is a showcase piece: try it on as much as you like.',
@@ -220,6 +243,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.no_wallet': 'Connect a Solana wallet to buy.',
     'purchase.noWallet.title': 'No wallet found',
     'purchase.noWallet.body': 'Install Phantom or another Solana wallet in this browser and try again.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'purchase.pending.title': 'Payment sent, delivery pending',
     'purchase.error.tx_not_found': 'Your wallet sent the payment, but Solana has not confirmed it yet. Wait a few seconds and tap Try again: the same transaction is checked, you will not pay twice.',
     'purchase.error.wallet_failed': 'Your wallet did not complete the transaction. Check that Phantom is on devnet (Settings → Developer Settings → Testnet Mode) and try again. Nothing was charged.',

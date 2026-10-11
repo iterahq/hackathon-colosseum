@@ -3,10 +3,13 @@ export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'wallet.link.cta': 'Vincular carteira',
     'wallet.link.title': 'Vincular carteira',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.why': 'Assinar uma mensagem prova que a carteira é sua. Não é uma transação e não custa nada.',
     'wallet.link.start': 'Escolher carteira',
     'wallet.link.connecting': 'Conectando sua carteira…',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.signing': 'Assine a mensagem na sua carteira',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.verifying': 'Conferindo a assinatura…',
     'wallet.link.minting': 'Gravando suas certificações na Solana… {n} restantes',
     'wallet.link.mintingStart': 'Gravando suas certificações na Solana…',
@@ -27,16 +30,20 @@ export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wallet.link.error.challenge_not_found': 'A mensagem venceu. Tente de novo.',
     'wallet.link.error.signature_invalid': 'A assinatura não confere com esta carteira. Tente de novo.',
     'wallet.link.error.invalid_address': 'Esse endereço de carteira não é válido.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.hint': 'Vincule uma carteira Solana à sua conta. Sem cartão de crédito.',
     'wallet.chip.linked': 'carteira vinculada',
   },
   en: {
     'wallet.link.cta': 'Link wallet',
     'wallet.link.title': 'Link wallet',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.why': "Sign a message to prove the wallet is yours. It isn't a transaction and it costs nothing.",
     'wallet.link.start': 'Choose wallet',
     'wallet.link.connecting': 'Connecting your wallet…',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.signing': 'Sign the message in your wallet',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.verifying': 'Checking the signature…',
     'wallet.link.minting': 'Writing your certifications to Solana… {n} left',
     'wallet.link.mintingStart': 'Writing your certifications to Solana…',
@@ -57,6 +64,7 @@ export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wallet.link.error.challenge_not_found': 'The message expired. Try again.',
     'wallet.link.error.signature_invalid': 'The signature does not match this wallet. Try again.',
     'wallet.link.error.invalid_address': 'That wallet address is not valid.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'wallet.link.hint': 'Link a Solana wallet to your account. No credit card.',
     'wallet.chip.linked': 'linked wallet',
   },

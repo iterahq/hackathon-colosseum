@@ -22,12 +22,14 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.model.learners.title': 'Alunos e escolas',
     'landing.model.learners.body': 'No app em produção, assento por assinatura mensal (Stripe, no ar desde setembro de 2026). Aqui, tudo é gratuito.',
     'landing.model.shop.title': 'Loja de centavos',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'landing.model.shop.body': 'Tintas, molduras e avatares de US$ 0,10 a 0,50. Metade de cada compra paga os carimbos que o servidor grava para outros alunos (o Circuito).',
     'landing.model.sponsors.title': 'Patrocinadores de missões',
     'landing.model.sponsors.body': 'Travam SOL num programa na chain e pagam quem entrega. Uma taxa sobre quem contrata pela certificação está planejada; hoje não é cobrada.',
     'landing.model.build': 'Esta é a cópia do hackathon: Solana devnet, nada é cobrado, nenhum dinheiro real circula.',
     'landing.team.label': 'Quem fez',
     'landing.team.samuel.role': 'Construtor da Itera',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'landing.team.samuel.bio': 'Desenvolvedor full-stack. Dá uma aula presencial de programação com a Itera no Educar+ (Rio). Fez o app do aluno, a credencial na chain, o trilho de compra e a camada social.',
     'landing.team.tainan.role': 'Tech lead',
     'landing.team.tainan.bio': 'Dirige a DevFellowship (Brasil), comunidade e escola de desenvolvedores; dá os cursos em vídeo dentro da Itera.',
@@ -91,12 +93,14 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.model.learners.title': 'Learners and schools',
     'landing.model.learners.body': 'In the production app, a seat by monthly subscription (Stripe, live since September 2026). Here, everything is free.',
     'landing.model.shop.title': 'Cent-sized shop',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'landing.model.shop.body': 'Inks, frames and avatars from US$ 0.10 to 0.50. Half of every purchase pays for the stamps the server writes for other learners (the Circuit).',
     'landing.model.sponsors.title': 'Bounty sponsors',
     'landing.model.sponsors.body': 'They lock SOL in a program on chain and pay whoever delivers. A fee on hiring through the certification is planned; nothing is charged today.',
     'landing.model.build': 'This is the hackathon copy: Solana devnet, nothing is charged, no real money moves.',
     'landing.team.label': 'Who built it',
     'landing.team.samuel.role': 'Builder of Itera',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'landing.team.samuel.bio': 'Full-stack developer. Teaches an in-person programming class with Itera at Educar+ (Rio). Built the learner app, the on-chain credential, the purchase rail and the social layer.',
     'landing.team.tainan.role': 'Tech lead',
     'landing.team.tainan.bio': 'Runs DevFellowship (Brazil), a developer community and training company; teaches the video courses inside Itera.',

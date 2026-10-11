@@ -1,6 +1,7 @@
 /** Strings of "gift a life" (profile, gift page, the recipient's moment) and of the invite reward. */
 export const GIFT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'gift.button': 'Dar uma vida · {price}',
     'gift.buttonPlain': 'Dar uma vida',
     'gift.copyLink': 'Copiar link de presente',
@@ -16,6 +17,7 @@ export const GIFT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'gift.row.chain': 'Tera de {name}',
     'gift.row.companion': 'Companheiro on-chain',
     'gift.page.title': 'Dê uma vida pro Tera de {name}',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'gift.page.body': 'Uma vida custa {price} em devnet e fica gravada no companheiro on-chain desta pessoa.',
     'gift.page.bodyPlain': 'A vida fica gravada no companheiro on-chain desta pessoa.',
     'gift.page.lives': '{current} de {max} vidas agora',
@@ -41,6 +43,7 @@ export const GIFT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'invite.menu': 'Convidar um amigo',
   },
   en: {
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'gift.button': 'Gift a life · {price}',
     'gift.buttonPlain': 'Gift a life',
     'gift.copyLink': 'Copy gift link',
@@ -56,6 +59,7 @@ export const GIFT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'gift.row.chain': "{name}'s Tera",
     'gift.row.companion': 'On-chain companion',
     'gift.page.title': "Give {name}'s Tera a life",
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'gift.page.body': "A life costs {price} on devnet and is written to this learner's on-chain companion.",
     'gift.page.bodyPlain': "The life is written to this learner's on-chain companion.",
     'gift.page.lives': '{current} of {max} lives right now',

@@ -28,16 +28,19 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'tryon.onCert': 'Na sua certificação de {trail}',
     'tryon.real': 'Assim está hoje, on-chain.',
     'tryon.outfitNote': 'A roupa aparece com os ícones grátis. Com um avatar pintado, a foto mostra só o avatar.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'tryon.buy': 'Comprar · {price}',
     'tryon.equipNow': 'Equipar agora',
     'tryon.close': 'Fechar',
     'tryon.fullscreen': 'Ver em tela cheia',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'tryon.connect': 'Vincule uma carteira para comprar',
     'purchase.paid.avatar': '{name} é seu. Um NFT colecionável na sua carteira.',
     'explain.toggle': 'O que muda e como funciona',
     'explain.changes': 'O que muda',
     'explain.how': 'Como funciona',
     'explain.pay': 'Você paga da sua carteira, em SOL da devnet (dinheiro de teste).',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'explain.circuit': 'Metade de cada compra paga carimbos de outros alunos (Circuito).',
     'explain.avatar.changes': 'Vira sua foto de perfil: no topo do app, no seu Tera companheiro e na sua página pública.',
     'explain.avatar.chain': 'Vira um NFT colecionável na sua carteira, de tiragem limitada. Pode ser transferido.',
@@ -77,8 +80,10 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wardrobe.cert.none': 'padrão',
     'wardrobe.cert.applied': '{name} · aplicada em {trail}',
     'wardrobe.cert.latest': 'Vale a última tinta comprada.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'wardrobe.cert.buy': 'Comprar para esta certificação',
     'wardrobe.empty.title': 'Seu armário começa aqui',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'wardrobe.empty.body': 'Os ícones grátis já são seus. O que você comprar na loja aparece aqui para equipar.',
     'wardrobe.goShop': 'Ver a loja',
     'wardrobe.error': 'Não deu para trocar agora. Tente de novo.',
@@ -120,16 +125,19 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'tryon.onCert': 'On your {trail} certification',
     'tryon.real': 'This is how it looks today, on-chain.',
     'tryon.outfitNote': 'The outfit shows with the free icons. With a painted avatar, your picture shows the avatar only.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'tryon.buy': 'Buy · {price}',
     'tryon.equipNow': 'Equip now',
     'tryon.close': 'Close',
     'tryon.fullscreen': 'View full screen',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'tryon.connect': 'Link a wallet to buy',
     'purchase.paid.avatar': '{name} is yours. A collectible NFT in your wallet.',
     'explain.toggle': 'What changes and how it works',
     'explain.changes': 'What changes',
     'explain.how': 'How it works',
     'explain.pay': 'You pay from your wallet, in devnet SOL (test money).',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'explain.circuit': "Half of every purchase pays other learners' stamps (Circuito).",
     'explain.avatar.changes': 'It becomes your profile picture: at the top of the app, on your Tera companion and on your public page.',
     'explain.avatar.chain': 'It becomes a collectible NFT in your wallet, with limited supply. It can be transferred.',
@@ -169,8 +177,10 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wardrobe.cert.none': 'default',
     'wardrobe.cert.applied': '{name} · applied to {trail}',
     'wardrobe.cert.latest': 'The last ink bought is the one in use.',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'wardrobe.cert.buy': 'Buy for this certification',
     'wardrobe.empty.title': 'Your wardrobe starts here',
+    // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'wardrobe.empty.body': 'The free icons are already yours. What you buy in the shop shows up here to equip.',
     'wardrobe.goShop': 'See the shop',
     'wardrobe.error': 'Could not switch right now. Try again.',

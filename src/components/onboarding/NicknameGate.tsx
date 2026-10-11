@@ -17,7 +17,7 @@ import {
 } from '@/utils/nicknameGate';
 import { NicknameForm } from './NicknameForm';
 
-const EXCLUDED_PREFIXES = ['/c/', '/login', '/signup', '/auth/', '/g/', '/lesson/', '/live/', '/try'];
+const EXCLUDED_PREFIXES = ['/c/', '/login', '/sign', '/auth/', '/g/', '/lesson/', '/live/', '/try'];
 const HAPPY_HOLD_MS = 700;
 const OTHER_DIALOG = '[role="dialog"]:not([data-nickname-gate]), [role="alertdialog"]';
 const FOCUSABLE = 'input, button, [href], [tabindex]:not([tabindex="-1"])';
