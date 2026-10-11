@@ -10,8 +10,8 @@ vi.mock('@/hooks/useLessonSound', () => ({
   useLessonSound: () => ({ muted: false, toggleMuted: vi.fn(), onSettle: vi.fn(), onAdvance: vi.fn(), onRetry: vi.fn(), onFinish: vi.fn() }),
 }));
 
-const activity = (id: string, kind: string): Activity => ({ id, lesson_id: 'l', ordinal: 0, kind, spec: {}, status: 'todo' }) as unknown as Activity;
-const lesson = [activity('c1', 'concept'), activity('q1', 'single_choice'), activity('x1', 'xray')];
+const activity = (id: string, kind: string, gradedBy: Activity['gradedBy']): Activity => ({ id, lesson_id: 'l', ordinal: 0, kind, spec: {}, status: 'todo', gradedBy }) as unknown as Activity;
+const lesson = [activity('c1', 'concept', 'none'), activity('q1', 'single_choice', 'server'), activity('x1', 'xray', 'browser')];
 
 beforeEach(() => {
   localStorage.clear();
@@ -53,7 +53,7 @@ describe('useGuestLesson', () => {
     await act(async () => result.current.handleComplete(true));
     act(() => result.current.advance());
     expect(result.current.finished).toBe(true);
-    expect(result.current.counts).toEqual({ passed: 3, serverChecked: 1 });
+    expect(result.current.counts).toEqual({ passed: 3, serverGraded: 1, browserChecked: 1, reading: 1 });
     expect(result.current.progressPct).toBe(100);
   });
 
