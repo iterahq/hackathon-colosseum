@@ -57,7 +57,7 @@ describe('LandingPage', () => {
       '4open bounties',
       '0.28 SOLin escrow',
       '1bounty paid0 to outside learners · 1 team rehearsal',
-      '3,465stamps paid for by the shopfrom 29 purchases: 50% of each ÷ 5,000 lamports per stamp',
+      '3,465stamps the shop can already pay fora capacity, not a count: 50% of 29 purchases ÷ 5,000 lamports per stamp',
       "29shop purchaseson devnet, the team's test runs included",
     ]);
     expect(screen.getByTestId('landing-live-readat')).toHaveTextContent(/Read at .*never go down/);
@@ -75,8 +75,10 @@ describe('LandingPage', () => {
   it('tells a stranger who it is for, who pays and who built it, with no invented number', () => {
     mount('en');
     expect(screen.getByTestId('landing-story')).toHaveTextContent('People learning to code from zero');
-    expect(screen.getByTestId('landing-story')).toHaveTextContent('Educar+ institute in Rio de Janeiro');
-    expect(screen.getByTestId('landing-model')).toHaveTextContent('Stripe, live since September 2026');
+    expect(screen.getByTestId('landing-story')).toHaveTextContent('people who never wrote code');
+    expect(screen.getByTestId('landing-story')).not.toHaveTextContent(/production|cohort/);
+    expect(screen.getByTestId('landing-model')).toHaveTextContent('Itera pays for the stamp');
+    expect(screen.getByTestId('landing-model')).not.toHaveTextContent(/Stripe|subscription/);
     expect(screen.getByTestId('landing-model')).toHaveTextContent('nothing is charged today');
     expect(screen.getByTestId('landing-model-shop')).toHaveTextContent('from US$ 0.20 to US$ 10.00');
     expect(screen.getByTestId('landing-steps')).toHaveTextContent('the program on chain reads them from the credential in your wallet before it lets you accept.');

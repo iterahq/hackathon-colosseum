@@ -9,6 +9,7 @@ import { RpcSection } from '@/components/verify/RpcSection';
 import { SoulboundSection } from '@/components/verify/SoulboundSection';
 import { SourceSection } from '@/components/verify/SourceSection';
 import { StampSection } from '@/components/verify/StampSection';
+import { SummaryCard } from '@/components/verify/SummaryCard';
 import { TrustSection } from '@/components/verify/TrustSection';
 import { FOCUS } from '@/components/shop/shopStyles';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -40,6 +41,7 @@ export default function VerifyPage() {
           ))}
         </nav>
       </header>
+      <SummaryCard />
       <ProgramSection />
       <SourceSection />
       <EvidenceSection />

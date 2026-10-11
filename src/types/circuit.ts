@@ -24,8 +24,12 @@ export interface CircuitCounter extends CircuitShare {
   stampFeeLamports: number;
   outside: (CircuitShare & { purchases: number; testAccountsLeftOut: number }) | null;
   shop: CircuitShopRange | null;
+  treasury: string | null;
+  authority: string | null;
   treasuryExplorerUrl: string | null;
   authorityExplorerUrl: string | null;
+  /** Stamps actually written on chain so far, when the API reports them. */
+  stampsIssued: number | null;
   wallet: CircuitShare | null;
 }
 

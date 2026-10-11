@@ -14,7 +14,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.story.who.label': 'Para quem',
     'landing.story.who.title': 'Quem está começando a programar do zero',
     'landing.story.who.body':
-      'HTML, CSS e JavaScript em trilhas de 5 dias, uma atividade de cada vez, com o Tera explicando cada erro. A Itera já roda em produção com turmas reais e numa aula presencial no instituto Educar+, no Rio de Janeiro. Nesta cópia do hackathon, toda conta é gratuita.',
+      'HTML, CSS e JavaScript em trilhas de 5 dias, uma atividade de cada vez, com o Tera explicando cada erro. Feita para quem nunca programou e para quem ensina quem nunca programou. Nesta cópia do hackathon, toda conta é gratuita.',
     'landing.story.problem.label': 'O problema',
     'landing.story.problem.title': 'Iniciante desiste porque o curso é longo, passivo e não prova nada',
     'landing.story.problem.body':
@@ -22,7 +22,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.model.label': 'Quem paga',
     'landing.model.title': 'O que é grátis, o que é pago, de onde vem a receita',
     'landing.model.learners.title': 'Alunos e escolas',
-    'landing.model.learners.body': 'No app em produção, assento por assinatura mensal (Stripe, no ar desde setembro de 2026). Aqui, tudo é gratuito.',
+    'landing.model.learners.body': 'Nada. Aprender, carimbar e provar não custa ao aluno, nem taxa de rede: a Itera paga o carimbo. Um assento pago por escola é um plano, não algo que esta cópia cobra.',
     'landing.model.shop.title': 'Loja de centavos',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'landing.model.shop.body': 'Tintas, molduras, avatares e vidas de {min} a {max}, os mesmos preços da loja. Metade de cada compra paga a taxa de rede dos carimbos de outros alunos (o Circuito).',
@@ -61,8 +61,8 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.live.lockedSol': 'em escrow',
     'landing.live.paidCount.one': 'missão paga',
     'landing.live.paidCount.many': 'missões pagas',
-    'landing.live.stampsFunded': 'carimbos pagos pela loja',
-    'landing.live.stampsHint': 'de {purchases} compras: {share}% de cada uma ÷ {fee} lamports por carimbo',
+    'landing.live.stampsFunded': 'carimbos que a loja já pode pagar',
+    'landing.live.stampsHint': 'capacidade, não contagem: {share}% de {purchases} compras ÷ {fee} lamports por carimbo',
     'landing.live.purchases.one': 'compra na loja',
     'landing.live.purchases.many': 'compras na loja',
     'landing.live.purchasesHint': 'na devnet, testes do time incluídos',
@@ -96,7 +96,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.story.who.label': 'Who it is for',
     'landing.story.who.title': 'People learning to code from zero',
     'landing.story.who.body':
-      'HTML, CSS and JavaScript in 5-day trails, one activity at a time, with Tera explaining every miss. Itera already runs in production with real cohorts and in an in-person class at the Educar+ institute in Rio de Janeiro. On this hackathon copy every account is free.',
+      'HTML, CSS and JavaScript in 5-day trails, one activity at a time, with Tera explaining every miss. Made for people who never wrote code, and for those who teach them. On this hackathon copy every account is free.',
     'landing.story.problem.label': 'The problem',
     'landing.story.problem.title': 'Beginners quit because courses are long, passive and prove nothing',
     'landing.story.problem.body':
@@ -104,7 +104,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.model.label': 'Who pays',
     'landing.model.title': 'What is free, what is paid, where the revenue comes from',
     'landing.model.learners.title': 'Learners and schools',
-    'landing.model.learners.body': 'In the production app, a seat by monthly subscription (Stripe, live since September 2026). Here, everything is free.',
+    'landing.model.learners.body': 'Nothing. Learning, stamping and proving cost the learner nothing, not even the network fee: Itera pays for the stamp. A paid seat per school is a plan, not something this copy charges.',
     'landing.model.shop.title': 'Cent-sized shop',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'landing.model.shop.body': "Inks, frames, avatars and lives from {min} to {max}, the shop's own prices. Half of each purchase pays the network fee of other learners' stamps (the Circuit).",
@@ -143,8 +143,8 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.live.lockedSol': 'in escrow',
     'landing.live.paidCount.one': 'bounty paid',
     'landing.live.paidCount.many': 'bounties paid',
-    'landing.live.stampsFunded': 'stamps paid for by the shop',
-    'landing.live.stampsHint': 'from {purchases} purchases: {share}% of each ÷ {fee} lamports per stamp',
+    'landing.live.stampsFunded': 'stamps the shop can already pay for',
+    'landing.live.stampsHint': 'a capacity, not a count: {share}% of {purchases} purchases ÷ {fee} lamports per stamp',
     'landing.live.purchases.one': 'shop purchase',
     'landing.live.purchases.many': 'shop purchases',
     'landing.live.purchasesHint': "on devnet, the team's test runs included",

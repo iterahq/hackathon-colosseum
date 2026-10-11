@@ -23,6 +23,7 @@ export function TryDoneCard({ counts, total, onRedo }: { counts: TryDoneCounts; 
       mood={passed === total ? 'happy' : 'neutral'}
       title={t('try.done.title', { n: passed, total })}
       body={`${t('try.done.server', { server: serverGraded, browser: browserChecked, reading })} ${t('try.done.gate')}`}
+      className="mt-8"
       data-testid="try-done"
       action={
         <div className="flex flex-col gap-3">

@@ -35,8 +35,11 @@ export function toCircuitCounter(v: unknown): CircuitCounter {
     stampFeeLamports: num(r.stamp_fee_lamports) || 5000,
     outside: outside ? { lamports: num(outside.total_lamports), stampsFunded: num(outside.stamps_funded), purchases: num(outside.purchases), testAccountsLeftOut: num(outside.test_accounts_left_out) } : null,
     shop: toShopRange(r.shop),
+    treasury: orNull(r.treasury),
+    authority: orNull(r.authority),
     treasuryExplorerUrl: orNull(r.treasury_explorer_url),
     authorityExplorerUrl: orNull(r.authority_explorer_url),
+    stampsIssued: typeof r.stamps_issued === 'number' ? r.stamps_issued : null,
     wallet: r.wallet && typeof r.wallet === 'object' ? toCircuitShare(r.wallet) : null,
   };
 }

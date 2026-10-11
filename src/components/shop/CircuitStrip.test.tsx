@@ -8,7 +8,7 @@ import type { CircuitCounter } from '@/types/circuit';
 const getCircuit = vi.fn<(wallet: string | null) => Promise<CircuitCounter>>();
 vi.mock('@/services/circuit.service', () => ({ getCircuit: (wallet: string | null) => getCircuit(wallet) }));
 
-const counter = (over: Partial<CircuitCounter> = {}): CircuitCounter => ({ lamports: 1_100_000, stampsFunded: 220, purchases: 2, asOf: null, purchaseLamports: 2_200_000, sharePercent: 50, stampFeeLamports: 5000, outside: null, shop: null, treasuryExplorerUrl: 'https://explorer.solana.com/address/T?cluster=devnet', authorityExplorerUrl: null, wallet: null, ...over });
+const counter = (over: Partial<CircuitCounter> = {}): CircuitCounter => ({ lamports: 1_100_000, stampsFunded: 220, purchases: 2, asOf: null, purchaseLamports: 2_200_000, sharePercent: 50, stampFeeLamports: 5000, outside: null, shop: null, treasury: 'T', authority: null, treasuryExplorerUrl: 'https://explorer.solana.com/address/T?cluster=devnet', authorityExplorerUrl: null, stampsIssued: null, wallet: null, ...over });
 
 const show = (wallet: string | null) =>
   render(
@@ -29,8 +29,8 @@ describe('CircuitStrip', () => {
     show('WALLET');
     const strip = await screen.findByTestId('circuit-strip');
     expect(getCircuit).toHaveBeenCalledWith('WALLET');
-    expect(strip).toHaveTextContent('Suas compras já pagaram 110 carimbos de outros alunos');
-    expect(strip).toHaveTextContent('no total a loja pagou 220');
+    expect(strip).toHaveTextContent('Suas compras já cobrem até 110 carimbos de outros alunos');
+    expect(strip).toHaveTextContent('no total a loja já cobre até 220');
     expect(screen.getByTestId('circuit-explorer')).toHaveAttribute('href', 'https://explorer.solana.com/address/T?cluster=devnet');
     expect(strip).toHaveTextContent('taxa de rede dos carimbos');
   });
@@ -40,7 +40,7 @@ describe('CircuitStrip', () => {
     show('WALLET');
     const strip = await screen.findByTestId('circuit-strip');
     expect(strip).toHaveTextContent('Cada compra sua paga carimbos de outros alunos');
-    expect(strip).not.toHaveTextContent('já pagaram');
+    expect(strip).not.toHaveTextContent('já cobrem');
   });
 
   it('shows nothing when the counter cannot be read', async () => {
