@@ -22,7 +22,7 @@ describe('PayButtons', () => {
     const run = vi.fn();
     const it = item();
     show(it, pay, run);
-    expect(screen.getByTestId('k')).toHaveTextContent('Pagar com a wallet · US$ 0.30');
+    expect(screen.getByTestId('k')).toHaveTextContent('Pagar com a carteira · US$ 0,30');
     expect(screen.getByTestId('k-crystals')).toHaveTextContent('Pagar com cristais · 150');
     fireEvent.click(screen.getByTestId('k'));
     fireEvent.click(screen.getByTestId('k-crystals'));

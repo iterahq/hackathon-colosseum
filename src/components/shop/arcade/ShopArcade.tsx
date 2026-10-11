@@ -44,7 +44,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
   const groups = useMemo(() => (shelf ? groupsOf(shelf, t, locale) : []), [shelf, t, locale]);
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState('all');
-  const inspected = shelf ?? shelves[0] ?? null;
+  const inspected = shelf;
   const selected = inspected ? (inspected.items.find((i) => i.key === picked[inspected.id]) ?? defaultPick(inspected)) : null;
   const visible = shown === 'avatars' && filter !== 'all' ? groups.filter((g) => g.id === filter) : groups;
   // On a phone several groups are one swipeable strip each, so the page stays about one screen tall.
@@ -53,7 +53,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
   const buyDisabled = selected ? ((selected.kind === 'ink' || selected.kind === 'frame') && !targetId) || (selected.kind === 'life' && !selected.lifePack && Boolean(lives && lives.current >= lives.max)) : false;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 pb-[96px] lg:grid lg:grid-cols-[216px_minmax(0,1fr)_336px] lg:gap-4 lg:pb-0" data-testid="shop-arcade">
+    <div className={`flex min-h-0 flex-1 flex-col gap-3 lg:grid lg:gap-4 lg:pb-0 ${selected ? 'pb-[96px] lg:grid-cols-[216px_minmax(0,1fr)_336px]' : 'lg:grid-cols-[216px_minmax(0,1fr)]'}`} data-testid="shop-arcade">
       <div className="contents lg:flex lg:min-h-0 lg:flex-col lg:gap-2.5 lg:overflow-y-auto lg:pr-1">
         <section className={`${CARD} hidden flex-col gap-2 p-3 lg:flex`} data-testid="shop-player">
           <div className="flex items-center gap-2.5">
