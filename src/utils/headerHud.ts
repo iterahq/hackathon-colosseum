@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 import { FOCUS_BUILD } from '@/config/focus';
+import { isGeneratedTeraName } from '@/utils/crystals';
 import type { LevelView, NavId, WalletIdentity } from '@/types/headerHud';
 
 export const XP_PER_LEVEL = 200;
@@ -55,10 +56,10 @@ export const initialsOf = (name: string): string =>
     .map((p) => p[0].toUpperCase())
     .join('');
 
-/** The name to greet: the learner's nickname, or null when it is missing or just a (shortened) wallet address. */
+/** The name to greet: the learner's nickname, or null when it is missing, a (shortened) wallet address or a name provisioning generated. */
 export function greetingName(displayName: string | null | undefined): string | null {
   const name = displayName?.trim() ?? '';
-  if (!name) return null;
+  if (!name || isGeneratedTeraName(name)) return null;
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(name)) return null;
   if (/^[1-9A-HJ-NP-Za-km-z]{3,8}(…|\.{2,3})[1-9A-HJ-NP-Za-km-z]{3,8}$/.test(name)) return null;
   return name;

@@ -83,5 +83,6 @@ describe('greetingName', () => {
     expect(greetingName(null)).toBeNull();
     expect(greetingName('CQzi…DAhW')).toBeNull();
     expect(greetingName('CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW')).toBeNull();
+    expect(greetingName('Tera Clever 800')).toBeNull();
   });
 });
