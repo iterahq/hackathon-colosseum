@@ -15,6 +15,7 @@
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getMyMemberships } from '@/services/membership.service';
 import type { ClassCompleter, ClassScope, ClassSession, ClassSessionStatus } from '@/types/liveClass';
 
 export type { ClassCompleter, ClassScope, ClassSession, ClassSessionStatus } from '@/types/liveClass';
@@ -50,25 +51,39 @@ export function mapSession(row: Row): ClassSession {
   };
 }
 
-/**
- * True when the signed-in user belongs to at least one tenant with the live-class
- * feature enabled. `itera.tenants` is public-read, so this is a cheap join:
- * memberships (own rows, RLS) → tenants.live_class_enabled.
- */
-export async function isLiveClassEnabledForUser(): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
-  const sb = getSupabase();
-  const { data: mem, error: memErr } = await sb.from('memberships').select('tenant_id');
-  if (memErr) return false;
-  const tenantIds = asRows(mem).map((m) => str(m.tenant_id)).filter(Boolean);
-  if (tenantIds.length === 0) return false;
+const ENABLED_TTL_MS = 5 * 60_000;
+let enabledMemo: { userId: string; at: number; promise: Promise<string[]> } | null = null;
 
-  const { data: tenants, error: tErr } = await sb
-    .from('tenants')
-    .select('id, live_class_enabled')
-    .in('id', tenantIds);
-  if (tErr) return false;
-  return asRows(tenants).some((t) => t.live_class_enabled === true);
+/**
+ * The user's tenants that have live classes on, from ONE membership read (it embeds the tenant flag), kept for five
+ * minutes per signed-in user. Before this, the active-class poll and the next-class poll each asked `memberships` and
+ * `tenants` again on every tick: 58 and 31 reads in one judge's session for a flag that never changed.
+ */
+async function enabledTenantIds(): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data } = await getSupabase().auth.getSession();
+  const userId = data.session?.user?.id;
+  if (!userId) return [];
+  const now = Date.now();
+  if (enabledMemo && enabledMemo.userId === userId && now - enabledMemo.at < ENABLED_TTL_MS) return enabledMemo.promise;
+  const promise = getMyMemberships()
+    .then((memberships) => memberships.filter((m) => m.liveClassEnabled === true).map((m) => m.tenantId))
+    .catch(() => {
+      enabledMemo = null;
+      return [] as string[];
+    });
+  enabledMemo = { userId, at: now, promise };
+  return promise;
+}
+
+/** Test seam: forget the memoised tenant flags. */
+export function resetLiveClassEnabledCache(): void {
+  enabledMemo = null;
+}
+
+/** Whether the user belongs to any tenant with the live-class feature enabled. */
+export async function isLiveClassEnabledForUser(): Promise<boolean> {
+  return (await enabledTenantIds()).length > 0;
 }
 
 /**
@@ -78,22 +93,7 @@ export async function isLiveClassEnabledForUser(): Promise<boolean> {
  * their PLG-auto-created personal `owner` tenant (enabled=false). (loop-1 fix #4.)
  */
 export async function getEnabledTenantIds(): Promise<string[]> {
-  if (!isSupabaseConfigured) return [];
-  const sb = getSupabase();
-  const { data: mem, error: memErr } = await sb.from('memberships').select('tenant_id');
-  if (memErr) return [];
-  const tenantIds = asRows(mem).map((m) => str(m.tenant_id)).filter(Boolean);
-  if (tenantIds.length === 0) return [];
-
-  const { data: tenants, error: tErr } = await sb
-    .from('tenants')
-    .select('id, live_class_enabled')
-    .in('id', tenantIds);
-  if (tErr) return [];
-  return asRows(tenants)
-    .filter((t) => t.live_class_enabled === true)
-    .map((t) => str(t.id))
-    .filter(Boolean);
+  return enabledTenantIds();
 }
 
 /**
