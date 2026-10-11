@@ -10,7 +10,7 @@
 //
 // Needs two learners already certified by `bounty-e2e.mjs` (wallets `a-<RUN>` with 3 stamped days and
 // `d-<RUN>` with 2). Gives a throwaway sponsor wallet 0.05 devnet SOL from the authority. Rows are
-// marked `is_test`. Run `select itera.tag_test_accounts();` afterwards.
+// marked `is_test`. The paid learner is tagged by id in `itera.test_accounts`; tag the other wallets of the run by id too.
 import { parseEscrowState } from '../../supabase/functions/_shared/bounty-program.ts';
 import { buildTransferMessage, base58Encode } from '../../supabase/functions/_shared/solana-tx.ts';
 import { acceptBounty, balance, call, check, done, explorer, get, latestBlockhash, loadAuthority, loadTreasury, login, rpc, send, sleep, sql, wallet } from './bounty-e2e.lib.mjs';
@@ -119,6 +119,9 @@ state = await escrowState(escrow);
 check('ON CHAIN: paid to the learner, exactly the reward', state?.status === 'paid' && state.claimant === a.address && (await balance(a.address)) - learnerBefore === REWARD, String((await balance(a.address)) - learnerBefore));
 check('ON CHAIN: the only signer of the payout is the sponsor wallet', JSON.stringify(await signers(payout)) === JSON.stringify([sponsor.address]));
 check('the treasury balance did not move during the payout', (await balance(treasury.address)) === treasuryBefore);
+// The paid learner is this script's own throwaway account: it is tagged here, by id, never by the blanket function
+// (which would tag every account created so far, a real learner included).
+await sql(`insert into itera.test_accounts (user_id, reason) select i.user_id, 'bounty-wallet-sponsor-pay-e2e: paid learner' from itera.identities i where i.provider_subject = '${a.authUid}' on conflict (user_id) do nothing`);
 view = await page(slug);
 check('the page shows the payout and the delivery', view.status === 'paid' && view.payout?.signature === payout && view.claim?.submission_url === 'https://example.com/e2e-approved' && view.approver === 'sponsor_wallet');
 check('a payout to a team test account is named a rehearsal', view.rehearsal === true);
