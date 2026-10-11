@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { AppTopBar } from '@/components/header/AppTopBar';
-import { FOCUS_BUILD, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
+import { FOCUS_BUILD, FOCUS_SHOP_KINDS, FOCUS_SHOP_ONLY, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArcade } from '@/components/shop/arcade/ShopArcade';
@@ -69,7 +69,13 @@ export default function ShopPage() {
   const targetCert = certs.find((c) => c.trailId === targetId) ?? null;
 
   // The focus build sells for SOL only: the crystal price leaves every row before the shelves are built.
-  const joined = useMemo(() => withCompanionState(shop.data ?? [], companion.data).map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)), [shop.data, companion.data]);
+  const joined = useMemo(
+    () =>
+      withCompanionState(shop.data ?? [], companion.data)
+        .filter((item) => !FOCUS_SHOP_ONLY || FOCUS_SHOP_KINDS.has(item.kind))
+        .map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)),
+    [shop.data, companion.data],
+  );
   // On the shelf an ink or a frame is "owned" for the certification it is aimed at.
   const items = useMemo(() => joined.map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
   const byKey = (key: string | null) => items.find((i) => i.key === key);

@@ -69,7 +69,7 @@ export function NicknameForm({ saving, happy, helperKey = 'tera.nickname.helper'
         type="button"
         data-testid="nickname-skip"
         onClick={onSkip}
-        className="[font:500_14px_JetBrains_Mono] text-[#A0978A] underline-offset-4 hover:text-[#F4EDE2] hover:underline"
+        className="h-[52px] w-full rounded-xl border border-[#2E2A25] border-b-[4px] bg-[#141210] text-[#F4EDE2] [font:700_20px_'Barlow_Condensed'] hover:border-[#5E574E]"
       >
         {t('tera.nickname.skip')}
       </button>

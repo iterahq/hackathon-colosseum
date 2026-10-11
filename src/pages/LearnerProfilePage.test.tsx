@@ -36,7 +36,7 @@ function show(wallet = WALLET) {
 describe('LearnerProfilePage', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('lists the companion, certifications and medals, each linking to /c/<asset>', () => {
+  it('lists the certifications linking to /c/<asset>; the companion and the medals stay off the public profile on the focus build', () => {
     useLearnerProfile.mockReturnValue(
       ok({
         verified_count: 3,
@@ -46,24 +46,25 @@ describe('LearnerProfilePage', () => {
       })
     );
     show();
-    expect(screen.getByTestId('profile-companion')).toHaveAttribute('href', '/c/CompAsset1111111111111111111111111111111111');
+    expect(screen.queryByTestId('profile-companion')).toBeNull();
     expect(screen.getByTestId('profile-cert')).toHaveAttribute('href', '/c/CertAsset');
-    expect(screen.getByTestId('profile-medal')).toHaveAttribute('href', '/c/MedalAsset');
+    expect(screen.queryByTestId('profile-medal')).toBeNull();
+    expect(screen.queryByTestId('profile-gift')).toBeNull();
     expect(screen.getByRole('button', { name: 'Copiar link' })).toBeInTheDocument();
   });
 
-  it('prints the on-chain snapshot time, or a quiet line when there is no companion', () => {
+  it('shows the certification tier and never the companion line on the focus build', () => {
     useLearnerProfile.mockReturnValue(
       ok({ verified_count: 1, companion: { asset: 'CompAsset1111111111111111111111111111111111', lives: 3, mirrored_at: '2026-10-10T12:30:00Z' }, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5, tier: 'gold' }], medals: [] })
     );
     const { unmount } = show();
-    expect(screen.getByTestId('snapshot-line')).toHaveTextContent(/^on-chain em /);
+    expect(screen.queryByTestId('snapshot-line')).not.toBeInTheDocument();
     expect(screen.getByTestId('profile-cert')).toHaveTextContent('ouro');
     expect(screen.getByTestId('profile-cta')).toHaveAttribute('href', '/');
     unmount();
     useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
     show();
-    expect(screen.getByTestId('profile-no-companion')).toHaveTextContent('Tera companheiro ainda não mintado');
+    expect(screen.queryByTestId('profile-no-companion')).toBeNull();
     expect(screen.queryByTestId('snapshot-line')).not.toBeInTheDocument();
   });
 

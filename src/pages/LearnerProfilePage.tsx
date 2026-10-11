@@ -5,6 +5,7 @@ import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
+import { FOCUS_BUILD, FOCUS_LIVES_OFF } from '@/config/focus';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useLearnerProfile, useRecheckProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
@@ -114,7 +115,7 @@ export default function LearnerProfilePage() {
                 ))}
               </ul>
             )}
-            <ProfileGift wallet={profile.wallet} />
+            {!FOCUS_LIVES_OFF && <ProfileGift wallet={profile.wallet} />}
             {profile.circuit.stampsFunded > 0 && (
               <p className="rounded-[14px] border border-[#262320] bg-[#141210] px-4 py-3 [font:500_14px/1.45_Inter] text-[#C9BFB0]" data-testid="profile-circuit">
                 <span className="text-[#3FD17F]">{t('circuit.name')}</span> · {t('circuit.profile', { n: profile.circuit.stampsFunded.toLocaleString() })}
@@ -126,12 +127,12 @@ export default function LearnerProfilePage() {
               </div>
             ) : (
               <>
-                {profile.companion ? <CompanionSection companion={profile.companion} /> : <NoCompanion />}
+                {!FOCUS_BUILD && (profile.companion ? <CompanionSection companion={profile.companion} /> : <NoCompanion />)}
                 <section className="flex flex-col gap-4" aria-labelledby="profile-certs">
                   <h2 id="profile-certs" className={H2}>{t('profile.certs')}</h2>
                   <CertificationsSection items={profile.certifications} />
                 </section>
-                {profile.medals.length > 0 && (
+                {!FOCUS_BUILD && profile.medals.length > 0 && (
                   <section className="flex flex-col gap-4" aria-labelledby="profile-medals">
                     <h2 id="profile-medals" className={H2}>{t('profile.medals')}</h2>
                     <MedalsSection items={profile.medals} />

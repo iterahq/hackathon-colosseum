@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { LivesRule } from '@/components/lives/LivesRule';
+import { FOCUS_LIVES_OFF } from '@/config/focus';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { ArtZoom } from '@/components/artviewer';
 import { ShopLook, outfitDrawable } from './ShopLook';
@@ -63,7 +64,7 @@ export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, 
               </span>
             )}
           </div>
-          <LivesRule className="hidden sm:block" />
+          {!FOCUS_LIVES_OFF && <LivesRule className="hidden sm:block" />}
           </div>
         )}
       </div>

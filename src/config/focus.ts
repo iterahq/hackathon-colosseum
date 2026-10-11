@@ -17,3 +17,13 @@ export const FOCUS_ONE_PROGRESS_STORY = FOCUS_BUILD;
 
 /** The shop takes SOL only: no crystal price, no crystal balance, no crystal button. */
 export const FOCUS_SOL_ONLY_SHOP = FOCUS_BUILD;
+
+/**
+ * Lives are off: no hearts in the header, the lesson or the shop, no life packs, no gift-a-life block, no
+ * "you lost a life" note. A miss is redone, nothing is lost. The server stops charging a life under the same flag.
+ */
+export const FOCUS_LIVES_OFF = FOCUS_BUILD;
+
+/** The shop sells what the certification shows: avatars and the inks and frames of the credential. */
+export const FOCUS_SHOP_KINDS: ReadonlySet<string> = new Set(['avatar', 'ink', 'frame']);
+export const FOCUS_SHOP_ONLY = FOCUS_BUILD;

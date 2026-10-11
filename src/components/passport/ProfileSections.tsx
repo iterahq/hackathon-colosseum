@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArtZoom } from '@/components/artviewer';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { ChainProof } from '@/components/chain/ChainProof';
-import { FOCUS_ONE_PROGRESS_STORY } from '@/config/focus';
+import { FOCUS_LIVES_OFF, FOCUS_ONE_PROGRESS_STORY } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import type { ProfileCertification, ProfileCompanion, ProfileMedal } from '@/types/learnerProfile';
@@ -26,7 +26,7 @@ export function CompanionSection({ companion }: { companion: ProfileCompanion })
       {companion.imageUrl && <img src={companion.imageUrl} alt="" width={160} height={160} className="h-[104px] w-[104px] flex-none rounded-xl border border-[#262320] sm:h-[160px] sm:w-[160px]" />}
       <span className="flex min-w-0 flex-col gap-2">
         <span className="[font:700_28px/1_'Barlow_Condensed']">{t('profile.companion')}</span>
-        {companion.lives != null && <LivesHearts current={companion.lives} max={companion.maxLives} size={18} label={`${t('passport.credential.lives')} ${companion.lives}/${companion.maxLives}`} className="gap-1" />}
+        {!FOCUS_LIVES_OFF && companion.lives != null && <LivesHearts current={companion.lives} max={companion.maxLives} size={18} label={`${t('passport.credential.lives')} ${companion.lives}/${companion.maxLives}`} className="gap-1" />}
         <span className={`flex flex-wrap gap-x-3 gap-y-1 ${MONO} text-[#C9BFB0]`}>
           {facts.map((f) => (
             <span key={f}>{f}</span>

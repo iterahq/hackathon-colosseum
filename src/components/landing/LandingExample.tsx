@@ -34,8 +34,6 @@ export function LandingExample() {
         )}
         <span className="[font:500_13px_JetBrains_Mono] text-[#C9BFB0]">
           {caps ? t('landing.example.claims', { n: caps.verifiedCount, total: caps.total }) : null}
-          {caps && profile.medals.length > 0 ? ' · ' : null}
-          {profile.medals.length > 0 ? t('landing.example.medals', { n: profile.medals.length }) : null}
         </span>
       </div>
       <span className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
