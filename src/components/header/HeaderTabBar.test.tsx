@@ -10,14 +10,14 @@ describe('HeaderTabBar', () => {
     render(
       <I18nProvider>
         <MemoryRouter>
-          <HeaderTabBar active="shop" />
+          <HeaderTabBar active="bounties" />
         </MemoryRouter>
       </I18nProvider>,
     );
     const list = screen.getByTestId('header-tab-bar').querySelector('ul')!;
     expect(list.style.gridTemplateColumns).toBe(`repeat(${HEADER_NAV.length}, minmax(0, 1fr))`);
     expect(list.querySelectorAll('li')).toHaveLength(HEADER_NAV.length);
-    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/shop');
+    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/bounties');
   });
 });
 
@@ -26,8 +26,8 @@ describe('HEADER_NAV', () => {
     expect(FULL_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'courses', 'passport', 'shop', 'bounties', 'verify']);
     expect(HEADER_NAV.find((n) => n.id === 'verify')?.to).toBe('/verify');
   });
-  it('shows the five tabs of the loop on the focus build, the courses left out', () => {
-    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'bounties', 'shop', 'verify']);
+  it('shows the four tabs of the loop on the focus build, the courses and the shop left out', () => {
+    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'bounties', 'verify']);
     expect(HEADER_NAV).toBe(FOCUS_HEADER_NAV);
   });
 });

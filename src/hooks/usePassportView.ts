@@ -4,7 +4,7 @@ import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
-import { buildMedals, buildPages, totals } from '@/utils/passport';
+import { buildMedals, buildPages, heldLessonId, totals } from '@/utils/passport';
 import { useWalletLink } from '@/hooks/useWalletLink';
 
 export function usePassportView() {
@@ -19,7 +19,7 @@ export function usePassportView() {
   const model = useMemo(() => {
     const pages = buildPages(trails, items, tText, earned);
     const medals = buildMedals(items, tText);
-    return { pages, medals, totals: totals(pages, medals) };
+    return { pages, medals, totals: totals(pages, medals), heldLessonId: heldLessonId(trails, earned) };
   }, [trails, items, earned, tText]);
 
   return {

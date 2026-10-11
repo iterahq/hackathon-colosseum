@@ -110,6 +110,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     // uma palavra, escolher numa lista e digitar de cabeça não são a mesma tarefa.
     'code.guided.blankLabel': 'lacuna do código',
     'code.guided.bankLabel': 'palavras disponíveis',
+    'code.guided.keysLabel': 'teclas difíceis de achar no celular: toque para inserir na lacuna',
     'code.guided.hint.options': 'O código já está escrito. Toque numa palavra e ela entra na lacuna.',
     'code.guided.hint.dropdown': 'O código já está escrito. Escolha a opção certa em cada lacuna.',
     'code.guided.hint.text': 'O código já está escrito. Digite o que falta em cada lacuna.',
@@ -323,6 +324,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.lives.noAnswer': 'You are out of attempts. Read the hints and move on.',
     'code.guided.blankLabel': 'code blank',
     'code.guided.bankLabel': 'available words',
+    'code.guided.keysLabel': 'keys hard to find on a phone: tap to insert into the blank',
     'code.guided.hint.options': 'The code is already written. Tap a word and it drops into the blank.',
     'code.guided.hint.dropdown': 'The code is already written. Pick the right option in each blank.',
     'code.guided.hint.text': 'The code is already written. Type what is missing in each blank.',

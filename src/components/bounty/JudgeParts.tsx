@@ -23,7 +23,7 @@ export function JudgeCaption({ className = '', judge = null }: { className?: str
   const { t } = useI18n();
   const slots = judge ? judgeSlotsText(t, judge) : null;
   return (
-    <p className={`[font:500_12px/1.4_JetBrains_Mono] text-[#A0978A] ${className}`} data-testid="bounty-judge-caption">
+    <p className={`min-w-0 [font:500_12px/1.4_JetBrains_Mono] text-[#A0978A] [overflow-wrap:anywhere] ${className}`} data-testid="bounty-judge-caption">
       {t('bounty.judge.caption')}
       {slots && <span className="block text-[#F2C66D]" data-testid="bounty-judge-slots">{slots}</span>}
     </p>

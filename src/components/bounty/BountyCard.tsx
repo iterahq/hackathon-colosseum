@@ -12,11 +12,11 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
   return (
     <Link
       to={`/bounties/${bounty.slug}`}
-      className={`${CARD} group flex w-full flex-col gap-3 p-4 transition-colors hover:border-[#3FD17F] sm:p-5 ${dim ? 'opacity-70' : ''} ${FOCUS}`}
+      className={`${CARD} group flex w-full min-w-0 flex-col gap-3 p-4 transition-colors hover:border-[#3FD17F] sm:p-5 ${dim ? 'opacity-70' : ''} ${FOCUS}`}
       data-testid="bounty-card"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={`${MONO_LABEL} min-w-0 truncate text-[#A0978A]`} data-testid="bounty-card-posted-by">
+        <span className={`${MONO_LABEL} min-w-0 max-w-full truncate text-[#A0978A]`} data-testid="bounty-card-posted-by">
           {bounty.postedBy.kind === 'team'
             ? t('bounty.card.postedTeam', { name: bounty.postedBy.name })
             : t(bounty.postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: bounty.postedBy.name, wallet: bounty.postedBy.walletShort ?? '' })}

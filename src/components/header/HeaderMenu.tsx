@@ -135,6 +135,12 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
         <Link to="/artifacts" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-files">
           {t('header.nav.files')}
         </Link>
+        {FOCUS_BUILD && (
+          <Link to="/shop" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-shop">
+            <HeaderIcon name="shop" size={16} />
+            {t('header.nav.shop')}
+          </Link>
+        )}
         {!FOCUS_BUILD && (
           <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
             {t('invite.menu')}

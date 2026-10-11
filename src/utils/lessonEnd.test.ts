@@ -91,8 +91,8 @@ describe('lessonEndView', () => {
   });
 
   it('the server holds the day (plausibility floor): the card carries the reason, nothing is claimed', () => {
-    const held: PassportResult = { awards: [], updated: [], remaining: 0, mint: { wallet: 'W', cluster: 'devnet', attempted: 0, blocked: null }, day_incomplete: null, day_pending_review: { lesson_id: 'l5', reason: 'too_fast', eta: null } };
-    expect(lessonEndView(input({ call: answered(held) }))).toEqual({ kind: 'card', note: 'pendingReview', reason: 'too_fast', eta: null });
+    const held: PassportResult = { awards: [], updated: [], remaining: 0, mint: { wallet: 'W', cluster: 'devnet', attempted: 0, blocked: null }, day_incomplete: null, day_pending_review: { lesson_id: 'l5', reason: 'too_fast', min_seconds: 20, clears_by: 'redo_one_activity' } };
+    expect(lessonEndView(input({ call: answered(held) }))).toEqual({ kind: 'card', note: 'pendingReview', reason: 'too_fast', minSeconds: 20, clearsBy: 'redo_one_activity' });
   });
 
   it('the server stamped nothing for this lesson: the plain card, no note', () => {

@@ -11,8 +11,7 @@ import { useBountySession, useJudgeSubmit, useMyBountyStatus, useSignedBountySte
 import { useI18n } from '@/i18n';
 import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode, type StepPhase } from '@/services/bounty.service';
-import { actionTitle } from '@/utils/bountyAction';
-import { daysRuleText } from '@/utils/bountyJudge';
+import { actionTitle, isSponsor } from '@/utils/bountyAction';
 import { formatRemaining, plural } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
@@ -114,11 +113,6 @@ function Accept({ bounty, status, accept }: { bounty: BountyDetail; status: MyBo
           {t('bounty.accept.signs')}
         </p>
       )}
-      {bounty.escrow?.custody === 'program' && (
-        <p className="[font:400_13px/1.5_Inter] text-[#A0978A]" data-testid="bounty-accept-days-rule">
-          {daysRuleText(t, bounty.escrow.daysCheckedBy, bounty.requirement.minDays)}
-        </p>
-      )}
       {accept.error !== null && !accept.pending && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
       <button type="button" disabled={accept.pending} onClick={() => accept.run(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
         {accept.pending ? stepLabel(t, accept.phase) : t('bounty.accept.cta')}
@@ -199,6 +193,16 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
   }
 
   const status = mine.data;
+  if (isSponsor(bounty, status)) {
+    return (
+      <Panel title={title}>
+        <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-sponsor">{t(bounty.status === 'open' ? 'bounty.sponsor.open' : 'bounty.sponsor.body')}</p>
+        <Link to="/bounties/mine" className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-sponsor-manage">
+          {t('bounty.sponsor.manage')}
+        </Link>
+      </Panel>
+    );
+  }
   const claim = status.claim && status.claim.bountyId === bounty.id ? status.claim : null;
   const wonIt = bounty.status === 'paid' && Boolean(status.wallet) && bounty.claim?.wallet === status.wallet;
 

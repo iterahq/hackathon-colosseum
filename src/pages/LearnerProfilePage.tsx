@@ -8,6 +8,7 @@ import { ProfileGift } from '@/components/gift/ProfileGift';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useLearnerProfile, useRecheckProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
+import { useProgressStory } from '@/hooks/useProgressStory';
 import { ChainReadLine } from '@/components/passport/ChainReadLine';
 import { staticCapabilities } from '@/services/learnerProfile.service';
 import { useI18n } from '@/i18n';
@@ -27,6 +28,7 @@ const H2 = "[font:700_28px_'Barlow_Condensed']";
 export default function LearnerProfilePage() {
   const { wallet = '' } = useParams();
   const { t, locale } = useI18n();
+  const story = useProgressStory();
   const valid = looksLikeAddress(wallet);
   const query = useLearnerProfile(valid ? wallet : '', locale);
   const lookup = query.data;
@@ -82,6 +84,11 @@ export default function LearnerProfilePage() {
                 <div className="min-w-0">
                   <h1 className="truncate [font:700_34px/1_'Barlow_Condensed'] max-sm:text-[28px]" title={profile.wallet}>{shortAddress(profile.wallet)}</h1>
                   <p className="mt-1 [font:500_13px_Inter] text-[#C9BFB0]" data-testid="profile-progress">{profileProgress(profile.certifications, t)}</p>
+                  {story.wallet === profile.wallet && story.daysPending > 0 && (
+                    <Link to="/passport#held" className={`mt-1 inline-flex min-h-6 items-center rounded [font:500_13px_Inter] text-[#F2C66D] underline-offset-2 hover:underline ${FOCUS}`} data-testid="profile-pending">
+                      {t(`profile.pending${story.daysPending === 1 ? '' : '.other'}`, { n: story.daysPending })} →
+                    </Link>
+                  )}
                   <p className="mt-1 [font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
                   <ChainReadLine read={lookup?.status === 'ok' ? lookup.read : undefined} ms={0} onRecheck={() => recheck.mutate()} rechecking={recheck.isPending} className="mt-1" />
                 </div>

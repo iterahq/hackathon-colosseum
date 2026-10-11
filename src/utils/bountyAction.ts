@@ -6,14 +6,19 @@ export interface ActionTitle {
   count?: number;
 }
 
-type TitleBounty = Pick<BountyDetail, 'id' | 'status' | 'claim' | 'requirement' | 'judge'>;
+type TitleBounty = Pick<BountyDetail, 'id' | 'status' | 'claim' | 'requirement' | 'judge'> & { postedBy?: BountyDetail['postedBy'] };
 
 const YOURS: ActionTitle = { key: 'bounty.action.titleYours', vars: {} };
 const YOUR_TURN: ActionTitle = { key: 'bounty.action.title', vars: {} };
 
+/** The signed-in wallet posted this bounty: it manages it, it never takes it. */
+export const isSponsor = (bounty: Pick<TitleBounty, 'postedBy'>, status: Pick<MyBountyStatus, 'wallet'> | null): boolean =>
+  Boolean(status?.wallet) && bounty.postedBy?.kind === 'wallet' && bounty.postedBy.wallet === status!.wallet;
+
 /** What the action panel's heading says: "Your turn" only when this wallet can act, otherwise what is missing. */
 export function actionTitle(bounty: TitleBounty, status: MyBountyStatus | null): ActionTitle {
   if (!status) return { key: 'bounty.action.titleNeutral', vars: {} };
+  if (isSponsor(bounty, status)) return { key: 'bounty.action.titleSponsor', vars: {} };
   const claim = status.claim && status.claim.bountyId === bounty.id ? status.claim : null;
   const wonIt = bounty.status === 'paid' && Boolean(status.wallet) && bounty.claim?.wallet === status.wallet;
   if (wonIt || claim?.status === 'approved' || claim?.status === 'submitted') return YOURS;

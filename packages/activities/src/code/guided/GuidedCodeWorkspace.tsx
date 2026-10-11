@@ -3,6 +3,7 @@ import type { GuidedLine, GuidedValues, GuidedVariant } from './types.js';
 import { CodeHelpLink } from '../CodeHelpLink.js';
 import { CodeResetControl } from '../CodeResetControl.js';
 import { GuidedCodeBank } from './GuidedCodeBank.js';
+import { GuidedCodeKeys } from './GuidedCodeKeys.js';
 import { GuidedCodeTemplate } from './GuidedCodeTemplate.js';
 
 /**
@@ -54,6 +55,7 @@ export function GuidedCodeWorkspace({
   hideReset?: boolean;
 }) {
   const hasBank = variant === 'options' || variant === 'mixed';
+  const hasText = lines.some((line) => line.segments.some((s) => s.kind === 'blank' && s.blank.kind === 'text'));
 
   return (
     // The live-class layer finds this marker to mirror the learner's pointer to
@@ -72,6 +74,8 @@ export function GuidedCodeWorkspace({
         onActivate={(blank) => onAim(blank.id)}
         onChange={(blank, value) => onSet(blank.id, value)}
       />
+
+      {hasText && <GuidedCodeKeys values={values} disabled={disabled} onSet={onSet} />}
 
       {hasBank && (
         <GuidedCodeBank
