@@ -329,7 +329,16 @@ function toPostedReview(v: unknown): PostedReview | null {
     submittedAt: text(r.submitted_at),
     proofDays: int(row(r.proof).days_done),
     proofAsset: text(r.proof_asset),
+    linkCheck: toLinkCheck(r.link_check),
   };
+}
+
+const LINK_VERDICTS = ['opens', 'not_found', 'unconfirmed'] as const;
+
+function toLinkCheck(v: unknown): PostedReview['linkCheck'] {
+  const r = row(v);
+  const verdict = LINK_VERDICTS.find((x) => x === r.verdict);
+  return verdict ? { verdict, status: int(r.status) } : null;
 }
 
 export function parsePostedList(body: unknown): PostedList {

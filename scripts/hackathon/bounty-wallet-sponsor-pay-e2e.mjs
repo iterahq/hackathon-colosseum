@@ -97,6 +97,8 @@ check('an http link is refused', (await call('bounty-claim', d, { action: 'submi
 check('an https link is delivered', (await call('bounty-claim', d, { action: 'submit', bounty: id, url: 'https://example.com/e2e-delivery', note: 'e2e' })).j?.submitted === true);
 const mine = await call('bounty-post', sponsor, { action: 'list' });
 check('the sponsor console shows the delivery and the proof', mine.j?.bounties.find((bounty) => bounty.id === id)?.review?.submission_url === 'https://example.com/e2e-delivery');
+const linkCheck = mine.j?.bounties.find((bounty) => bounty.id === id)?.review?.link_check;
+check('and says whether the delivery link answered when the server asked (a made-up page: not found)', linkCheck?.verdict === 'not_found' && linkCheck?.status === 404, JSON.stringify(linkCheck ?? null));
 check('another wallet cannot approve it', (await call('bounty-post', a, { action: 'approve_tx', bounty: id })).http === 404);
 const rejected = await call('bounty-post', sponsor, { action: 'reject', bounty: id, note: 'e2e: not this one' });
 check('the sponsor rejects: the bounty reopens with the money locked', rejected.j?.rejected === true && Boolean(rejected.j.unclaim_signature), JSON.stringify(rejected.j));

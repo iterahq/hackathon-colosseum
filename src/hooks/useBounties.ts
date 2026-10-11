@@ -45,10 +45,11 @@ export function useBountySession() {
   return { signedIn, userId: session?.user?.id ?? 'anon' };
 }
 
-export function useBountyBoard() {
+export function useBountyBoard({ live = false }: { live?: boolean } = {}) {
   const { locale } = useI18n();
   // A language switch keeps the numbers on screen while the other language's labels arrive: no blank tiles.
-  return useQuery({ queryKey: queryKeys.bounty.board(locale), queryFn: () => getBountyBoard(locale), staleTime: 15_000, placeholderData: keepPreviousData });
+  // "N of M free now" is only worth printing fresh: read again on every visit, and every 20 s while the board itself (`live`) is open.
+  return useQuery({ queryKey: queryKeys.bounty.board(locale), queryFn: () => getBountyBoard(locale), staleTime: 5_000, refetchInterval: live ? 20_000 : false, refetchOnMount: 'always', placeholderData: keepPreviousData });
 }
 
 export function useBounty(slug: string) {

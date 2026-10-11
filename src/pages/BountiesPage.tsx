@@ -37,7 +37,7 @@ export default function BountiesPage() {
   const { t, locale } = useI18n();
   usePageTitle(t('bounty.pageTitle'));
   const { signedIn } = useBountySession();
-  const board = useBountyBoard();
+  const board = useBountyBoard({ live: true });
   const staff = useIsBountyStaff();
   const stats = board.data?.stats;
   const items = board.data ? sortBounties(board.data.bounties) : [];
