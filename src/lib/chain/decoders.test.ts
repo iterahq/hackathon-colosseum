@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { base58Encode, hex, looksLikeAddress, sha256Hex } from '@/lib/chain/base58';
 import { attributeOf, parseCoreAsset } from '@/lib/chain/coreAsset';
-import { ESCROW_LAYOUT, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES, parseEscrowAccount } from '@/lib/chain/escrowAccount';
+import { DIRECT_ESCROW_LAYOUT, DIRECT_ESCROW_STATE_BYTES, ESCROW_LAYOUT, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES, parseEscrowAccount } from '@/lib/chain/escrowAccount';
 import { ASSET_BASE64, ESCROW_BASE64, PROGRAM_BASE64, PROGRAM_DATA_HEADER_BASE64 } from '@/lib/chain/fixtures';
 import { parseProgramDataHeader, programDataAddress } from '@/lib/chain/programData';
 import { curlFor } from '@/lib/chain/rpc';
@@ -44,6 +44,7 @@ describe('parseEscrowAccount (a real bounty escrow from devnet)', () => {
   it('reads the state the program wrote', () => {
     expect(parseEscrowAccount(bytes(ESCROW_BASE64))).toEqual({
       gate: null,
+      invitee: null,
       status: 'open',
       bountyId: '537f05d1-2f95-4963-b61f-c86c274521f0',
       sponsor: 'AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA',
@@ -82,6 +83,44 @@ describe('parseEscrowAccount (a real bounty escrow from devnet)', () => {
     expect(state?.gate).toEqual({ minDays: 3, trail: 'ab'.repeat(32) });
     expect(state?.lamports).toBe(30_000_000n);
     expect(state?.status).toBe('open');
+  });
+
+  it('reads a direct account of 260 bytes: the gated fields and the invitee at 228', () => {
+    const data = new Uint8Array(DIRECT_ESCROW_STATE_BYTES);
+    data.set(bytes(ESCROW_BASE64));
+    data[0] = 3;
+    data[195] = 2;
+    data.set(new Uint8Array(32).fill(0xcd), 196);
+    data.set(new Uint8Array(32).fill(9), 228);
+    const state = parseEscrowAccount(data);
+    expect(state?.invitee).toBe(base58Encode(new Uint8Array(32).fill(9)));
+    expect(state?.gate).toEqual({ minDays: 2, trail: 'cd'.repeat(32) });
+    expect(state?.lamports).toBe(30_000_000n);
+    expect(state?.claimant).toBeNull();
+  });
+
+  it('has no invitee on an open or gated account', () => {
+    const gated = new Uint8Array(GATED_ESCROW_STATE_BYTES);
+    gated.set(bytes(ESCROW_BASE64));
+    gated[0] = 2;
+    expect(parseEscrowAccount(gated)?.invitee).toBeNull();
+  });
+
+  it('refuses a direct tag on another length and a direct length on another tag', () => {
+    const direct = new Uint8Array(DIRECT_ESCROW_STATE_BYTES);
+    direct.set(bytes(ESCROW_BASE64));
+    direct[0] = 2;
+    expect(parseEscrowAccount(direct)).toBeNull();
+    const gatedLength = new Uint8Array(GATED_ESCROW_STATE_BYTES);
+    gatedLength.set(bytes(ESCROW_BASE64));
+    gatedLength[0] = 3;
+    expect(parseEscrowAccount(gatedLength)).toBeNull();
+  });
+
+  it('documents a direct layout that covers the whole account', () => {
+    const last = DIRECT_ESCROW_LAYOUT[DIRECT_ESCROW_LAYOUT.length - 1];
+    expect(last.offset + last.length).toBe(DIRECT_ESCROW_STATE_BYTES);
+    DIRECT_ESCROW_LAYOUT.slice(1).forEach((entry, index) => expect(entry.offset).toBe(DIRECT_ESCROW_LAYOUT[index].offset + DIRECT_ESCROW_LAYOUT[index].length));
   });
 
   it('refuses a length that does not match its tag', () => {

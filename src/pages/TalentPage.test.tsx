@@ -26,6 +26,7 @@ describe('TalentPage', () => {
     useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board() });
     show();
     expect(screen.getByTestId('talent-intro')).toHaveTextContent('conferido na chain');
+    expect(screen.getByTestId('talent-how')).toHaveTextContent('escolha uma pessoa, trave uma recompensa para ela, ela entrega, você aprova e o programa de escrow paga');
     expect(screen.getByTestId('talent-source')).toHaveTextContent('Abra o perfil para ler a chain agora');
     expect(screen.getAllByTestId('talent-card')).toHaveLength(1);
   });

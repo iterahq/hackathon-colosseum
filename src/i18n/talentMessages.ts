@@ -7,6 +7,7 @@ export const TALENT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'talent.hero.title': 'Quem provou, aparece aqui.',
     'talent.hero.sub':
       'Estas são pessoas que escolheram aparecer para empresas. Cada cartão mostra o que a pessoa provou: dias carimbados, certificações e habilidades. Todo número pode ser conferido na chain a partir do perfil.',
+    'talent.hero.how': 'Como funciona: escolha uma pessoa, trave uma recompensa para ela, ela entrega, você aprova e o programa de escrow paga.',
     'talent.source': 'Números como a Itera registrou. Abra o perfil para ler a chain agora.',
     'talent.readAt': 'Lido em {time}',
     'talent.count.one': '{n} pessoa listada',
@@ -69,6 +70,7 @@ export const TALENT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'talent.hero.title': 'Learners who proved it, in one place.',
     'talent.hero.sub':
       'These are people who chose to be found by companies. Each card shows what the person proved: stamped days, certifications and capabilities. Every number on it can be checked on chain from the profile.',
+    'talent.hero.how': 'How it works: pick a learner, lock a reward for them, they deliver, you approve, the escrow program pays.',
     'talent.source': 'Numbers as recorded by Itera. Open the profile to read the chain now.',
     'talent.readAt': 'Read {time}',
     'talent.count.one': '{n} learner listed',

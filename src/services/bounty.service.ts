@@ -21,6 +21,9 @@ import type {
   CreatedBounty,
   CreatePostedInput,
   EligibilityReason,
+  InviteeCheck,
+  InviteeReason,
+  InvitedInbox,
   LedgerEvent,
   ModerationBounty,
   MyBountyStatus,
@@ -49,7 +52,8 @@ const text = (v: unknown): string | null => (typeof v === 'string' && v ? v : nu
 const int = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 const STATUSES: readonly BountyStatus[] = ['awaiting_funding', 'open', 'claimed', 'submitted', 'paying', 'paid', 'refunding', 'refunded', 'expired'];
-const REASONS: readonly EligibilityReason[] = ['no_wallet', 'no_certification', 'not_enough_days'];
+const REASONS: readonly EligibilityReason[] = ['no_wallet', 'no_certification', 'not_enough_days', 'not_invited'];
+const INVITEE_REASONS: readonly InviteeReason[] = ['no_certification', 'not_enough_days'];
 
 function toMoney(v: unknown): BountyMoney | null {
   const r = row(v);
@@ -159,6 +163,10 @@ export function parseBounty(v: unknown): Bounty | null {
     payout: toMoney(r.payout),
     refund: toMoney(r.refund),
     fundBlinkUrl: text(fund.blink_url),
+    direct: r.direct === true && Boolean(text(r.invitee_wallet)),
+    inviteeWallet: text(r.invitee_wallet),
+    inviteeWalletShort: text(r.invitee_wallet_short) ?? text(r.invitee_wallet),
+    inviteeProfileUrl: text(r.invitee_profile_url),
   };
 }
 
@@ -256,6 +264,8 @@ export function parseMyStatus(body: unknown): MyBountyStatus {
       : null,
     busyElsewhere: b.busy_elsewhere === true,
     judgedBefore: b.judged_before === true,
+    notInvited: b.reason === 'not_invited' || b.error === 'not_invited',
+    inviteeWallet: text(b.invitee_wallet),
   };
 }
 
@@ -314,6 +324,7 @@ export function parsePostOptions(body: unknown): PostOptions {
     liveBounties: int(l.live_bounties) ?? 0,
     maxExpiryDays: int(l.max_expiry_days) ?? 30,
     maxClaimHours: int(l.max_claim_hours) ?? 168,
+    directEscrowRentLamports: int(l.direct_escrow_rent_lamports),
   };
   return { cluster: text(b.cluster) ?? 'devnet', programId: text(b.program_id), trails: toTrails(b.trails), limits };
 }
@@ -452,7 +463,13 @@ export async function getBountyRecord(slug: string, lang: string): Promise<Bount
 const claimCall = (action: string, bounty: string, extra: Record<string, unknown> = {}) => callShop('bounty-claim', { body: { action, bounty, ...extra } });
 
 export async function getMyBountyStatus(bounty: string): Promise<MyBountyStatus> {
-  return parseMyStatus((await claimCall('status', bounty)).data);
+  try {
+    return parseMyStatus((await claimCall('status', bounty)).data);
+  } catch (error) {
+    // A direct bounty answers 403 not_invited with the whole status in the body: that is a state, not a failure.
+    if (error instanceof ShopCallError && error.code === 'not_invited' && error.body) return parseMyStatus({ ...error.body, reason: 'not_invited' });
+    throw error;
+  }
 }
 
 /**
@@ -606,12 +623,60 @@ export async function createPostedBounty(input: CreatePostedInput): Promise<Crea
     min_days: input.minDays,
     expires_in_days: input.expiresInDays,
     claim_hours: input.claimHours,
+    ...(input.inviteeWallet ? { invitee_wallet: input.inviteeWallet } : {}),
   });
   const r = row(data);
   const id = text(r.id);
   const slug = text(r.slug);
   if (!id || !slug) throw new Error('bounty-post: unreadable create answer');
-  return { id, slug };
+  return {
+    id,
+    slug,
+    direct: r.direct === true,
+    inviteeWallet: text(r.invitee_wallet),
+    inviteeEligible: typeof r.invitee_eligible === 'boolean' ? r.invitee_eligible : null,
+    inviteeReason: INVITEE_REASONS.find((x) => x === r.invitee_reason) ?? null,
+  };
+}
+
+export function parseInviteeCheck(body: unknown): InviteeCheck | null {
+  const r = row(body);
+  const wallet = text(r.wallet);
+  const req = row(r.requirement);
+  const proof = row(r.proof);
+  if (!wallet || typeof r.eligible !== 'boolean') return null;
+  return {
+    wallet,
+    directAvailable: r.direct_available !== false,
+    knownLearner: r.known_learner === true,
+    eligible: r.eligible,
+    reason: INVITEE_REASONS.find((x) => x === r.reason) ?? null,
+    proof: text(proof.asset) ? { asset: String(proof.asset), daysDone: int(proof.days_done) ?? 0, explorerUrl: text(proof.explorer_url) } : null,
+    requirement: { unitId: text(req.unit_id) ?? '', minDays: int(req.min_days) ?? 0, totalDays: int(req.total_days) ?? 0 },
+  };
+}
+
+export async function checkInvitee(input: { wallet: string; unitId: string; minDays: number }): Promise<InviteeCheck> {
+  const { data } = await postCall({ action: 'invitee_check', wallet: input.wallet, unit_id: input.unitId, min_days: input.minDays });
+  const check = parseInviteeCheck(data);
+  if (!check) throw new Error('bounty-post: unreadable invitee check');
+  return check;
+}
+
+export function parseInbox(body: unknown): InvitedInbox | null {
+  const r = row(body);
+  const wallet = text(r.wallet);
+  if (!wallet) return null;
+  return { wallet, chainRead: r.chain_read === true, openCount: int(r.open_count) ?? 0, bounties: parseBounties(r.bounties) };
+}
+
+export async function getInvitedInbox(wallet: string, lang: string): Promise<InvitedInbox> {
+  if (!url || !anonKey) throw new Error('Supabase not configured.');
+  const res = await fetch(`${url}/functions/v1/bounty-board/invited/${encodeURIComponent(wallet)}?lang=${lang}`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
+  if (!res.ok) throw new Error(`bounty-board failed (${res.status})`);
+  const inbox = parseInbox(await res.json());
+  if (!inbox) throw new Error('bounty-board: unreadable inbox');
+  return inbox;
 }
 
 export async function requestWalletTx(kind: WalletTxKind, bounty: string): Promise<WalletTx> {

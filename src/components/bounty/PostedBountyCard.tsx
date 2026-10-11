@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExplorerAnchor, INPUT, LABEL, LINK, Notice, RequirementChip, Reward, StatusChip } from '@/components/bounty/bountyUi';
+import { DirectChip } from '@/components/bounty/DirectParts';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useDeleteDraft, useRejectPosted, useWalletBountyTx } from '@/hooks/useBounties';
@@ -247,7 +248,10 @@ export function PostedBountyCard({ bounty }: { bounty: PostedBounty }) {
         <Link to={`/bounties/${bounty.slug}`} className={`${MONO_LABEL} truncate text-[#3FD17F] hover:underline`}>
           /{bounty.slug}
         </Link>
-        <StatusChip status={bounty.status} />
+        <span className="flex flex-wrap items-center gap-1.5">
+          {bounty.direct && <DirectChip />}
+          <StatusChip status={bounty.status} />
+        </span>
       </div>
       <h3 className="[font:700_24px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <div className="flex flex-wrap items-center gap-3">
@@ -255,6 +259,12 @@ export function PostedBountyCard({ bounty }: { bounty: PostedBounty }) {
         <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
         <ExplorerAnchor href={bounty.escrow?.explorerUrl ?? null} label={t('bounty.escrow.address')} />
       </div>
+      {bounty.direct && bounty.inviteeWallet && (
+        <p className="[font:500_13px/1.45_Inter] text-[#C9BFB0] [overflow-wrap:anywhere]" data-testid="bounty-mine-invitee">
+          {t('bounty.direct.sponsorLine', { wallet: bounty.inviteeWalletShort ?? bounty.inviteeWallet })}{' '}
+          <Link to={`/u/${bounty.inviteeWallet}`} className="text-[#3FD17F] hover:underline">{t('bounty.mine.profile')} →</Link>
+        </p>
+      )}
       {bounty.hidden && (
         <Notice testId="bounty-mine-hidden">
           {t('bounty.mine.hidden', { reason: bounty.hiddenReason ?? t('bounty.mine.hiddenNoReason') })}

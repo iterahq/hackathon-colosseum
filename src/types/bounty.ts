@@ -106,6 +106,11 @@ export interface Bounty {
   payout: BountyMoney | null;
   refund: BountyMoney | null;
   fundBlinkUrl: string | null;
+  /** Addressed to one wallet: the escrow program refuses any other. */
+  direct: boolean;
+  inviteeWallet: string | null;
+  inviteeWalletShort: string | null;
+  inviteeProfileUrl: string | null;
 }
 
 export interface LedgerEvent {
@@ -170,7 +175,7 @@ export interface BountyBoard {
   bounties: Bounty[];
 }
 
-export type EligibilityReason = 'no_wallet' | 'no_certification' | 'not_enough_days';
+export type EligibilityReason = 'no_wallet' | 'no_certification' | 'not_enough_days' | 'not_invited';
 
 export interface MyBountyStatus {
   wallet: string | null;
@@ -190,6 +195,9 @@ export interface MyBountyStatus {
     checkReport: CheckReport | null;
   } | null;
   busyElsewhere: boolean;
+  /** The bounty is direct and this wallet is not the invitee. */
+  notInvited: boolean;
+  inviteeWallet: string | null;
 }
 
 export interface SponsorReview {
@@ -255,6 +263,7 @@ export interface PostLimits {
   liveBounties: number;
   maxExpiryDays: number;
   maxClaimHours: number;
+  directEscrowRentLamports: number | null;
 }
 
 export interface PostOptions {
@@ -298,11 +307,35 @@ export interface CreatePostedInput {
   minDays: number;
   expiresInDays: number;
   claimHours: number;
+  inviteeWallet?: string | null;
 }
 
 export interface CreatedBounty {
   id: string;
   slug: string;
+  direct: boolean;
+  inviteeWallet: string | null;
+  inviteeEligible: boolean | null;
+  inviteeReason: InviteeReason | null;
+}
+
+export type InviteeReason = 'no_certification' | 'not_enough_days';
+
+export interface InviteeCheck {
+  wallet: string;
+  directAvailable: boolean;
+  knownLearner: boolean;
+  eligible: boolean;
+  reason: InviteeReason | null;
+  proof: { asset: string; daysDone: number; explorerUrl: string | null } | null;
+  requirement: { unitId: string; minDays: number; totalDays: number };
+}
+
+export interface InvitedInbox {
+  wallet: string;
+  chainRead: boolean;
+  openCount: number;
+  bounties: Bounty[];
 }
 
 export type WalletTxKind = 'fund' | 'approve' | 'refund';

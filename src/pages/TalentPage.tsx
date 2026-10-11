@@ -34,6 +34,7 @@ export default function TalentPage() {
         <span className={`${MONO_LABEL} text-[#3FD17F]`}>{t('talent.eyebrow')}</span>
         <h1 id="talent-hero" className="max-w-[760px] [font:700_60px/.98_'Barlow_Condensed'] max-sm:text-[44px]">{t('talent.hero.title')}</h1>
         <p className="max-w-[680px] [font:400_16px/1.55_Inter] text-[#C9BFB0]" data-testid="talent-intro">{t('talent.hero.sub')}</p>
+        <p className="max-w-[680px] [font:500_14px/1.55_Inter] text-[#F4EDE2]" data-testid="talent-how">{t('talent.hero.how')}</p>
       </section>
       <TalentFilters filters={filters} capabilities={board.data?.capabilities ?? []} onChange={setFilters} />
       <p className="[font:500_12px/1.5_JetBrains_Mono] text-[#A0978A]" data-testid="talent-source">

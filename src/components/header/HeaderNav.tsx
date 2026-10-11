@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { InviteBadge } from '@/components/header/InviteBadge';
 import { HEADER_NAV } from '@/consts/headerNav';
 import { useI18n } from '@/i18n';
 import type { NavId } from '@/types/headerHud';
@@ -27,6 +28,7 @@ export function HeaderNav({ active }: Props) {
             }`}
           >
             {t(key)}
+            {id === 'bounties' && <InviteBadge className="ml-1.5" />}
             {on && (
               <motion.span
                 layoutId="hd-nav-indicator"
