@@ -41,6 +41,7 @@ describe('i18n locale preference (DB-backed sink)', () => {
     );
     expect(screen.getByTestId('locale').textContent).toBe('en');
     unmount();
+    localStorage.clear();
     languages.mockReturnValue(['pt-BR', 'pt']);
     render(
       <I18nProvider>
@@ -50,6 +51,17 @@ describe('i18n locale preference (DB-backed sink)', () => {
     expect(screen.getByTestId('locale').textContent).toBe('pt');
     languages.mockRestore();
     expect(DEFAULT_LOCALE).toBe('pt');
+  });
+
+  it('writes the browser-detected locale to storage once, so content readers outside React agree', () => {
+    const languages = vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
+    render(
+      <I18nProvider>
+        <Probe onReady={() => {}} />
+      </I18nProvider>
+    );
+    expect(localStorage.getItem('itera.locale')).toBe('en');
+    languages.mockRestore();
   });
 
   it('maps browser languages to the two locales', () => {
