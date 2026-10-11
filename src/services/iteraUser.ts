@@ -28,8 +28,11 @@ export async function getIteraUserId(): Promise<string | null> {
 }
 
 async function resolveIteraUserId(): Promise<string | null> {
-
   const sb = getSupabase();
+  // Before the session is restored there is nothing to resolve: no RPC, no table read, and nothing remembered,
+  // so the first real answer after sign-in is still looked up.
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return null;
   try {
     // Primary: the RLS helper RPC. db.schema='itera' is applied to .rpc() too.
     const { data, error } = await sb.rpc('current_itera_user_id');
