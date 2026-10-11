@@ -2,11 +2,9 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { RouteErrorBoundary } from "@/components/tera/RouteErrorBoundary";
-import { TooltipProvider } from "@devfellowship/components";
+import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ObservabilityProvider } from "@devfellowship/observability";
-import LoginPage from "./pages/auth/LoginPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { CompanionBootstrap } from "@/components/lives/CompanionBootstrap";
 import { AppThemeSync } from "@/components/theme/AppThemeSync";
@@ -92,6 +90,10 @@ const BountyManagePage = lazy(() => import("./pages/BountyManagePage"));
 const BountyPostPage = lazy(() => import("./pages/BountyPostPage"));
 const BountyMinePage = lazy(() => import("./pages/BountyMinePage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+/* Telemetry (Sentry + OpenTelemetry, ~600 KB minified) is fetched only when it is on: the hackathon build sets
+   VITE_OTEL_DISABLED=true, so a visitor never downloads it. */
+const ObservabilityProvider = lazy(() => import("@devfellowship/observability").then((m) => ({ default: m.ObservabilityProvider })));
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
@@ -149,8 +151,17 @@ function LazyPanel({ children }: { children: ReactNode }) {
  */
 const otelEnabled = import.meta.env.VITE_OTEL_DISABLED === "true" ? false : undefined;
 
+function Telemetry({ children }: { children: ReactNode }) {
+  if (otelEnabled === false) return <>{children}</>;
+  return (
+    <Suspense fallback={null}>
+      <ObservabilityProvider enabled={otelEnabled}>{children}</ObservabilityProvider>
+    </Suspense>
+  );
+}
+
 const App = () => (
-  <ObservabilityProvider enabled={otelEnabled}>
+  <Telemetry>
     <I18nProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
@@ -186,7 +197,7 @@ const App = () => (
               <RouteScrollReset />
               <RouteErrorBoundary>
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/login" element={<LazyRoute><LoginPage /></LazyRoute>} />
                 {/* Self-serve registration — public (pre-auth), same level as
                     /login. The landing site points "Criar conta" here; the page
                     creates the account passwordlessly and lands on /subscribe,
@@ -615,7 +626,7 @@ const App = () => (
         </QueryClientProvider>
       </AuthProvider>
     </I18nProvider>
-  </ObservabilityProvider>
+  </Telemetry>
 );
 
 export default App;

@@ -1,4 +1,3 @@
-import { trackEvent } from '@devfellowship/observability';
 import { BridgeRefusal, isMethod } from '@iterahq/shell-bridge';
 
 /** The operational event the page emits when the mobile shell refuses a bridge call. */
@@ -32,6 +31,11 @@ export class BridgeSuperseded extends Error {
   }
 }
 
+/** The default sink loads the telemetry package only when a record is made: it is not part of the first download. */
+function trackEventLater(name: string, attributes: Record<string, string>): void {
+  void import('@devfellowship/observability').then((m) => m.trackEvent(name, attributes)).catch(() => undefined);
+}
+
 export interface BridgeReporterOptions {
   /** Where a record goes. Default: the app's observability event (`trackEvent`). */
   sink?: (name: string, attributes: Record<string, string>) => void;
@@ -53,7 +57,7 @@ export interface BridgeReporter {
  * never a token, a URL or the refusal's free text. Never throws: reporting must not break the page.
  */
 export function createBridgeReporter(options: BridgeReporterOptions): BridgeReporter {
-  const sink = options.sink ?? trackEvent;
+  const sink = options.sink ?? trackEventLater;
   const seen = new Set<string>();
   const refusal = (method: string, reason: string, detail?: string): void => {
     try {
