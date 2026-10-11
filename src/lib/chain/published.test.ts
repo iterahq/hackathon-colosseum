@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { PUBLISHED_RECORD } from '@/lib/chain/verifyChecks';
 import { ESCROW_LAYOUT, ESCROW_PROGRAM, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
 
 const read = (path: string) => readFileSync(path);
@@ -9,6 +10,10 @@ const idl = JSON.parse(read('public/verify/bounty-escrow.idl.json').toString('ut
 describe('what the site publishes about the escrow program', () => {
   it('serves the program source exactly as it is in the repository', () => {
     expect(read('public/verify/bounty-escrow.rs').equals(read('programs/bounty-escrow/src/lib.rs'))).toBe(true);
+  });
+
+  it('serves the three files whose hashes the authority wrote on Solana (a changed file needs a new record)', () => {
+    for (const file of PUBLISHED_RECORD.files) expect(createHash('sha256').update(read(`public${file.path}`)).digest('hex')).toBe(file.sha256);
   });
 
   it('serves the binary whose hash the IDL states', () => {
