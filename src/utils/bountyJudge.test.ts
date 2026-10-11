@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
-import { checkRows, daysFooter, daysRuleText, eventLabel, judgePaidHint, judgeSlotsText } from './bountyJudge';
+import { checkRows, daysFooter, daysRuleText, eventLabel, judgeBoardTitle, judgePaidHint, judgeSlotsText } from './bountyJudge';
 import type { BountyStats, JudgeInfo } from '@/types/bounty';
 
 const t = (locale: 'pt' | 'en') => (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -32,6 +32,15 @@ describe('judgePaidHint', () => {
       '4 payouts on chain: 1 team rehearsal · 1 judge bounty (automatic check) · 2 team test runs of the judge bounty',
     );
     expect(judgePaidHint(t('pt'), stats({ paidCount: 1, judgeTeamTestPaidCount: 1 }))).toBe('1 pagamento na chain: 1 teste do time na missão do jurado');
+  });
+});
+
+describe('judgeBoardTitle', () => {
+  it('counts every judge payout the way the tile does, and says how many the list shows', () => {
+    expect(judgeBoardTitle(t('en'), { outside: 1, teamTests: 5, listed: 5 })).toBe('6 judge bounty payouts by the automatic check · 1 to outside wallets · 5 team test runs · latest 5 below');
+    expect(judgeBoardTitle(t('en'), { outside: 1, teamTests: 0, listed: 1 })).toBe('1 judge bounty payout by the automatic check · 1 to an outside wallet · 0 team test runs');
+    expect(judgeBoardTitle(t('pt'), { outside: 0, teamTests: 2, listed: 2 })).toBe('2 pagamentos da missão do jurado pela verificação automática · 0 a carteiras de fora · 2 em testes do time');
+    expect(judgeBoardTitle(t('en'), { outside: 0, teamTests: 0, listed: 0 })).toBe("Judge bounties: none paid to an outside wallet yet · the team's latest test runs below");
   });
 });
 

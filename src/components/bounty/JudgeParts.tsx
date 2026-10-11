@@ -5,7 +5,7 @@ import type { useJudgeSubmit } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { formatWhen, lamportsToSol, plural } from '@/utils/bounty';
-import { checkRows, judgeSlotsText } from '@/utils/bountyJudge';
+import { checkRows, judgeBoardTitle, judgeSlotsText } from '@/utils/bountyJudge';
 import type { BountyDetail, CheckReport, JudgeInfo, JudgeSummary } from '@/types/bounty';
 
 type JudgeSubmit = ReturnType<typeof useJudgeSubmit>;
@@ -152,10 +152,10 @@ export function JudgePaidBlock({ bounty }: { bounty: BountyDetail }) {
   );
 }
 
-export function JudgeBoardBlock({ judge, paidCount }: { judge: JudgeSummary; paidCount: number }) {
+export function JudgeBoardBlock({ judge, paidCount, teamTestCount = 0 }: { judge: JudgeSummary; paidCount: number; teamTestCount?: number }) {
   const { t, locale } = useI18n();
   if (paidCount <= 0 && judge.latest.length === 0) return null;
-  const title = paidCount > 0 ? plural(t, 'bounty.judge.board.title', paidCount) : t('bounty.judge.board.title.testsOnly');
+  const title = judgeBoardTitle(t, { outside: paidCount, teamTests: teamTestCount, listed: judge.latest.length });
   return (
     <section className="flex flex-col gap-2" aria-label={title} data-testid="bounty-judge-board">
       <p className={`${MONO_LABEL} text-[#F2C66D]`}>{title}</p>
