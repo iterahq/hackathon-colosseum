@@ -1,3 +1,5 @@
+import { clean } from './bounty.ts';
+
 export const HEADLINE_MAX = 120;
 export const BOARD_LIMIT = 60;
 
@@ -11,7 +13,7 @@ const HANDLE = /(^|[\s(])@[\p{L}\p{N}_.]{2,}/u;
 export function parseHeadline(input: unknown): HeadlineVerdict {
   if (input === undefined || input === null) return { ok: true, value: null };
   if (typeof input !== 'string') return { ok: false, error: 'invalid_headline' };
-  const text = input.replace(/\s+/g, ' ').trim();
+  const text = (clean(input) as string).replace(/\s+/g, ' ').trim();
   if (!text) return { ok: true, value: null };
   if ([...text].length > HEADLINE_MAX) return { ok: false, error: 'invalid_headline' };
   if ([...text].some((char) => { const code = char.charCodeAt(0); return code < 0x20 || (code >= 0x7f && code <= 0x9f); })) return { ok: false, error: 'invalid_headline' };
