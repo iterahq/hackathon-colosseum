@@ -1,12 +1,13 @@
 [
   {
     "slug": "acessibilidade-formulario-inscricao",
+    "slug_en": "accessible-signup-form",
     "sponsor_name": "DevFellowship",
     "unit": "Week 1 · HTML",
     "min_days": 1,
     "reward_lamports": 30000000,
     "expires_in_days": 21,
-    "claim_hours": 48,
+    "claim_hours": 2,
     "title": {
       "pt": "Deixe o formulário de inscrição da DevFellowship acessível",
       "en": "Make the DevFellowship signup form accessible"
@@ -26,12 +27,13 @@
   },
   {
     "slug": "tabela-de-horarios-acessivel",
+    "slug_en": "accessible-class-timetable",
     "sponsor_name": "DevFellowship",
     "unit": "Week 1 · HTML",
     "min_days": 1,
     "reward_lamports": 30000000,
     "expires_in_days": 21,
-    "claim_hours": 48,
+    "claim_hours": 2,
     "title": {
       "pt": "Tabela de horários das turmas que um leitor de tela consegue ler",
       "en": "A class timetable a screen reader can read"
@@ -50,7 +52,60 @@
     }
   },
   {
+    "slug": "lista-de-materiais-da-turma",
+    "slug_en": "class-supplies-list",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 1 · HTML",
+    "min_days": 1,
+    "reward_lamports": 30000000,
+    "expires_in_days": 21,
+    "claim_hours": 2,
+    "title": {
+      "pt": "Lista de materiais da turma em HTML de verdade",
+      "en": "The class supplies list in real HTML"
+    },
+    "summary": {
+      "pt": "A lista do que levar no primeiro dia da turma circula como foto de um papel. Reescreva como uma página HTML com títulos e listas.",
+      "en": "The list of what to bring on the first day of class circulates as a photo of a sheet of paper. Rewrite it as an HTML page with headings and lists."
+    },
+    "brief": {
+      "pt": "Contexto: quem entra numa turma da DevFellowship recebe a lista de materiais como foto. Não dá para copiar, buscar nem ouvir num leitor de tela.\n\nO que fazer: escreva, só com HTML, uma página com a lista de materiais do primeiro dia, separada em pelo menos duas partes (por exemplo: o que levar e o que instalar antes).\n\nCritérios de aceite:\n1. Um único <h1> com o nome da página e um <h2> para cada parte.\n2. Os itens estão em <ul> ou <ol>, com um <li> por item, e pelo menos uma lista é ordenada porque a ordem importa.\n3. Pelo menos um item tem um link (<a href>) para onde baixar ou saber mais, com um texto que diz para onde o link leva.\n4. Nenhum <br> usado para separar itens e nenhum texto solto fora de um elemento.\n5. O HTML passa no validador da W3C sem erros.\n\nNão precisa de CSS nem de JavaScript.",
+      "en": "Context: people joining a DevFellowship class get the supplies list as a photo. It cannot be copied, searched or heard in a screen reader.\n\nWhat to do: write, in HTML only, a page with the first-day supplies list, split into at least two parts (for example: what to bring and what to install beforehand).\n\nAcceptance criteria:\n1. A single <h1> with the page name and an <h2> for each part.\n2. Items are in a <ul> or <ol>, one <li> per item, and at least one list is ordered because its order matters.\n3. At least one item has a link (<a href>) to where to download or learn more, with text that says where the link goes.\n4. No <br> used to separate items and no loose text outside an element.\n5. The HTML passes the W3C validator with no errors.\n\nNo CSS or JavaScript needed."
+    },
+    "deliverable": {
+      "pt": "Um link público (CodePen, GitHub Pages ou repositório no GitHub) com o HTML da página.",
+      "en": "A public link (CodePen, GitHub Pages or a GitHub repository) with the page's HTML."
+    }
+  },
+  {
+    "slug": "pagina-de-contato-da-turma",
+    "slug_en": "class-contact-page",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 1 · HTML",
+    "min_days": 1,
+    "reward_lamports": 30000000,
+    "expires_in_days": 21,
+    "claim_hours": 2,
+    "title": {
+      "pt": "Página de contato da turma que funciona no celular",
+      "en": "A class contact page that works on a phone"
+    },
+    "summary": {
+      "pt": "O contato da turma hoje é um texto corrido num grupo de mensagens. Escreva uma página HTML em que tocar no telefone liga e tocar no e-mail abre o e-mail.",
+      "en": "The class contact details are a block of text in a group chat today. Write an HTML page where tapping the phone number calls and tapping the e-mail opens the mail app."
+    },
+    "brief": {
+      "pt": "Contexto: quem precisa falar com a facilitação de uma turma da DevFellowship procura o contato num texto perdido no grupo. No celular, não dá para tocar e ligar.\n\nO que fazer: escreva, só com HTML, uma página de contato de uma turma (pode inventar os dados) com nome da turma, quem facilita, telefone, e-mail, endereço e horário de atendimento.\n\nCritérios de aceite:\n1. Um único <h1> e os dados de contato dentro de um <address>.\n2. O telefone é um link tel: e o e-mail é um link mailto:, e o texto visível de cada link é o próprio número ou endereço.\n3. O horário de atendimento usa <time>.\n4. A página declara o idioma em <html lang> e tem um <title> que diz de quem é o contato.\n5. O HTML passa no validador da W3C sem erros.\n\nNão precisa de CSS nem de JavaScript.",
+      "en": "Context: anyone who needs to reach the facilitators of a DevFellowship class looks for the contact details in a message lost in the group. On a phone, there is nothing to tap to call.\n\nWhat to do: write, in HTML only, a contact page for one class (you may make up the details) with the class name, who facilitates, phone, e-mail, address and office hours.\n\nAcceptance criteria:\n1. A single <h1>, and the contact details inside an <address>.\n2. The phone is a tel: link and the e-mail is a mailto: link, and the visible text of each link is the number or address itself.\n3. Office hours use <time>.\n4. The page declares its language in <html lang> and has a <title> that says whose contact it is.\n5. The HTML passes the W3C validator with no errors.\n\nNo CSS or JavaScript needed."
+    },
+    "deliverable": {
+      "pt": "Um link público (CodePen, GitHub Pages ou repositório no GitHub) com o HTML da página.",
+      "en": "A public link (CodePen, GitHub Pages or a GitHub repository) with the page's HTML."
+    }
+  },
+  {
     "slug": "pagina-semantica-grupo-de-estudos",
+    "slug_en": "semantic-study-group-page",
     "sponsor_name": "DevFellowship",
     "unit": "Week 1 · HTML",
     "min_days": 3,
@@ -76,6 +131,7 @@
   },
   {
     "slug": "card-de-evento-responsivo",
+    "slug_en": "responsive-event-card",
     "sponsor_name": "DevFellowship",
     "unit": "Week 2 · CSS",
     "min_days": 3,
@@ -101,6 +157,7 @@
   },
   {
     "slug": "faq-acessivel-em-javascript",
+    "slug_en": "accessible-faq-in-javascript",
     "sponsor_name": "DevFellowship",
     "unit": "Week 3 · JavaScript",
     "min_days": 3,
