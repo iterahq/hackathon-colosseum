@@ -39,7 +39,7 @@ export function ArcadeNav({ shelves, active, onChange }: Props) {
               aria-controls={panelId(id)}
               onClick={() => onChange(id)}
               data-testid={`shop-section-${id}`}
-              className={`relative flex min-h-11 flex-none items-center gap-2 overflow-hidden rounded-[12px] border px-3 text-left lg:min-h-[52px] lg:w-full ${selected ? 'border-[#3FD17F] bg-[#3FD17F]/10 text-[#F4EDE2]' : 'border-[#262320] bg-[#141210] text-[#C9BFB0] hover:border-[#5E574E] hover:text-[#F4EDE2]'} ${FOCUS}`}
+              className={`relative flex min-h-11 flex-none items-center gap-2 overflow-hidden rounded-[12px] border px-3 text-left lg:min-h-[46px] lg:w-full ${selected ? 'border-[#3FD17F] bg-[#3FD17F]/10 text-[#F4EDE2]' : 'border-[#262320] bg-[#141210] text-[#C9BFB0] hover:border-[#5E574E] hover:text-[#F4EDE2]'} ${FOCUS}`}
             >
               <Icon size={18} className={`flex-none ${selected ? 'text-[#3FD17F]' : 'text-[#A0978A]'}`} aria-hidden />
               <span className="flex min-w-0 flex-1 flex-col">

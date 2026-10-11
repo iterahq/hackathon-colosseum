@@ -47,12 +47,14 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
   const inspected = shelf ?? shelves[0] ?? null;
   const selected = inspected ? (inspected.items.find((i) => i.key === picked[inspected.id]) ?? defaultPick(inspected)) : null;
   const visible = shown === 'avatars' && filter !== 'all' ? groups.filter((g) => g.id === filter) : groups;
+  // On a phone several groups are one swipeable strip each, so the page stays about one screen tall.
+  const strips = visible.length > 1;
   const select = (item: ShopItem) => inspected && setPicked((prev) => ({ ...prev, [inspected.id]: item.key }));
   const buyDisabled = selected ? ((selected.kind === 'ink' || selected.kind === 'frame') && !targetId) || (selected.kind === 'life' && !selected.lifePack && Boolean(lives && lives.current >= lives.max)) : false;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 pb-[76px] lg:grid lg:grid-cols-[216px_minmax(0,1fr)_336px] lg:gap-4 lg:pb-0" data-testid="shop-arcade">
-      <div className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 pb-[96px] lg:grid lg:grid-cols-[216px_minmax(0,1fr)_336px] lg:gap-4 lg:pb-0" data-testid="shop-arcade">
+      <div className="contents lg:flex lg:min-h-0 lg:flex-col lg:gap-2.5 lg:overflow-y-auto lg:pr-1">
         <section className={`${CARD} hidden flex-col gap-2 p-3 lg:flex`} data-testid="shop-player">
           <div className="flex items-center gap-2.5">
             <AvatarPicture avatar={avatar} size="md" />
@@ -81,8 +83,8 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
           <span className={`${MONO_LABEL} !text-[9px] text-[#8A8175]`} data-testid="shop-devnet-note">{t('shop.devnetNote')}</span>
         </section>
         {!wallet && walletKnown && (
-          <div className={`${CARD} flex items-center justify-between gap-3 p-3 lg:flex-col lg:items-stretch`} data-testid="shop-no-wallet">
-            <span className="[font:500_13px/1.35_Inter] text-[#C9BFB0]">{t('shop.connectHint')}</span>
+          <div className={`${CARD} flex items-center justify-between gap-3 p-3 lg:flex-col lg:items-stretch lg:gap-2`} data-testid="shop-no-wallet">
+            <span className="[font:500_13px/1.35_Inter] text-[#C9BFB0] lg:text-[12px]">{t('shop.connectHint')}</span>
             <LinkWalletButton className={`${BTN_PRIMARY} ${BTN_SMALL} flex-none`} testId="shop-connect" />
           </div>
         )}
@@ -115,11 +117,12 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
                   <div className="flex flex-wrap items-baseline gap-x-3 border-l-2 pl-2" style={{ borderLeftColor: group.edge }}>
                     <h2 className="[font:700_20px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{group.title}</h2>
                     <span className="[font:600_11px/1.4_JetBrains_Mono] text-[#A0978A]">{group.note}</span>
+                    {strips && <span className="ml-auto [font:700_11px_JetBrains_Mono] text-[#A0978A] lg:hidden">{group.items.length}</span>}
                   </div>
                 )}
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-[repeat(auto-fill,minmax(96px,1fr))]">
+                <div className={`${strips ? '-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:overflow-visible lg:p-0' : 'grid grid-cols-4 sm:grid-cols-6'} gap-2 lg:grid-cols-[repeat(auto-fill,minmax(84px,1fr))]`} data-strip={strips || undefined}>
                   {group.items.map((item) => (
-                    <ArcadeTile key={item.key} item={item} selected={selected?.key === item.key} avatar={avatar} lives={lives} onSelect={select} />
+                    <ArcadeTile key={item.key} item={item} selected={selected?.key === item.key} avatar={avatar} lives={lives} onSelect={select} className={strips ? 'w-[84px] flex-none snap-start lg:w-auto' : ''} />
                   ))}
                 </div>
               </div>

@@ -29,7 +29,7 @@ interface Props {
 }
 
 function Action({ item, action, testId, labels, className = '' }: { item: ShopItem; action: ItemAction; testId: string; labels: 'full' | 'short'; className?: string }) {
-  if (action.id === 'buy') return <PayButtons item={item} action={action} testId={testId} labels={labels} walletLabel={labels === 'full' ? action.label : shortPrice(item.priceLabel)} stack={labels === 'full'} className={className} keyClass={labels === 'full' ? '!min-h-12 !px-3 ![font:700_14px_Inter]' : '!min-h-11 !px-3 ![font:700_13px_Inter]'} />;
+  if (action.id === 'buy') return <PayButtons item={item} action={action} testId={testId} labels={labels} walletLabel={labels === 'full' ? action.label : shortPrice(item.priceLabel)} stack className={className} keyClass={labels === 'full' ? '!min-h-12 !px-3 ![font:700_14px_Inter]' : '!min-h-9 !px-2 ![font:700_12px_Inter]'} />;
   return (
     <button type="button" disabled={action.disabled} onClick={action.run} data-testid={testId} data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${labels === 'full' ? 'w-full' : '!min-h-11 !px-4 ![font:700_13px_Inter]'} ${className}`}>
       {action.label}
@@ -57,13 +57,13 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
   return (
     <>
       <aside className={`${CARD} hidden min-h-0 flex-col overflow-hidden border-b-[5px] border-b-[#2E2A25] lg:flex`} aria-label={title} data-testid="shop-inspector" data-item={item.key}>
-        <div className="relative flex h-[248px] flex-none items-center justify-center overflow-hidden border-b border-[#262320] bg-[#0F0D0B]">
+        <div className="relative flex h-[296px] flex-none flex-col items-center justify-center gap-2 overflow-hidden border-b border-[#262320] bg-[#0F0D0B] py-3">
           <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(55% 60% at 50% 50%, ${edge}3D, transparent 72%)` }} />
-          <motion.div key={`${item.key}-${on}`} initial={reduced ? false : { opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.16 }} className="relative flex items-center justify-center" data-testid="inspector-stage">
+          <motion.div key={`${item.key}-${on}`} initial={reduced ? false : { opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.16 }} className="relative flex min-h-0 flex-1 items-center justify-center [&_[data-testid=tryon-avatar-art]]:!h-[212px] [&_[data-testid=tryon-avatar-art]]:!w-[212px]" data-testid="inspector-stage">
             {tryable ? <TryOnStage item={item} on={on} avatar={avatar} target={target} /> : <ArcadeArt item={item} avatar={avatar} lives={lives} large />}
           </motion.div>
           {tryable && (
-            <div role="group" aria-label={t('tryon.toggle')} className="absolute bottom-2 left-1/2 flex w-[180px] -translate-x-1/2 gap-1 rounded-[10px] border border-[#2E2A25] bg-[#141210]/95 p-1">
+            <div role="group" aria-label={t('tryon.toggle')} className="relative flex w-[180px] flex-none gap-1 rounded-[10px] border border-[#2E2A25] bg-[#141210] p-1">
               {[false, true].map((side) => (
                 <button key={String(side)} type="button" aria-pressed={on === side} onClick={() => setOn(side)} className={`${TOGGLE} ${on === side ? 'bg-[#262320] text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'}`}>
                   {t(side ? 'tryon.with' : 'tryon.without')}
@@ -141,7 +141,7 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
               </span>
             </span>
           </button>
-          <Action item={item} action={itemAction(item, actions, t, { buyDisabled })} testId="dock-action" labels="short" className="!w-auto max-w-[56%] flex-none !flex-nowrap" />
+          <Action item={item} action={itemAction(item, actions, t, { buyDisabled })} testId="dock-action" labels="short" className="!w-[148px] flex-none !flex-col" />
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import { Gem, Heart, Infinity as InfinityIcon } from 'lucide-react';
+import { Gem, Heart, Infinity as InfinityIcon, Lock } from 'lucide-react';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { loreOf } from '@/content/teraLore';
 import { useI18n } from '@/i18n';
@@ -46,15 +46,18 @@ interface Props {
   avatar: Avatar;
   lives: LivesState | null;
   onSelect: (item: ShopItem) => void;
+  className?: string;
 }
 
 /** One slot of the grid: art on a rarity glow, the name, and one short line. Selecting it puts it on the inspector. */
-export function ArcadeTile({ item, selected, avatar, lives, onSelect }: Props) {
+export function ArcadeTile({ item, selected, avatar, lives, onSelect, className = '' }: Props) {
   const { t, locale } = useI18n();
-  const line = tileLine(item, t);
+  const from = item.forSale === false && !item.owned && item.includedWith ? loreOf(item.includedWith, locale)?.name : null;
+  const line = from ? { text: from, tone: 'muted' as const, crystal: false } : tileLine(item, t);
   const name = (item.avatar ? loreOf(item.key, locale)?.name : null) ?? item.title;
   const edge = item.avatar && !item.avatar.free ? RARITY_EDGE[item.avatar.rarity] : '#2E2A25';
-  const dim = (item.kind === 'avatar' && (avatarState(item) === 'soldout' || isOffSeason(item))) || (item.forSale === false && !item.owned);
+  const dim = item.kind === 'avatar' && (avatarState(item) === 'soldout' || isOffSeason(item));
+  const locked = item.forSale === false && !item.owned;
   const state = item.equipped && item.owned ? 'equipped' : item.owned ? 'owned' : 'buy';
 
   return (
@@ -68,16 +71,17 @@ export function ArcadeTile({ item, selected, avatar, lives, onSelect }: Props) {
       data-kind={item.kind}
       data-state={state}
       data-selected={selected || undefined}
-      className={`group relative flex min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border bg-[#141210] px-1 pb-1.5 pt-2 transition-[transform,border-color] duration-100 motion-reduce:transition-none ${selected ? 'z-[1] -translate-y-0.5 border-[#3FD17F] shadow-[0_0_0_1px_#3FD17F,0_8px_20px_-8px_#3FD17F80]' : 'border-[#262320] hover:-translate-y-0.5 hover:border-[#5E574E]'} ${FOCUS}`}
+      className={`group relative flex min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[12px] border bg-[#141210] px-1 pb-1.5 pt-2 transition-[transform,border-color] duration-100 motion-reduce:transition-none ${className} ${selected ? 'z-[1] -translate-y-0.5 border-[#3FD17F] shadow-[0_0_0_1px_#3FD17F,0_8px_20px_-8px_#3FD17F80]' : 'border-[#262320] hover:-translate-y-0.5 hover:border-[#5E574E]'} ${FOCUS}`}
       style={{ borderBottomWidth: 3, borderBottomColor: selected ? '#3FD17F' : edge }}
     >
       <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[72px]" style={{ background: `radial-gradient(60% 70% at 50% 45%, ${edge}33, transparent 70%)` }} />
-      <span className={`relative flex h-[64px] w-full items-center justify-center ${dim ? 'opacity-45 grayscale' : ''}`}>
+      <span className={`relative flex h-[64px] w-full items-center justify-center ${dim ? 'opacity-45 grayscale' : locked ? 'opacity-60' : ''}`}>
         <ArcadeArt item={item} avatar={avatar} lives={lives} />
       </span>
       <span className="line-clamp-1 w-full text-center [font:700_15px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>
       <span className={`flex max-w-full items-center gap-1 truncate [font:700_10px/1.5_JetBrains_Mono] uppercase tracking-[.04em] ${TONE[line.tone]}`} data-testid="tile-line" data-tone={line.tone}>
         {line.crystal && <Gem size={10} className="flex-none text-[#3FD17F]" aria-hidden />}
+        {from && <Lock size={9} className="flex-none" aria-hidden />}
         <span className="truncate">{line.text}</span>
       </span>
     </button>
