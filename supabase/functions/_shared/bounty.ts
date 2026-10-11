@@ -465,6 +465,10 @@ export function bountyView(input: {
   rehearsal?: boolean;
   /** The wallet that posted it belongs to one of the team's own test accounts: never shown as an outside sponsor. */
   teamTestSponsor?: boolean;
+  /** A judge bounty shown as one card for several escrow accounts: how many are free, of how many live. */
+  judgeSlots?: { open: number; total: number };
+  /** A judge bounty held by someone: the slug of a free one of the same template. */
+  judgeFreeSlug?: string | null;
 }) {
   const { bounty, claim, lang } = input;
   const byWallet = bounty.origin === 'wallet' && bounty.sponsor_wallet !== null;
@@ -489,7 +493,15 @@ export function bountyView(input: {
     rehearsal: input.rehearsal === true,
     /** Judged by a mechanical check and funded by the team: a delivery that passes is paid at once, with nobody reviewing it. */
     judge: bounty.auto_check
-      ? { funded_by: 'team', approval: 'automatic_check', checks: bounty.auto_check.checks.map((check) => ({ id: check.id, label: pickText(check.label, lang) })), code_max: DELIVERY_CODE_MAX }
+      ? {
+          funded_by: 'team',
+          approval: 'automatic_check',
+          checks: bounty.auto_check.checks.map((check) => ({ id: check.id, label: pickText(check.label, lang) })),
+          code_max: DELIVERY_CODE_MAX,
+          // The same bounty exists as several escrow accounts, one per taker: how many are free now, and one of them when this one is held.
+          ...(input.judgeSlots ? { open_count: input.judgeSlots.open, slot_count: input.judgeSlots.total } : {}),
+          ...(input.judgeFreeSlug ? { free_slug: input.judgeFreeSlug } : {}),
+        }
       : null,
     hidden: bounty.hidden_at !== null,
     written_in: bounty.source_lang,
@@ -579,8 +591,9 @@ export function boardStats(
   rehearsals: ReadonlySet<string> = new Set(),
   teamTestSponsored: ReadonlySet<string> = new Set(),
   /** Judge bounties paid by the automatic check to wallets that are not the team's, counted apart from the rows above. */
-  judged: { count: number; lamports: bigint } = { count: 0, lamports: 0n },
+  judged: { count: number; lamports: bigint; team_test_count?: number; team_test_lamports?: bigint } = { count: 0, lamports: 0n },
 ) {
+  const judgeTests = { count: judged.team_test_count ?? 0, lamports: judged.team_test_lamports ?? 0n };
   let paid = 0n;
   let rehearsed = 0n;
   let locked = 0n;
@@ -607,9 +620,10 @@ export function boardStats(
     }
   }
   return {
-    paid_lamports: Number(paid + judged.lamports),
-    paid_sol: solAmount(paid + judged.lamports),
-    paid_count: paidCount + judged.count,
+    // Every payout the escrow program made, whoever received it: the parts below add up to these.
+    paid_lamports: Number(paid + judged.lamports + judgeTests.lamports),
+    paid_sol: solAmount(paid + judged.lamports + judgeTests.lamports),
+    paid_count: paidCount + judged.count + judgeTests.count,
     rehearsal_paid_count: rehearsalCount,
     rehearsal_paid_sol: solAmount(rehearsed),
     /** Approved by a person (the sponsor) and paid to a wallet that is not the team's. */
@@ -618,12 +632,39 @@ export function boardStats(
     /** Paid by the automatic check of a judge bounty to a wallet that is not the team's. */
     judge_paid_count: judged.count,
     judge_paid_sol: solAmount(judged.lamports),
+    /** Judge bounties the team's own test wallets were paid for: runs of the same check, on chain like the others. */
+    judge_team_test_paid_count: judgeTests.count,
+    judge_team_test_paid_sol: solAmount(judgeTests.lamports),
     locked_lamports: Number(locked),
     locked_sol: solAmount(locked),
     open_count: openCount,
     held_count: heldCount,
     outside_sponsor_count: outsideCount,
   };
+}
+
+const LIVE_STATUSES: readonly string[] = ['open', 'claimed', 'submitted', 'paying'];
+
+/**
+ * Judge bounties of one template are the same task in several escrow accounts, one per taker. The board
+ * lists one of them: a free one when there is one (the oldest), else the first held one. `slots` says, for
+ * the listed one, how many are free of how many live. Other bounties pass through, order kept.
+ */
+export function collapseJudgeBounties(bounties: readonly BountyRow[], now: Date): { listed: BountyRow[]; slots: Map<string, { open: number; total: number }> } {
+  const groups = new Map<string, BountyRow[]>();
+  for (const bounty of bounties) {
+    if (bounty.template_key && LIVE_STATUSES.includes(publicStatus(bounty, now))) groups.set(bounty.template_key, [...(groups.get(bounty.template_key) ?? []), bounty]);
+  }
+  const chosen = new Map<string, string>();
+  const slots = new Map<string, { open: number; total: number }>();
+  for (const [key, group] of groups) {
+    const free = group.filter((bounty) => publicStatus(bounty, now) === 'open').sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const shown = free[0] ?? group[0];
+    chosen.set(key, shown.id);
+    slots.set(shown.id, { open: free.length, total: group.length });
+  }
+  const listed = bounties.filter((bounty) => !bounty.template_key || !groups.has(bounty.template_key) || chosen.get(bounty.template_key) === bounty.id || !LIVE_STATUSES.includes(publicStatus(bounty, now)));
+  return { listed, slots };
 }
 
 /** What a wallet earned: the paid bounties whose payout went to it. `verified` is the chain's word on each payout. */

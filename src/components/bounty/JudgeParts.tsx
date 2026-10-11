@@ -5,7 +5,7 @@ import type { useJudgeSubmit } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { formatWhen, lamportsToSol, plural } from '@/utils/bounty';
-import { checkRows } from '@/utils/bountyJudge';
+import { checkRows, judgeSlotsText } from '@/utils/bountyJudge';
 import type { BountyDetail, CheckReport, JudgeInfo, JudgeSummary } from '@/types/bounty';
 
 type JudgeSubmit = ReturnType<typeof useJudgeSubmit>;
@@ -19,9 +19,15 @@ export function JudgeChip() {
   );
 }
 
-export function JudgeCaption({ className = '' }: { className?: string }) {
+export function JudgeCaption({ className = '', judge = null }: { className?: string; judge?: JudgeInfo | null }) {
   const { t } = useI18n();
-  return <p className={`[font:500_12px/1.4_JetBrains_Mono] text-[#A0978A] ${className}`} data-testid="bounty-judge-caption">{t('bounty.judge.caption')}</p>;
+  const slots = judge ? judgeSlotsText(t, judge) : null;
+  return (
+    <p className={`[font:500_12px/1.4_JetBrains_Mono] text-[#A0978A] ${className}`} data-testid="bounty-judge-caption">
+      {t('bounty.judge.caption')}
+      {slots && <span className="block text-[#F2C66D]" data-testid="bounty-judge-slots">{slots}</span>}
+    </p>
+  );
 }
 
 function Mark({ state }: { state: 'pass' | 'fail' | 'unknown' }) {

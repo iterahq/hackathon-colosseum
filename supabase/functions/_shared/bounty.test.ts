@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TRANSFER_LEASE_MS,
   boardStats,
+  collapseJudgeBounties,
   bountyActionCompleted,
   bountyActionGet,
   bountyActionPost,
@@ -367,6 +368,35 @@ describe('boardStats and the team test accounts', () => {
       outside_paid_count: 1,
       open_count: 1,
     });
+  });
+});
+
+describe('boardStats and the judge bounties', () => {
+  it('the total counts every payout, the team test runs of the judge bounty included, each in its own part', () => {
+    const paid = { id: 'r', status: 'paid', origin: 'team', payout_lamports: 30_000_000, reward_lamports: 30_000_000, funded_lamports: 30_000_000, expires_at: '2099-01-01T00:00:00Z' } as unknown as Parameters<typeof boardStats>[0][number];
+    const stats = boardStats([paid], new Date('2026-10-11T00:00:00Z'), new Set(['r']), new Set(), { count: 1, lamports: 10_000_000n, team_test_count: 2, team_test_lamports: 20_000_000n });
+    expect(stats).toMatchObject({ paid_count: 4, paid_lamports: 60_000_000, paid_sol: '0.06 SOL', rehearsal_paid_count: 1, outside_paid_count: 0, judge_paid_count: 1, judge_team_test_paid_count: 2, judge_team_test_paid_sol: '0.02 SOL' });
+    expect(stats.rehearsal_paid_count + stats.outside_paid_count + stats.judge_paid_count + stats.judge_team_test_paid_count).toBe(stats.paid_count);
+  });
+});
+
+describe('collapseJudgeBounties', () => {
+  const now = new Date('2026-10-11T00:00:00Z');
+  const row = (id: string, status: string, template: string | null, created: string) =>
+    ({ id, status, template_key: template, created_at: created, expires_at: '2099-01-01T00:00:00Z' }) as unknown as Parameters<typeof collapseJudgeBounties>[0][number];
+
+  it('lists one card per judge template: the oldest free one, with how many are free', () => {
+    const rows = [row('held', 'claimed', 'judge', '2026-10-11T10:00:00Z'), row('free-new', 'open', 'judge', '2026-10-11T12:00:00Z'), row('other', 'open', null, '2026-10-10T00:00:00Z'), row('free-old', 'open', 'judge', '2026-10-11T11:00:00Z')];
+    const { listed, slots } = collapseJudgeBounties(rows, now);
+    expect(listed.map((bounty) => bounty.id)).toEqual(['other', 'free-old']);
+    expect(slots.get('free-old')).toEqual({ open: 2, total: 3 });
+  });
+
+  it('shows a held one when none is free, and leaves other bounties alone', () => {
+    const rows = [row('a', 'claimed', 'judge', '2026-10-11T10:00:00Z'), row('b', 'submitted', 'judge', '2026-10-11T11:00:00Z'), row('x', 'paid', null, '2026-10-10T00:00:00Z')];
+    const { listed, slots } = collapseJudgeBounties(rows, now);
+    expect(listed.map((bounty) => bounty.id)).toEqual(['a', 'x']);
+    expect(slots.get('a')).toEqual({ open: 0, total: 2 });
   });
 });
 

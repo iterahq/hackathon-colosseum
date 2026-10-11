@@ -17,14 +17,26 @@ export function checkRows(judge: JudgeInfo, report: CheckReport | null): CheckRo
   });
 }
 
-/** The payout line of the stats: person-approved, team rehearsal and judge payouts kept apart. `null` when no judge bounty was paid. */
+/**
+ * The payout line of the stats: person-approved, team rehearsal, judge payouts and the team's own test runs of the
+ * judge bounty kept apart. The parts add up to the total above them. `null` when no judge bounty was paid at all.
+ */
 export function judgePaidHint(t: Translate, stats: BountyStats): string | null {
-  if (!(stats.judgePaidCount > 0)) return null;
+  const teamTests = stats.judgeTeamTestPaidCount ?? 0;
+  if (!(stats.judgePaidCount > 0) && !(teamTests > 0)) return null;
   const parts: string[] = [];
   if (stats.outsidePaidCount > 0) parts.push(plural(t, 'bounty.stats.part.outside', stats.outsidePaidCount));
   if (stats.rehearsalPaidCount > 0) parts.push(plural(t, 'bounty.stats.part.rehearsal', stats.rehearsalPaidCount));
-  parts.push(plural(t, 'bounty.stats.part.judge', stats.judgePaidCount));
-  return parts.join(' · ');
+  if (stats.judgePaidCount > 0) parts.push(plural(t, 'bounty.stats.part.judge', stats.judgePaidCount));
+  if (teamTests > 0) parts.push(plural(t, 'bounty.stats.part.judgeTeamTest', teamTests));
+  return `${plural(t, 'bounty.stats.part.total', stats.paidCount)}: ${parts.join(' · ')}`;
+}
+
+/** "2 of 3 free · one taker each" for a judge bounty the board shows as one card; `null` when there is a single account. */
+export function judgeSlotsText(t: Translate, judge: Pick<JudgeInfo, 'openCount' | 'slotCount'>): string | null {
+  const total = judge.slotCount ?? 0;
+  if (total < 2) return null;
+  return t('bounty.judge.slots', { open: judge.openCount ?? 0, total });
 }
 
 export interface EventLabel {

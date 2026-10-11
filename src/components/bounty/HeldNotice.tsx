@@ -27,6 +27,14 @@ export function HeldNotice({ bounty }: { bounty: BountyDetail }) {
             ? t('bounty.held.claimed', { wallet: claim.walletShort, date: formatWhen(claim.deadlineAt, locale), time: formatRemaining(left) })
             : t('bounty.held.claimedLate', { wallet: claim.walletShort })}
       </p>
+      {bounty.judge?.freeSlug && (
+        <p className="mt-2" data-testid="bounty-held-free-copy">
+          {t('bounty.judge.freeElsewhere')}{' '}
+          <Link to={`/bounties/${bounty.judge.freeSlug}`} className={LINK}>
+            {t('bounty.judge.freeElsewhere.cta')} →
+          </Link>
+        </p>
+      )}
       <Link to="/bounties" className={`${LINK} mt-1`} data-testid="bounty-held-others">
         {t('bounty.held.others')} →
       </Link>

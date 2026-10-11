@@ -1,7 +1,7 @@
 import { loadTestAccountIds } from '../_shared/test-accounts.ts';
 import { isSolanaAddress } from '../_shared/address.ts';
 import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, recordWalletPayout, settleTransfer, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
-import { boardStats, bountyView, earningsView, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { boardStats, bountyView, collapseJudgeBounties, earningsView, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
 import { countOpenEscrows } from '../_shared/bounty-chain.ts';
 import { judgeHistory, refillTemplates, settleJudged } from '../_shared/bounty-judge.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
@@ -52,6 +52,8 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
     config.bounty_escrow_program ? countOpenEscrows(config.bounty_escrow_program).catch(() => null) : null,
   ]);
   const live = bounties.filter((bounty) => ['open', 'claimed', 'submitted', 'paying'].includes(publicStatus(bounty, now)));
+  // The judge bounty is one card, whatever the number of escrow accounts behind it; the counts above still count every account.
+  const { listed, slots } = collapseJudgeBounties(bounties, now);
   const listedOpen = bounties.filter((bounty) => bounty.escrow_kind === 'program' && bounty.status === 'open').length;
   return json(
     {
@@ -67,8 +69,8 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
         days_by_attester_count: live.filter((bounty) => !(bounty.escrow_kind === 'program' && bounty.escrow_gated)).length,
       },
       judge: { paid_count: judged.count, team_test_paid_count: judged.team_test_count, latest: judged.latest },
-      bounties: bounties.map((bounty) =>
-        bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id), teamTestSponsor: teamTests.has(bounty.id) }),
+      bounties: listed.map((bounty) =>
+        bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id), teamTestSponsor: teamTests.has(bounty.id), judgeSlots: slots.get(bounty.id) }),
       ),
     },
     200,
@@ -102,12 +104,37 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
     await recordWalletPayout(db, bounty.id).catch((error) => console.error('bounty-board: payout not recorded', error instanceof Error ? error.message : error));
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }
-  const [events, config, tests] = await Promise.all([loadEvents(db, bounty.id), loadConfig(db), bounty.status === 'paid' || bounty.origin === 'wallet' ? loadTestAccountIds(db) : new Set<string>()]);
+  const [events, config, tests, freeSlug] = await Promise.all([
+    loadEvents(db, bounty.id),
+    loadConfig(db),
+    bounty.status === 'paid' || bounty.origin === 'wallet' ? loadTestAccountIds(db) : new Set<string>(),
+    // A judge bounty someone holds: the page points at a free one of the same task.
+    bounty.template_key && bounty.status !== 'open' ? freeJudgeSlug(db, bounty, langOf(request, 'pt')) : null,
+  ]);
   return json(
-    bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, events, lang: langOf(request, 'pt'), now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsalIds([bounty], claims, tests).has(bounty.id), teamTestSponsor: teamTestSponsored([bounty], tests).has(bounty.id) }),
+    bountyView({ judgeFreeSlug: freeSlug, bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, events, lang: langOf(request, 'pt'), now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsalIds([bounty], claims, tests).has(bounty.id), teamTestSponsor: teamTestSponsored([bounty], tests).has(bounty.id) }),
     200,
     { ...cors, 'Cache-Control': 'no-store' },
   );
+}
+
+/** A free bounty of the same judge template, oldest first; `null` when every one is held. */
+async function freeJudgeSlug(db: IteraClient, bounty: BountyRow, lang: 'pt' | 'en'): Promise<string | null> {
+  const { data, error } = await db
+    .from('bounties')
+    .select('slug,slug_en')
+    .eq('template_key', bounty.template_key as string)
+    .eq('status', 'open')
+    .eq('is_test', false)
+    .is('hidden_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .neq('id', bounty.id)
+    .order('created_at')
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as { slug: string; slug_en: string | null };
+  return lang === 'en' && row.slug_en ? row.slug_en : row.slug;
 }
 
 /** What a wallet earned from bounties. Each payout is checked against the chain before it counts. */

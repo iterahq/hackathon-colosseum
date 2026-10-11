@@ -162,6 +162,7 @@ export async function judgeHistory(db: IteraClient, tests: ReadonlySet<string>) 
     count: outside.length,
     lamports: outside.reduce((sum, row) => sum + BigInt(row.payout_lamports ?? 0), 0n),
     team_test_count: rows.length - outside.length,
+    team_test_lamports: rows.filter((row) => tests.has(payee(row))).reduce((sum, row) => sum + BigInt(row.payout_lamports ?? 0), 0n),
     latest: rows.slice(0, HISTORY).map((row) => ({
       slug: row.slug,
       paid_at: row.paid_at,
