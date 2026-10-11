@@ -25,8 +25,9 @@ const earned = (refId: string | null, over = {}) => ({ id: 'row1', achievementKe
 
 describe('buildPages', () => {
   it('joins the earned trail award by ref id', () => {
-    const pages = buildPages([trail('t1', 5, 5), trail('t2', 0, 3)], [item('trail_t1', 'trail', { tier: 'gold', earned: earned('t1') })], pick);
-    expect(pages[0]).toMatchObject({ trailTitle: 't1', assetAddress: 'A1', tier: 'gold', mintStatus: 'minted' });
+    const rows = Array.from({ length: 5 }, (_, i) => ({ ...earned(`t1${i}`), id: `r${i}`, achievementKey: 'day_stamp' }));
+    const pages = buildPages([trail('t1', 5, 5), trail('t2', 0, 3)], [item('trail_t1', 'trail', { tier: 'gold', earned: earned('t1') })], pick, rows);
+    expect(pages[0]).toMatchObject({ trailTitle: 't1', assetAddress: 'A1', tier: 'gold', mintStatus: 'minted', daysStamped: 5 });
     expect(pages[1]).toMatchObject({ assetAddress: null, mintStatus: 'unclaimed' });
     expect(isGold(pages[0])).toBe(true);
     expect(isGold(pages[1])).toBe(false);
@@ -69,10 +70,11 @@ describe('buildMedals and totals', () => {
     expect(buildMedals([...base, podium, locked], pick).map((m) => m.key)).toEqual([...base.map((m) => m.key), 'podium_1']);
   });
 
-  it('counts stamps, started pages and earned medals', () => {
+  it('counts stamps on chain, minted certifications and earned medals', () => {
     const rows = Array.from({ length: 3 }, (_, i) => ({ ...earned(`t1${i}`), id: `r${i}`, achievementKey: 'day_stamp' }));
-    const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [], pick, rows);
+    const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [item('trail_t1', 'trail', { earned: earned('t1') })], pick, rows);
     const medals = buildMedals([item('m', 'streak', { earned: earned(null) })], pick);
     expect(totals(pages, medals)).toEqual({ pages: 1, stamps: 3, pending: 1, held: 1, medals: 1 });
+    expect(totals(buildPages([trail('t1', 1, 5)], [], pick), medals).pages).toBe(0);
   });
 });
