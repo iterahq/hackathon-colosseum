@@ -270,8 +270,8 @@ describe('bountyView', () => {
   it('names the program that holds a program escrow', () => {
     const held = bountyView({ bounty: bounty({ escrow_kind: 'program' }), claim: null, lang: 'en', now: NOW, functionsBase: 'https://fn.test/functions/v1', programId: OTHER });
     expect(held.escrow).toMatchObject({ kind: 'program', custody: 'program', target_lamports: 20_000_000, program_id: OTHER, program_explorer_url: `https://explorer.solana.com/address/${OTHER}?cluster=devnet` });
-    expect(fundingCost({ escrow_kind: 'program', reward_lamports: 20_000_000 })).toBe(22_248_080n);
-    expect(fundingCost({ escrow_kind: 'derived_account', reward_lamports: 20_000_000 })).toBe(20_005_000n);
+    expect(fundingCost({ escrow_kind: 'program', reward_lamports: 20_000_000 }, 1_640_840n)).toBe(21_640_840n);
+    expect(fundingCost({ escrow_kind: 'derived_account', reward_lamports: 20_000_000 }, 1_640_840n)).toBe(20_005_000n);
   });
 
   it('keeps the delivery private until it was paid for, and never shows the review note', () => {

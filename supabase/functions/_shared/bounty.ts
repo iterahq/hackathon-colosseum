@@ -96,17 +96,17 @@ export function trailAttribute(titleEn: string): string {
   return titleEn.length <= TRAIL_ATTRIBUTE_MAX ? titleEn : `${titleEn.slice(0, TRAIL_ATTRIBUTE_MAX - 1).trimEnd()}…`;
 }
 
-/** Rent of the escrow program's 195-byte account: paid by whoever funds the bounty, on top of the reward. */
-export const PROGRAM_ESCROW_RENT_LAMPORTS = 2_248_080n;
-
 /** What a server-held escrow account must hold for a bounty to open: the reward and the fee of the one transfer that empties it. */
 export function fundingTarget(rewardLamports: bigint | number): bigint {
   return BigInt(rewardLamports) + BASE_FEE_LAMPORTS;
 }
 
-/** What funding a bounty costs its sponsor, by kind of escrow. */
-export function fundingCost(bounty: Pick<BountyRow, 'escrow_kind' | 'reward_lamports'>): bigint {
-  return bounty.escrow_kind === 'program' ? BigInt(bounty.reward_lamports) + PROGRAM_ESCROW_RENT_LAMPORTS : fundingTarget(bounty.reward_lamports);
+/**
+ * What funding a bounty costs its sponsor. A program escrow costs the reward
+ * plus the rent of its account (`escrowRentLamports`, asked from the node).
+ */
+export function fundingCost(bounty: Pick<BountyRow, 'escrow_kind' | 'reward_lamports'>, escrowRentLamports: bigint): bigint {
+  return bounty.escrow_kind === 'program' ? BigInt(bounty.reward_lamports) + escrowRentLamports : fundingTarget(bounty.reward_lamports);
 }
 
 /**

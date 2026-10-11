@@ -1,5 +1,5 @@
 import { isEd25519Address } from '../_shared/address.ts';
-import { createFor, readEscrow } from '../_shared/bounty-chain.ts';
+import { createFor, escrowRentLamports, readEscrow } from '../_shared/bounty-chain.ts';
 import { escrowBalance } from '../_shared/bounty-escrow.ts';
 import { escrowTerms, loadBounty, refreshFunding } from '../_shared/bounty-store.ts';
 import {
@@ -47,7 +47,7 @@ async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
     bountyActionGet({
       bounty,
       lang,
-      missingLamports: fundingCost(bounty),
+      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports() : 0n),
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
       blocked: fundable(bounty) ? null : 'not_fundable',
     }),
@@ -66,9 +66,9 @@ async function build(db: IteraClient, bounty: BountyRow, request: Request, lang:
     // The payer creates the bounty's account on the escrow program, with the terms this bounty was posted with.
     const terms = await escrowTerms(bounty, await loadConfig(db));
     if (!terms) return refuse('unavailable', lang, 503);
-    const [existing, balance, latest] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(account), latestBlockhash()]);
+    const [existing, balance, latest, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(account), latestBlockhash(), escrowRentLamports()]);
     if (existing) return refuse('not_fundable', lang, 400);
-    if (!fundsCheck(balance, fundingCost(bounty)).ok) return refuse('insufficient_funds', lang, 400);
+    if (!fundsCheck(balance, fundingCost(bounty, rent)).ok) return refuse('insufficient_funds', lang, 400);
     message = compileMessage(account, [createFor(terms, account), memoInstruction(transferMemo(bounty.id, 'fund'))], latest.blockhash);
   } else {
     const [held, balance, latest] = await Promise.all([escrowBalance(bounty.escrow_address), balanceOf(account), latestBlockhash()]);

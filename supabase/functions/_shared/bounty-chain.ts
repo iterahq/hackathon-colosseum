@@ -9,6 +9,7 @@ import {
   type EscrowState,
 } from './bounty-program.ts';
 import { compileMessage, memoInstruction, type Instruction } from './solana-message.ts';
+import { ESCROW_STATE_BYTES } from './bounty-program.ts';
 import { RpcNodeError, rpc } from './rpc.ts';
 import { sendMessage, treasurySigner } from './treasury.ts';
 
@@ -106,4 +107,9 @@ export function refundPlan(state: EscrowState, party: Party): Instruction[] | 'd
   if (state.status === 'refunded') return 'done';
   if (state.status === 'paid') return 'closed';
   return [...(state.status === 'claimed' ? [unclaimInstruction(party)] : []), refundInstruction({ programId: party.programId, authority: party.approver, escrow: party.escrow, sponsor: state.sponsor })];
+}
+
+/** The rent the node asks for an escrow account, which whoever funds a bounty pays on top of the reward. */
+export async function escrowRentLamports(): Promise<bigint> {
+  return BigInt(await rpc<number>('getMinimumBalanceForRentExemption', [ESCROW_STATE_BYTES]));
 }
