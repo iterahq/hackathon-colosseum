@@ -80,7 +80,7 @@ export function archiveView(asset: string, signer: string, rows: readonly Archiv
     evidence: sorted.filter((row) => row.kind === 'evidence').map(item),
     history: sorted.filter((row) => row.kind !== 'evidence').map(item),
     find: {
-      endpoint: `${ARWEAVE_GATEWAYS[1]}/graphql`,
+      endpoints: ARWEAVE_GATEWAYS.map((gateway) => `${gateway}/graphql`),
       query: `{ transactions(tags: [{ name: "App-Name", values: ["${ARCHIVE_APP}"] }, { name: "Itera-Asset", values: ["${asset}"] }]) { edges { node { id owner { address } tags { name value } } } } }`,
     },
   };
