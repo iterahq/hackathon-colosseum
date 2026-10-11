@@ -21,6 +21,8 @@ export const PROFILE_ASSET_LIMIT = 50;
 /** A Core asset as read from chain. */
 export interface OnchainAsset {
   address: string;
+  name?: string;
+  uri?: string;
   owner: string;
   frozen: boolean;
   attributes: OnchainAttribute[];

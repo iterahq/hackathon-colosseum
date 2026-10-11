@@ -1,3 +1,4 @@
+import type { ChainRead } from '@/types/chainRead';
 import type { PublicEndorsement } from '@/types/endorsement';
 import type { I18nText } from '@/types/content';
 
@@ -144,5 +145,5 @@ export interface CredentialVerification {
 
 /** What the public page draws: the verification, or the reason there is none. */
 export type CredentialLookup =
-  | { status: 'verified' | 'unverified'; data: CredentialVerification; ms: number }
+  | { status: 'verified' | 'unverified'; data: CredentialVerification; ms: number; read?: ChainRead }
   | { status: 'not_found'; ms: number };

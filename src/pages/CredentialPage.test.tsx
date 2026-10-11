@@ -7,7 +7,7 @@ import type { CredentialLookup } from '@/types/achievements';
 import { parseCredential } from '@/services/credential.service';
 
 const useCredential = vi.fn();
-vi.mock('@/hooks/useCredential', () => ({ useCredential: (a: string, l: string) => useCredential(a, l) }));
+vi.mock('@/hooks/useCredential', () => ({ useCredential: (a: string, l: string) => useCredential(a, l), useRecheckCredential: () => ({ mutate: vi.fn(), isPending: false }) }));
 
 const verified = (over = {}): CredentialLookup => ({
   status: 'verified',

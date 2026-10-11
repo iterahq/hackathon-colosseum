@@ -6,6 +6,7 @@ import { addressUrl, shortAddress } from '@/lib/explorer';
 import type { CredentialLookup } from '@/types/achievements';
 import { tierLabel } from '@/utils/tier';
 import { companionFacts, credentialFacts, isCompanion } from '@/utils/credential';
+import { ChainReadLine } from './ChainReadLine';
 import { CopyButton } from './CopyButton';
 import { SnapshotLine } from './SnapshotLine';
 
@@ -31,7 +32,7 @@ function Check() {
 }
 
 /** The verification card of /c/:asset: the verdict, the facts read from the chain and the explorer link. */
-export function CredentialCard({ lookup }: { lookup: Found }) {
+export function CredentialCard({ lookup, onRecheck, rechecking = false }: { lookup: Found; onRecheck?: () => void; rechecking?: boolean }) {
   const { t, tText, locale } = useI18n();
   const reduce = useReducedMotion();
   const { data } = lookup;
@@ -114,7 +115,7 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
         )}
       </dl>
       <div className="mt-4 flex flex-col gap-2 [font:500_12px_JetBrains_Mono] text-[#A0978A]">
-        <span>{t('passport.credential.readIn', { ms: lookup.ms })}</span>
+        <ChainReadLine read={lookup.read} ms={lookup.ms} onRecheck={onRecheck} rechecking={rechecking} />
         <a href={addressUrl(data.asset)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
           {t('passport.credential.explorer')}
         </a>

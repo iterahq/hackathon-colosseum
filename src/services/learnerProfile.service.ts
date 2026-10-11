@@ -2,6 +2,7 @@
 import { toCircuitShare } from '@/services/circuit.service';
 import { toAvatar } from '@/services/shopNormalize';
 import { ITERA_V2_GRAPH } from '../../supabase/functions/_shared/capability-graph';
+import { parseChainRead } from '@/types/chainRead';
 import type { Capabilities, CapabilityNode, CapabilityProof, CapabilityStatus, ClaimEvidence, LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -149,14 +150,17 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
   };
 }
 
-export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en'): Promise<ProfileLookup> {
+/** `fresh` asks the function to read the chain now instead of serving its cached answer. */
+export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en', { fresh = false }: { fresh?: boolean } = {}): Promise<ProfileLookup> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
-  const res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}`, {
+  const started = Date.now();
+  const res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
   });
   if (res.status === 400 || res.status === 404) return { status: 'invalid' };
   if (!res.ok) throw new Error(`learner-profile failed (${res.status})`);
-  return { status: 'ok', profile: parseProfile(await res.json(), wallet, lang) };
+  const body: unknown = await res.json();
+  return { status: 'ok', profile: parseProfile(body, wallet, lang), read: parseChainRead((body as { read?: unknown })?.read, Date.now() - started) };
 }
 
 export async function getClaimEvidence(wallet: string, claimId: string): Promise<ClaimEvidence> {

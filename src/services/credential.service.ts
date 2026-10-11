@@ -4,6 +4,7 @@
  */
 import { toPublicEndorsements } from '@/services/endorsement.service';
 import type { CredentialLookup, CredentialVerification } from '@/types/achievements';
+import { parseChainRead } from '@/types/chainRead';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -40,17 +41,20 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
   };
 }
 
-export async function verifyCredential(asset: string, lang = 'pt'): Promise<CredentialLookup> {
+/** `fresh` asks the function to read the chain now instead of serving its cached answer. */
+export async function verifyCredential(asset: string, lang = 'pt', { fresh = false }: { fresh?: boolean } = {}): Promise<CredentialLookup> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
   const started = Date.now();
-  const res = await fetch(`${url}/functions/v1/credential-verify/${encodeURIComponent(asset)}?lang=${lang}`, {
+  const res = await fetch(`${url}/functions/v1/credential-verify/${encodeURIComponent(asset)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
   });
   const ms = Date.now() - started;
   if (res.status === 404 || res.status === 400) return { status: 'not_found', ms };
   if (!res.ok) throw new Error(`credential-verify failed (${res.status})`);
-  const data = parseCredential(await res.json(), asset);
-  return { status: data.verified ? 'verified' : 'unverified', data, ms };
+  const body: unknown = await res.json();
+  const data = parseCredential(body, asset);
+  const read = parseChainRead((body as { read?: unknown })?.read, ms);
+  return { status: data.verified ? 'verified' : 'unverified', data, ms: read.ms, read };
 }
 
 const ART_BUMP_KEY = 'itera.credentialArtBump';
