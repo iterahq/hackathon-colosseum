@@ -7,6 +7,7 @@ import { claimTimes, guestReceiptTime, signGuestReceipt } from '../_shared/guest
 import { bearerToken, corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { unverifiedSubject } from '../_shared/jwt-subject.ts';
 import { chargeMiss, type MissOutcome } from '../_shared/miss-charge.ts';
+import { MISS_COSTS_LIFE } from '../_shared/focus.ts';
 import { callerAddress, takeRate } from '../_shared/ratelimit.ts';
 import { answerKey, explanationOf, sealActivity, unsealAnswer } from '../_shared/seal.ts';
 import { sealSecret } from '../_shared/seal-secret.ts';
@@ -312,7 +313,7 @@ Deno.serve(async (request) => {
     // The server is the judge of a miss: the life goes here, never on the client's word alone.
     let miss: MissOutcome | null = null;
     // Redoing an activity already passed is practice: its misses cost nothing.
-    if (!grade.passed && grade.mode !== 'participation' && attempt.user_id && !attempt.was_completed) {
+    if (MISS_COSTS_LIFE && !grade.passed && grade.mode !== 'participation' && attempt.user_id && !attempt.was_completed) {
       try {
         miss = await chargeMiss(db, attempt.user_id, activity);
       } catch (failure) {

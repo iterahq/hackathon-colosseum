@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// The lesson rules against the LIVE hackathon project: a miss costs a life on the server (once per
-// activity per day, at most 3 per lesson per day), a pass costs nothing, and a visitor with no
-// session has day 1 graded with nothing written.
+// The lesson rules against the LIVE hackathon project: in the focus build a miss costs nothing; in the
+// full build it costs a life on the server (once per activity per day, at most 3 per lesson per day).
+// A pass costs nothing, and a visitor with no session has day 1 graded with nothing written.
 //
 //   node scripts/hackathon/lesson-rules-e2e.mjs
 //
@@ -14,6 +14,9 @@ const CHOICES = psql(
    from itera.activities a where a.lesson_id = '0e7d6618-f9ba-46ba-bf28-71cf86f32716' and a.kind = 'single_choice' and a.status = 'published';`,
 );
 
+// `ITERA_FOCUS_BUILD=off` in the environment checks the rules of the full build (a miss costs a life).
+const FOCUS = process.env.ITERA_FOCUS_BUILD !== 'off';
+
 async function main() {
   const apikey = await anonKey();
   const choices = JSON.parse(CHOICES);
@@ -25,22 +28,34 @@ async function main() {
   const pass = (c) => learner.call('grade', { activity_id: c.id, passed: true, response: null, answer: { option_ids: [c.key] } });
 
   const start = await lives();
-  const first = await miss(choices[0]);
-  check('a miss is charged by the server', first.body.verdict === 'fail' && first.body.miss?.charge === 'charged' && first.body.miss?.life_lost === true, JSON.stringify(first.body.miss));
-  check('the answer carries the lives left', first.body.lives?.current === start - 1, `${first.body.lives?.current} of ${start}`);
-  check('the database agrees', (await lives()) === start - 1);
+  if (FOCUS) {
+    // The focus build (the server's default): a miss is graded and recorded, and costs nothing.
+    const first = await miss(choices[0]);
+    check('a miss is a fail and takes no life', first.body.verdict === 'fail' && first.body.miss === undefined && first.body.lives === undefined, JSON.stringify(first.body));
+    const lie = await forged(choices[1]);
+    check('a forged pass is a fail and takes no life', lie.body.verdict === 'fail' && lie.body.miss === undefined, JSON.stringify(lie.body));
+    for (const c of [choices[2], choices[3], choices[0]]) await miss(c);
+    check('five misses later the lives are what they were', (await lives()) === start, `${await lives()} of ${start}`);
+    check('no life event was written', psql(`select count(*) from itera.life_events where user_id = :'u'::uuid and kind = 'lose';`, { u: learner.userId }) === '0');
+  } else {
+    const first = await miss(choices[0]);
+    check('a miss is charged by the server', first.body.verdict === 'fail' && first.body.miss?.charge === 'charged' && first.body.miss?.life_lost === true, JSON.stringify(first.body.miss));
+    check('the answer carries the lives left', first.body.lives?.current === start - 1, `${first.body.lives?.current} of ${start}`);
+    check('the database agrees', (await lives()) === start - 1);
 
-  const again = await miss(choices[0]);
-  check('the same activity is charged once a day', again.body.miss?.charge === 'already_charged' && again.body.lives?.current === start - 1, JSON.stringify(again.body.miss));
+    const again = await miss(choices[0]);
+    check('the same activity is charged once a day', again.body.miss?.charge === 'already_charged' && again.body.lives?.current === start - 1, JSON.stringify(again.body.miss));
 
-  const lie = await forged(choices[1]);
-  check('a forged pass is a miss and costs a life', lie.body.verdict === 'fail' && lie.body.miss?.charge === 'charged' && lie.body.lives?.current === start - 2, JSON.stringify(lie.body));
+    const lie = await forged(choices[1]);
+    check('a forged pass is a miss and costs a life', lie.body.verdict === 'fail' && lie.body.miss?.charge === 'charged' && lie.body.lives?.current === start - 2, JSON.stringify(lie.body));
 
-  const third = await miss(choices[2]);
-  check('third miss of the lesson is charged', third.body.miss?.charge === 'charged' && third.body.lives?.current === start - 3, JSON.stringify(third.body.miss));
-  const fourth = await miss(choices[3]);
-  check('the lesson cap stops the fourth', fourth.body.miss?.charge === 'lesson_cap' && fourth.body.miss?.life_lost === false && fourth.body.lives?.current === start - 3, JSON.stringify(fourth.body.miss));
-  check('one lesson took 3 lives at most', (await lives()) === start - 3);
+    const third = await miss(choices[2]);
+    check('third miss of the lesson is charged', third.body.miss?.charge === 'charged' && third.body.lives?.current === start - 3, JSON.stringify(third.body.miss));
+    const fourth = await miss(choices[3]);
+    check('the lesson cap stops the fourth', fourth.body.miss?.charge === 'lesson_cap' && fourth.body.miss?.life_lost === false && fourth.body.lives?.current === start - 3, JSON.stringify(fourth.body.miss));
+    check('one lesson took 3 lives at most', (await lives()) === start - 3);
+
+  }
 
   const right = await pass(choices[3]);
   check('a pass costs nothing and says nothing about lives', right.body.verdict === 'pass' && right.body.miss === undefined && right.body.lives === undefined);
