@@ -8,6 +8,7 @@ import { sourceStamp } from "./scripts/source-stamp";
 import { universalScreens } from "./scripts/vite/universal-screens";
 import { stripHtmlCommentsPlugin } from "./scripts/vite/strip-html-comments";
 import { bundleReportPlugin } from "./scripts/vite/bundle-report";
+import { routePreloadPlugin } from "./scripts/vite/route-preload";
 
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
@@ -50,6 +51,7 @@ export default defineConfig(({ mode }) => ({
     ...universalScreens(),
     stripHtmlCommentsPlugin(),
     bundleReportPlugin(),
+    routePreloadPlugin(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {

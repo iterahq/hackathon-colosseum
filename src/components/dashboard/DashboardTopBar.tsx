@@ -47,8 +47,8 @@ export function DashboardTopBar(_props: Props) {
             </Link>
             <HeaderNav active={active} />
           </div>
-          {/* Always in the flow, at every width: an absolutely centred field ran over the sixth nav entry on wide screens. */}
-          <div className="flex min-w-0 flex-1 justify-end min-[1536px]:justify-center">
+          {/* Always in the flow, at every width, with a gap it cannot give up: the pill shrinks before it touches the sixth nav entry. */}
+          <div className="flex min-w-0 flex-1 justify-end pl-4">
             <HeaderSearch className="max-sm:hidden" />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
