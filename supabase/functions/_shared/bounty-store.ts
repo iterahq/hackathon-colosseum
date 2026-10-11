@@ -168,6 +168,15 @@ export async function refreshFunding(db: IteraClient, bounty: BountyRow, known?:
   return (await loadBounty(db, { id: bounty.id })) ?? bounty;
 }
 
+/** Whether the wallet an escrow account names is one whose claim on this bounty our tables have already released, with no live one. */
+async function isLeftoverClaim(db: IteraClient, bountyId: string, claimant: string | null): Promise<boolean> {
+  if (!claimant) return false;
+  const { data, error } = await db.from('bounty_claims').select('status').eq('bounty_id', bountyId).eq('wallet', claimant);
+  if (error) throw new Error(`bounty_claims: ${error.message}`);
+  const statuses = (data ?? []).map((row) => row.status as string);
+  return statuses.length > 0 && statuses.every((status) => status === 'expired' || status === 'rejected' || status === 'withdrawn');
+}
+
 /**
  * What the claimant's wallet must sign to hold a program-held bounty: the
  * program's `accept` (which checks the certification account itself) and the
@@ -178,6 +187,10 @@ export async function acceptInstructions(db: IteraClient, bounty: BountyRow, wal
   if (!terms) throw new EscrowProgramError('not_configured');
   const state = await readEscrow(terms.programId, bounty.escrow_address);
   if (!state) throw new EscrowProgramError('wrong_escrow_account');
+  // An account that names a wallet is reopened inside this accept only when it is a leftover: a claim our tables already
+  // let go of (out of time, rejected, given up). A claimant the tables do not know yet is another learner's accept that
+  // landed a moment ago and is being recorded: taking the account from them would leave page and chain apart.
+  if (state.status === 'claimed' && !(await isLeftoverClaim(db, bounty.id, state.claimant))) throw new EscrowProgramError('not_open');
   const plan = acceptPlan(state, terms, wallet, proofAsset);
   if (plan === 'closed') throw new EscrowProgramError('not_open');
   return [...plan, memoInstruction(transferMemo(bounty.id, 'accept'))];
