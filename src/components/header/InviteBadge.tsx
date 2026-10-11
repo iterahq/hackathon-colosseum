@@ -1,8 +1,10 @@
+import { useContext } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
 import { useOpenInviteCount } from '@/hooks/useInvites';
 import { useI18n } from '@/i18n';
 
 /** A count on the Bounties tab while a direct bounty waits for the signed-in wallet. Nothing is drawn for zero. */
-export function InviteBadge({ className = '' }: { className?: string }) {
+function Count({ className }: { className: string }) {
   const { t } = useI18n();
   const count = useOpenInviteCount();
   if (count === 0) return null;
@@ -16,4 +18,8 @@ export function InviteBadge({ className = '' }: { className?: string }) {
       {count > 9 ? '9+' : count}
     </span>
   );
+}
+
+export function InviteBadge({ className = '' }: { className?: string }) {
+  return useContext(QueryClientContext) ? <Count className={className} /> : null;
 }
