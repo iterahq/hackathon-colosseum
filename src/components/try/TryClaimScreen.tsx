@@ -5,12 +5,12 @@ import { GUEST_LESSON_ID } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
 
 /** While a fresh sign-in replays the visitor's passes, and when some of them did not land. */
-export function TryClaimScreen({ state }: { state: 'saving' | 'failed' }) {
+export function TryClaimScreen({ state, progress }: { state: 'saving' | 'failed'; progress?: { done: number; total: number } | null }) {
   const { t } = useI18n();
   return (
     <div className="grid min-h-screen place-items-center bg-[#0A0908] px-4 text-[#F4EDE2]" data-testid="try-claim" data-state={state}>
       {state === 'saving' ? (
-        <TeraLoader fullScreen label={t('try.claim.saving')} />
+        <TeraLoader fullScreen label={progress && progress.total > 0 ? t('try.claim.progress', { done: progress.done + 1, total: progress.total }) : t('try.claim.saving')} />
       ) : (
         <TeraNote
           mood="oops"

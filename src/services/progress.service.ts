@@ -40,7 +40,6 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import { submitForGrading } from '@/services/grade.service';
-import { awardActivityXp } from '@/services/gamification.service';
 import type { DurationSample } from '@/utils/activityDuration';
 import {
   buildAbandonmentTrace,
@@ -232,61 +231,15 @@ export async function persistActivityProgress(
     // the server's is what is recorded. A pass the server does not confirm, or
     // an answer it never received, reports failure so we never celebrate an
     // unsaved completion.
-    const verdict = await submitForGrading({ activityId, passed, response, actions });
+    const verdict = await submitForGrading({ activityId, passed, response, actions, duration });
     if (!verdict) return false;
     // Graded without a session: the server recorded nothing, so nothing is durable.
     if (verdict.guest) return false;
     if (passed && verdict.verdict !== 'pass') return false;
 
-    // Results: the attempt log — every attempt, with the REAL outcome AND what
-    // was actually answered. Wrong answers land here and nowhere else, so this
-    // is what both accuracy and error analysis must read.
-    // Best-effort (the per-tenant Results-API pull reads these).
-    //
-    // Duration rides as COLUMNS, not inside `feedback` (migration 0033). The
-    // jsonb payload is where the answer's CONTENT lives — free-shaped, capped,
-    // read one row at a time to see what a learner wrote. Time-on-screen is the
-    // opposite: a fixed-width number that every difficulty/abandonment query
-    // will aggregate over the whole table, and `itera.class_answers.elapsed_ms`
-    // already set that precedent for the live-class half of the same question.
-    // Burying it in jsonb would make the aggregate a cast on every row and leave
-    // the meaning undocumented where `COMMENT ON COLUMN` can carry it.
-    const attemptRow = {
-      user_id: userId,
-      activity_id: activityId,
-      passed,
-      score_internal: null,
-      feedback: buildAttemptFeedback(response),
-    };
-    const { error: resultsError } = await sb.from('activity_results').insert({
-      ...attemptRow,
-      elapsed_ms: duration?.elapsedMs ?? null,
-      visible_ms: duration?.visibleMs ?? null,
-    });
-    // ⚠️ DEPLOY-ORDER SEATBELT. This app auto-deploys on merge to `main`, but no
-    // CI applies Itera migrations — they are run by hand. So there is a window
-    // in which this build is live and migration 0033 is not, and PostgREST
-    // rejects the WHOLE insert for an unknown column. Without this retry that
-    // window silently stops recording attempts altogether: exactly the D2
-    // failure the module doc above describes, re-created by the telemetry meant
-    // to enrich it, and just as unrecoverable afterwards.
-    //
-    // The rule this encodes is the same one behind the missing cross-column
-    // check in 0033: TELEMETRY MUST NEVER BE ABLE TO DESTROY THE RECORD IT
-    // DECORATES. The attempt is worth incomparably more than its timing, so on
-    // any failure we re-insert without the timing and keep the attempt.
-    //
-    // The retry can duplicate a row in the narrow case where the first insert
-    // committed and then failed on the way back (a timeout after commit). That
-    // trade is taken deliberately and in one direction only: this table already
-    // holds one row per attempt with no uniqueness, so a duplicate attempt
-    // slightly overcounts, while a lost attempt is unrecoverable.
-    //
-    // Safe to delete once 0033 is applied everywhere this build runs. Until
-    // then, deleting it makes a merge-before-migrate slip cost real learner data.
-    if (resultsError) {
-      await sb.from('activity_results').insert(attemptRow);
-    }
+    // Results and xp: written by the server with its verdict, in the same call
+    // that graded the answer (`itera.record_graded_attempt_v2`). A row this
+    // client could insert, or an award it could ask for, would be its own word.
 
     // ── The TRACE (migration 0034) ───────────────────────────────────────────
     // The sequence of what the learner did, as ONE ROW. For a WIRED family
@@ -384,9 +337,6 @@ export async function persistActivityProgress(
       pedagogicalContext,
     });
 
-    // XP: idempotent SECURITY DEFINER RPC (never double-awards). Best-effort.
-    // Awarded on a pass only — a miss is recorded, not rewarded.
-    if (passed) await awardActivityXp(activityId);
     return true;
   } catch {
     return false;

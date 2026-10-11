@@ -21,6 +21,7 @@ export function ExplanationDisclosure({
   buttonTestId = 'explanation-disclosure-toggle',
   contentTestId = 'explanation-disclosure-content',
   onToggle,
+  defaultOpen = false,
 }: {
   label: string;
   children: ReactNode;
@@ -31,11 +32,13 @@ export function ExplanationDisclosure({
   buttonTestId?: string;
   contentTestId?: string;
   onToggle?: (open: boolean) => void;
+  /** Shown without a click: a miss is the moment the explanation is for. */
+  defaultOpen?: boolean;
 }) {
   const regionId = useId();
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
+  const [mounted, setMounted] = useState(defaultOpen);
+  const [visible, setVisible] = useState(defaultOpen);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => () => clearTimeout(timer.current), []);

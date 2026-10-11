@@ -10,19 +10,11 @@
 // Environment (source ~/.config/itera-hackathon/supabase.env): HACKATHON_DB_PASSWORD, SUPABASE_ACCESS_TOKEN.
 // Leaves throwaway wallet learners behind.
 import { resolveSpec } from '../../supabase/functions/_shared/grading.ts';
-import { FUNCTIONS, SUPABASE_URL, anonKey, check, newLearner, psql, sleep, summary } from './social-e2e.lib.mjs';
+import { authoredLesson, correctSubmission, firstLessonOf } from './day-solver.lib.mjs';
+import { FUNCTIONS, SUPABASE_URL, anonKey, check, newLearner, psql, sleep, summary, tagOwnLearners } from './social-e2e.lib.mjs';
 
 const HONEST_PACE_MS = 1_500;
 const BLANK_TOKEN = /\{\{blank:([^{}]*)\}\}/g;
-
-/** Day 1 of `itera-v2`: what a learner would type in its three code exercises. */
-const CODE_SOLUTIONS = {
-  '63954b30-7fd3-45a6-a9b8-98d724482b11': '<h1>Oi, eu sou o Tera</h1>\n<h2>Sabores</h2>\n<h3>Ninho</h3>\n<h3>Chocolate</h3>\n<h2>Como encomendar</h2>\n',
-  '0a83bb49-5f13-4481-82c7-09cf9c62f884':
-    '<!DOCTYPE html>\n<html>\n<head>\n<title>Ana</title>\n</head>\n<body>\n<h1>Ana</h1>\n<h2>Sobre mim</h2>\n<p>Estou aprendendo HTML.</p>\n</body>\n</html>\n',
-  '65cbc1f8-8f19-4348-a4dc-41634f30cc86':
-    '<!DOCTYPE html>\n<html>\n<head>\n<title>Ana</title>\n</head>\n<body>\n<h1>Ana</h1>\n<h2>Sobre mim</h2>\n<p>Gosto de aprender.</p>\n<h2>Minhas metas</h2>\n</body>\n</html>\n',
-};
 
 async function restAs(learner, method, path, body, prefer) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -38,51 +30,22 @@ async function restAs(learner, method, path, body, prefer) {
   }
 }
 
-/** Day 1 as the learner's own session reads it: the same rows, and the same answer keys, the player gets. */
-async function dayOne(learner) {
-  const lesson = psql(
-    `select l.id from itera.programs p join itera.units u on u.program_id = p.id join itera.lessons l on l.unit_id = u.id
-     where p.slug = 'itera-v2' and exists (select 1 from itera.activities a where a.lesson_id = l.id and a.status = 'published')
-     order by u.ordinal, l.ordinal, l.id limit 1;`,
-  );
-  const { status, body } = await restAs(learner, 'GET', `activities?lesson_id=eq.${lesson}&status=eq.published&select=id,kind,spec&order=ordinal,id`);
-  if (status !== 200 || !Array.isArray(body) || body.length === 0) throw new Error(`could not read day 1 as the learner (HTTP ${status})`);
-  return { lesson, activities: body };
+/** Day 1 as AUTHORED, answer key included: read with the database password. A learner's session cannot read it (see answer-key-attacks.mjs). */
+function dayOne() {
+  const lesson = firstLessonOf();
+  const activities = authoredLesson(lesson);
+  if (activities.length === 0) throw new Error('could not read day 1');
+  return { lesson, activities };
 }
 
-/** The correct submission for an activity, built the way the player builds it. `null` answer: nothing to send. */
-function correctSubmission(activity) {
-  const spec = resolveSpec(activity.spec, 'pt');
-  switch (activity.kind) {
-    case 'single_choice':
-      return { answer: { option_ids: [spec.correct_option_id] }, response: null };
-    case 'multi_choice':
-      return { answer: { option_ids: spec.correct_option_ids }, response: null };
-    case 'order':
-      return { answer: { order: spec.correct_order }, response: null };
-    case 'match':
-      return { answer: { pairs: spec.pairs.map((pair) => [pair.left_id, pair.right_id]) }, response: null };
-    case 'code_fill_type':
-    case 'code_fill_bank':
-    case 'code_fill_select': {
-      const answers = new Map(spec.blanks.map((blank) => [blank.id, blank.answer.trim()]));
-      return { answer: null, response: spec.starter.replace(BLANK_TOKEN, (token, id) => (answers.has(id) ? answers.get(id) : token)) };
-    }
-    case 'code_editor_checks':
-      return { answer: null, response: CODE_SOLUTIONS[activity.id] ?? spec.starter };
-    default:
-      return { answer: null, response: null };
-  }
-}
-
-const grade = (learner, activity, submission, passed = true) => learner.call('grade', { activity_id: activity.id, passed, ...submission });
+const grade = (learner, activity, submission, passed = true) => learner.call('grade', { activity_id: activity.id, passed, results: 'server', ...submission });
 const progressStatus = (userId, activityId) => psql(`select coalesce((select status::text from itera.progress where user_id = :'user_id'::uuid and activity_id = :'activity'::uuid), 'none');`, { user_id: userId, activity: activityId });
 const attemptCount = (userId) => Number(psql(`select count(*) from itera.graded_attempts where user_id = :'user_id'::uuid;`, { user_id: userId }));
 const achievementCount = (userId) => Number(psql(`select count(*) from itera.user_achievements where user_id = :'user_id'::uuid;`, { user_id: userId }));
 
 async function forge(context) {
   const forger = await newLearner(context.apikey, 'forger');
-  const { lesson, activities } = await dayOne(forger);
+  const { lesson, activities } = dayOne();
   const choice = activities.find((activity) => activity.kind === 'single_choice');
   const code = activities.find((activity) => activity.kind === 'code_editor_checks');
   const fill = activities.find((activity) => activity.kind.startsWith('code_fill'));
@@ -115,7 +78,7 @@ async function forge(context) {
   const malformed = await forger.call('grade', { activity_id: choice.id, passed: 'yes' });
   check('no session 401 · unknown activity 404 · malformed body 400', anonymous.status === 401 && unknown.status === 404 && malformed.status === 400, `${anonymous.status} ${unknown.status} ${malformed.status}`);
 
-  // 3. The strongest forger this build admits: it has the answer keys (the player ships them) and sends them in one burst.
+  // 3. A forger who somehow holds the answer keys (the player no longer ships them) and sends them in one burst.
   const burst = await newLearner(context.apikey, 'burst');
   for (const activity of activities) await grade(burst, activity, correctSubmission(activity));
   const done = Number(psql(`select count(*) from itera.progress where user_id = :'user_id'::uuid and status = 'completed';`, { user_id: burst.userId }));
@@ -125,7 +88,7 @@ async function forge(context) {
 
 async function honest(context) {
   const learner = await newLearner(context.apikey, 'honest');
-  const { lesson, activities } = await dayOne(learner);
+  const { lesson, activities } = dayOne();
   const firstChoice = activities.find((activity) => activity.kind === 'single_choice');
   const startedAt = Date.now();
   const modes = { server: 0, self_reported: 0, participation: 0 };
@@ -184,6 +147,7 @@ async function main() {
     console.log(`\n=== ${name} ===`);
     await SECTIONS[name](context);
   }
+  tagOwnLearners('proof-attacks');
   const { total, failed } = summary();
   console.log(`\n${total - failed.length}/${total} checks passed${failed.length ? `\nFAILED:\n  ${failed.join('\n  ')}` : ''}`);
   process.exit(failed.length === 0 ? 0 : 1);

@@ -7,14 +7,22 @@ import { useI18n } from '@/i18n';
 export const TRY_SECONDARY = `${TERA_BUTTON} border-b-[#262320] bg-[#141210] text-[#F4EDE2]`;
 
 /** The end of the public first lesson: the score, what the server checked, and the two doors that keep it. */
-export function TryDoneCard({ passed, total, serverChecked, onRedo }: { passed: number; total: number; serverChecked: number; onRedo: () => void }) {
+export interface TryDoneCounts {
+  passed: number;
+  serverGraded: number;
+  browserChecked: number;
+  reading: number;
+}
+
+export function TryDoneCard({ counts, total, onRedo }: { counts: TryDoneCounts; total: number; onRedo: () => void }) {
+  const { passed, serverGraded, browserChecked, reading } = counts;
   const { t } = useI18n();
   const next = encodeURIComponent(TRY_PATH);
   return (
     <TeraNote
       mood={passed === total ? 'happy' : 'neutral'}
       title={t('try.done.title', { n: passed, total })}
-      body={`${t('try.done.server', { n: serverChecked })} ${t('try.done.gate')}`}
+      body={`${t('try.done.server', { server: serverGraded, browser: browserChecked, reading })} ${t('try.done.gate')}`}
       data-testid="try-done"
       action={
         <div className="flex flex-col gap-3">

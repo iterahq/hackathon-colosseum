@@ -38,15 +38,16 @@ let errorFor: ((table: string) => { message: string } | null) | null = null;
 let throwsFor: string | null = null;
 
 // The completion itself is recorded by the server (`grade` edge function); here it agrees with the player.
-vi.mock('@/services/grade.service', () => ({
-  submitForGrading: vi.fn(async ({ passed }: { passed: boolean }) => ({
-    verdict: passed ? 'pass' : 'fail',
-    mode: 'server',
-    attempt_id: 'attempt-1',
-    answer_hash: 'hash',
-    graded_at: '2026-10-11T00:00:00Z',
-  })),
-}));
+const { submitForGrading } = vi.hoisted(() => ({ submitForGrading: vi.fn() }));
+vi.mock('@/services/grade.service', () => ({ submitForGrading }));
+
+const gradeAgreeingWithPlayer = async ({ passed }: { passed: boolean }) => ({
+  verdict: passed ? 'pass' : 'fail',
+  mode: 'server',
+  attempt_id: 'attempt-1',
+  answer_hash: 'hash',
+  graded_at: '2026-10-11T00:00:00Z',
+});
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
@@ -72,6 +73,7 @@ vi.mock('@/services/gamification.service', () => ({
   awardActivityXp: vi.fn().mockResolvedValue(undefined),
 }));
 
+import { awardActivityXp } from '@/services/gamification.service';
 import { persistActivityProgress } from '@/services/progress.service';
 import { sendOutboxEntry } from '@/hooks/useAnswerOutbox';
 import { TRACE_SCHEMA_VERSION } from '@/utils/learningTrace';
@@ -89,6 +91,8 @@ beforeEach(() => {
   for (const k of Object.keys(upserts)) delete upserts[k];
   errorFor = null;
   throwsFor = null;
+  submitForGrading.mockReset();
+  submitForGrading.mockImplementation(gradeAgreeingWithPlayer);
 });
 
 describe('persistActivityProgress → itera.activity_traces', () => {
@@ -159,7 +163,7 @@ describe('persistActivityProgress → itera.activity_traces', () => {
       duration: null,
       settledAt: SETTLED_AT,
     });
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(inserts['activity_results']).toBeUndefined();
     expect(traces()).toHaveLength(0);
   });
 
@@ -169,7 +173,7 @@ describe('persistActivityProgress → itera.activity_traces', () => {
       duration: DURATION,
       settledAt: null,
     });
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(inserts['activity_results']).toBeUndefined();
     expect(traces()).toHaveLength(0);
   });
 
@@ -238,7 +242,7 @@ describe('cobertura: o caminho da fila também emite trace', () => {
     });
 
     expect(ok).toBe(true);
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(inserts['activity_results']).toBeUndefined();
     expect(traces()).toHaveLength(0);
   });
 });
@@ -257,8 +261,10 @@ describe('a telemetria nunca derruba o dado que ela existe pra enriquecer', () =
     });
 
     expect(ok).toBe(true);
-    expect(inserts['activity_results']).toHaveLength(1);
-    expect(inserts['activity_results'][0]).toMatchObject({ passed: true, elapsed_ms: 8_000 });
+    expect(inserts['activity_results']).toBeUndefined();
+    expect(submitForGrading).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 'act-1', passed: true, duration: DURATION }),
+    );
   });
 
   it('survives a trace write that THROWS rather than returning an error', async () => {
@@ -269,45 +275,20 @@ describe('a telemetria nunca derruba o dado que ela existe pra enriquecer', () =
       settledAt: SETTLED_AT,
     });
     expect(ok).toBe(true);
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(inserts['activity_results']).toBeUndefined();
   });
 
-  it('the trace is a SEPARATE statement, so it cannot poison the attempt insert', async () => {
-    // The structural property: `activity_results` is written to completion
-    // before `activity_traces` is touched at all. That is what makes the 0033
-    // re-insert seatbelt unnecessary here rather than merely absent.
-    throwsFor = 'activity_traces';
+  it('sends the measured duration to the grade call and requests no xp', async () => {
     await persistActivityProgress('act-1', {
       passed: true,
       duration: DURATION,
       settledAt: SETTLED_AT,
     });
-    expect(inserts['activity_results']).toHaveLength(1);
-    expect(inserts['activity_results'][0]).toMatchObject({ elapsed_ms: 8_000 });
-  });
-
-  it('keeps the 0033 seatbelt intact: a rejected attempt insert still re-inserts', async () => {
-    let first = true;
-    errorFor = (t) => {
-      if (t !== 'activity_results') return null;
-      if (first) {
-        first = false;
-        return { message: 'column "elapsed_ms" does not exist' };
-      }
-      return null;
-    };
-
-    await persistActivityProgress('act-1', {
-      passed: true,
-      duration: DURATION,
-      settledAt: SETTLED_AT,
-    });
-
-    const [timed, fallback] = inserts['activity_results'];
-    expect(timed).toHaveProperty('elapsed_ms', 8_000);
-    expect(fallback).not.toHaveProperty('elapsed_ms');
-    // And the trace is still written — the older schema simply has no column
-    // for the timing, which says nothing about whether it has the trace table.
-    expect(traces()).toHaveLength(1);
+    expect(submitForGrading).toHaveBeenCalledTimes(1);
+    expect(submitForGrading).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 'act-1', duration: DURATION }),
+    );
+    expect(awardActivityXp).not.toHaveBeenCalled();
+    expect(inserts['activity_results']).toBeUndefined();
   });
 });

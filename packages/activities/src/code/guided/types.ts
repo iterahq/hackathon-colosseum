@@ -1,3 +1,4 @@
+import type { SealedAnswer } from '../../components/hostLessonRules.js';
 import type { CodeBlank } from '@iterahq/activity-spec';
 import type { ActivityCompletion } from '../../renderer.js';
 
@@ -46,4 +47,6 @@ export interface UseGuidedCodeOptions {
    * class would rank by who was on screen when the professor clicked.
    */
   reveal?: boolean;
+  /** The activity came without its answers: every verdict is the host's judge's. */
+  sealed?: SealedAnswer | null;
 }

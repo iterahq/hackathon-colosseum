@@ -108,6 +108,7 @@ export function FeedbackFooter({
   busy = false,
   continueTestId = 'feedback-footer-continue',
   retryTestId = 'feedback-footer-retry',
+  missNote,
 }: {
   /** The settled result to surface, or `null` to keep the footer hidden. */
   result: FooterResult | null;
@@ -121,6 +122,8 @@ export function FeedbackFooter({
   busy?: boolean;
   continueTestId?: string;
   retryTestId?: string;
+  /** One line under a miss: what it means for the learner in this host. */
+  missNote?: string;
 }) {
   const { t } = useI18n();
   const correct = result?.correct ?? false;
@@ -203,11 +206,17 @@ export function FeedbackFooter({
                     contentClassName="mt-1 max-h-[32vh] pr-1"
                     buttonTestId="feedback-footer-explanation-title"
                     contentTestId="feedback-footer-explanation"
+                    defaultOpen={!correct}
                   >
                     <p className="text-base text-foreground/85">
                       <RichSpans spans={parseInline(result.explanation)} />
                     </p>
                   </ExplanationDisclosure>
+                )}
+                {!correct && missNote && (
+                  <p className="mt-1 text-sm text-foreground/70" data-testid="feedback-footer-miss-note">
+                    {missNote}
+                  </p>
                 )}
               </div>
             </div>

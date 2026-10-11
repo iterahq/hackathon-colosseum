@@ -27,7 +27,8 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Link2, X } from 'lucide-react';
 import { useActivityI18n, useActivitySound } from '../context.js';
-import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
+import { useHostHidesAnswerOnMiss, useSealedAnswer } from '../components/hostLessonRules.js';
+import { restoredVerdict, sealedKey } from '../internal/sealedAnswer.js';
 import type { ChoiceOption, MatchSpec } from '../specs.js';
 import { learnerShuffle } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -138,7 +139,10 @@ export function MatchActivity({
   // columns carry different salts so the draws stay independent.
   const [left] = useState(() => learnerShuffle(spec?.left ?? [], scope, activity.id, 'left'));
   const [right] = useState(() => learnerShuffle(spec?.right ?? [], scope, activity.id, 'right'));
-  const pairs = spec?.pairs ?? [];
+  const sealed = useSealedAnswer(activity);
+  const pairs = (sealed ? sealedKey<MatchSpec['pairs']>(sealed.outcome, 'pairs') : spec?.pairs) ?? [];
+  // A sealed spec keeps placeholders where the pairs were: only their number is true.
+  const pairCount = sealed ? (spec?.pairs ?? []).length : pairs.length;
 
   // The learner's own earlier pairing, replayed — in CREATION order, because
   // that is what numbers the badges, and the trace stored it that way.
@@ -165,11 +169,15 @@ export function MatchActivity({
   const [drag, setDrag] = useState<string | null>(null);
   const dragRef = useRef<{ from: string; startX: number; startY: number; moved: boolean } | null>(null);
 
-  const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
-  const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
+  const knowsPair = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
+  const canSubmit = made.length === Math.min(left.length, pairCount || left.length);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (../internal/answerMachine.ts — one definition, six call sites).
-  const isMatchCorrect = pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect);
+  const isMatchCorrect = sealed
+    ? (sealed.outcome?.passed ?? restoredVerdict(activity, priorAnswer))
+    : pairs.length > 0 && made.length === pairs.length && made.every(knowsPair);
+  // A sealed miss names no pair: the whole answer is marked, never one wire.
+  const isPairCorrect = (p: MadePair) => (sealed ? isMatchCorrect : knowsPair(p));
   const m = answerMachine({
     done: activity.status === 'done',
     submitted,
@@ -178,10 +186,11 @@ export function MatchActivity({
     correct: isMatchCorrect,
     hasAnswer: canSubmit,
   });
-  const { locked, shown } = m;
+  const { shown } = m;
+  const locked = m.locked || (sealed?.judging ?? false);
   // Reveal without a submission shows the ANSWER KEY (spec pairs, all green),
   // not the learner's empty/partial pairing.
-  const displayedPairs: MadePair[] = m.showKey ? pairs : made;
+  const displayedPairs: MadePair[] = m.showKey && pairs.length > 0 ? pairs : made;
 
   // Which pair index (0-based) a given card belongs to, or -1.
   const leftPairIndex = (id: string) => displayedPairs.findIndex((p) => p.left_id === id);
@@ -242,22 +251,24 @@ export function MatchActivity({
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída"). Grade off the CURRENT pairs — the machine's
   // `gradeResult` isn't set yet at click time.
-  function handleSubmit() {
-    if (!m.acceptsSubmit) return;
-    setSubmitted(true);
+  async function handleSubmit() {
+    if (!m.acceptsSubmit || sealed?.judging) return;
     // Hand the settled pairing up as text (dropped unless the author opted in).
     const label = (list: ChoiceOption[], id: string) =>
       list.find((o) => o.id === id)?.label ?? id;
     const pairing = made
       .map((p) => `${label(left, p.left_id)} -> ${label(right, p.right_id)}`)
       .join('\n');
-    trace.record('answer_submitted', {
-      pairs: made.map((p) => [p.left_id, p.right_id]),
-    });
-    onComplete(isMatchCorrect, {
+    const answer = { pairs: made.map((p) => [p.left_id, p.right_id]) };
+    const verdict = sealed ? await sealed.ask({ answer, response: pairing }) : null;
+    if (sealed && !verdict) return;
+    const correct = verdict ? verdict.passed : isMatchCorrect;
+    setSubmitted(true);
+    trace.record('answer_submitted', answer);
+    onComplete(correct, {
       response: pairing,
       actions: trace.drain(),
-      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isMatchCorrect),
+      explanation: verdict ? (correct ? undefined : verdict.explanation) : hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isMatchCorrect),
     });
   }
 
@@ -497,14 +508,16 @@ export function MatchActivity({
         </div>
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} judged={sealed?.outcome?.explanation} />
 
       <SubmitButton
         submitted={m.submitLocked}
         correct={m.gradeResult}
         disabled={m.submitDisabled}
-        onSubmit={handleSubmit}
+        onSubmit={() => void handleSubmit()}
         testId="match-submit"
+        judging={sealed?.judging}
+        unreachable={sealed?.unreachable}
       />
     </ActivityShell>
   );

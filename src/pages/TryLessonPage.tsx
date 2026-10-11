@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HostExplainsMisses, HostHidesAnswerOnMiss, HostOwnsSettledAction, HostRecordsVerdict, HostUnlimitedAttempts } from '@iterahq/activities';
+import { HostExplainsMisses, HostHidesAnswerOnMiss, HostNotesMisses, HostOwnsSettledAction, HostRecordsVerdict, HostUnlimitedAttempts } from '@iterahq/activities';
 import { useAuth } from '@/auth/AuthContext';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
@@ -36,17 +36,18 @@ export default function TryLessonPage() {
   usePageTitle(t('try.title'));
   const lesson = useGuestLesson(data?.activities ?? []);
   const [claim, setClaim] = useState<'idle' | 'saving' | 'failed'>('idle');
+  const [claimProgress, setClaimProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     if (authLoading || !signedIn) return;
     setClaim('saving');
-    void claimGuestAnswers().then(({ attempted, landed }) => {
+    void claimGuestAnswers((done, total) => setClaimProgress({ done, total })).then(({ attempted, landed }) => {
       if (landed === attempted) navigate(`/lesson/${GUEST_LESSON_ID}`, { replace: true });
       else setClaim('failed');
     });
   }, [authLoading, signedIn, navigate]);
 
-  if (claim !== 'idle') return <TryClaimScreen state={claim} />;
+  if (claim !== 'idle') return <TryClaimScreen state={claim} progress={claimProgress} />;
 
   const { current, finished, pending } = lesson;
   return (
@@ -69,7 +70,7 @@ export default function TryLessonPage() {
             }
           />
         )}
-        {data && finished && <TryDoneCard passed={lesson.counts.passed} total={lesson.total} serverChecked={lesson.counts.serverChecked} onRedo={lesson.redoMissed} />}
+        {data && finished && <TryDoneCard counts={lesson.counts} total={lesson.total} onRedo={lesson.redoMissed} />}
         {data && current && (
           <>
             <LessonTitle text={tText(data.title)} className="mt-4 truncate pb-1 font-display text-xl font-bold text-foreground md:text-2xl" />
@@ -77,11 +78,13 @@ export default function TryLessonPage() {
               <HostExplainsMisses>
                 <HostOwnsSettledAction>
                   <HostUnlimitedAttempts>
-                    <HostRecordsVerdict onVerdict={lesson.handleVerdict}>
-                      <HostHidesAnswerOnMiss hide={lesson.hidesAnswer}>
-                        <ActivityRenderer key={`${current.id}:${lesson.retryCount}`} activity={current} onComplete={lesson.handleComplete} />
-                      </HostHidesAnswerOnMiss>
-                    </HostRecordsVerdict>
+                    <HostNotesMisses note={t('lesson.miss.redoForStamp')}>
+                      <HostRecordsVerdict onVerdict={lesson.handleVerdict}>
+                        <HostHidesAnswerOnMiss hide={lesson.hidesAnswer}>
+                          <ActivityRenderer key={`${current.id}:${lesson.retryCount}`} activity={current} onComplete={lesson.handleComplete} />
+                        </HostHidesAnswerOnMiss>
+                      </HostRecordsVerdict>
+                    </HostNotesMisses>
                   </HostUnlimitedAttempts>
                 </HostOwnsSettledAction>
               </HostExplainsMisses>
@@ -90,7 +93,7 @@ export default function TryLessonPage() {
           </>
         )}
       </main>
-      {!finished && <FeedbackFooter result={pending} onContinue={lesson.advance} onRetry={pending && !pending.correct ? lesson.retryPending : undefined} />}
+      {!finished && <FeedbackFooter result={pending} onContinue={lesson.advance} onRetry={pending && !pending.correct ? lesson.retryPending : undefined} missNote={t('lesson.miss.redoForStamp')} />}
     </div>
   );
 }

@@ -40,7 +40,10 @@ export function useGuestLesson(activities: readonly Activity[]) {
   const counts = useMemo(
     () => ({
       passed: activities.filter((a) => answers[a.id]?.correct).length,
-      serverChecked: activities.filter((a) => answers[a.id]?.serverVerdict === 'pass').length,
+      // Who decided each right answer, as the server labelled the activity when it served the lesson.
+      serverGraded: activities.filter((a) => answers[a.id]?.correct && a.gradedBy === 'server').length,
+      browserChecked: activities.filter((a) => answers[a.id]?.correct && a.gradedBy === 'browser').length,
+      reading: activities.filter((a) => answers[a.id]?.correct && a.gradedBy !== 'server' && a.gradedBy !== 'browser').length,
     }),
     [activities, answers]
   );

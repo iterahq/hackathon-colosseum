@@ -6,10 +6,11 @@
 import { persistActivityProgress } from '@/services/progress.service';
 import { clearGuestAnswers, guestPassesToClaim, readGuestAnswers } from '@/utils/guestLessonStorage';
 
-export async function claimGuestAnswers(): Promise<{ attempted: number; landed: number }> {
+export async function claimGuestAnswers(onProgress?: (done: number, total: number) => void): Promise<{ attempted: number; landed: number }> {
   const passes = guestPassesToClaim(readGuestAnswers());
   const results: boolean[] = [];
   for (const { activityId, answer } of passes) {
+    onProgress?.(results.length, passes.length);
     results.push(
       await persistActivityProgress(activityId, {
         passed: true,

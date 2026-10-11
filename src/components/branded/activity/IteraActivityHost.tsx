@@ -86,9 +86,10 @@
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityProvider, useActivityHost } from '@iterahq/activities';
+import { ActivityProvider, HostJudgesAnswers, useActivityHost } from '@iterahq/activities';
 import type {
   ActivityApiPort,
+  ActivityJudge,
   ActivityIdentity,
   ActivityLiveBufferPort,
   ActivityStoragePort,
@@ -139,6 +140,8 @@ import {
 import { clearTextDraft, readTextDraft, saveTextDraft } from '@/services/textDraft.service';
 import { hasTenantAudience } from '@/services/artifact.service';
 import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope';
+import { judgeAnswer } from '@/services/grade.service';
+import { resolveLocalizedText } from '@/utils/resolveLocalizedSpec';
 
 /**
  * The draft-persistence adapter — the whole reason the `code` extraction did
@@ -363,6 +366,27 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
     [authenticated, loading, scope, artifactAudience],
   );
 
+  // A sealed activity (a learner's copy, served without its answer key) is
+  // graded by the server at the submit. An activity that carries its key (an
+  // author's or an instructor's copy) never calls this.
+  const locale = i18n.locale;
+  const judge = useMemo<ActivityJudge>(
+    () => async (activityId, submission) => {
+      const verdict = await judgeAnswer(activityId, submission);
+      if (!verdict) return null;
+      const shown = verdict.shown ?? {};
+      const explanation = (resolveLocalizedText(shown.explanation, locale) ?? '').trim();
+      return {
+        passed: verdict.verdict === 'pass',
+        ...(shown.key ? { key: shown.key } : {}),
+        ...(explanation ? { explanation } : {}),
+        ...(shown.blanks ? { blanks: shown.blanks } : {}),
+        ...(shown.checks ? { checks: shown.checks } : {}),
+      };
+    },
+    [locale],
+  );
+
   return (
     <ActivityProvider
       i18n={i18n}
@@ -373,7 +397,7 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
       sound={ITERA_ACTIVITY_SOUND}
       codeEditor={CodeEditor}
     >
-      {children}
+      <HostJudgesAnswers judge={judge}>{children}</HostJudgesAnswers>
     </ActivityProvider>
   );
 }

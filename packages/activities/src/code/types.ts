@@ -1,3 +1,4 @@
+import type { SealedAnswer } from '../components/hostLessonRules.js';
 /**
  * The `code` kind's own vocabulary. Internal to the `/code` entrypoint except
  * where `./index.ts` re-exports it.
@@ -41,6 +42,8 @@ export interface UseCodeSnackCallbacks {
    * instead of being carried into the package's public surface.
    */
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
+  /** The activity came without how its checks are run: the host's judge runs them. */
+  sealed?: SealedAnswer | null;
 }
 
 export interface TranspileResult {

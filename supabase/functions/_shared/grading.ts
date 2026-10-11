@@ -34,7 +34,7 @@ export interface HtmlDocument {
 
 export type HtmlParser = (source: string) => HtmlDocument;
 
-export type GradeReason = 'answer_required' | 'answer_rejected' | 'invalid_spec';
+export type GradeReason = 'answer_required' | 'answer_rejected' | 'invalid_spec' | 'trace_required' | 'trace_rejected';
 
 export interface Grade {
   mode: GradeMode;
@@ -400,6 +400,56 @@ export function gradeSubmission(kind: string, spec: unknown, submission: Submiss
     if (verdict) return { mode, passed: true };
   }
   return { mode, passed: false, reason: judged ? 'answer_rejected' : 'invalid_spec' };
+}
+
+export interface CheckResult {
+  id: string;
+  passed: boolean;
+}
+
+/**
+ * Each check of a server-graded editor activity against the submitted source,
+ * in the authored language that passes the most of them. `null` when the
+ * activity is not one the server runs checks for.
+ */
+export function checkResults(kind: string, spec: unknown, source: string, parseHtml: HtmlParser): CheckResult[] | null {
+  if (kind !== 'code_editor_checks' || gradingMode(kind, spec) !== 'server') return null;
+  let best: CheckResult[] | null = null;
+  for (const locale of LOCALES) {
+    const resolved = resolveSpec(spec, locale);
+    if (!isObject(resolved)) continue;
+    const document = parseHtml(`${source}<script></script>`);
+    const results = checksOf(resolved).map((check, index) => {
+      let passed = false;
+      try {
+        passed = evaluateCheck(check, source, document);
+      } catch {
+        passed = false;
+      }
+      return { id: typeof check.id === 'string' ? check.id : String(index), passed };
+    });
+    const score = results.filter((result) => result.passed).length;
+    if (!best || score > best.filter((result) => result.passed).length) best = results;
+  }
+  return best;
+}
+
+/**
+ * Which holes of a fill activity hold an accepted answer, from the values the
+ * player sent beside the source. `null` when there is nothing to read.
+ */
+export function blankVerdicts(kind: string, spec: unknown, values: unknown): Record<string, boolean> | null {
+  if (!FILL_KINDS.has(kind) || !isObject(values)) return null;
+  let best: Record<string, boolean> | null = null;
+  for (const locale of LOCALES) {
+    const resolved = resolveSpec(spec, locale);
+    const blanks = isObject(resolved) ? blanksOf(resolved) : null;
+    if (!blanks) continue;
+    const verdicts = Object.fromEntries(blanks.map((blank) => [blank.id, typeof values[blank.id] === 'string' && matchesBlank(blank, values[blank.id] as string)]));
+    const score = Object.values(verdicts).filter(Boolean).length;
+    if (!best || score > Object.values(best).filter(Boolean).length) best = verdicts;
+  }
+  return best;
 }
 
 /** Deterministic JSON: object keys sorted at every level. */

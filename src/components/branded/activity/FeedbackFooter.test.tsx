@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { FeedbackFooter } from './FeedbackFooter';
 
@@ -168,25 +168,33 @@ describe('FeedbackFooter retry', () => {
 describe('FeedbackFooter explanation disclosure', () => {
   const miss = { correct: false, message: 'Quase', explanation: 'Porque sim.' };
 
-  it('starts collapsed on a miss, with a real button wired by aria', () => {
+  it('opens the explanation on a miss without a click, with a real button wired by aria', () => {
     renderFooter({ result: miss, onRetry: () => {} });
     const button = screen.getByTestId('feedback-footer-explanation-title');
     expect(button.tagName).toBe('BUTTON');
     expect(button.textContent).toContain('Entenda o porquê');
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
-  });
-
-  it('expands and collapses on click', async () => {
-    renderFooter({ result: miss, onRetry: () => {} });
-    const button = screen.getByTestId('feedback-footer-explanation-title');
-    fireEvent.click(button);
     expect(button.getAttribute('aria-expanded')).toBe('true');
     expect(document.getElementById(button.getAttribute('aria-controls') ?? '')).toBeTruthy();
     expect(screen.getByTestId('feedback-footer-explanation').textContent).toBe('Porque sim.');
+  });
+
+  it('collapses and expands on click', async () => {
+    renderFooter({ result: miss, onRetry: () => {} });
+    const button = screen.getByTestId('feedback-footer-explanation-title');
     fireEvent.click(button);
     expect(button.getAttribute('aria-expanded')).toBe('false');
     await waitFor(() => expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull());
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByTestId('feedback-footer-explanation').textContent).toBe('Porque sim.');
+  });
+
+  it('says what a miss means for the learner when the host gives the line', () => {
+    renderFooter({ result: miss, onRetry: () => {}, missNote: 'Redo it for the stamp.' });
+    expect(screen.getByTestId('feedback-footer-miss-note').textContent).toBe('Redo it for the stamp.');
+    cleanup();
+    renderFooter({ result: { correct: true }, missNote: 'Redo it for the stamp.' });
+    expect(screen.queryByTestId('feedback-footer-miss-note')).toBeNull();
   });
 
   it('renders no button without explanation text', () => {
@@ -194,17 +202,17 @@ describe('FeedbackFooter explanation disclosure', () => {
     expect(screen.queryByTestId('feedback-footer-explanation-title')).toBeNull();
   });
 
-  it('collapses again for the next miss', () => {
+  it('is open again for the next miss, even after the learner closed the last one', async () => {
     const { rerender } = renderFooter({ result: miss, onRetry: () => {} });
     fireEvent.click(screen.getByTestId('feedback-footer-explanation-title'));
-    expect(screen.getByTestId('feedback-footer-explanation')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull());
     rerender(
       <I18nProvider>
         <FeedbackFooter result={{ ...miss }} onContinue={() => {}} onRetry={() => {}} />
       </I18nProvider>
     );
-    expect(screen.getByTestId('feedback-footer-explanation-title').getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
+    expect(screen.getByTestId('feedback-footer-explanation-title').getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByTestId('feedback-footer-explanation')).toBeTruthy();
   });
 
   it('keeps retry primary and Enter on retry while it is open', () => {

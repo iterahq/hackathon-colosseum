@@ -20,6 +20,7 @@ import { SHOP_MESSAGES } from './shopMessages';
 import { CRYSTALS_MESSAGES } from './crystalsMessages';
 import { UX_MESSAGES } from './uxMessages';
 import { LESSON_RULES_MESSAGES } from './lessonRulesMessages';
+import { PROVE_MESSAGES } from './proveMessages';
 import { AVATAR_MESSAGES } from './avatarMessages';
 import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
@@ -687,6 +688,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.reset.confirm': 'Sim, recomeçar',
     'code.reset.cancel': 'Continuar editando',
     'activity.submit': 'Enviar',
+    'activity.checking': 'Conferindo…',
+    'activity.judgeUnreachable': 'Não deu pra conferir sua resposta agora. Envie de novo.',
     'activity.sent': 'Enviado',
     'activity.correct': 'Resposta correta!',
     'activity.incorrect': 'Não foi dessa vez',
@@ -1254,6 +1257,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...CRYSTALS_MESSAGES.pt,
     ...UX_MESSAGES.pt,
     ...LESSON_RULES_MESSAGES.pt,
+    ...PROVE_MESSAGES.pt,
     ...AVATAR_MESSAGES.pt,
     ...LINK_MESSAGES.pt,
     ...GIFT_MESSAGES.pt,
@@ -1922,6 +1926,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.reset.confirm': 'Yes, start over',
     'code.reset.cancel': 'Keep editing',
     'activity.submit': 'Submit',
+    'activity.checking': 'Checking…',
+    'activity.judgeUnreachable': 'Your answer could not be checked just now. Send it again.',
     'activity.sent': 'Sent',
     'activity.correct': 'Correct answer!',
     'activity.incorrect': 'Not this time',
@@ -2465,6 +2471,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...CRYSTALS_MESSAGES.en,
     ...UX_MESSAGES.en,
     ...LESSON_RULES_MESSAGES.en,
+    ...PROVE_MESSAGES.en,
     ...AVATAR_MESSAGES.en,
     ...LINK_MESSAGES.en,
     ...GIFT_MESSAGES.en,

@@ -15,6 +15,7 @@ import { getIteraUserId } from '@/services/iteraUser';
 import { normalizeProgressStatus } from '@/utils/normalizeProgressStatus';
 import { isScenarioKind } from '@/utils/activityFamilies';
 import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
+import { withSealedPlaceholders } from '@/utils/sealedSpec';
 import type {
   Activity,
   Badge,
@@ -193,6 +194,9 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
 export function mapActivity(a: Row): Activity {
   const kind = str(a.kind) as Activity['kind'];
   const rawSpec = a.spec && typeof a.spec === 'object' ? (a.spec as Record<string, unknown>) : {};
+  const sealed = a.sealed === true;
+  const gradedBy = a.graded_by === 'server' || a.graded_by === 'browser' || a.graded_by === 'none' ? a.graded_by : undefined;
+  const resolvedSpec = isScenarioKind(kind) ? rawSpec : resolveLocalizedSpec(rawSpec);
   return {
     id: str(a.id),
     lessonId: str(a.lesson_id),
@@ -202,7 +206,9 @@ export function mapActivity(a: Row): Activity {
     // renders spec strings directly, so collapse bags before they reach the DOM.
     // ⚠️ TODOS os kinds de sandbox, não só o legado: colapsar o bag de uma row
     // migrada reprova o spec na fronteira e o aluno perde o sandbox inteiro.
-    spec: isScenarioKind(kind) ? rawSpec : resolveLocalizedSpec(rawSpec),
+    spec: sealed ? withSealedPlaceholders(kind, resolvedSpec, num(a.pair_count)) : resolvedSpec,
+    ...(sealed ? { sealed } : {}),
+    ...(gradedBy ? { gradedBy } : {}),
     // The rubric is bilingual too (`criteria[]`, `artifact` — the AI-judge
     // prompt and the artifact label). Nothing downstream resolves it, so an
     // unresolved bag here would reach the judge as "[object Object]" and would
@@ -282,22 +288,15 @@ export async function getLessonWithActivities(lessonId: string): Promise<{
   activities: Activity[];
   placement: LessonPlacement;
 }> {
-  const sb = client();
-  const { data, error } = await sb
-    .from('lessons')
-    .select(
-      `id, title_i18n, ordinal,
-       unit:units ( ordinal, title_i18n, program:programs ( slug ) ),
-       activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, artifact_policy )`
-    )
-    .eq('id', lessonId)
-    .maybeSingle();
-
+  // The specs leave the server through the `lesson` function only: a learner's
+  // copy has no answer key, whoever teaches or authors the program gets it whole.
+  const { data, error } = await client().functions.invoke('lesson', { method: 'POST', body: { lesson_id: lessonId } });
   if (error) throw new Error(error.message);
-  if (!data) throw new Error(`Lesson not found: ${lessonId}`);
-  const row = data as Row;
+  const payload = (data ?? {}) as { lesson?: Row | null; activities?: unknown };
+  if (!payload.lesson) throw new Error(`Lesson not found: ${lessonId}`);
+  const row = payload.lesson;
 
-  const activities: Activity[] = asRows(row.activities)
+  const activities: Activity[] = asRows(payload.activities)
     .map((a) => mapActivity(a))
     .sort((x, y) => x.ordinal - y.ordinal);
 
