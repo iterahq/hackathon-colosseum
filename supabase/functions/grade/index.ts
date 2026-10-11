@@ -177,41 +177,40 @@ async function claimGuestPasses(db: IteraClient, token: string, subject: string,
     items.map((item, index) => ({ receiptAt: judged[index] ? guestReceiptTime(secret, item.activityId, item.receipt, now) : null, settledAt: item.settledAt })),
     now,
   );
-  const out: Array<{ activity_id: string; landed: boolean }> = [];
-  for (const [index, item] of items.entries()) {
-    const entry = judged[index];
-    if (!entry) {
-      out.push({ activity_id: item.activityId, landed: false });
-      continue;
-    }
-    const { activity, verdict } = entry;
-    const { data, error } = await db.rpc('record_graded_attempt_v2', {
-      p: {
-        subject,
-        activity_id: activity.id,
-        lesson_id: activity.lesson_id,
-        kind: activity.kind,
-        mode: verdict.grade.mode,
-        passed: true,
-        claimed_passed: true,
-        reason: verdict.grade.reason ?? null,
-        answer_hash: sha256Hex(`${activity.id}\n${canonicalJson({ answer: verdict.answer, response: item.response })}`),
-        spec_hash: sha256Hex(canonicalJson(activity.spec)),
-        grader: GRADER_VERSION,
-        max_per_minute: MAX_ATTEMPTS_PER_MINUTE,
-        write_result: true,
-        feedback: storedFeedback(item.response),
-        elapsed_ms: null,
-        visible_ms: null,
-        completed_at: new Date(times[index]).toISOString(),
-      },
-    });
-    if (error) throw new Error(`record_graded_attempt_v2: ${error.message}`);
-    const attempt = data as { error?: string; attempt_id?: string };
-    if (attempt.error === 'no_itera_profile') return { error: 'no_itera_profile' };
-    out.push({ activity_id: item.activityId, landed: !attempt.error && Boolean(attempt.attempt_id) });
-  }
-  return out;
+  // One round trip each, all at once: the day is recorded in the time of the slowest.
+  const recorded = await Promise.all(
+    items.map(async (item, index) => {
+      const entry = judged[index];
+      if (!entry) return { activity_id: item.activityId, landed: false };
+      const { activity, verdict } = entry;
+      const { data, error } = await db.rpc('record_graded_attempt_v2', {
+        p: {
+          subject,
+          activity_id: activity.id,
+          lesson_id: activity.lesson_id,
+          kind: activity.kind,
+          mode: verdict.grade.mode,
+          passed: true,
+          claimed_passed: true,
+          reason: verdict.grade.reason ?? null,
+          answer_hash: sha256Hex(`${activity.id}\n${canonicalJson({ answer: verdict.answer, response: item.response })}`),
+          spec_hash: sha256Hex(canonicalJson(activity.spec)),
+          grader: GRADER_VERSION,
+          max_per_minute: MAX_ATTEMPTS_PER_MINUTE,
+          write_result: true,
+          feedback: storedFeedback(item.response),
+          elapsed_ms: null,
+          visible_ms: null,
+          completed_at: new Date(times[index]).toISOString(),
+        },
+      });
+      if (error) throw new Error(`record_graded_attempt_v2: ${error.message}`);
+      const attempt = data as { error?: string; attempt_id?: string };
+      return { activity_id: item.activityId, landed: !attempt.error && Boolean(attempt.attempt_id), error: attempt.error };
+    }),
+  );
+  if (recorded.some((row) => 'error' in row && row.error === 'no_itera_profile')) return { error: 'no_itera_profile' };
+  return recorded.map(({ activity_id, landed }) => ({ activity_id, landed }));
 }
 
 Deno.serve(async (request) => {
