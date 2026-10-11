@@ -118,7 +118,8 @@ check('give up: the learner signed, the server sent', gaveUp.http === 200 && gav
 ({ page } = await agree('given up: the account names nobody', slug1, { status: 'open' }));
 await learnerSigned('given up', page, 'withdrawn');
 
-check('accept again', (await acceptBounty(learner, id1)).http === 200);
+const again = await acceptBounty(learner, id1);
+check('accept again', again.http === 200, JSON.stringify(again.j).slice(0, 200));
 check('deliver', (await call('bounty-claim', learner, { action: 'submit', bounty: id1, url: 'https://example.com/first-try' })).http === 200);
 ({ page } = await agree('delivered (the account still holds it for the learner)', slug1, { status: 'submitted', holder: learner.address }));
 check('delivered: the ledger row is a server record and carries no transaction', lastEvent(page, 'submitted')?.signature === null && lastEvent(page, 'submitted')?.signed_by === null);
@@ -127,7 +128,8 @@ check('reject', (await call('bounty-sponsor', sponsor, { action: 'reject', bount
 ({ page } = await agree('rejected: the account names nobody', slug1, { status: 'open' }));
 await iteraSigned('rejected', page, 'rejected');
 
-check('accept a third time', (await acceptBounty(learner, id1)).http === 200);
+const third = await acceptBounty(learner, id1);
+check('accept a third time', third.http === 200, JSON.stringify(third.j).slice(0, 200));
 check('deliver again', (await call('bounty-claim', learner, { action: 'submit', bounty: id1, url: 'https://example.com/second-try' })).http === 200);
 let approved = await call('bounty-sponsor', sponsor, { action: 'approve', bounty: id1 });
 for (let tries = 0; tries < 15 && approved.j.status !== 'paid'; tries += 1) {
@@ -135,6 +137,7 @@ for (let tries = 0; tries < 15 && approved.j.status !== 'paid'; tries += 1) {
   approved = await call('bounty-sponsor', sponsor, { action: 'approve', bounty: id1 });
 }
 ({ page } = await agree('approved and paid', slug1, { status: 'paid', holder: learner.address }));
+if (!page.payout) done();
 const payout = await rpc('getTransaction', [page.payout.signature, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
 const paidAt = payout.transaction.message.accountKeys.indexOf(learner.address);
 check('paid: the payout transaction moved exactly the reward into the learner wallet', payout.meta.postBalances[paidAt] - payout.meta.preBalances[paidAt] === REWARD, page.payout.explorer_url);

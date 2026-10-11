@@ -69,7 +69,7 @@ async function status(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
   );
 }
 
-const SIGN_RATE: RateLimit = { limit: 12, windowMs: 10 * 60_000 };
+const SIGN_RATE: RateLimit = { limit: 40, windowMs: 10 * 60_000 };
 
 /** What a failed co-signed send means to the caller. `null`: not ours to explain, rethrow. */
 async function sendFailure(db: IteraClient, bounty: BountyRow, error: unknown, cors: Cors): Promise<Response | null> {
