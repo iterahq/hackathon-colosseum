@@ -32,7 +32,9 @@ export function planMintJobs(rows: AchievementRow[], medalKeys: ReadonlySet<stri
       jobs.push({ type: 'create_medal', anchor: row, rows: [row] });
     }
   }
+  // The certification goes first: it is what the learner is looking at when a day ends, and medals can wait a call.
+  const rank = (job: MintJob) => (job.type === 'create_medal' ? 1 : 0);
   return jobs.sort(
-    (a, b) => a.anchor.earned_at.localeCompare(b.anchor.earned_at) || a.anchor.id.localeCompare(b.anchor.id),
+    (a, b) => rank(a) - rank(b) || a.anchor.earned_at.localeCompare(b.anchor.earned_at) || a.anchor.id.localeCompare(b.anchor.id),
   );
 }
