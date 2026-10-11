@@ -15,6 +15,9 @@ const STATIC_TITLES: readonly (readonly [RegExp, string])[] = [
   [/^\/catalog\/?$/, 'catalog.title'],
   [/^\/artifacts\/?$/, 'artifacts.title'],
   [/^\/profile\/?$/, 'profile.title'],
+  [/^\/passport\/?$/, 'passport.title'],
+  [/^\/c\/[^/]+\/?$/, 'passport.credential.title'],
+  [/^\/u\/[^/]+\/?$/, 'passport.publicProfile.title'],
   // not-commerce: the tab title of /subscribe, web-only in the same way
   [/^\/subscribe\/?$/, 'subscribe.title'],
 ];

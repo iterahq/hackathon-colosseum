@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { LiveClassSignal } from '@/components/branded/LiveClassSignal';
+import { OfflineBanner } from '@/components/shell/OfflineBanner';
 import { useLocaleSync } from '@/hooks/useLocaleSync';
 import { isGuestRoutePath } from '@/guest/guestRoute';
 
@@ -30,9 +31,11 @@ function LocaleSync() {
  */
 export function AppWideMounts() {
   const { pathname } = useLocation();
-  if (isGuestRoutePath(pathname)) return null;
+  // The offline line is for everyone, the guest included: it reads nothing and writes nothing.
+  if (isGuestRoutePath(pathname)) return <OfflineBanner />;
   return (
     <>
+      <OfflineBanner />
       <LocaleSync />
       <LiveClassSignal />
     </>

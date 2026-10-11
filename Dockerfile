@@ -87,6 +87,23 @@ RUN printf 'server {\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\
+  # Link previews: a crawler (by user agent) opening a public credential, profile or gift page gets a small HTML\n\
+  # page with the Open Graph tags of that page from the share-meta edge function; every browser gets the SPA as before.\n\
+  # The SPA cannot serve per-page meta tags itself, and these three pages are what people paste into a chat.\n\
+  location ~ ^/(c|u|gift)/ {\n\
+    if ($http_user_agent ~* "(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot|Googlebot|bingbot|Applebot|redditbot|Pinterest|Embedly|iframely|vkShare)") {\n\
+      rewrite ^ /__share$uri last;\n\
+    }\n\
+    try_files $uri /index.html;\n\
+  }\n\
+  location ^~ /__share/ {\n\
+    internal;\n\
+    proxy_pass https://nyzcbnnbffsizshiolbh.supabase.co/functions/v1/share-meta/;\n\
+    proxy_ssl_server_name on;\n\
+    proxy_set_header Host nyzcbnnbffsizshiolbh.supabase.co;\n\
+    proxy_hide_header Access-Control-Allow-Origin;\n\
+    proxy_read_timeout 10s;\n\
+  }\n\
   # Vite names every file in /assets/ after its content, so a year and immutable. A name that is gone\n\
   # (a tab older than the last deploy) is a 404, not index.html. add_header here replaces the\n\
   # server-level one, so the CSP is repeated. No "always" on Cache-Control: a 404 must not be kept.\n\

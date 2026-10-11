@@ -82,3 +82,7 @@ verify_jwt = false
 # `GET /crystals/token.json` and `/token.svg` are the public metadata of the token.
 [functions.crystals]
 verify_jwt = false
+
+# Link previews for /c, /u and /gift: nginx hands crawlers to it by user agent. Public, read-only.
+[functions.share-meta]
+verify_jwt = false
