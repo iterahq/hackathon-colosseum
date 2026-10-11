@@ -25,6 +25,15 @@ export function instructionRows(idl: EscrowIdl): InstructionRow[] {
   }));
 }
 
+/** The table row in the reader's language: the program's own words stay for what has no message. */
+export function localizeRow(row: InstructionRow, messages: Record<string, string>): InstructionRow {
+  return {
+    name: messages[`verify.source.name.${row.name}`] ?? row.name,
+    signers: [messages[`verify.source.signers.${row.name}`] ?? row.signers.join(', ')],
+    checks: messages[`verify.source.checks.${row.name}`] ?? row.checks,
+  };
+}
+
 /** From the line that declares `fn accept(` to the next line that is exactly `}`. */
 export function acceptFunctionSource(source: string): string | null {
   const lines = source.split('\n');
