@@ -1,3 +1,4 @@
+import { loadTestAccountIds } from '../_shared/test-accounts.ts';
 import { isSolanaAddress } from '../_shared/address.ts';
 import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
 import { boardStats, bountyView, earningsView, type BountyRow } from '../_shared/bounty.ts';
@@ -30,11 +31,12 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   inBackground(sweepExpired(db, now, SWEEP_ON_READ));
   // Before the board says "open" and counts money as locked, the escrow accounts are read: one call for all of them.
   await syncOpenEscrows(db).catch((error) => console.error('bounty-board: escrow accounts not read', error instanceof Error ? error.message : error));
-  const [{ bounties, claims }, config] = await Promise.all([currentBounties(db, now), loadConfig(db)]);
+  const [{ bounties, claims }, config, tests] = await Promise.all([currentBounties(db, now), loadConfig(db), loadTestAccountIds(db)]);
+  const paidToTests = new Set(bounties.filter((bounty) => bounty.claim_id && tests.has(claims.get(bounty.claim_id)?.user_id ?? '')).map((bounty) => bounty.id));
   return json(
     {
       cluster: 'devnet',
-      stats: boardStats(bounties, now),
+      stats: boardStats(bounties, now, paidToTests),
       bounties: bounties.map((bounty) => bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program })),
     },
     200,

@@ -347,3 +347,12 @@ describe('trailAttribute', () => {
     expect(trailAttribute('x'.repeat(90))).toHaveLength(80);
   });
 });
+
+describe('boardStats and the team test accounts', () => {
+  it('a payout to a test account is not counted as paid', () => {
+    const row = (id: string, status: string) => ({ id, status, payout_lamports: 5_000_000, reward_lamports: 5_000_000, funded_lamports: 5_000_000, expires_at: '2099-01-01T00:00:00Z' }) as unknown as Parameters<typeof boardStats>[0][number];
+    const rows = [row('real', 'paid'), row('test', 'paid'), row('open', 'open')];
+    expect(boardStats(rows, new Date('2026-10-11T00:00:00Z'))).toMatchObject({ paid_count: 2, paid_lamports: 10_000_000, open_count: 1 });
+    expect(boardStats(rows, new Date('2026-10-11T00:00:00Z'), new Set(['test']))).toMatchObject({ paid_count: 1, paid_lamports: 5_000_000, open_count: 1 });
+  });
+});
