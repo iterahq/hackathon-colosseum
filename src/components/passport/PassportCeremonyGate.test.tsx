@@ -24,6 +24,7 @@ vi.mock('@/hooks/usePassport', () => ({
   },
 }));
 
+vi.mock('@/components/loop/LoopPanel', () => ({ LoopPanel: () => null }));
 const PREVIEW = { day: 5, totalDays: 5, stampedBefore: 4, trailTitle: 'HTML', colorIndex: 1 };
 
 function show(view: LessonEndView | null, props: Partial<Parameters<typeof PassportCeremonyGate>[0]> = {}) {

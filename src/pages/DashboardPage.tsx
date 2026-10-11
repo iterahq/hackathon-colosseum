@@ -8,6 +8,7 @@ import { LiveClassesCard } from '@/components/dashboard/LiveClassesCard';
 import { TrailCards } from '@/components/dashboard/TrailCards';
 import { WeeklyGoal } from '@/components/dashboard/WeeklyGoal';
 import { WelcomeStrip } from '@/components/dashboard/WelcomeStrip';
+import { BountiesForYouCard } from '@/components/loop/BountiesForYouCard';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import '@/components/dashboard/dashboard.css';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
@@ -76,6 +77,7 @@ export default function DashboardPage() {
             <TrailCards trails={trails} pages={passport.pages} finished={trails.filter((t) => t.status === 'done').length} onOpen={openTrail} />
             <div className="flex min-w-0 flex-col gap-5" data-testid="dashboard-side">
               <WeeklyGoal done={dashboard.weekly} />
+              <BountiesForYouCard />
               <AchievementsPanel
                 pages={passport.pages}
                 medals={passport.medals}
