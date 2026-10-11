@@ -157,6 +157,14 @@ export const queryKeys = {
     price: (locale: string) => ['gift', 'price', { locale }] as const,
     inbox: (userId: string) => ['gift', 'inbox', userId] as const,
   },
+  // Bounties: the public board and one bounty per language, the learner's status on a bounty, the sponsor's list.
+  bounty: {
+    all: ['bounty'] as const,
+    board: (locale: string) => ['bounty', 'board', { locale }] as const,
+    detail: (slug: string, locale: string) => ['bounty', 'detail', slug, { locale }] as const,
+    mine: (userId: string, bountyId: string) => ['bounty', 'mine', userId, bountyId] as const,
+    sponsor: (userId: string) => ['bounty', 'sponsor', userId] as const,
+  },
   referral: {
     mine: (userId: string) => ['referral', userId] as const,
   },

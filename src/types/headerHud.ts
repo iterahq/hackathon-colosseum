@@ -1,6 +1,6 @@
 import type { HeaderIconName } from '@/consts/headerIconPaths';
 
-export type NavId = 'trails' | 'courses' | 'passport' | 'files' | 'shop';
+export type NavId = 'trails' | 'courses' | 'passport' | 'files' | 'shop' | 'bounties';
 
 export interface HeaderNavItem {
   id: NavId;
