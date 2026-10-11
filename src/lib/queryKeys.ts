@@ -158,6 +158,12 @@ export const queryKeys = {
     price: (locale: string) => ['gift', 'price', { locale }] as const,
     inbox: (userId: string) => ['gift', 'inbox', userId] as const,
   },
+  // Talent board: the public list per language and filter, and the learner's own opt-in state.
+  talent: {
+    all: ['talent'] as const,
+    board: (locale: string, capability: string, minDays: number) => ['talent', 'board', { locale, capability, minDays }] as const,
+    mine: (userId: string) => ['talent', 'mine', userId] as const,
+  },
   // Bounties: the public board and one bounty per language, the learner's status on a bounty, the sponsor's list.
   bounty: {
     all: ['bounty'] as const,

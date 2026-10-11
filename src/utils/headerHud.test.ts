@@ -55,6 +55,7 @@ describe('activeNavOf', () => {
     expect(activeNavOf('/course/react-do-zero', false)).toBe('courses');
     expect(activeNavOf('/passport')).toBe('passport');
     expect(activeNavOf('/artifacts/abc')).toBe('files');
+    expect(activeNavOf('/talent')).toBe('talent');
     expect(activeNavOf('/verify')).toBe('verify');
   });
   it('files a program page under the trails when the courses are hidden', () => {

@@ -26,8 +26,11 @@ describe('HEADER_NAV', () => {
     expect(FULL_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'courses', 'passport', 'shop', 'bounties', 'verify']);
     expect(HEADER_NAV.find((n) => n.id === 'verify')?.to).toBe('/verify');
   });
-  it('shows the four tabs of the loop on the focus build, the courses and the shop left out', () => {
-    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'bounties', 'verify']);
+  it('points the Talent tab at the public board', () => {
+    expect(FOCUS_HEADER_NAV.find((n) => n.id === 'talent')?.to).toBe('/talent');
+  });
+  it('shows the five tabs of the loop on the focus build, the courses and the shop left out', () => {
+    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'bounties', 'talent', 'verify']);
     expect(HEADER_NAV).toBe(FOCUS_HEADER_NAV);
   });
 });

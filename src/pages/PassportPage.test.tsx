@@ -6,6 +6,7 @@ import PassportPage from '@/pages/PassportPage';
 import type { PassportMedal, PassportPageData } from '@/types/achievements';
 
 const view = vi.fn();
+vi.mock('@/components/talent/TalentOptIn', () => ({ TalentOptIn: () => <div data-testid="talent-optin" /> }));
 vi.mock('@/components/graph/PassportGraph', () => ({ PassportGraph: ({ wallet }: { wallet: string | null }) => <div data-testid="passport-graph" data-wallet={wallet ?? ''} /> }));
 vi.mock('@/hooks/usePassportView', () => ({ usePassportView: () => view() }));
 vi.mock('@/hooks/useContent', () => ({ useUserStats: () => ({ data: { totalXp: 780, completedActivities: 20 } }) }));
@@ -41,6 +42,12 @@ describe('PassportPage', () => {
     expect(screen.getByTestId('passport-wallet')).toHaveTextContent('sem carteira');
     expect(screen.getByTestId('passport-no-wallet')).toHaveTextContent('Conecte uma carteira');
     expect(screen.getByTestId('passport-full-card')).toHaveTextContent('09/10/2026');
+  });
+
+  it('offers the talent opt-in card to the signed-in learner', () => {
+    view.mockReturnValue({ ...base, pages: [page()], medals: [] });
+    show();
+    expect(screen.getByTestId('talent-optin')).toBeInTheDocument();
   });
 
   it('minted pages get the on-chain mark and a public link button; gold ones come first', () => {

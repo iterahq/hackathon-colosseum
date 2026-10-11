@@ -1,3 +1,4 @@
+import { TalentOptIn } from '@/components/talent/TalentOptIn';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CapabilityGraphSection } from '@/components/graph/CapabilityGraphSection';
@@ -115,6 +116,7 @@ export default function LearnerProfilePage() {
                 ))}
               </ul>
             )}
+            {story.wallet === profile.wallet && <TalentOptIn />}
             {!FOCUS_LIVES_OFF && <ProfileGift wallet={profile.wallet} />}
             {profile.circuit.stampsFunded > 0 && (
               <p className="rounded-[14px] border border-[#262320] bg-[#141210] px-4 py-3 [font:500_14px/1.45_Inter] text-[#C9BFB0]" data-testid="profile-circuit">

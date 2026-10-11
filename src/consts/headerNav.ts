@@ -11,11 +11,12 @@ export const FULL_HEADER_NAV: readonly HeaderNavItem[] = [
   { id: 'verify', to: '/verify', key: 'header.nav.verify', icon: 'verify' },
 ];
 
-/** Trails · Certifications · Bounties · Verify: the loop in reading order. The shop lives in the account menu. */
+/** Trails · Certifications · Bounties · Talent · Verify: the loop in reading order. The shop lives in the account menu. */
 export const FOCUS_HEADER_NAV: readonly HeaderNavItem[] = [
   { id: 'trails', to: '/', key: 'header.nav.trails', icon: 'trails' },
   { id: 'passport', to: '/passport', key: 'header.nav.passport', icon: 'passport' },
   { id: 'bounties', to: '/bounties', key: 'header.nav.bounties', icon: 'solana' },
+  { id: 'talent', to: '/talent', key: 'header.nav.talent', icon: 'talent' },
   { id: 'verify', to: '/verify', key: 'header.nav.verify', icon: 'verify' },
 ];
 

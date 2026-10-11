@@ -64,6 +64,7 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-live')).not.toHaveTextContent(/never go down|capacity/);
     expect(screen.getByTestId('landing-hero-time')).toHaveTextContent('Day 1 takes about 15 minutes');
     expect(screen.getByTestId('landing-hero-bounties')).toHaveAttribute('href', '/bounties');
+    expect(screen.getByTestId('landing-talent-line').querySelector('a')).toHaveAttribute('href', '/talent');
     expect(screen.getByTestId('landing-live')).not.toHaveTextContent(/left out/);
     expect(screen.getByTestId('landing-lede')).toHaveTextContent('Learn to code in 5-day trails. Each finished day is stamped on a credential in your wallet. That credential unlocks paid work.');
     expect(screen.getByTestId('landing-hero')).not.toHaveTextContent(/soulbound|Metaplex|escrow|evidence hash/i);
