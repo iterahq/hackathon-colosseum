@@ -67,6 +67,12 @@ describe('NicknameGate', () => {
     expect(localStorage.getItem('itera.nickname.skipped:uid-1')).toBe('1');
   });
 
+  it('never interrupts a lesson or a live class', async () => {
+    renderGate('/lesson/0e7d6618-f9ba-46ba-bf28-71cf86f32716');
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByTestId('nickname-gate')).toBeNull();
+  });
+
   it('stays out of the public asset route and when the profile fails', async () => {
     renderGate('/c/abc');
     expect(screen.queryByTestId('nickname-gate')).toBeNull();

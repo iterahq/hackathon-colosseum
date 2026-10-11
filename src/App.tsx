@@ -95,6 +95,7 @@ import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
+import { LessonPrefetch } from "./components/LessonPrefetch";
 import { PageTitle } from "./components/PageTitle";
 import { NicknameGate } from "./components/onboarding/NicknameGate";
 import { TeraLoader } from "./components/tera/TeraLoader";
@@ -175,6 +176,7 @@ const App = () => (
               <AppWideMounts />
               <NicknameGate />
               <LearnerPagePrefetch />
+              <LessonPrefetch />
               <CompanionBootstrap />
               <AppThemeSync />
               <GiftMounts />
