@@ -900,6 +900,8 @@ export default function LessonPlayer() {
                 total={activities.length}
                 fresh={freshFinish}
                 onRedoMissing={redoMissing}
+                trail={placement.unitOrdinal ?? null}
+                day={placement.lessonOrdinal != null ? placement.lessonOrdinal + 1 : null}
               />
             </LessonCompanionContext.Provider>
           ) : (

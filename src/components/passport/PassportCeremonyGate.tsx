@@ -4,6 +4,7 @@ import { useCompanion } from '@/hooks/useCompanion';
 import { usePassport, usePassportPrefetch } from '@/hooks/usePassport';
 import { useI18n } from '@/i18n';
 import { preparingModel } from '@/utils/lessonEnd';
+import { LoopPanel } from '@/components/loop/LoopPanel';
 import { StampCeremony } from './StampCeremony';
 
 interface BoundaryProps {
@@ -36,9 +37,12 @@ interface GateProps {
   fresh?: boolean;
   /** Opens the first unfinished activity of the lesson. */
   onRedoMissing?: () => void;
+  /** Where the lesson sits: the trail ordinal and the 1-based day, for "what this day proved". */
+  trail?: number | null;
+  day?: number | null;
 }
 
-function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = false, onRedoMissing }: GateProps) {
+function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = false, onRedoMissing, trail, day }: GateProps) {
   const { t } = useI18n();
   const passport = usePassport({ lessonId, fresh, done: doneCount, total });
   const { outfit } = useCompanion();
@@ -48,20 +52,28 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
     return <LessonCompleteCard doneCount={view.done} total={view.total} missing={view.missing} nextLessonId={nextLessonId} onRedoMissing={onRedoMissing} />;
   }
   if (view.kind === 'card') {
-    return <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note ? t('lessonEnd.stampLater') : undefined} />;
+    return (
+      <div className="flex flex-col gap-4">
+        <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note ? t('lessonEnd.stampLater') : undefined} />
+        <LoopPanel trail={trail} day={day} />
+      </div>
+    );
   }
   const preparing = view.kind === 'preparing';
   return (
-    <StampCeremony
-      model={preparing ? preparingModel(view.preview) : view.model}
-      preparing={preparing}
-      colorIndex={passport.colorIndex}
-      actions={<LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} gold={!preparing && view.model.last} />}
-      onRetry={passport.retry}
-      onLater={passport.dismiss}
-      onConnect={passport.connect}
-      outfit={outfit}
-    />
+    <div className="flex flex-col gap-4">
+      <StampCeremony
+        model={preparing ? preparingModel(view.preview) : view.model}
+        preparing={preparing}
+        colorIndex={passport.colorIndex}
+        actions={<LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} gold={!preparing && view.model.last} />}
+        onRetry={passport.retry}
+        onLater={passport.dismiss}
+        onConnect={passport.connect}
+        outfit={outfit}
+      />
+      {!preparing && <LoopPanel trail={trail} day={day} />}
+    </div>
   );
 }
 

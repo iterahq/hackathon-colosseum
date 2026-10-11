@@ -38,6 +38,7 @@ vi.mock('@/hooks/useContent', () => ({ useUserStats: (...a: unknown[]) => useUse
 vi.mock('@/hooks/useAchievements', () => ({ useAchievements: (...a: unknown[]) => useAchievements(...a) }));
 vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...a: unknown[]) => useCatalog(...a) }));
 vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => useVideoCourses() }));
+vi.mock('@/components/loop/BountiesForYouCard', () => ({ BountiesForYouCard: () => null }));
 vi.mock('@/hooks/useLiveClass', () => ({
   useActiveLiveClass: () => useActiveLiveClass(),
   useNextScheduledClass: () => useNextScheduledClass(),
