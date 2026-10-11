@@ -140,6 +140,12 @@ export function authorityAddress(): string {
   return base58Encode(secretFrom('SOLANA_AUTHORITY_SECRET').slice(32));
 }
 
+/** The mint authority keypair. It is the update authority of every Itera collection: what it signs can be checked against the chain. */
+export function authoritySigner(): Promise<TransferSigner> {
+  const secret = secretFrom('SOLANA_AUTHORITY_SECRET');
+  return signerFromSeed(secret.slice(0, 32), base58Encode(secret.slice(32)));
+}
+
 export async function treasuryAddress(): Promise<string> {
   return (await treasurySigner()).address;
 }
