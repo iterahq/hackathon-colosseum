@@ -46,7 +46,10 @@ function respond(path: string): Response {
     ok: true,
     json: async () => ({
       metadata: { binary_sha256: idlHash, built_by: 'a CI workflow', source: '', binary: '', framework: '' },
-      instructions: [{ name: 'accept', accounts: [{ name: 'attester', signer: true }, { name: 'claimant', signer: true }], checks: 'owner must match' }],
+      instructions: [
+        { name: 'accept', accounts: [{ name: 'attester', signer: true }, { name: 'claimant', signer: true }], checks: 'owner must match' },
+        { name: 'later', accounts: [{ name: 'anyone', signer: true }], checks: 'a rule with no message yet' },
+      ],
     }),
   } as unknown as Response;
 }
@@ -94,7 +97,8 @@ describe('VerifyPage', () => {
 
   it('renders the instruction table from the IDL and the accept function from the source', async () => {
     show();
-    expect(await screen.findByText('owner must match')).toBeInTheDocument();
+    expect(await screen.findByText(/^Aberta e não expirada; quem aceita assinou/)).toBeInTheDocument();
+    expect(screen.getByText('a rule with no message yet')).toBeInTheDocument();
     expect(await screen.findByLabelText('A função accept do programa de escrow')).toHaveTextContent('let gate = 1;');
   });
 

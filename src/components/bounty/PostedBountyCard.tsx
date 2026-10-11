@@ -3,12 +3,39 @@ import { Link } from 'react-router-dom';
 import { ExplorerAnchor, INPUT, LABEL, LINK, Notice, RequirementChip, Reward, StatusChip } from '@/components/bounty/bountyUi';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
-import { useRejectPosted, useWalletBountyTx } from '@/hooks/useBounties';
+import { useDeleteDraft, useRejectPosted, useWalletBountyTx } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { txUrl } from '@/lib/explorer';
 import { describeTxError } from '@/services/bounty.service';
-import { formatWhen, plural, safeHttpsUrl } from '@/utils/bounty';
+import { formatWhen, isDraft, plural, safeHttpsUrl } from '@/utils/bounty';
 import type { PostedBounty, TxPhase } from '@/types/bounty';
+
+function DeleteDraftAction({ bounty }: { bounty: PostedBounty }) {
+  const { t } = useI18n();
+  const remove = useDeleteDraft();
+  const [confirming, setConfirming] = useState(false);
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)} className={`${BTN_SECONDARY} ${BTN_SMALL} w-full sm:w-auto sm:self-start`} data-testid="bounty-mine-delete">
+        {t('bounty.mine.delete')}
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <Notice>{t('bounty.mine.deleteConfirm')}</Notice>
+      {remove.isError && <TxErrorNotice error={remove.error} />}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={remove.isPending} onClick={() => remove.mutate(bounty.id)} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-mine-delete-confirm">
+          {remove.isPending ? t('bounty.working') : t('bounty.mine.deleteYes')}
+        </button>
+        <button type="button" disabled={remove.isPending} onClick={() => setConfirming(false)} className={`${BTN_SECONDARY} ${BTN_SMALL}`}>
+          {t('bounty.mine.cancel')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function FundAction({ bounty }: { bounty: PostedBounty }) {
   const { t } = useI18n();
@@ -23,6 +50,7 @@ function FundAction({ bounty }: { bounty: PostedBounty }) {
       <button type="button" disabled={fund.isPending} onClick={() => fund.mutate({ bounty: bounty.id, onPhase: setPhase })} className={`${BTN_PRIMARY} ${BTN_SMALL} w-full sm:w-auto sm:self-start`} data-testid="bounty-mine-fund">
         {fund.isPending ? t('bounty.working') : t('bounty.mine.lock')}
       </button>
+      <DeleteDraftAction bounty={bounty} />
     </div>
   );
 }
@@ -178,6 +206,7 @@ function ByStatus({ bounty }: { bounty: PostedBounty }) {
         <div className="flex flex-col gap-3">
           <p className="[font:500_14px/1.5_Inter] text-[#C9BFB0]">{locked ? t('bounty.mine.expiredLocked') : t('bounty.mine.expired')}</p>
           {locked && <RefundAction bounty={bounty} />}
+          {isDraft(bounty) && <DeleteDraftAction bounty={bounty} />}
         </div>
       );
     default:

@@ -50,7 +50,7 @@ export function EvidenceSection() {
       <Steps items={[t('verify.evidence.step1'), t('verify.evidence.step2'), t('verify.evidence.step3')]} />
       <div className="grid min-w-0 gap-3">
         <TextInput label={t('verify.evidence.wallet')} value={wallet} onChange={setWallet} />
-        <p className="[font:400_12px/1.5_Inter] text-[#A0978A]">{t('verify.evidence.sampleNote')}</p>
+        {wallet === SAMPLE_WALLET && <p className="[font:400_12px/1.5_Inter] text-[#A0978A]" data-testid="evidence-sample-note">{t('verify.evidence.sampleNote')}</p>}
         <TextInput label={t('verify.evidence.claim')} value={claim} onChange={setClaim} />
         <TextInput label={t('verify.evidence.asset')} value={asset} onChange={setAsset} />
       </div>

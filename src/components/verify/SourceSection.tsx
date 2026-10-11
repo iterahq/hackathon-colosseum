@@ -1,15 +1,15 @@
 import { VerifySection, Labelled, P } from '@/components/verify/VerifyParts';
 import { LINK } from '@/components/bounty/bountyUi';
 import { usePublishedJson } from '@/hooks/useChainRead';
-import { useI18n } from '@/i18n';
+import { resources, useI18n } from '@/i18n';
 import { ESCROW_LAYOUT, ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
-import { BINARY_PATH, IDL_PATH, instructionRows, SOURCE_PATH, type EscrowIdl } from '@/lib/chain/verifyChecks';
+import { BINARY_PATH, IDL_PATH, instructionRows, localizeRow, SOURCE_PATH, type EscrowIdl } from '@/lib/chain/verifyChecks';
 
 const TH = '[font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A] text-left py-2 pr-3 align-bottom';
 const TD = 'py-2 pr-3 align-top [font:500_12px/1.5_JetBrains_Mono] text-[#F4EDE2]';
 
 function Instructions({ idl }: { idl: EscrowIdl }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div className="max-w-full overflow-x-auto" data-testid="idl-instructions">
       <table className="w-full min-w-[560px] border-collapse">
@@ -21,15 +21,17 @@ function Instructions({ idl }: { idl: EscrowIdl }) {
           </tr>
         </thead>
         <tbody>
-          {instructionRows(idl).map((row) => (
-            <tr key={row.name} className="border-b border-[#1C1916]">
+          {instructionRows(idl).map((raw) => ({ key: raw.name, row: localizeRow(raw, resources[locale]) })).map(({ key, row }) => (
+            <tr key={key} className="border-b border-[#1C1916]">
               <td className={TD}>{row.name}</td>
-              <td className={TD}>{row.signers.join(', ')}</td>
+              <td className={TD}>{row.signers[0]}</td>
               <td className={`${TD} [font-family:Inter] text-[#C9BFB0]`}>{row.checks}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="mt-2 [font:400_12px/1.5_Inter] text-[#A0978A]" data-testid="idl-memo">{t('verify.source.memo')}</p>
+      <p className="mt-1 [font:400_12px/1.5_Inter] text-[#A0978A]">{t('verify.source.attesterNote')}</p>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode } from '@/services/bounty.service';
-import { lamportsToSol } from '@/utils/bounty';
+import { isDraft, lamportsToSol } from '@/utils/bounty';
 
 /** /bounties/mine: the console of the wallet that posted bounties. */
 export default function BountyMinePage() {
@@ -19,7 +19,9 @@ export default function BountyMinePage() {
   const list = useMyPostedBounties();
   const noWallet = list.isError && bountyErrorCode(list.error) === 'no_wallet';
   const data = list.data;
-  const items = data ? [...data.bounties].sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? '') || 0) : [];
+  const sorted = data ? [...data.bounties].sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? '') || 0) : [];
+  const drafts = sorted.filter(isDraft);
+  const items = sorted.filter((bounty) => !isDraft(bounty));
 
   return (
     <BountyShell>
@@ -55,12 +57,22 @@ export default function BountyMinePage() {
             {t('bounty.mine.wallet')} · {shortAddress(data.wallet)}
             {data.balanceLamports !== null && ` · ${t('bounty.mine.balance', { sol: lamportsToSol(data.balanceLamports) })}`}
           </p>
-          {items.length === 0 ? (
+          {drafts.length > 0 && (
+            <section className="flex flex-col gap-3" aria-labelledby="bounty-mine-drafts-title" data-testid="bounty-mine-drafts">
+              <h2 id="bounty-mine-drafts-title" className={`${MONO_LABEL} text-[#F2C66D]`}>{t('bounty.mine.drafts')}</h2>
+              <ul className="flex flex-col gap-3">
+                {drafts.map((bounty) => (
+                  <PostedBountyCard key={bounty.id} bounty={bounty} />
+                ))}
+              </ul>
+            </section>
+          )}
+          {items.length === 0 && drafts.length === 0 ? (
             <div className={`${CARD} flex flex-col items-start gap-3 p-5`} data-testid="bounty-mine-empty">
               <p className="[font:500_14px_Inter] text-[#A0978A]">{t('bounty.mine.empty')}</p>
               <Link to="/bounties/post" className={`${BTN_PRIMARY} w-full sm:w-auto`}>{t('bounty.mine.post')}</Link>
             </div>
-          ) : (
+          ) : items.length > 0 && (
             <ul className="flex flex-col gap-3" data-testid="bounty-mine-list">
               {items.map((bounty) => (
                 <PostedBountyCard key={bounty.id} bounty={bounty} />
