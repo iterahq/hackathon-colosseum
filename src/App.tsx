@@ -85,6 +85,9 @@ const CredentialPage = lazy(() => import("./pages/CredentialPage"));
 const WorldPage = lazy(() => import("./pages/WorldPage"));
 const LearnerProfilePage = lazy(() => import("./pages/LearnerProfilePage"));
 const GiftPage = lazy(() => import("./pages/GiftPage"));
+const BountiesPage = lazy(() => import("./pages/BountiesPage"));
+const BountyPage = lazy(() => import("./pages/BountyPage"));
+const BountyManagePage = lazy(() => import("./pages/BountyManagePage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
@@ -317,6 +320,9 @@ const App = () => (
                 <Route path="/world" element={<LazyRoute><WorldPage /></LazyRoute>} />
                 <Route path="/u/:wallet" element={<LazyRoute><LearnerProfilePage /></LazyRoute>} />
                 <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
+                <Route path="/bounties" element={<LazyRoute><BountiesPage /></LazyRoute>} />
+                <Route path="/bounties/manage" element={<LazyRoute><BountyManagePage /></LazyRoute>} />
+                <Route path="/bounties/:slug" element={<LazyRoute><BountyPage /></LazyRoute>} />
                 {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
                 {/* Self-serve subscribe surface (PLG). Calls itera-api
                     POST /plg/checkout (user-JWT, Stripe SANDBOX) — see

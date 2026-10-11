@@ -86,3 +86,18 @@ verify_jwt = false
 # Link previews for /c, /u and /gift: nginx hands crawlers to it by user agent. Public, read-only.
 [functions.share-meta]
 verify_jwt = false
+
+# Bounties. The board is public; the blink that funds an escrow account is public by specification.
+[functions.bounty-board]
+verify_jwt = false
+
+[functions.bounty-action]
+verify_jwt = false
+
+# Same rule as `passport`: the gateway check is off and the function validates the bearer token itself.
+[functions.bounty-claim]
+verify_jwt = false
+
+# Sponsors: the token is checked in code, then the caller's staff memberships.
+[functions.bounty-sponsor]
+verify_jwt = false
