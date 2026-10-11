@@ -125,6 +125,14 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
         <Link to="/profile" role="menuitem" className={MENU_ITEM} onClick={onClose}>
           {t('header.id.profile')}
         </Link>
+        {!wallet && (
+          <Link to="/passport" role="menuitem" className={`${MENU_ITEM} text-[#3FD17F]`} onClick={onClose} data-testid="header-menu-link-wallet">
+            {t('header.id.linkWallet')}
+          </Link>
+        )}
+        <Link to="/artifacts" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-files">
+          {t('header.nav.files')}
+        </Link>
         <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
           {t('invite.menu')}
         </Link>

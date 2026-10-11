@@ -6,23 +6,23 @@ import { NICKNAME_MAX, normalizeNickname } from '@/utils/nicknameGate';
 interface NicknameFormProps {
   saving: boolean;
   happy: boolean;
+  /** An e-mail account is told the nickname replaces its address on screen; a wallet account that its wallet stays its public identity. */
+  helperKey?: string;
   onSubmit: (nickname: string) => void;
   onSkip: () => void;
 }
 
-export function NicknameForm({ saving, happy, onSubmit, onSkip }: NicknameFormProps) {
+/** The question with its answer checked as it is typed: Continue stays off until the name is valid, and the reason is on screen. */
+export function NicknameForm({ saving, happy, helperKey = 'tera.nickname.helper', onSubmit, onSkip }: NicknameFormProps) {
   const { t } = useI18n();
   const [value, setValue] = useState('');
-  const [error, setError] = useState<'length' | 'email' | null>(null);
+  const result = normalizeNickname(value);
+  const error = value.trim() !== '' && result.ok === false ? result.reason : null;
+  const valid = result.ok;
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const result = normalizeNickname(value);
-    if (result.ok === false) {
-      setError(result.reason);
-      return;
-    }
-    setError(null);
+    if (result.ok === false) return;
     onSubmit(result.value);
   }
 
@@ -54,12 +54,13 @@ export function NicknameForm({ saving, happy, onSubmit, onSkip }: NicknameFormPr
             {t(`tera.nickname.error.${error}`)}
           </p>
         )}
-        <p className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('tera.nickname.helper')}</p>
+        <p className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t(helperKey)}</p>
       </div>
       <button
         type="submit"
         data-testid="nickname-submit"
-        disabled={saving}
+        disabled={saving || !valid}
+        aria-disabled={saving || !valid}
         className="h-[60px] w-full rounded-xl border-0 border-b-[6px] border-b-[#2A9B5A] bg-[#3FD17F] text-[#0A0908] [font:700_26px_'Barlow_Condensed'] transition-transform duration-75 active:translate-y-[5px] active:border-b-[1px] disabled:opacity-60"
       >
         {t('tera.nickname.submit')}

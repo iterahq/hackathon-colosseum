@@ -56,6 +56,10 @@ describe('AuthPage', () => {
     expect(screen.getByTestId('no-wallet')).toHaveTextContent('No Solana wallet in this browser');
     expect(screen.getByTestId('install-phantom')).toHaveAttribute('href', 'https://phantom.app/download');
     expect(screen.queryByTestId('open-in-phantom')).toBeNull();
+    expect(screen.queryByTestId('web3-solana')).toBeNull();
+    expect(screen.getByTestId('goto-signup')).toHaveAttribute('href', '/signup');
+    expect(screen.getByTestId('goto-signup').className).toContain('bg-evergreen');
+    expect(screen.getByTestId('other-ways')).toHaveAttribute('open');
   });
 
   it('offers the Phantom in-app browser on a phone', () => {
@@ -63,6 +67,11 @@ describe('AuthPage', () => {
     mount();
     expect(screen.getByTestId('open-in-phantom').getAttribute('href')).toMatch(/^https:\/\/phantom\.app\/ul\/browse\//);
     expect(screen.getByTestId('no-wallet')).toHaveTextContent("inside the Phantom app's browser");
+    const card = screen.getByTestId('no-wallet');
+    const order = [...card.querySelectorAll('a')].map((a) => a.getAttribute('data-testid'));
+    expect(order.slice(0, 2)).toEqual(['open-in-phantom', 'goto-signup']);
+    expect(screen.queryByTestId('web3-solana')).toBeNull();
+    expect(screen.queryByText(/Continue with Phantom/)).toBeNull();
   });
 
   it('lists every injected wallet and signs in through the one clicked', async () => {
@@ -73,6 +82,8 @@ describe('AuthPage', () => {
     ];
     mount();
     expect(screen.getByTestId('web3-solana')).toHaveTextContent('Continue with Phantom');
+    expect(screen.getByTestId('goto-signup')).toHaveAttribute('href', '/signup');
+    expect(screen.getByTestId('other-ways')).not.toHaveAttribute('open');
     fireEvent.click(screen.getByTestId('web3-solana-solflare'));
     await waitFor(() => expect(auth.signInWithSolana).toHaveBeenCalledWith(solflare));
   });

@@ -8,7 +8,7 @@ import { NicknameGate } from './NicknameGate';
 const updateMyProfile = vi.fn();
 const getMyProfile = vi.fn();
 const updateUser = vi.fn();
-const authUser: { id: string; app_metadata: { provider: string }; identities: never[]; user_metadata: Record<string, unknown> } = {
+const authUser: { id: string; app_metadata: { provider: string }; identities: never[]; user_metadata: Record<string, unknown>; email?: string } = {
   id: 'uid-1',
   app_metadata: { provider: 'web3' },
   identities: [],
@@ -46,21 +46,57 @@ function renderGate(path = '/dashboard') {
 beforeEach(() => {
   localStorage.clear();
   authUser.user_metadata = {};
+  authUser.app_metadata = { provider: 'web3' };
+  delete authUser.email;
   updateUser.mockReset().mockResolvedValue({ data: {}, error: null });
   updateMyProfile.mockReset().mockResolvedValue(true);
   getMyProfile.mockReset().mockResolvedValue({ displayName: '6YWT…p2Gg' });
 });
 
 describe('NicknameGate', () => {
-  it('rejects invalid values without calling the service', async () => {
+  it('keeps Continue off and says why until the value is valid, without calling the service', async () => {
+    localStorage.setItem('itera.locale', 'en');
     renderGate();
     const input = await screen.findByTestId('nickname-input');
+    expect(screen.getByTestId('nickname-submit')).toBeDisabled();
+    expect(screen.queryByTestId('nickname-error')).toBeNull();
     fireEvent.change(input, { target: { value: 'a' } });
-    fireEvent.click(screen.getByTestId('nickname-submit'));
-    expect(screen.getByTestId('nickname-error')).toBeTruthy();
+    expect(screen.getByTestId('nickname-submit')).toBeDisabled();
+    expect(screen.getByTestId('nickname-error')).toHaveTextContent('Use 2 to 24 characters.');
     fireEvent.change(input, { target: { value: 'me@x.io' } });
+    expect(screen.getByTestId('nickname-error')).toHaveTextContent('Pick a nickname, not an email.');
     fireEvent.click(screen.getByTestId('nickname-submit'));
     expect(updateMyProfile).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: 'Ana' } });
+    expect(screen.getByTestId('nickname-submit')).toBeEnabled();
+  });
+
+  it('never covers a deep link: a bounty, a profile, the shop', async () => {
+    for (const path of ['/bounties/class-contact-page', '/u/CQziabc', '/shop', '/passport']) {
+      const view = renderGate(path);
+      await new Promise((r) => setTimeout(r, 30));
+      expect(screen.queryByTestId('nickname-gate')).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it('asks an e-mail learner still named after the address, with the e-mail wording', async () => {
+    authUser.app_metadata = { provider: 'email' };
+    authUser.email = 'samuelstefano@example.com';
+    getMyProfile.mockResolvedValue({ displayName: 'samuelstefano' });
+    localStorage.setItem('itera.locale', 'en');
+    renderGate('/');
+    expect(await screen.findByTestId('nickname-gate')).toHaveTextContent('in place of your e-mail address');
+  });
+
+  it('leaves an e-mail learner with a chosen name alone', async () => {
+    authUser.app_metadata = { provider: 'email' };
+    authUser.email = 'ana@example.com';
+    getMyProfile.mockResolvedValue({ displayName: 'Ana Lu' });
+    renderGate('/');
+    await waitFor(() => expect(getMyProfile).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByTestId('nickname-gate')).toBeNull();
   });
 
   it('saves the trimmed, collapsed name', async () => {
