@@ -38,6 +38,7 @@ import { pickText } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { verifyEd25519 } from '../_shared/ed25519.ts';
 import { corsHeaders, functionsBase, isUuid, json, readJsonObject } from '../_shared/http.ts';
+import { checkLink, type LinkCheck } from '../_shared/link-check.ts';
 import { BASE_FEE_LAMPORTS, fundsCheck } from '../_shared/purchase-verify.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { RpcError, RpcNodeError, balanceOf, latestBlockhash, rpc, withinMs } from '../_shared/rpc.ts';
@@ -85,14 +86,28 @@ async function ownBounties(db: IteraClient, wallet: string): Promise<BountyRow[]
   return (data ?? []) as unknown as BountyRow[];
 }
 
-function ownView(bounty: BountyRow, claim: ClaimRow | null, now: Date, programId: string | undefined) {
+function ownView(bounty: BountyRow, claim: ClaimRow | null, now: Date, programId: string | undefined, linkCheck: LinkCheck | null = null) {
   return {
     ...bountyView({ bounty, claim, lang: bounty.source_lang ?? 'en', now, functionsBase: functionsBase(), programId }),
     hidden_reason: bounty.hidden_reason,
     review: claim
-      ? { status: claim.status, wallet: claim.wallet, submission_url: claim.submission_url, submission_note: claim.submission_note, submitted_at: claim.submitted_at, proof: claim.proof, proof_asset: claim.proof_asset }
+      ? { status: claim.status, wallet: claim.wallet, submission_url: claim.submission_url, submission_note: claim.submission_note, submitted_at: claim.submitted_at, proof: claim.proof, proof_asset: claim.proof_asset, link_check: linkCheck }
       : null,
   };
+}
+
+/** How long the list waits for a delivery link to answer, and how many deliveries it asks about in one read. */
+const LINK_CHECK_BUDGET_MS = 2_500;
+const LINK_CHECKS_PER_READ = 3;
+
+/** For each delivery waiting on the sponsor: whether its link answered when the server asked, so nobody pays for a dead address unwarned. */
+async function deliveryChecks(bounties: BountyRow[], claims: Map<string, ClaimRow>): Promise<Map<string, LinkCheck>> {
+  const waiting = bounties.flatMap((bounty) => {
+    const claim = bounty.status === 'submitted' && bounty.claim_id ? claims.get(bounty.claim_id) : undefined;
+    return claim?.submission_url ? [{ id: bounty.id, url: claim.submission_url }] : [];
+  });
+  const answers = await Promise.all(waiting.slice(0, LINK_CHECKS_PER_READ).map(async ({ id, url }) => [id, await checkLink(url, LINK_CHECK_BUDGET_MS)] as const));
+  return new Map(answers.flatMap(([id, answer]) => (answer ? [[id, answer] as const] : [])));
 }
 
 async function list(db: IteraClient, wallet: string, cors: Cors): Promise<Response> {
@@ -103,12 +118,12 @@ async function list(db: IteraClient, wallet: string, cors: Cors): Promise<Respon
     bounties = await ownBounties(db, wallet);
     claims = await loadClaims(db, bounties.flatMap((bounty) => (bounty.claim_id ? [bounty.claim_id] : [])));
   }
-  const [config, balance] = await Promise.all([loadConfig(db), balanceOf(wallet).catch(() => null)]);
+  const [config, balance, links] = await Promise.all([loadConfig(db), balanceOf(wallet).catch(() => null), deliveryChecks(bounties, claims)]);
   return json(
     {
       wallet,
       balance_lamports: balance === null ? null : Number(balance),
-      bounties: bounties.map((bounty) => ownView(bounty, bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, now, config.bounty_escrow_program)),
+      bounties: bounties.map((bounty) => ownView(bounty, bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, now, config.bounty_escrow_program, links.get(bounty.id) ?? null)),
     },
     200,
     cors,

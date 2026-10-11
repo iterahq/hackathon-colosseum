@@ -15,7 +15,7 @@ export const ARCHIVE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'archive.open': 'Abrir',
     'archive.signed': 'Assinado por {signer}, a chave que é a autoridade de atualização da coleção na Solana. No Arweave o dono aparece como {owner}: é o SHA-256 dessa mesma chave.',
     'archive.when': 'Versão arquivada em {date}.',
-    'archive.gateways': 'As cópias sobem em lote, e o lote é gravado num bloco do Arweave em cerca de meia hora. O link Abrir usa o gateway turbo-gateway.com, que serve a cópia na hora. O arweave.net abre a mesma cópia depois que o lote está num bloco (uma cópia das 11:40 UTC de 11/10/2026 abria lá às 17:45); se a cópia é de minutos atrás, ele ainda devolve uma página de erro.',
+    'archive.gateways': 'As cópias sobem em lote por um bundler. O link Abrir usa o gateway turbo-gateway.com, que serviu toda cópia na hora. O arweave.net é outro gateway: em 11/10/2026 ele abria a maioria das cópias (inclusive de minutos atrás) e devolvia página de erro para algumas, novas ou antigas. O que vale conferir é o sha256 impresso aqui: ele é o mesmo em qualquer gateway que abra a cópia.',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'archive.notOnAsset': 'O endereço gravado no ativo ainda aponta para o servidor da Itera, porque a certificação muda a cada dia carimbado. O vínculo com a cópia é a assinatura e a etiqueta com o endereço do ativo.',
     'archive.check': 'Conferir as cópias no meu navegador',
@@ -46,7 +46,7 @@ export const ARCHIVE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'archive.open': 'Open',
     'archive.signed': "Signed by {signer}, the key that is the collection's update authority on Solana. On Arweave the owner shows as {owner}: the SHA-256 of that same key.",
     'archive.when': 'Version archived on {date}.',
-    'archive.gateways': 'Copies are uploaded in a batch, and the batch is written to an Arweave block in about half an hour. The Open link uses the gateway turbo-gateway.com, which serves the copy at once. arweave.net opens the same copy after the batch is in a block (a copy from 11:40 UTC on 11 Oct 2026 opened there at 17:45); for a copy a few minutes old it still returns an error page.',
+    'archive.gateways': 'Copies are uploaded in a batch through a bundler. The Open link uses the gateway turbo-gateway.com, which has served every copy at once. arweave.net is a different gateway: on 11 Oct 2026 it opened most copies (minutes-old ones included) and returned an error page for some, new or old. What to check is the sha256 printed here: it is the same on whichever gateway opens the copy.',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'archive.notOnAsset': "The address written on the asset still points to Itera's server, because the certification changes with every stamped day. What ties it to the copy is the signature and the tag carrying the asset address.",
     'archive.check': 'Check the copies in my browser',

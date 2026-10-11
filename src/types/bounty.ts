@@ -272,6 +272,8 @@ export interface PostedReview {
   submittedAt: string | null;
   proofDays: number | null;
   proofAsset: string | null;
+  /** Whether the delivery link answered when Itera's server asked. Null: not asked. */
+  linkCheck: { verdict: 'opens' | 'not_found' | 'unconfirmed'; status: number | null } | null;
 }
 
 export interface PostedBounty extends Bounty {

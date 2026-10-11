@@ -49,7 +49,7 @@ describe('ChainProof', () => {
     readAccount.mockResolvedValue(null);
     show(<ChainProof kind="address" value={ADDRESS} />);
     fireEvent.click(screen.getByTestId('chain-proof-raw'));
-    expect(await screen.findByText('Esta conta não existe na devnet.')).toBeInTheDocument();
+    expect(await screen.findByText(/Este endereço não tem conta na devnet/)).toBeInTheDocument();
   });
 
   it('offers a retry when the node fails', async () => {
@@ -57,7 +57,7 @@ describe('ChainProof', () => {
     show(<ChainProof kind="address" value={ADDRESS} />);
     fireEvent.click(screen.getByTestId('chain-proof-raw'));
     fireEvent.click(await screen.findByRole('button', { name: 'Tentar de novo' }));
-    expect(await screen.findByText('Esta conta não existe na devnet.')).toBeInTheDocument();
+    expect(await screen.findByText(/Este endereço não tem conta na devnet/)).toBeInTheDocument();
   });
 
   it('adds only the alternatives when the primary link is already on screen', () => {

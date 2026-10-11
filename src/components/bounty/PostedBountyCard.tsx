@@ -122,6 +122,15 @@ function Review({ bounty }: { bounty: PostedBounty }) {
             ) : (
               <span className="break-all [font:500_14px_Inter] text-[#E0655A]">{t('bounty.mine.noLink')}</span>
             )}
+            {link && review?.linkCheck && review.linkCheck.verdict !== 'opens' && (
+              <span className="mt-1 block [font:500_13px/1.45_Inter] text-[#E0A86F]" data-testid="bounty-mine-link-check" data-verdict={review.linkCheck.verdict}>
+                {review.linkCheck.verdict === 'not_found'
+                  ? t('bounty.mine.link.notFound', { status: review.linkCheck.status ?? 404 })
+                  : review.linkCheck.status === null
+                    ? t('bounty.mine.link.noAnswer')
+                    : t('bounty.mine.link.unconfirmed', { status: review.linkCheck.status })}
+              </span>
+            )}
           </dd>
         </div>
         {review?.submissionNote && (
