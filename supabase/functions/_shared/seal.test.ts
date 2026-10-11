@@ -77,6 +77,18 @@ describe('sealActivity', () => {
     expect(ids.sort()).toEqual(['certo', 'p', 'ul'].map((id) => sealedId(SECRET, 'act-1', id)).sort());
   });
 
+  it('orders the options differently from one serving to the next, under the same ids', () => {
+    const orders = new Set<string>();
+    const idSets = new Set<string>();
+    for (const serving of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+      const ids = (sealActivity(single, SECRET, serving).spec as { options: Array<{ id: string }> }).options.map((option) => option.id);
+      orders.add(ids.join(','));
+      idSets.add([...ids].sort().join(','));
+    }
+    expect(orders.size).toBeGreaterThan(1);
+    expect(idSets.size).toBe(1);
+  });
+
   it('keeps the order of options that are only letters of the prompt', () => {
     const lettered = { ...single, spec: { ...single.spec, options: [{ id: 'x', label: 'A' }, { id: 'y', label: 'B' }, { id: 'z', label: 'C' }], correct_option_id: 'y' } };
     const labels = (sealActivity(lettered, SECRET).spec as { options: Array<{ label: string }> }).options.map((option) => option.label);

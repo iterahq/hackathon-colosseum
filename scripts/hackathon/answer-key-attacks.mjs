@@ -85,7 +85,7 @@ async function payload(context) {
       if (JSON.stringify(activity.spec.options[0]?.label) === rightLabel) first += 1;
     }
   }
-  check('across the trail the right option is not where it was authored (first)', seen >= 30 && first / seen < 0.55, `first is right in ${first}/${seen} (authored: mostly first)`);
+  check('across the trail the right option is first no more often than chance (it was authored first in most)', seen >= 30 && first / seen < 0.55, `first is right in ${first}/${seen} of this serving; the order changes at every request`);
 }
 
 async function table(context) {
@@ -145,10 +145,16 @@ async function bot(context) {
       passedKinds.push(`${activity.kind}:${answer.body.mode}`);
     } else tally.fail += 1;
   }
-  const serverPasses = passedKinds.filter((entry) => entry.endsWith(':server')).length;
+  const serverPasses = passedKinds.filter((entry) => entry.endsWith(':server'));
   const browserPasses = passedKinds.filter((entry) => entry.endsWith(':self_reported')).length;
   const gradedByServer = day.activities.filter((activity) => activity.graded_by === 'server').length;
-  check('a script sending "passed" for everything, with what the payload gives it, passes only what nobody grades (and a lucky guess at most)', browserPasses === 0 && serverPasses <= 2, `${JSON.stringify(tally)} · server passes ${serverPasses}/${gradedByServer} · ${passedKinds.join(' ')}`);
+  // The first option of a single choice is right one time in three by chance; nothing else can be guessed from the payload.
+  const luckyGuesses = serverPasses.filter((entry) => entry.startsWith('single_choice:')).length;
+  check(
+    'a script sending "passed" for everything, with what the payload gives it, passes what nobody grades and at most a lucky single choice',
+    browserPasses === 0 && serverPasses.length === luckyGuesses && serverPasses.length < gradedByServer,
+    `${JSON.stringify(tally)} · server passes ${serverPasses.length}/${gradedByServer} (all single-choice guesses: ${luckyGuesses}) · browser-reported passes ${browserPasses}`,
+  );
   const completed = Number(psql(`select count(*) from itera.progress where user_id = :'u'::uuid and status = 'completed';`, { u: learner.userId }));
   const stamped = await learner.call('passport', { lang: 'en', lesson_id: context.lesson });
   const awards = (stamped.body.awards ?? []).map((award) => award.key);
@@ -167,6 +173,7 @@ async function forged(context) {
     return { status: response.status, text: await response.text() };
   };
   const count = (tableName) => Number(psql(`select count(*) from itera.${tableName} where user_id = :'u'::uuid;`, { u: learner.userId }));
+  const passedResults = () => Number(psql(`select count(*) from itera.activity_results where user_id = :'u'::uuid and passed;`, { u: learner.userId }));
 
   const result = await rest('POST', 'activity_results', { user_id: learner.userId, activity_id: choice.id, passed: true, feedback: {} });
   check('the browser cannot insert an activity result', result.status >= 400 && count('activity_results') === 0, `HTTP ${result.status} ${result.text.slice(0, 90)}`);
@@ -183,7 +190,7 @@ async function forged(context) {
   check('neither completed anything', Number(psql(`select count(*) from itera.progress where user_id = :'u'::uuid and status = 'completed';`, { u: learner.userId })) === 0);
 
   const honest = await learner.call('grade', { activity_id: choice.id, passed: true, results: 'server', ...correctSubmission(choice) });
-  check('a real pass is where the result row and the xp come from: one of each, written by the server', honest.body.verdict === 'pass' && honest.body.xp_awarded === 10 && count('activity_results') === 1 && count('xp_events') === 1, `${JSON.stringify({ verdict: honest.body.verdict, xp: honest.body.xp_awarded })} · results ${count('activity_results')} · xp rows ${count('xp_events')}`);
+  check('a real pass is where the passed result row and the xp come from: one of each, written by the server (the two refused claims are in the log as misses)', honest.body.verdict === 'pass' && honest.body.xp_awarded === 10 && passedResults() === 1 && count('activity_results') === 3 && count('xp_events') === 1, `${JSON.stringify({ verdict: honest.body.verdict, xp: honest.body.xp_awarded })} · passed results ${passedResults()} of ${count('activity_results')} rows · xp rows ${count('xp_events')}`);
   const again = await learner.call('grade', { activity_id: choice.id, passed: true, results: 'server', ...correctSubmission(choice) });
   check('the same pass again awards nothing more', again.body.xp_awarded === 0 && count('xp_events') === 1, `${again.body.xp_awarded} · xp rows ${count('xp_events')}`);
 }
