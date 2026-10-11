@@ -1,4 +1,4 @@
-import { escrowRentLamports, createFor, readEscrow, refundPlan } from '../_shared/bounty-chain.ts';
+import { escrowRentLamports, escrowRentLastRead, createFor, readEscrow, refundPlan } from '../_shared/bounty-chain.ts';
 import { escrowPda, releaseInstruction } from '../_shared/bounty-program.ts';
 import {
   BOUNTY_COLUMNS,
@@ -40,7 +40,7 @@ import { verifyEd25519 } from '../_shared/ed25519.ts';
 import { corsHeaders, functionsBase, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { BASE_FEE_LAMPORTS, fundsCheck } from '../_shared/purchase-verify.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
-import { RpcError, RpcNodeError, balanceOf, latestBlockhash, rpc } from '../_shared/rpc.ts';
+import { RpcError, RpcNodeError, balanceOf, latestBlockhash, rpc, withinMs } from '../_shared/rpc.ts';
 import { decodeSignedTransaction, transactionSignature } from '../_shared/signed-tx.ts';
 import { compileMessage, memoInstruction, type Instruction } from '../_shared/solana-message.ts';
 import { base58Decode, base58Encode, base64Encode, serializeTransaction } from '../_shared/solana-tx.ts';
@@ -67,10 +67,15 @@ function limits(rent: bigint | null) {
   };
 }
 
+/** How long the form's read waits for the Solana node before it answers with what it has. */
+const FORM_RPC_BUDGET_MS = 1_500;
+
 /** What anyone may read before signing in: the trails a bounty can ask for and the limits of the form. */
 async function options(db: IteraClient, cors: Cors): Promise<Response> {
   const config = await loadConfig(db);
-  const [trails, rent] = await Promise.all([loadTrails(db), escrowRentLamports(gatedEscrows(config)).catch(() => null)]);
+  // The form never waits for a slow node: past the budget the rent shown is what the node answered when last asked.
+  const gated = gatedEscrows(config);
+  const [trails, rent] = await Promise.all([loadTrails(db), withinMs(escrowRentLamports(gated).catch(() => null), FORM_RPC_BUDGET_MS).then((answer) => answer ?? escrowRentLastRead(gated))]);
   return json({ cluster: 'devnet', program_id: config.bounty_escrow_program ?? null, trails, limits: limits(rent) }, 200, { ...cors, 'Cache-Control': 'public, max-age=60' });
 }
 

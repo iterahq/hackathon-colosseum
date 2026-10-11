@@ -28,3 +28,11 @@ describe('withRetries', () => {
     expect(seen).toEqual([1, 2, 3]);
   });
 });
+
+describe('withinMs', () => {
+  it('gives the answer that comes in time and null for one that does not', async () => {
+    const { withinMs } = await import('./rpc.ts');
+    expect(await withinMs(Promise.resolve('read'), 50)).toBe('read');
+    expect(await withinMs(new Promise((resolve) => setTimeout(() => resolve('late'), 80)), 10)).toBeNull();
+  });
+});

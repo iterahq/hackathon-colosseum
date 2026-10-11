@@ -146,6 +146,15 @@ export function refundPlan(state: EscrowState, party: Party): Instruction[] | 'd
   return [...reopen, refundInstruction({ programId: party.programId, authority: party.attester, escrow: party.escrow, sponsor: state.sponsor })];
 }
 
+/**
+ * What devnet answered for the rent of an escrow account when last asked (2026-10-11): 5,080 lamports per
+ * byte, 128 bytes of account header included. Shown on the form when the node is slow; the funding
+ * transaction always asks the node itself.
+ */
+export function escrowRentLastRead(gated = false): bigint {
+  return BigInt((128 + (gated ? GATED_ESCROW_STATE_BYTES : ESCROW_STATE_BYTES)) * 5_080);
+}
+
 /** The rent the node asks for an escrow account, which whoever funds a bounty pays on top of the reward. */
 export async function escrowRentLamports(gated = false): Promise<bigint> {
   return BigInt(await rpc<number>('getMinimumBalanceForRentExemption', [gated ? GATED_ESCROW_STATE_BYTES : ESCROW_STATE_BYTES]));
