@@ -88,17 +88,21 @@ export async function reconcileGifts(db: IteraClient, scope: ReconcileScope, min
   }
 }
 
-/** The reconcile with a ceiling on how long the caller waits; past it the work goes on in the background. */
-export async function reconcileGiftsWithin(db: IteraClient, scope: ReconcileScope, budgetMs: number): Promise<void> {
+/**
+ * The reconcile with a ceiling on how long the caller waits; past it the work goes on in the
+ * background. Answers how many gifts landed, or `null` when the budget ran out first.
+ */
+export async function reconcileGiftsWithin(db: IteraClient, scope: ReconcileScope, budgetMs: number): Promise<number | null> {
   const work = reconcileGifts(db, scope);
   const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
   runtime?.waitUntil?.(work);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([
+  const landed = await Promise.race([
     work,
-    new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, budgetMs);
+    new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), budgetMs);
     }),
   ]);
   clearTimeout(timer);
+  return landed;
 }

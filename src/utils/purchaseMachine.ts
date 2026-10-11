@@ -46,7 +46,7 @@ export type PurchaseEvent =
   | { type: 'signed' }
   | { type: 'paid'; explorerUrl: string | null; proof?: PurchaseProof | null }
   | { type: 'cancelled' }
-  | { type: 'failed'; detail: string; code?: string | null }
+  | { type: 'failed'; detail: string; code?: string | null; explorerUrl?: string | null }
   | { type: 'insufficient'; detail: string; neededLamports?: number | null }
   | { type: 'no_wallet' }
   | { type: 'funding' }
@@ -73,7 +73,8 @@ export function purchaseReducer(state: PurchaseState, event: PurchaseEvent): Pur
       // The learner said no in the wallet: back to rest, no message.
       return isPurchaseBusy(state) ? PURCHASE_IDLE : state;
     case 'failed':
-      return isPurchaseBusy(state) ? { ...state, phase: 'failed', detail: event.detail, code: event.code ?? null } : state;
+      // A payment that went out keeps its explorer link: the failed state shows where the money is.
+      return isPurchaseBusy(state) ? { ...state, phase: 'failed', detail: event.detail, code: event.code ?? null, explorerUrl: event.explorerUrl ?? null } : state;
     case 'insufficient':
       return isPurchaseBusy(state) ? { ...state, phase: 'insufficient', detail: event.detail, neededLamports: event.neededLamports ?? null } : state;
     case 'no_wallet':

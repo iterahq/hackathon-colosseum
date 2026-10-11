@@ -1,6 +1,10 @@
 /**
  * One purchase from the learner's wallet: intent -> wallet signature -> confirmation (polled while
- * pending) -> caches refreshed. The phases live in `purchaseMachine`; this hook only runs the calls.
+ * pending) -> caches refreshed. The phases live in `purchaseMachine`, the decisions in `purchaseFlow`;
+ * this hook only runs the calls.
+ *
+ * Once the wallet has answered, the signature is kept: "try again" on a delivery or lookup failure
+ * confirms THAT payment again instead of asking the wallet for a second one.
  */
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,16 +15,16 @@ import { confirmPurchase, createPurchaseIntent, requestFaucet, submitPurchase } 
 import { ShopCallError } from '@/services/shopTransport';
 import { txUrl } from '@/lib/explorer';
 import { bumpCredentialArt } from '@/services/credential.service';
-import { WalletSignError, connectWallet, signAndSendPurchase } from '@/services/walletSign';
+import { connectWallet, signAndSendPurchase } from '@/services/walletSign';
+import type { PurchaseOrder, WalletPayment } from '@/types/purchaseFlow';
 import type { CompanionSnapshot, PurchaseConfirmation } from '@/types/shop';
-import { giftLabel } from '@/utils/gift';
+import { RESUMABLE_CODES, failureEvent, paidProof, timedOut, walletMismatch } from '@/utils/purchaseFlow';
 import { PURCHASE_IDLE, isPurchaseBusy, purchaseReducer } from '@/utils/purchaseMachine';
 
 const POLL_MS = 1500;
 const POLL_LIMIT_MS = 30_000;
 const FUNDING_SETTLE_MS = 2500;
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-const signatureOf = (url: string | null): string | null => url?.match(/\/tx\/([^/?#]+)/)?.[1] ?? null;
 const textOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } = {}) {
@@ -29,7 +33,8 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(purchaseReducer, PURCHASE_IDLE);
   const userId = session?.user?.id ?? 'anon';
-  const last = useRef<{ itemKey: string; refId?: string; recipient?: string } | null>(null);
+  const last = useRef<PurchaseOrder | null>(null);
+  const payment = useRef<WalletPayment | null>(null);
   const running = useRef(false);
   const alive = useRef(true);
   useEffect(() => {
@@ -54,92 +59,99 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
       void queryClient.invalidateQueries({ queryKey: key });
       void queryClient.invalidateQueries({ queryKey: queryKeys.shop.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.achievements.mine(userId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.circuit.all });
     },
     [queryClient, userId]
   );
 
-  const buy = useCallback(
-    async (itemKey: string, refId?: string, recipient?: string) => {
+  /** Verifies the payment with the backend until it is paid, expired or the window closes. */
+  const finish = useCallback(
+    async ({ itemKey, intentId, signed }: WalletPayment) => {
+      const signedTransaction = signed.kind === 'signed' ? signed.signedTransaction : '';
+      let broadcast = signed.kind === 'sent' ? signed.signature : null;
+      const verify = async () => {
+        if (broadcast) return confirmPurchase(intentId, broadcast, locale);
+        try {
+          return await submitPurchase(intentId, signedTransaction, locale);
+        } catch (e) {
+          // Already broadcast: the transaction exists, so confirm it by signature instead of failing.
+          if (e instanceof ShopCallError && e.signature) {
+            broadcast = e.signature;
+            payment.current = { itemKey, intentId, signed: { kind: 'sent', signature: e.signature } };
+            return confirmPurchase(intentId, e.signature, locale);
+          }
+          throw e instanceof ShopCallError ? new ShopCallError(`sign-only path -> ${e.message}`, e.status, e.code, e.retryable, e.detail, null, e.body) : e;
+        }
+      };
+      const deadline = Date.now() + POLL_LIMIT_MS;
+      let confirmation = await verify();
+      while (confirmation.status === 'pending' && Date.now() < deadline && alive.current) {
+        await wait(POLL_MS);
+        confirmation = await verify();
+      }
+      if (!alive.current) return;
+      if (confirmation.status === 'paid') {
+        payment.current = null;
+        settle(confirmation);
+        dispatch({ type: 'paid', explorerUrl: confirmation.explorerUrl ?? confirmation.chain?.explorerUrl ?? null, proof: paidProof(confirmation, broadcast) });
+        onPaid?.(itemKey);
+      } else if (confirmation.status === 'expired') {
+        // Nothing landed and nothing can: the next try starts a fresh intent.
+        payment.current = null;
+        dispatch({ type: 'failed', detail: 'purchase-confirm: expired', code: 'intent_expired' });
+      } else {
+        dispatch({ type: 'failed', ...timedOut(confirmation), explorerUrl: confirmation.explorerUrl ?? (broadcast ? txUrl(broadcast) : null) });
+      }
+    },
+    [locale, onPaid, settle]
+  );
+
+  const run = useCallback(
+    async (work: () => Promise<void>) => {
       if (running.current) return;
       running.current = true;
-      last.current = { itemKey, refId, recipient };
-      dispatch({ type: 'start', itemKey });
       try {
-        await connectWallet();
-        const intent = await createPurchaseIntent(itemKey, refId, recipient);
-        if (!alive.current) return;
-        dispatch({ type: 'connected' });
-        const signed = await signAndSendPurchase(intent);
-        if (!alive.current) return;
-        dispatch({ type: 'signed' });
-        // A wallet that only signed hands the broadcast to the backend; the answer is the same either way.
-        const signedTransaction = signed.kind === 'signed' ? signed.signedTransaction : '';
-        let broadcast = signed.kind === 'sent' ? signed.signature : null;
-        const verify = async () => {
-          if (broadcast) return confirmPurchase(intent.intentId, broadcast, locale);
-          try {
-            return await submitPurchase(intent.intentId, signedTransaction, locale);
-          } catch (e) {
-            // Already broadcast: the transaction exists, so confirm it by signature instead of failing.
-            if (e instanceof ShopCallError && e.signature) {
-              broadcast = e.signature;
-              return confirmPurchase(intent.intentId, e.signature, locale);
-            }
-            throw e instanceof ShopCallError ? new ShopCallError(`sign-only path -> ${e.message}`, e.status, e.code, e.retryable, e.detail) : e;
-          }
-        };
-        const deadline = Date.now() + POLL_LIMIT_MS;
-        let confirmation = await verify();
-        while (confirmation.status === 'pending' && Date.now() < deadline && alive.current) {
-          await wait(POLL_MS);
-          confirmation = await verify();
-        }
-        if (!alive.current) return;
-        if (confirmation.status === 'paid') {
-          settle(confirmation);
-          const payment = broadcast ?? signatureOf(confirmation.explorerUrl);
-          const gift = confirmation.gift ?? null;
-          // A repeated confirm of a gift carries no `chain`: the stored write is in the gift block.
-          const mirror = confirmation.chain?.signature ?? gift?.mirrorSignature ?? null;
-          const mirrorUrl = confirmation.chain?.explorerUrl || gift?.mirrorExplorerUrl || (mirror ? txUrl(mirror) : '');
-          dispatch({
-            type: 'paid',
-            explorerUrl: confirmation.explorerUrl ?? confirmation.chain?.explorerUrl ?? null,
-            proof: {
-              signature: payment,
-              chain: mirror && mirror !== payment ? { signature: mirror, explorerUrl: mirrorUrl } : null,
-              gift: gift ? { name: giftLabel(gift.toName, gift.toWallet), lives: gift.recipientLives, max: gift.recipientMax, companionExplorerUrl: gift.companionExplorerUrl } : null,
-              imageUrl: confirmation.imageUrl ?? null,
-              written: (confirmation.written ?? []).map((w) => ({ attribute: w.attribute, value: w.value })),
-              lives: confirmation.lives ? { current: confirmation.lives.current, max: confirmation.lives.max } : null,
-              circuitStamps: confirmation.circuit?.stampsFunded ?? null,
-            },
-          });
-          void queryClient.invalidateQueries({ queryKey: queryKeys.circuit.all });
-          onPaid?.(itemKey);
-        } else {
-          dispatch({ type: 'failed', detail: `purchase-confirm: ${confirmation.status}`, code: confirmation.status === 'expired' ? 'intent_expired' : null });
-        }
+        await work();
       } catch (e) {
-        if (!alive.current) return;
-        const code = e instanceof ShopCallError ? e.code : null;
-        const reason = e instanceof WalletSignError ? e.reason : 'failed';
-        const detail = e instanceof WalletSignError ? e.detail : textOf(e);
-        if (reason === 'cancelled') dispatch({ type: 'cancelled' });
-        else if (reason === 'no_wallet') dispatch({ type: 'no_wallet' });
-        else if (reason === 'insufficient' || code === 'insufficient_funds') {
-          const required = e instanceof ShopCallError ? e.body?.required_lamports : null;
-          dispatch({ type: 'insufficient', detail, neededLamports: typeof required === 'number' ? required : null });
-        }
-        else {
-          if (code) console.warn('[purchase]', detail);
-          dispatch({ type: 'failed', detail, code });
-        }
+        if (alive.current) dispatch(failureEvent(e));
       } finally {
         running.current = false;
       }
     },
-    [locale, onPaid, queryClient, settle]
+    []
+  );
+
+  const buy = useCallback(
+    (itemKey: string, refId?: string, recipient?: string) =>
+      run(async () => {
+        last.current = { itemKey, refId, recipient };
+        payment.current = null;
+        dispatch({ type: 'start', itemKey });
+        const connected = await connectWallet();
+        const intent = await createPurchaseIntent(itemKey, refId, recipient);
+        if (!alive.current) return;
+        const mismatch = walletMismatch(connected, intent.payer);
+        if (mismatch) throw mismatch;
+        dispatch({ type: 'connected' });
+        const signed = await signAndSendPurchase(intent);
+        if (!alive.current) return;
+        payment.current = { itemKey, intentId: intent.intentId, signed };
+        dispatch({ type: 'signed' });
+        await finish(payment.current);
+      }),
+    [finish, run]
+  );
+
+  /** Confirms the payment the wallet already made, without a new wallet prompt. */
+  const resume = useCallback(
+    (pending: WalletPayment) =>
+      run(async () => {
+        dispatch({ type: 'start', itemKey: pending.itemKey });
+        dispatch({ type: 'connected' });
+        dispatch({ type: 'signed' });
+        await finish(pending);
+      }),
+    [finish, run]
   );
 
   /** Devnet only: ask the faucet for test SOL, then run the same purchase again. */
@@ -163,9 +175,12 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
 
   const retry = useCallback(() => {
     const again = last.current;
+    const pending = payment.current;
+    const resumable = pending !== null && state.code !== null && RESUMABLE_CODES.has(state.code);
     dispatch({ type: 'reset' });
-    if (again) void buy(again.itemKey, again.refId, again.recipient);
-  }, [buy]);
+    if (resumable) void resume(pending);
+    else if (again) void buy(again.itemKey, again.refId, again.recipient);
+  }, [buy, resume, state.code]);
 
   return { state, busy: isPurchaseBusy(state), buy, fund, retry, reset: useCallback(() => dispatch({ type: 'reset' }), []) };
 }

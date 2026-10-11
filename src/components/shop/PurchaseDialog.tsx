@@ -8,7 +8,7 @@ import { PURCHASE_ERROR_CODES as SHOP_ERROR_CODES } from '@/i18n/shopMessages';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { txUrl } from '@/lib/explorer';
 import type { ShopItemKind } from '@/types/shop';
-import { giftCopy, lamportsToSol, paidCopy, shortSignature, showTechnicalDetail } from '@/utils/purchaseProof';
+import { PENDING_DELIVERY_CODES, giftCopy, lamportsToSol, paidCopy, shortSignature, showTechnicalDetail } from '@/utils/purchaseProof';
 import { isPurchaseBusy, type PurchaseState } from '@/utils/purchaseMachine';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS } from './shopStyles';
 
@@ -113,6 +113,8 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
   const gift = state.proof?.gift ?? null;
   const copy = gift ? giftCopy(gift) : paidCopy(itemKind, { itemTitle, targetTitle }, state.proof);
   const faucetHelps = !state.neededLamports || state.neededLamports <= FAUCET_MAX_LAMPORTS;
+  const pendingDelivery = phase === 'failed' && state.code !== null && PENDING_DELIVERY_CODES.has(state.code);
+  const paidSignature = pendingDelivery ? state.explorerUrl?.match(/\/tx\/([^/?#]+)/)?.[1] ?? null : null;
   const needed = state.neededLamports ? t('purchase.insufficient.need', { amount: lamportsToSol(state.neededLamports) }) : null;
 
   return (
@@ -154,12 +156,13 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
             <span className="flex h-[150px] items-end justify-center">
               <TeraOutfit mood="oops" size="xl" outfit={outfit} />
             </span>
-            {phase === 'failed' && <Message title={t('purchase.failed.title')} body={friendly ?? t('purchase.failed.body')} />}
+            {phase === 'failed' && <Message title={t(pendingDelivery ? 'purchase.pending.title' : 'purchase.failed.title')} body={friendly ?? t('purchase.failed.body')} />}
+            {phase === 'failed' && paidSignature && <ProofRow label={t('purchase.row.payment')} signature={paidSignature} href={state.explorerUrl ?? txUrl(paidSignature)} testId="purchase-explorer" />}
             {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={faucetHelps ? (needed ?? friendly ?? t('purchase.insufficient.body')) : `${needed ?? ''} ${t('purchase.insufficient.showcase')}`.trim()} />}
             {phase === 'no_wallet' && <Message title={t('purchase.noWallet.title')} body={t('purchase.noWallet.body')} />}
             {showTechnicalDetail(phase, state.code, PURCHASE_ERROR_CODES) && <Detail text={state.detail} />}
             <div className="mt-1 flex w-full flex-col gap-2.5">
-              {phase === 'failed' && (
+              {phase === 'failed' && state.code !== 'refund_due' && (
                 <button type="button" autoFocus onClick={onRetry} data-testid="purchase-retry" className={`${BTN_PRIMARY} w-full`}>
                   {t('purchase.retry')}
                 </button>

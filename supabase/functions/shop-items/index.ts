@@ -1,7 +1,7 @@
 import { loadAvatarCatalog, loadAvatarRows, loadSupply, supabaseUrl } from '../_shared/avatar-store.ts';
 import { includedWithMap, shopAvatarFields, type AvatarAssetRow, type AvatarCatalog, type AvatarSupply } from '../_shared/avatars.ts';
 import { resolveCaller } from '../_shared/caller.ts';
-import { ensureCompanion, loadInventory, loadStats, type InventoryEntry } from '../_shared/companion-store.ts';
+import { ensureCompanion, inventoryWith, loadStats, readInventory, type InventoryEntry } from '../_shared/companion-store.ts';
 import { pickText } from '../_shared/credential.ts';
 import { THEME_KINDS, borderOf, isThemeDefault, themeColor } from '../_shared/crystals.ts';
 import { loadConfig, serviceClient } from '../_shared/db.ts';
@@ -47,18 +47,19 @@ Deno.serve(async (request) => {
     const avatars: { catalog: AvatarCatalog; supply: Map<string, AvatarSupply> } | null = shelf.some((item) => item.kind === 'avatar') ? avatarsResult : null;
     if (caller !== null && typeof caller !== 'string') {
       const userId = caller.iteraUserId;
-      const companion = await ensureCompanion(db, userId);
-      wornAvatar = companion.avatar;
       // The level is only read when some item on sale can also be earned.
       const needsLevel = shelf.some((item) => unlockLevelOf(item.effect) !== null);
-      const [loadedInventory, theme, rows, stats] = await Promise.all([
-        loadInventory(db, userId, companion.outfit),
+      // Everything keyed by the learner alone is read in one round; the worn outfit is applied after.
+      const [companion, ownedRead, theme, rows, stats] = await Promise.all([
+        ensureCompanion(db, userId),
+        readInventory(db, userId),
         db.from('learner_themes').select('background_key,icon_key,border_key').eq('user_id', userId).maybeSingle(),
         avatars ? loadAvatarRows(db, userId) : Promise.resolve([] as AvatarAssetRow[]),
         needsLevel ? loadStats(db, userId, new Date()) : Promise.resolve(null),
       ]);
       if (theme.error) throw new Error(`learner_themes: ${theme.error.message}`);
-      inventory = loadedInventory;
+      wornAvatar = companion.avatar;
+      inventory = inventoryWith(ownedRead, companion.outfit);
       chosenTheme = { background: theme.data?.background_key, app_icon: theme.data?.icon_key, border: theme.data?.border_key };
       avatarRows = rows;
       level = stats ? stats.level : null;

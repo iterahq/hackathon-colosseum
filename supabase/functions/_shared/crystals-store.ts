@@ -339,6 +339,13 @@ export async function ownedThemeKeys(db: IteraClient, userId: string, items: Pri
   return new Set((data ?? []).map((row) => row.item_key as string));
 }
 
+/** Every item key this learner holds, whatever the kind: small, and readable before the catalog is. */
+export async function ownedItemKeys(db: IteraClient, userId: string): Promise<Set<string>> {
+  const { data, error } = await db.from('user_inventory').select('item_key').eq('user_id', userId).gt('qty', 0);
+  if (error) throw new Error(`user_inventory owned: ${error.message}`);
+  return new Set((data ?? []).map((row) => row.item_key as string));
+}
+
 export async function loadChoice(db: IteraClient, userId: string): Promise<Partial<Record<ThemeSlot, string | null>>> {
   const { data, error } = await db.from('learner_themes').select('background_key,icon_key,border_key').eq('user_id', userId).maybeSingle();
   if (error) throw new Error(`learner_themes: ${error.message}`);

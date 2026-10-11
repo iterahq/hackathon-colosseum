@@ -48,7 +48,10 @@ export function giftCopy(gift: NonNullable<PurchaseProof['gift']>): PaidCopy {
 }
 
 /** Codes a learner can act on without a technical trace. */
-const TECHNICAL_CODES: ReadonlySet<string> = new Set(['payment_mismatch', 'broadcast_failed', 'rpc_unavailable']);
+const TECHNICAL_CODES: ReadonlySet<string> = new Set(['payment_mismatch', 'broadcast_failed', 'rpc_unavailable', 'wallet_failed', 'wallet_mismatch', 'tx_not_found', 'apply_failed']);
+
+/** Codes where the money went out and only the delivery is open: titled as pending, never as "did not go through". */
+export const PENDING_DELIVERY_CODES: ReadonlySet<string> = new Set(['apply_failed', 'tx_not_found', 'refund_due']);
 
 /** The raw error disclosure is for unexpected failures only: never for the insufficient-funds path. */
 export function showTechnicalDetail(phase: string, code: string | null, friendlyCodes: ReadonlySet<string>): boolean {

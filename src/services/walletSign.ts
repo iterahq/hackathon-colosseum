@@ -2,8 +2,9 @@
  * The ONE place a purchase touches the injected Solana wallet (Phantom and compatibles). No web3
  * library: the backend builds a legacy transaction, the wallet signs and sends it.
  *
- * NOT YET PROVEN AGAINST A REAL PHANTOM. Three attempts, each logged (`[wallet] attempt <name>`), and
- * whatever the provider answers is carried in `WalletSignError.detail` so the failed state shows it.
+ * Proven only against a scripted Phantom so far (see /tmp/hk/orch/PHANTOM-TEST.md for the manual run). Two
+ * attempts, each logged (`[wallet] attempt <name>`), and whatever the provider answers is carried in
+ * `WalletSignError.detail` so the failed state shows it.
  */
 import { assembleSignedTransaction, base64Decode, base64Encode, bytesOf, normalizeSignOnlyAnswer } from '@/services/walletEncoding';
 import type { PurchaseIntent } from '@/types/shop';
@@ -16,7 +17,7 @@ interface SolanaProvider {
   signMessage?(message: Uint8Array, display?: string): Promise<unknown>;
 }
 
-export type WalletSignFailure = 'no_wallet' | 'cancelled' | 'insufficient' | 'failed';
+export type WalletSignFailure = 'no_wallet' | 'cancelled' | 'insufficient' | 'expired' | 'failed';
 
 export class WalletSignError extends Error {
   constructor(
@@ -53,6 +54,8 @@ export function classifyWalletError(e: unknown): WalletSignError {
   const detail = code === null ? message : `${code}: ${message}`;
   if (code === USER_REJECTED || /user rejected|rejected the request|user denied|cancell?ed/i.test(message)) return new WalletSignError('cancelled', detail);
   if (/insufficient (funds|lamports|balance|sol)|attempt to debit an account|custom program error: 0x1\b/i.test(message)) return new WalletSignError('insufficient', detail);
+  // The blockhash behind the intent died (the learner took long in the wallet, or the wallet is on another network).
+  if (/blockhash not found|block height exceeded|has expired|transaction expired/i.test(message)) return new WalletSignError('expired', detail);
   return new WalletSignError('failed', detail);
 }
 
@@ -76,23 +79,17 @@ async function sent(answer: Promise<unknown>): Promise<WalletSigned> {
 
 /**
  * 1. `request` — what Phantom's injected provider sends internally for a legacy transaction: the
- *    serialized MESSAGE in base58.
- * 2. `object` — FALLBACK, unproven: a duck-typed stand-in for a web3.js `Transaction` that can only
- *    hand back the bytes the backend serialized (message, and the transaction with one empty
- *    signature slot). If the wallet needs more than that, it throws and the learner sees that error.
- * 3. `sign` — LAST RESORT, only after 1 and 2 failed for another reason than a rejection: the wallet
- *    signs the message and does not send; the signed transaction goes to `purchase-submit`.
+ *    serialized MESSAGE in base58. Phantom's own `signAndSendTransaction(transaction)` is this same
+ *    request behind a web3.js object, so it is not tried again on failure (it would only prompt twice).
+ * 2. `sign` — FALLBACK, only after 1 failed for another reason than a rejection, an empty wallet or a
+ *    dead blockhash: the wallet signs the message and does not send; the signed transaction goes to
+ *    `purchase-submit`, which broadcasts on devnet whatever network the wallet itself is set to.
  */
 function attemptsFor(provider: SolanaProvider, intent: PurchaseIntent): Attempt[] {
   const messageBytes = intent.messageBase64 ? base64Decode(intent.messageBase64) : null;
   const attempts: Attempt[] = [
     { name: 'request', run: () => sent(provider.request({ method: 'signAndSendTransaction', params: { message: intent.messageBase58 || intent.transactionBase58 } })) },
   ];
-  const send = provider.signAndSendTransaction?.bind(provider);
-  if (send && messageBytes && intent.transactionBase64) {
-    const transactionBytes = base64Decode(intent.transactionBase64);
-    attempts.push({ name: 'object', run: () => sent(send({ serializeMessage: () => messageBytes, serialize: () => transactionBytes, signatures: [], feePayer: undefined })) });
-  }
   if (messageBytes && intent.messageBase58) {
     attempts.push({
       name: 'sign',
@@ -131,7 +128,7 @@ export async function signAndSendPurchase(intent: PurchaseIntent): Promise<Walle
     } catch (e) {
       console.warn('[wallet]', attempt.name, codeOf(e), messageOf(e));
       const failure = classifyWalletError(e);
-      // "No" from the learner, or an empty wallet, is an answer: never ask a second time.
+      // "No" from the learner, an empty wallet or a dead blockhash is an answer: never ask a second time.
       if (failure.reason !== 'failed') throw failure;
       failures.push(`${attempt.name} → ${failure.detail}`);
     }
