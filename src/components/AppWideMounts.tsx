@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { LiveClassSignal } from '@/components/branded/LiveClassSignal';
+import { FOCUS_BUILD } from '@/config/focus';
 import { OfflineBanner } from '@/components/shell/OfflineBanner';
 import { useLocaleSync } from '@/hooks/useLocaleSync';
 import { isGuestRoutePath } from '@/guest/guestRoute';
@@ -37,7 +38,7 @@ export function AppWideMounts() {
     <>
       <OfflineBanner />
       <LocaleSync />
-      <LiveClassSignal />
+      {!FOCUS_BUILD && <LiveClassSignal />}
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { FOCUS_BUILD } from '@/config/focus';
 import { CARD } from '@/components/shop/shopStyles';
 import { useCompanion } from '@/hooks/useCompanion';
 import { useReferralStatus } from '@/hooks/useGift';
@@ -8,11 +9,11 @@ import { InviteCopy } from './InviteCard';
 export function ProfileGift({ wallet }: { wallet: string }) {
   const companion = useCompanion();
   const own = Boolean(companion.wallet) && companion.wallet === wallet;
-  const referral = useReferralStatus({ enabled: own });
+  const referral = useReferralStatus({ enabled: own && !FOCUS_BUILD });
   return (
     <section className={`${CARD} flex flex-wrap items-start justify-between gap-4 p-4 sm:p-5`} data-testid="profile-gift">
       <GiftLifePanel wallet={wallet} className="min-w-0 flex-1" />
-      {own && referral.data && <InviteCopy status={referral.data} />}
+      {own && !FOCUS_BUILD && referral.data && <InviteCopy status={referral.data} />}
     </section>
   );
 }

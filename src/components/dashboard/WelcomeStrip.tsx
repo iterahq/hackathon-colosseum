@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { HeaderIcon } from '@/components/header/HeaderIcon';
 import { HeroTera } from '@/components/dashboard/HeroTera';
+import { FOCUS_ONE_PROGRESS_STORY } from '@/config/focus';
 import { useCompanion } from '@/hooks/useCompanion';
 import { useHeaderStats } from '@/hooks/useHeaderStats';
 import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
@@ -16,7 +17,7 @@ import { currentDayOf, trailName } from '@/utils/trailDashboard';
 
 const CHIP = 'inline-flex h-9 items-center gap-2 rounded-full border border-[#262320] bg-[#141210] px-3 [font:600_12px_JetBrains_Mono] text-[#C9BFB0]';
 
-/** The line above the hero: Tera, "welcome back", then the progress story first (days stamped, capabilities proven) and the quiet numbers after it. */
+/** The line above the hero: Tera, "welcome back", then the progress story (days stamped, capabilities proven); the full build adds the streak, the XP and the medals after it. */
 export function WelcomeStrip({ trail }: { trail: Trail | null }) {
   const { t, tText } = useI18n();
   const stats = useHeaderStats();
@@ -57,18 +58,22 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
             {t('dash.welcome.proven', { n: story.verified, total: story.capabilitiesTotal })}
           </Link>
         )}
-        <span className={CHIP} title={t('header.hud.streak', { n: stats.streak ?? 0 })}>
-          <HeaderIcon name="flame" size={16} className="text-[#3FD17F]" />
-          {t('dash.welcome.streak', { n: stats.streak ?? 0 })}
-        </span>
-        <span className={CHIP} title={t('header.hud.xp', { xp: stats.xp ?? 0, level: stats.level ?? 1, into: 0, span: 0 })}>
-          <HeaderIcon name="bolt" size={16} className="text-[#3FD17F]" />
-          {t('dash.welcome.xp', { xp: stats.xp ?? 0, level: stats.level ?? 1 })}
-        </span>
-        <Link to="/passport" className={`${CHIP} hover:border-[#3FD17F] hover:text-[#F4EDE2]`} title={t('header.hud.achievements', { n: stats.achievements ?? 0 })}>
-          <HeaderIcon name="star" size={16} className="text-[#3FD17F]" />
-          {t('dash.welcome.achievements', { n: stats.achievements ?? 0 })}
-        </Link>
+        {!FOCUS_ONE_PROGRESS_STORY && (
+          <>
+            <span className={CHIP} title={t('header.hud.streak', { n: stats.streak ?? 0 })}>
+              <HeaderIcon name="flame" size={16} className="text-[#3FD17F]" />
+              {t('dash.welcome.streak', { n: stats.streak ?? 0 })}
+            </span>
+            <span className={CHIP} title={t('header.hud.xp', { xp: stats.xp ?? 0, level: stats.level ?? 1, into: 0, span: 0 })}>
+              <HeaderIcon name="bolt" size={16} className="text-[#3FD17F]" />
+              {t('dash.welcome.xp', { xp: stats.xp ?? 0, level: stats.level ?? 1 })}
+            </span>
+            <Link to="/passport" className={`${CHIP} hover:border-[#3FD17F] hover:text-[#F4EDE2]`} title={t('header.hud.achievements', { n: stats.achievements ?? 0 })}>
+              <HeaderIcon name="star" size={16} className="text-[#3FD17F]" />
+              {t('dash.welcome.achievements', { n: stats.achievements ?? 0 })}
+            </Link>
+          </>
+        )}
       </div>
     </section>
   );

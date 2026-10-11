@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LEGAL_AND_HELP_URLS } from '@iterahq/shell-core';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
+import { FOCUS_BUILD } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { addressUrl } from '@/lib/explorer';
 import type { LearnerAvatar as Avatar } from '@/types/avatar';
@@ -30,7 +31,8 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
   const reduced = !!useReducedMotion();
   const [copied, setCopied] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  const staff = roles.admin || roles.canStartLiveClass;
+  // The focus build keeps the staff areas reachable by URL only, and the invite card is off with the rest of the referral system.
+  const staff = !FOCUS_BUILD && (roles.admin || roles.canStartLiveClass);
 
   useEffect(() => {
     root.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
@@ -133,9 +135,11 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
         <Link to="/artifacts" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-files">
           {t('header.nav.files')}
         </Link>
-        <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
-          {t('invite.menu')}
-        </Link>
+        {!FOCUS_BUILD && (
+          <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
+            {t('invite.menu')}
+          </Link>
+        )}
       </MenuSection>
 
       <MenuSection label={t('header.menu.help')}>

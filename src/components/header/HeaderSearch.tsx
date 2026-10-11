@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { FOCUS_BUILD } from '@/config/focus';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useVideoCourses } from '@/hooks/useVideoCourses';
@@ -17,7 +18,8 @@ export function HeaderSearch({ className = '' }: { className?: string }) {
   const visitor = useAccessLevel().level === 'visitor';
   const dashboard = useTrailDashboard({ enabled: !visitor });
   const achievements = useAchievements({ enabled: !visitor });
-  const videos = useVideoCourses().courses;
+  const videoCourses = useVideoCourses().courses;
+  const videos = FOCUS_BUILD ? [] : videoCourses;
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function HeaderSearch({ className = '' }: { className?: string }) {
 
   const { trails, featured } = dashboard;
   const items = achievements.items;
-  const index = useMemo(() => buildIndex(buildHeaderSources({ t, tText, trails, featured, achievements: items, videoCourses: videos })), [t, tText, trails, featured, items, videos]);
+  const index = useMemo(() => buildIndex(buildHeaderSources({ t, tText, trails, featured, achievements: items, videoCourses: videos, courses: !FOCUS_BUILD })), [t, tText, trails, featured, items, videos]);
 
   return (
     <>

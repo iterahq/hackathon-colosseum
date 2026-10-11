@@ -97,6 +97,7 @@ const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
    VITE_OTEL_DISABLED=true, so a visitor never downloads it. */
 const ObservabilityProvider = lazy(() => import("@devfellowship/observability").then((m) => ({ default: m.ObservabilityProvider })));
 import { Navigate } from "react-router-dom";
+import { FOCUS_BUILD, FOCUS_HIDDEN_PATHS } from "@/config/focus";
 import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
@@ -245,26 +246,32 @@ const App = () => (
                     browse it (mode="preview"); the enroll CTA is replaced by a
                     "subscribe to unlock" CTA for them (the catalog host), so enroll
                     is never called without an active seat. */}
-                <Route
-                  path="/catalog"
-                  element={
-                    <RequireAuth>
-                      <RequireSubscription mode="preview">
-                        <LazyRoute><CatalogRoute /></LazyRoute>
-                      </RequireSubscription>
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/course/:slug"
-                  element={
-                    <RequireAuth>
-                      <RequireSubscription mode="preview">
-                        <LazyRoute><CoursePage /></LazyRoute>
-                      </RequireSubscription>
-                    </RequireAuth>
-                  }
-                />
+                {/* Focus build: the surfaces beside the loop send the learner to the dashboard; the pages stay in the tree for the full build. */}
+                {FOCUS_BUILD && FOCUS_HIDDEN_PATHS.map((path) => <Route key={path} path={path} element={<Navigate to="/" replace />} />)}
+                {!FOCUS_BUILD && (
+                  <Route
+                    path="/catalog"
+                    element={
+                      <RequireAuth>
+                        <RequireSubscription mode="preview">
+                          <LazyRoute><CatalogRoute /></LazyRoute>
+                        </RequireSubscription>
+                      </RequireAuth>
+                    }
+                  />
+                )}
+                {!FOCUS_BUILD && (
+                  <Route
+                    path="/course/:slug"
+                    element={
+                      <RequireAuth>
+                        <RequireSubscription mode="preview">
+                          <LazyRoute><CoursePage /></LazyRoute>
+                        </RequireSubscription>
+                      </RequireAuth>
+                    }
+                  />
+                )}
                 <Route
                   path="/program/:slug"
                   element={
@@ -357,26 +364,30 @@ const App = () => (
                     `signedOutTo="/signup"`: this is where every landing CTA
                     points, so the signed-out visitor here is a prospect without
                     an account, not a learner who forgot to sign in. */}
-                <Route
-                  path="/subscribe"
-                  element={
-                    <WebOnlyRoute>
-                      <RequireAuth signedOutTo="/signup">
-                        <LazyRoute><SubscribePage /></LazyRoute>
-                      </RequireAuth>
-                    </WebOnlyRoute>
-                  }
-                />
-                <Route
-                  path="/subscribe/return"
-                  element={
-                    <WebOnlyRoute>
-                      <RequireAuth>
-                        <LazyRoute><SubscribeReturnPage /></LazyRoute>
-                      </RequireAuth>
-                    </WebOnlyRoute>
-                  }
-                />
+                {!FOCUS_BUILD && (
+                  <Route
+                    path="/subscribe"
+                    element={
+                      <WebOnlyRoute>
+                        <RequireAuth signedOutTo="/signup">
+                          <LazyRoute><SubscribePage /></LazyRoute>
+                        </RequireAuth>
+                      </WebOnlyRoute>
+                    }
+                  />
+                )}
+                {!FOCUS_BUILD && (
+                  <Route
+                    path="/subscribe/return"
+                    element={
+                      <WebOnlyRoute>
+                        <RequireAuth>
+                          <LazyRoute><SubscribeReturnPage /></LazyRoute>
+                        </RequireAuth>
+                      </WebOnlyRoute>
+                    }
+                  />
+                )}
                 {/* Live class is not supported in the native shell: these routes show a notice there. */}
                 {/* Live-class / real-time cohort mode (plan 20260702-…).
                     Professor control surface — instructor-gated. Static

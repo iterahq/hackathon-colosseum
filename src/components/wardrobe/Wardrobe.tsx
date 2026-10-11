@@ -1,6 +1,7 @@
 import { TeraAvatar } from '@iterahq/activities';
 import { useEffect, useMemo, useState } from 'react';
 import { useEquipOutfit } from '@/hooks/useCompanion';
+import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { useCrystals, useEquipTheme, useSpendCrystals } from '@/hooks/useCrystals';
 import { useEquipAvatar } from '@/hooks/useShopWardrobe';
 import { ShopCallError } from '@/services/shopTransport';
@@ -97,7 +98,7 @@ export function Wardrobe({ items, actions, avatar, outfit, certs, failed = false
       }
     );
   };
-  const themeInput = crystals.data && crystals.data.themeItems.length > 0
+  const themeInput = !FOCUS_SOL_ONLY_SHOP && crystals.data && crystals.data.themeItems.length > 0
     ? { items: crystals.data.themeItems, balance: crystals.data.balance, preview, marks, buyError, buying: spend.isPending, onEquip: equipThemeItem, onPreview: (item: ThemeItem | null) => (setBuyError(null), setPreview(item)), onBuy: buyThemeItem }
     : null;
 

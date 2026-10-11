@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOCUS_BUILD } from '@/config/focus';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { OnChainMark } from '@/components/passport/OnChainMark';
 import { PassportArt } from '@/components/passport/PassportArt';
@@ -60,7 +61,7 @@ export function AchievementsPanel({ pages, medals, stamps, onOpenTrail }: Props)
       </div>
       <div className="flex flex-col gap-1">
         <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.counts', { stamped: countOf(t, stamps, 'stamp'), medals: countOf(t, earnedMedals, 'medal') })}</span>
-        <MedalShelf medals={medals} color={PRIMARY_COLOR} size={44} compact />
+        {!FOCUS_BUILD && <MedalShelf medals={medals} color={PRIMARY_COLOR} size={44} compact />}
       </div>
     </section>
   );

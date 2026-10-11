@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
+import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { useLessonCompanion } from '@/components/lives/lessonCompanion';
 import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { useI18n } from '@/i18n';
@@ -115,7 +116,7 @@ export function LessonCompleteActions({ nextLessonId, onReview, gold = false }: 
           {t('lives.bonus', { n: bonus })}
         </p>
       )}
-      {crystals > 0 && (
+      {crystals > 0 && !FOCUS_SOL_ONLY_SHOP && (
         <p className="mt-3 flex items-center justify-center gap-1.5 font-mono text-sm font-semibold text-foreground" data-testid="lesson-crystals-earned">
           <CrystalGlyph size={16} className="text-evergreen-hi" />
           {crystals === 1 ? t('crystals.earned.one') : t('crystals.earned', { n: crystals })}

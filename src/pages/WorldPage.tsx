@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CrystalSection } from '@/components/world/CrystalSection';
+import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { TeraDialog } from '@/components/world/TeraDialog';
 import { TierSection } from '@/components/world/TierSection';
 import { WorldHero } from '@/components/world/WorldHero';
@@ -20,7 +21,7 @@ export default function WorldPage() {
       <main className="mx-auto flex max-w-[1100px] flex-col gap-14 px-4 pb-20 pt-6 sm:px-8 xl:pt-10">
         <WorldHero />
         <WorldStory />
-        <CrystalSection />
+        {!FOCUS_SOL_ONLY_SHOP && <CrystalSection />}
         <section id="cast" className="flex scroll-mt-6 flex-col gap-10" aria-labelledby="world-cast">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="world-cast" className={H2}>{t('world.cast')}</h2>
