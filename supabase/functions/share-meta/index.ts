@@ -7,8 +7,11 @@ import { isSolanaAddress } from '../_shared/address.ts';
 import { APP_URL, pickText } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, json, pathAfter } from '../_shared/http.ts';
+import { RateLimiter, callerAddress, tooMany } from '../_shared/ratelimit.ts';
 
 const IMAGE = `${APP_URL}/og/itera.png`;
+/** A crawler fetches a link once; a script hammering previews is throttled, best effort, per isolate. */
+const limiter = new RateLimiter({ limit: 60, windowMs: 60_000 });
 const CACHE = 'public, max-age=300';
 const DEFAULT = { title: 'Itera | Proof of learning that lives in your wallet', description: 'Train. Prove it on Solana. Earn. Every finished day stamps a soulbound credential anyone can verify.' };
 
@@ -94,6 +97,8 @@ Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (request.method !== 'GET' && request.method !== 'HEAD') return json({ error: 'method_not_allowed' }, 405, cors);
+  const verdict = limiter.take(callerAddress(request));
+  if (!verdict.allowed) return tooMany(verdict, cors);
 
   try {
     const [kind, id, ...rest] = pathAfter(request, 'share-meta');

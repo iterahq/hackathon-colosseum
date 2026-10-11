@@ -7,14 +7,20 @@ import { THEME_KINDS, borderOf, isThemeDefault, themeColor } from '../_shared/cr
 import { loadConfig, serviceClient } from '../_shared/db.ts';
 import { SHOP_ACCEPT_KEY, parseAccept, resolvedCurrencies } from '../_shared/shop-accept.ts';
 import { bearerToken, corsHeaders, json, langOf } from '../_shared/http.ts';
+import { RateLimiter, callerAddress, tooMany } from '../_shared/ratelimit.ts';
 import { ITEM_COLUMNS, type ShopItem } from '../_shared/shop-items.ts';
 import { isItemKind } from '../_shared/shop-rules.ts';
 import { unlockLevelOf, unlockView } from '../_shared/unlock.ts';
+
+/** The list is readable with no session, and every call is several reads: one address gets two a second, best effort. */
+const limiter = new RateLimiter({ limit: 120, windowMs: 60_000 });
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'app', 'GET, OPTIONS');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
+  const verdict = limiter.take(callerAddress(request));
+  if (!verdict.allowed) return tooMany(verdict, cors);
 
   try {
     const db = serviceClient();
