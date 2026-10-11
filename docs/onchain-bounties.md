@@ -20,6 +20,8 @@ sponsor ── create ──► bounty (awaiting_funding) ── fund ──► 
 
 | Path | What |
 |---|---|
+| `db/migrations/0202_bounty_refund_schedule.sql` | The ten-minute job that refunds expired bounties |
+| `src/lib/loginReturn.ts` | The sign-in link that brings a visitor back to the bounty they came from |
 | `db/migrations/0201_bounty_escrow_program.sql` | `onchain_config.bounty_escrow_program`: with it, new bounties are held by the program |
 | `db/migrations/0200_bounties.sql` | `itera.bounties`, `bounty_claims`, `bounty_events`, and the five functions that are the only writers of a status |
 | `supabase/functions/_shared/bounty.ts` | Pure rules: eligibility, amounts, the transfer decision, form checks, public views, the Action texts |
@@ -147,7 +149,7 @@ Base: `https://nyzcbnnbffsizshiolbh.supabase.co/functions/v1`.
   "fund": null | { "action_url": "…/bounty-action/<slug>", "blink_url": "https://dial.to/?action=…" } }
 ```
 
-`expired` is a bounty nobody holds past `expires_at`; its money waits for the sponsor's refund. `fund` is
+`expired` is a bounty nobody holds past `expires_at`; it is refunded on its own (see "Expiry and refunds"). `fund` is
 present only while the bounty waits for money. Rows written by automated runs (`is_test`) are not listed.
 Cached 10 s. `502 upstream_unavailable`, `500 internal_error`.
 
@@ -161,6 +163,10 @@ The same `<bounty>` plus the ledger:
 ```
 
 A bounty that was just funded opens on this read. `404 bounty_not_found`. Not cached.
+
+### `GET /bounty-board/sweep` (public)
+
+`202 { sweeping: true }` at once; the refunds of expired bounties run after the answer. See "Expiry and refunds".
 
 ### `GET /bounty-board/wallet/<address>` (public): what a wallet earned
 
@@ -215,34 +221,82 @@ is trusted: the balance decides.
 
 ## Trust model
 
-**Enforced by the escrow program (nobody, including the Itera server, can do otherwise)**
+Said without decoration. Three parties can move or block a reward: the escrow program, the Itera server, and
+whoever holds the program's upgrade key.
 
-- The reward exists and is set apart: the bounty's account is public, with its terms.
-- Only a wallet that owns a certification of the Itera Passports collection can be recorded as claimant.
-- The money can only go to that recorded claimant, once, or back to the sponsor recorded at creation.
-- A bounty cannot be paid twice, refunded after payment, or refunded while someone holds it.
+### What the chain decides (the escrow program; the server cannot do otherwise)
 
-**Enforced by the Itera server, and stated as such in the UI**
+- The reward is locked in the bounty's own account. The account and its terms are public.
+- A claimant can only be a wallet that **owns a Metaplex Core asset of the Itera Passports collection**. The
+  program reads that account in the `accept` transaction; it takes nobody's word for it.
+- The reward can leave to exactly two places: the recorded claimant, or the sponsor recorded when the bounty was
+  funded. No instruction takes another destination.
+- It leaves once. No second release, no refund after a payout, no refund while someone holds the bounty.
 
-- **How many stamped days** a bounty asks for. The server reads `days_done` from the same on-chain asset.
-- **One winner, one bounty per learner, deadlines**: the database functions of `0200_bounties.sql`.
-- **Timing.** The approver key (the treasury) decides when to accept, release, reopen or refund. It could
-  reopen a claim or refund an open bounty early; it could not redirect the money.
-- **Approval.** A person on the sponsor's staff judges the delivery.
-- **The program can be upgraded** by the authority key (devnet).
+### What the server decides (Itera's edge functions and database; trust required)
 
-**Server-held bounties** (`derived_account`): the server can sign for the escrow account. Our code only
-ever sends to the claim's wallet or to the refund address, but that is our code, not a chain rule.
+- **How much certification is enough.** The program checks "owns an Itera certification", not "has 3 stamped days of
+  Week 1 · HTML". The server reads `program`, `trail` and `days_done` from the same on-chain asset and refuses the
+  rest. A server that lied here could let a wallet with a one-day certification take a three-day bounty. It could
+  not let an uncertified wallet in.
+- **Who wins a race, and the deadlines.** One live claim per bounty and per learner, `claim_hours`, `expires_at`:
+  database functions.
+- **When the program is called.** The approver of every bounty is the Itera treasury key. It decides when to accept,
+  release, reopen a claim (`unclaim`) or refund an unclaimed bounty. So the server can: delay a payout forever,
+  take a bounty away from a learner who has not been paid yet, refund an unclaimed bounty before its date. It
+  cannot: send the reward anywhere but the certified claimant or the sponsor.
+- **Whether the work is good.** A person on the sponsor's staff approves or rejects. This is a human judgement, and
+  the sponsor's staff could approve a friend's delivery. There is no dispute path.
+- **The ledger shown on the page** (`bounty_events`) is our table. The transactions it links to are the proof; a
+  row without a transaction is our say-so.
+
+### The upgrade authority (one key; trust required, total)
+
+The program is deployed upgradeable. Its upgrade authority is the Itera mint authority,
+`CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B`, a single key held as an edge-function secret. Whoever holds that key
+can replace the program with one that sends every locked reward anywhere. Every guarantee in "What the chain
+decides" holds only for as long as the deployed program is the one in `programs/bounty-escrow`.
+
+This is deliberate on devnet, where a bug found during the hackathon has to be fixable. Before real money it must
+change: `solana program set-upgrade-authority <program> --final`, or a multisig. Anyone can check the current
+state with `solana program show ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq -u devnet`.
+
+The same single-key caveat applies to the approver (the treasury key) for the powers listed above.
+
+### Server-held bounties (`derived_account`)
+
+Only rows posted before the program existed (all closed). There the server signs for the escrow account outright:
+a custodial escrow with a public ledger.
+
+## Expiry and refunds
+
+A bounty past `expires_at` that nobody holds reads as `expired` and is refunded **without anyone asking**:
+
+- **A scheduler**: the database calls `GET /bounty-board/sweep` every ten minutes (`pg_cron` + `pg_net`,
+  `0202_bounty_refund_schedule.sql`). It refunds up to four expired bounties per run and finishes refunds that were
+  started and never confirmed.
+- **Lazily on read**: every read of the board sets off the same sweep for one bounty, after answering. So the money
+  also moves if the scheduled job is ever removed.
+- **The sponsor's button** in `/bounties/manage`, at any time while nobody holds the bounty.
+- **Without Itera at all**: the sponsor's own wallet can sign the program's `refund` for an unclaimed bounty. This
+  works when the refund address is a wallet the sponsor controls (a bounty funded through the blink); it is the way
+  out if Itera's server disappears.
+
+The sweep route is public and takes no parameter: it can only send a bounty's money to the refund address fixed
+when the bounty was posted. A bounty someone holds is not swept; its claim ends at `claim_hours` or at
+`expires_at`, whichever comes first, and the bounty is swept after that. A delivery waiting for review is never
+swept: the sponsor approves or rejects it, however late.
+
+What is **not** automatic: a learner whose delivery the sponsor never reviews has no way to force a decision.
 
 ## Known limits
 
 - One winner per bounty. A learner holds one bounty at a time.
-- A claim lasts `claim_hours` (default 72); past that the bounty returns to the board on the next read.
-- An expired bounty is refunded when the sponsor asks; nothing sweeps it automatically.
-- No dispute path: a rejection reopens the bounty and the learner sees the sponsor's note.
+- No dispute path: a rejection reopens the bounty and the learner sees the sponsor's note. Not built, on purpose.
+- A sponsor who never reviews a delivery leaves the reward locked; only the sponsor (approve or reject) unlocks it.
 - A bounty's escrow address is known before it is funded. Someone could create that account first with other
   terms; the server ignores it and the bounty never opens (post it again). Only unfunded bounties are exposed.
-- The program does not read the stamped days; see "Trust model".
+- The public routes (`bounty-board`, `bounty-action`) have no per-IP rate limit.
 - Rewards are devnet SOL and have no monetary value.
 
 ## Tests
@@ -261,3 +315,7 @@ ever sends to the claim's wallet or to the refund address, but that is our code,
   rejection reopens with the money still locked; two simultaneous refunds give one refund transaction; a
   wallet funds a bounty through the Action. Program-escrow payout of that run:
   `66i6tf5q75sEEk6fU87iX1gBzrgfQFoKV7LsfrgcxfwGKSDZN82mtr6uqyiFpjyrPy1wUxfDNNHm5R1iZJjz89yF`.
+- **Automatic refund on devnet** (10 checks): a funded bounty past its date is refunded by one unauthenticated call
+  to the sweep, to the refund address fixed at creation; a held bounty and a bounty inside its date are left
+  alone; a second sweep pays nothing again.
+- **Sign-in return**: `loginReturn.test.ts`, `AuthPage.return.test.tsx` (a foreign `next` never leaves the app).

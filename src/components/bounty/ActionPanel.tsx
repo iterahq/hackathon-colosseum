@@ -6,6 +6,7 @@ import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useAcceptBounty, useBountySession, useMyBountyStatus, useSubmitBounty, useWithdrawBounty } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
+import { loginHref } from '@/lib/loginReturn';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { formatRemaining, safeHttpsUrl } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
@@ -160,7 +161,7 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
     return (
       <Panel>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.signIn.hint')}</p>
-        <Link to="/login" className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-sign-in">
+        <Link to={loginHref(`/bounties/${bounty.slug}`)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-sign-in">
           {t('bounty.signIn.cta')}
         </Link>
       </Panel>
