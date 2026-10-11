@@ -25,7 +25,8 @@
  * persist / XP logic below is UNCHANGED — only the presentation was rebuilt.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { HostExplainsMisses, HostOwnsSettledAction } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
@@ -865,14 +866,22 @@ export default function LessonPlayer() {
             <div className="h-48 rounded-3xl ds-shimmer" />
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-muted-foreground">{t('lesson.notFound')}</p>
-            <button
-              onClick={() => refetch()}
-              className="w-full h-12 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-            >
-              {t('common.retry')}
-            </button>
+          <div className="flex flex-col items-center py-10 text-center" data-testid="lesson-not-found">
+            <TeraNote
+              mood="oops"
+              title={t('lesson.notFound')}
+              body={t('lesson.notFound.body')}
+              action={
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button type="button" onClick={() => refetch()} className={TERA_BUTTON}>
+                    {t('common.retry')}
+                  </button>
+                  <Link to="/" className={`${TERA_BUTTON} border-b-[#262320] bg-[#141210] text-[#F4EDE2]`}>
+                    {t('tera.notFound.cta')}
+                  </Link>
+                </div>
+              }
+            />
           </div>
         ) : data ? (
           activities.length === 0 ? (
