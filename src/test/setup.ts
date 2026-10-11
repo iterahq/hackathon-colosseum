@@ -13,6 +13,12 @@ import "@testing-library/jest-dom";
  * lógica pura, que não pagam mais o custo de montar um DOM.
  */
 if (typeof window !== "undefined") {
+  // The app follows the browser language on a first visit; jsdom says en-US, the suite was written in pt-BR.
+  // A getter, so a test may spy on it to try another browser.
+  Object.defineProperty(window.navigator, "languages", {
+    configurable: true,
+    get: () => ["pt-BR", "pt"],
+  });
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: (query: string) => ({

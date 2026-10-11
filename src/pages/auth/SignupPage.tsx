@@ -1,37 +1,55 @@
 /**
- * Itera sign-up — self-serve registration (PLG front door).
+ * Itera sign-up by e-mail — free on the hackathon build.
  *
- * This route redirected to /login while self-serve access was closed. It is the
- * door the marketing funnel needs: a stranger arriving from a campaign has no
- * DFL membership and no subscription, so without this page every acquisition
- * channel ended at a login form for an account they could not create.
- *
- * Passwordless, mirroring OtpLoginPage: email → 6-digit code → account. The
- * only behavioural differences are `sendSignupCode` (shouldCreateUser: true)
- * and the landing route — a fresh account has no entitlement, so it goes
- * straight to /subscribe instead of `from`.
+ * E-mail + password, no confirmation mail (the project has no mail provider: Supabase's built-in sender
+ * reaches two addresses an hour and only the team's own), no subscription step: the account joins the
+ * shared learner tenant and lands on the dashboard at once. The error line says what the server said.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
+import { useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
+import { Check } from 'lucide-react';
+import { Button, Input, Label, PasswordInput } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
-import { AuthProgressSteps } from '@/components/auth/AuthProgressSteps';
-import { SubscriptionIncludesPanel } from '@/components/auth/SubscriptionIncludesPanel';
-import { SignupEmailForm } from '@/components/auth/SignupEmailForm';
-import { SignupCodeForm } from '@/components/auth/SignupCodeForm';
-import { SubscribeTrustLine } from '@/components/subscribe/SubscribeTrustLine';
 import { useI18n } from '@/i18n';
 import { trackFunnel } from '@/lib/analytics';
-import { sendSignupCode, verifySignupCode } from '@/services/otpAuth.service';
+import { returnPathOf, returnState } from '@/lib/loginReturn';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 
+const MIN_PASSWORD = 8;
+const INCLUDES = ['door.signUp.includes.trails', 'door.signUp.includes.stamps', 'door.signUp.includes.bounties', 'door.signUp.includes.noEmail'] as const;
+
+/** The i18n key for a sign-up failure, by the code GoTrue returns. */
+export function signUpErrorKey(code: string | null, message: string | null): { key: string; detail?: string } {
+  if (code === 'user_already_exists' || /already registered/i.test(message ?? '')) return { key: 'door.signUp.error.exists' };
+  if (code === 'weak_password') return { key: 'door.signUp.error.weak' };
+  if (code === 'email_address_invalid' || code === 'validation_failed') return { key: 'door.signUp.error.email' };
+  if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit' || /rate limit/i.test(message ?? '')) return { key: 'door.signUp.error.rate' };
+  return { key: 'door.signUp.error.generic', detail: message ?? '' };
+}
+
+function Includes() {
+  const { t } = useI18n();
+  return (
+    <ul className="flex flex-col gap-2" data-testid="signup-includes">
+      {INCLUDES.map((key) => (
+        <li key={key} className="flex items-start gap-2 text-sm text-foreground">
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-evergreen" aria-hidden />
+          <span>{t(key)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function SignupPage() {
-  const { session, loading } = useAuth();
+  const { session, loading, signUpWithPassword } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = returnPathOf(location);
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,107 +61,94 @@ export default function SignupPage() {
   // keeps refreshing, so a learner who once joined a live class by link would be
   // bounced off this form forever.
   if (!loading && session && !isGuestAccessToken(session.access_token)) {
-    return <Navigate to="/subscribe" replace />;
+    return <Navigate to={from} replace />;
   }
 
-  function sendErrorMessage(err: string): string {
-    return err.toLowerCase().includes('rate limit') ? t('auth.otp.rateLimited') : t('auth.signUpError');
-  }
-
-  async function onSend(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const { error: err } = await sendSignupCode(email.trim());
-    setBusy(false);
-    if (err) {
-      // Unlike the sign-IN flow, a failure here leaks nothing: with
-      // shouldCreateUser an address that already exists gets a magic link and
-      // returns success, so an error means the send genuinely failed (signups
-      // disabled, SMTP down, rate limit). Swallowing it would leave the person
-      // waiting for an email that was never sent.
-      setError(sendErrorMessage(err));
+    if (busy) return;
+    if (password.length < MIN_PASSWORD) {
+      setError(t('door.signUp.error.weak'));
       return;
     }
-    // The confirmation copy stays neutral: it must read the same whether or not
-    // the address already had an account, or the form becomes an enumeration
-    // oracle for every address someone cares to type.
-    setSent(true);
-  }
-
-  async function onVerify(e: FormEvent) {
-    e.preventDefault();
-    // Auto-submit fires requestSubmit(), which ignores the disabled button; the
-    // code is single-use, so a second verify would paint an error over success.
-    if (busy) return;
     setBusy(true);
     setError(null);
-    const { error: err } = await verifySignupCode(email.trim(), code.trim());
+    const { error: message, code } = await signUpWithPassword(email.trim(), password);
     setBusy(false);
-    if (err) {
-      setError(t('auth.otp.error'));
+    if (message) {
+      const { key, detail } = signUpErrorKey(code, message);
+      setError(t(key, detail === undefined ? undefined : { detail }));
       return;
     }
     trackFunnel('signup_completed');
-    // Always /subscribe: the account exists now, the entitlement does not.
-    navigate('/subscribe', { replace: true });
-  }
-
-  async function onResend() {
-    setError(null);
-    const { error: err } = await sendSignupCode(email.trim());
-    if (err) setError(sendErrorMessage(err));
+    navigate(from, { replace: true });
   }
 
   return (
     <AuthShell
-      title={t('auth.signUpTitle')}
-      subtitle={t('auth.signUpSubtitle')}
+      title={t('door.signUp.title')}
+      subtitle={t('door.signUp.subtitle')}
       testId="signup-page"
       sidePanel={
-        <div className="flex h-full flex-col">
-          <SubscriptionIncludesPanel />
-          <div className="mt-auto">
-            <SubscribeTrustLine />
-          </div>
+        <div className="flex h-full flex-col gap-4">
+          <h2 className="font-display text-lg font-bold text-foreground">{t('door.signUp.panelTitle')}</h2>
+          <Includes />
+          <p className="mt-auto text-xs text-muted-foreground" data-testid="signup-model">
+            {t('door.signUp.model')}
+          </p>
         </div>
       }
     >
-      <AuthProgressSteps current={sent ? 2 : 1} />
-      {!sent ? (
-        <SignupEmailForm
-          email={email}
-          onEmailChange={setEmail}
-          onSubmit={onSend}
-          busy={busy}
-          error={error}
+      <form onSubmit={onSubmit} className="flex flex-col gap-3" data-testid="signup-form">
+        <Label htmlFor="signup-email">{t('auth.email')}</Label>
+        <Input
+          id="signup-email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          enterKeyHint="next"
+          autoFocus
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'signup-error' : undefined}
+          data-testid="signup-email-input"
         />
-      ) : (
-        <SignupCodeForm
-          email={email}
-          code={code}
-          onCodeChange={setCode}
-          onSubmit={onVerify}
-          onChangeEmail={() => {
-            setSent(false);
-            setCode('');
-            setError(null);
-          }}
-          onResend={onResend}
-          busy={busy}
-          error={error}
+        <Label htmlFor="signup-password">{t('door.signUp.password')}</Label>
+        <PasswordInput
+          id="signup-password"
+          autoComplete="new-password"
+          enterKeyHint="go"
+          required
+          value={password}
+          onValueChange={setPassword}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'signup-error' : undefined}
+          data-testid="signup-password-input"
         />
-      )}
+        {error && (
+          <p id="signup-error" role="alert" className="text-sm text-destructive" data-testid="signup-error">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={busy} className="mt-2 min-h-11 w-full" data-testid="submit-signup">
+          {busy ? t('common.loading') : t('door.signUp.submit')}
+        </Button>
+      </form>
       <div className="mt-4 lg:hidden">
-        <SubscriptionIncludesPanel compact />
+        <Includes />
+        <p className="mt-3 text-xs text-muted-foreground">{t('door.signUp.model')}</p>
       </div>
       <p className="mt-6 text-center text-xs text-muted-foreground">
+        {t('door.signUp.walletHint')}{' '}
+        <Link to="/login" state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="signup-back-to-login">
+          {t('door.signUp.walletLink')}
+        </Link>
+      </p>
+      <p className="mt-2 text-center text-xs text-muted-foreground">
         {t('auth.haveAccount')}{' '}
-        <Link
-          to="/login"
-          className="font-medium text-foreground touch-hit underline-offset-2 hover:underline"
-          data-testid="signup-back-to-login"
-        >
+        <Link to="/login" state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline">
           {t('auth.toLogin')}
         </Link>
       </p>

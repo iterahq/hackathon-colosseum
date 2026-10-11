@@ -24,10 +24,7 @@ const GATED: Record<string, Gate> = {
 
   "src/pages/SubscribePage.tsx": { gate: "web-only-route", page: "SubscribePage" },
   "src/pages/SubscribeReturnPage.tsx": { gate: "web-only-route", page: "SubscribeReturnPage" },
-  "src/pages/auth/SignupPage.tsx": { gate: "web-only-route", page: "SignupPage" },
   "src/components/auth/AuthProgressSteps.tsx": { gate: "reached-through", symbols: ["AuthProgressSteps"] },
-  "src/components/auth/SignupCodeForm.tsx": { gate: "reached-through", symbols: ["SignupCodeForm"] },
-  "src/components/auth/SubscriptionIncludesPanel.tsx": { gate: "reached-through", symbols: ["SubscriptionIncludesPanel"] },
   "src/components/subscribe/PlanSummary.tsx": { gate: "reached-through", symbols: ["PlanSummary"] },
   "src/components/subscribe/SubscribeAccountBar.tsx": { gate: "reached-through", symbols: ["SubscribeAccountBar"] },
   "src/components/subscribe/SubscribeTrustLine.tsx": { gate: "reached-through", symbols: ["SubscribeTrustLine"] },
@@ -93,7 +90,6 @@ const ROUTE_CALL_SITES: Record<string, number> = {
   "src/pages/ProgramPage.tsx": 1,
   "src/pages/SubscribeReturnPage.tsx": 1,
   "src/pages/auth/AuthPage.tsx": 1,
-  "src/pages/auth/SignupPage.tsx": 2,
   "src/services/billing.service.ts": 2,
   "src/services/otpAuth.service.ts": 1,
 };

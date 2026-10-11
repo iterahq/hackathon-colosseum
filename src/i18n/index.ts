@@ -24,6 +24,7 @@ import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
 import { BOUNTY_MESSAGES } from './bountyMessages';
 import { LANDING_MESSAGES } from './landingMessages';
+import { DOOR_MESSAGES } from './doorMessages';
 import { LOOP_MESSAGES } from './loopMessages';
 import { SOCIAL_MESSAGES } from './socialMessages';
 import { TERA_MESSAGES } from './teraMessages';
@@ -1245,6 +1246,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...GIFT_MESSAGES.pt,
     ...BOUNTY_MESSAGES.pt,
     ...LANDING_MESSAGES.pt,
+    ...DOOR_MESSAGES.pt,
     ...LOOP_MESSAGES.pt,
     ...SOCIAL_MESSAGES.pt,
     'header.search.open': 'Abrir a busca',
@@ -2443,6 +2445,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...GIFT_MESSAGES.en,
     ...BOUNTY_MESSAGES.en,
     ...LANDING_MESSAGES.en,
+    ...DOOR_MESSAGES.en,
     ...LOOP_MESSAGES.en,
     ...SOCIAL_MESSAGES.en,
     'header.search.open': 'Open search',
