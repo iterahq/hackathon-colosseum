@@ -55,6 +55,7 @@ describe('activeNavOf', () => {
     expect(activeNavOf('/course/react-do-zero')).toBe('courses');
     expect(activeNavOf('/passport')).toBe('passport');
     expect(activeNavOf('/artifacts/abc')).toBe('files');
+    expect(activeNavOf('/verify')).toBe('verify');
   });
   it('owns nothing outside the learner area', () => {
     expect(activeNavOf('/profile')).toBeNull();

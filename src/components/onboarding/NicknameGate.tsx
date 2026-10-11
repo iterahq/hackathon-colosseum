@@ -17,7 +17,8 @@ import {
 } from '@/utils/nicknameGate';
 import { NicknameForm } from './NicknameForm';
 
-const EXCLUDED_PREFIXES = ['/c/', '/login', '/sign', '/auth/', '/g/', '/lesson/', '/live/', '/try'];
+/** The question is put on the learner's home only: never on top of a lesson, a bounty someone linked to, or any other deep link. */
+const ASKED_ON = ['/', '/dashboard'];
 const HAPPY_HOLD_MS = 700;
 const OTHER_DIALOG = '[role="dialog"]:not([data-nickname-gate]), [role="alertdialog"]';
 const FOCUSABLE = 'input, button, [href], [tabindex]:not([tabindex="-1"])';
@@ -41,11 +42,12 @@ function useOtherDialogOpen(watch: boolean): boolean {
 }
 
 /**
- * "What should we call you?" for a wallet learner whose name was generated. Asked
- * ONCE per account: the moment it shows, the account is marked as asked, so a
- * reload, another browser or "Skip for now" never bring it back. A modal dialog
- * that waits for any other dialog and never blocks: a failed profile read renders
- * nothing, a failed save keeps the form and toasts.
+ * "What should we call you?" for a wallet learner whose name was generated, or an
+ * e-mail learner still named after the local part of the address. Asked ONCE per
+ * account, on the dashboard only: the moment it shows, the account is marked as
+ * asked, so a reload, another browser or "Skip for now" never bring it back. A
+ * modal dialog that waits for any other dialog and never blocks: a failed profile
+ * read renders nothing, a failed save keeps the form and toasts.
  */
 export function NicknameGate() {
   const { user } = useAuth();
@@ -58,7 +60,7 @@ export function NicknameGate() {
   const [happy, setHappy] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
 
-  const excluded = EXCLUDED_PREFIXES.some((p) => pathname === p.replace(/\/$/, '') || pathname.startsWith(p));
+  const excluded = !ASKED_ON.includes(pathname.replace(/\/+$/, '') || '/');
   const due =
     !excluded &&
     shouldShowNicknameGate({
@@ -151,7 +153,7 @@ export function NicknameGate() {
         data-nickname-gate
         className="w-full max-w-[460px] rounded-3xl border border-[#262320] bg-[#0F0D0B] py-8 shadow-2xl"
       >
-        <NicknameForm saving={update.isPending} happy={happy} onSubmit={handleSubmit} onSkip={handleSkip} />
+        <NicknameForm saving={update.isPending} happy={happy} helperKey={isWalletUser(user) ? 'tera.nickname.helper' : 'tera.nickname.helperEmail'} onSubmit={handleSubmit} onSkip={handleSkip} />
       </div>
     </div>
   );

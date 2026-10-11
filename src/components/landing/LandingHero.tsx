@@ -15,18 +15,26 @@ export function LandingHero() {
           <span className="block text-[#3FD17F]">{t('landing.h1.prove')}</span>
           <span className="block">{t('landing.h1.earn')}</span>
         </h1>
-        <p className="max-w-[46ch] [font:500_clamp(17px,2.2vw,21px)/1.45_Inter] text-[#C9BFB0]">{t('landing.lede')}</p>
+        <p className="max-w-[46ch] [font:500_clamp(17px,2.2vw,21px)/1.45_Inter] text-[#C9BFB0]" data-testid="landing-lede">{t('landing.lede')}</p>
         <div className="mt-1 flex flex-wrap gap-3">
-          <Link to="/login" className={`${PRIMARY_CTA} ${FOCUS}`} data-testid="landing-cta-wallet">
-            {t('landing.cta.wallet')}
-          </Link>
-          <Link to={TRY_PATH} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-try">
+          <Link to={TRY_PATH} className={`${PRIMARY_CTA} ${FOCUS}`} data-testid="landing-cta-try">
             {t('landing.cta.try')}
+          </Link>
+          <Link to="/login" className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-wallet">
+            {t('landing.cta.wallet')}
           </Link>
           <Link to={`/u/${EXAMPLE_WALLET}`} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-profile">
             {t('landing.cta.profile')}
           </Link>
         </div>
+        <p className="max-w-[52ch] [font:500_14px/1.5_Inter] text-[#A0978A]" data-testid="landing-cta-email-line">
+          {t('landing.cta.emailLead')}{' '}
+          <Link to="/signup" className={`rounded text-[#F4EDE2] underline underline-offset-4 hover:text-[#3FD17F] ${FOCUS}`} data-testid="landing-cta-email">
+            {t('landing.cta.email')}
+          </Link>
+          {' '}
+          {t('landing.cta.emailTail')}
+        </p>
       </div>
       <img
         src="/mascot/tera-happy.webp"

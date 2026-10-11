@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 import { isGeneratedTeraName } from '@/utils/crystals';
+import { isGenericName } from '@/utils/isGenericName';
 
 const ADDRESS_LIKE = /^.{4}…[A-Za-z0-9]{4}$/;
 const SKIP_PREFIX = 'itera.nickname.skipped:';
@@ -27,15 +28,17 @@ export function wasNicknameAsked(user: Pick<User, 'user_metadata'> | null | unde
 }
 
 export interface NicknameGateInput {
-  user: Pick<User, 'app_metadata' | 'identities'> | null | undefined;
+  user: Pick<User, 'app_metadata' | 'identities'> & Partial<Pick<User, 'email'>> | null | undefined;
   /** null while loading or when the profile could not be read: never block. */
   profile: { displayName: string | null } | null | undefined;
   skipped: boolean;
 }
 
+/** A wallet learner with a generated name, or an e-mail learner whose name is still the address's local part (or any other placeholder). */
 export function shouldShowNicknameGate({ user, profile, skipped }: NicknameGateInput): boolean {
-  if (skipped || !profile) return false;
-  return isWalletUser(user) && isAddressLikeName(profile.displayName);
+  if (skipped || !profile || !user) return false;
+  if (isWalletUser(user)) return isAddressLikeName(profile.displayName);
+  return Boolean(user.email) && isGenericName(profile.displayName, user.email);
 }
 
 export type NicknameResult =

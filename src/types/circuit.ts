@@ -4,9 +4,26 @@ export interface CircuitShare {
   stampsFunded: number;
 }
 
-/** The public counter, plus (when asked for a wallet) what that wallet's own purchases paid forward. */
+/** The shop's own price shelf, cheapest and dearest item on sale right now. */
+export interface CircuitShopRange {
+  minUsdCents: number;
+  maxUsdCents: number;
+  items: number;
+}
+
+/**
+ * The public counter: every confirmed transfer, the team's own test runs included (it never shrinks),
+ * plus the same sum without the tagged test accounts (`outside`), the maths that turn purchases into
+ * stamps, the shop's price range and (when asked for a wallet) what that wallet's own purchases paid forward.
+ */
 export interface CircuitCounter extends CircuitShare {
   purchases: number;
+  asOf: string | null;
+  purchaseLamports: number;
+  sharePercent: number;
+  stampFeeLamports: number;
+  outside: (CircuitShare & { purchases: number; testAccountsLeftOut: number }) | null;
+  shop: CircuitShopRange | null;
   treasuryExplorerUrl: string | null;
   authorityExplorerUrl: string | null;
   wallet: CircuitShare | null;

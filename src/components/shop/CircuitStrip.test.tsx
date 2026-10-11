@@ -8,7 +8,7 @@ import type { CircuitCounter } from '@/types/circuit';
 const getCircuit = vi.fn<(wallet: string | null) => Promise<CircuitCounter>>();
 vi.mock('@/services/circuit.service', () => ({ getCircuit: (wallet: string | null) => getCircuit(wallet) }));
 
-const counter = (over: Partial<CircuitCounter> = {}): CircuitCounter => ({ lamports: 1_100_000, stampsFunded: 220, purchases: 2, treasuryExplorerUrl: 'https://explorer.solana.com/address/T?cluster=devnet', authorityExplorerUrl: null, wallet: null, ...over });
+const counter = (over: Partial<CircuitCounter> = {}): CircuitCounter => ({ lamports: 1_100_000, stampsFunded: 220, purchases: 2, asOf: null, purchaseLamports: 2_200_000, sharePercent: 50, stampFeeLamports: 5000, outside: null, shop: null, treasuryExplorerUrl: 'https://explorer.solana.com/address/T?cluster=devnet', authorityExplorerUrl: null, wallet: null, ...over });
 
 const show = (wallet: string | null) =>
   render(

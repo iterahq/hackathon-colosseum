@@ -28,8 +28,9 @@ export function HeaderIdentity() {
 
   const link = useWalletLink();
   const wallet = walletOf(user) ?? (link.wallet ? { address: link.wallet, chain: 'solana', network: 'devnet' } : null);
-  const chosen = profile?.displayName && !isGenericName(profile.displayName) ? profile.displayName : '';
-  const name = chosen || (wallet ? '' : user?.email || '');
+  const chosen = profile?.displayName && !isGenericName(profile.displayName, user?.email) ? profile.displayName : '';
+  // An e-mail account with no chosen name shows the address's local part, never the whole address; the pill truncates whatever it holds.
+  const name = chosen || (wallet ? '' : (user?.email ?? '').split('@')[0]);
   const avatar = useLearnerAvatar();
 
   useEffect(() => setOpen(false), [pathname]);
@@ -72,7 +73,7 @@ export function HeaderIdentity() {
             <span className="h-3 w-20 animate-pulse rounded-full bg-[#262320] motion-reduce:animate-none" aria-hidden data-testid="header-identity-loading" />
           ) : chosen || !wallet ? (
             <>
-              <span className="truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]">{name}</span>
+              <span className="max-w-full truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]" title={name}>{name}</span>
               {wallet && <span className="mt-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">{shortAddress(wallet.address)}</span>}
             </>
           ) : (
