@@ -193,16 +193,18 @@ export function staticCapabilities(lang: 'pt' | 'en'): Capabilities {
 interface Preload {
   wallet?: string;
   asset?: string;
+  key?: string;
   lang: string;
   response: Promise<Response>;
 }
 
 /** `index.html` starts these requests for `/u/<wallet>` and `/c/<asset>` before the bundle loads; each is used once. */
-export function takePreload(name: '__iteraGraph' | '__iteraProfile' | '__iteraCredential', key: string, lang: string): Promise<Response> | null {
+export function takePreload(name: '__iteraGraph' | '__iteraProfile' | '__iteraCredential' | '__iteraBoard' | '__iteraCircuit', key: string, lang: string): Promise<Response> | null {
+  if (typeof window === 'undefined') return null;
   const holder = window as unknown as Record<string, Preload | null | undefined>;
   const preload = holder[name];
   holder[name] = null;
-  return preload && (preload.wallet ?? preload.asset) === key && preload.lang === lang ? preload.response : null;
+  return preload && (preload.wallet ?? preload.asset ?? preload.key) === key && (lang === '*' || preload.lang === lang) ? preload.response : null;
 }
 
 /** What our tables hold for a wallet, with no chain read: fast, and never `verified` by itself. */

@@ -1,4 +1,5 @@
 /** The Circuito: half of every shop purchase pays the network fee of other learners' stamps. Public counter, anon key only. */
+import { takePreload } from '@/services/learnerProfile.service';
 import type { CircuitCounter, CircuitShare, PurchaseCircuit } from '@/types/circuit';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -39,7 +40,9 @@ export function toPurchaseCircuit(v: unknown): PurchaseCircuit | null {
 
 export async function getCircuit(wallet: string | null): Promise<CircuitCounter> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
-  const res = await fetch(`${url}/functions/v1/circuit${wallet ? `?wallet=${encodeURIComponent(wallet)}` : ''}`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
+  const live = () => fetch(`${url}/functions/v1/circuit${wallet ? `?wallet=${encodeURIComponent(wallet)}` : ''}`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
+  // The landing's counter is requested from index.html before the bundle loads; the answer is used once.
+  const res = await ((wallet ? null : takePreload('__iteraCircuit', 'all', '*')) ?? live()).catch(live);
   if (!res.ok) throw new Error(`circuit failed (${res.status})`);
   return toCircuitCounter(await res.json());
 }

@@ -2,6 +2,7 @@
 import { parseSignOffer, signOffer } from '@/services/bountySign';
 import { connectWallet, signAndSendPurchase, WalletSignError } from '@/services/walletSign';
 import { callShop, ShopCallError } from '@/services/shopTransport';
+import { takePreload } from '@/services/learnerProfile.service';
 import type { PurchaseIntent } from '@/types/shop';
 import type {
   ApproveResult,
@@ -355,7 +356,9 @@ export function bountyErrorCode(error: unknown): string | null {
 
 async function publicGet(path: string, lang: string): Promise<Response> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
-  return fetch(`${url}/functions/v1/bounty-board${path}?lang=${lang}`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
+  const live = () => fetch(`${url}/functions/v1/bounty-board${path}?lang=${lang}`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
+  // index.html asks for the board (/, /bounties) or the bounty (/bounties/<slug>) before the bundle loads; the answer is used once.
+  return (takePreload('__iteraBoard', path.replace(/^\//, ''), lang) ?? live()).catch(live);
 }
 
 export async function getBountyBoard(lang: string): Promise<BountyBoard> {
