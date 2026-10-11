@@ -69,10 +69,12 @@ export const VERIFY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.program.loading': 'Lendo o programa na Solana…',
     'verify.program.error': 'Não foi possível ler o programa do nó público.',
     'verify.program.notProgram': 'A conta neste endereço não é um programa atualizável.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.program.authority': 'Autoridade de atualização',
     'verify.program.noAuthority': 'nenhuma: ninguém pode trocar este programa',
     'verify.program.deployed': 'Última publicação no slot',
     'verify.program.dataAccount': 'Conta de dados do programa',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.program.oneKey': 'Uma chave pode trocar este programa, e a Itera guarda essa chave. Quem tem a autoridade de atualização pode pôr outro código no lugar.',
     'verify.program.why': 'Na devnet mantemos a chave para corrigir um bug sem recomeçar.',
     'verify.program.before': 'Antes de haver dinheiro de verdade, a chave precisa ir para uma multisig ou o programa precisa ser tornado final. Isso ainda não foi feito.',
@@ -137,6 +139,7 @@ export const VERIFY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.gate.error': 'Não foi possível carregar o código.',
     'verify.gate.codeLabel': 'A função accept do programa de escrow',
     'verify.gate.notChecked': 'O programa não lê o número de dias carimbados nem se o asset está congelado. O servidor da Itera lê isso na mesma conta do asset e recusa o aceite quando não basta.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.gate.signers': 'O aceite pede duas assinaturas: a carteira da própria pessoa e a chave atestadora da Itera, que garante o número de dias carimbados. A tesouraria da Itera só paga a taxa de rede.',
     'verify.gate.sample': 'Preenchido com uma conta de escrow de exemplo.',
     'verify.gate.input': 'Endereço da conta de escrow',
@@ -161,6 +164,7 @@ export const VERIFY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.trust.intro': 'A blockchain confere menos do que parece. Estas partes dependem da Itera ou de pessoas:',
     'verify.trust.days': 'O servidor da Itera decide quantos dias carimbados bastam. O programa só confere que a carteira tem uma certificação da Itera.',
     'verify.trust.human': 'Uma pessoa da equipe do patrocinador aprova o trabalho. É um julgamento humano.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.trust.key': 'A chave de atualização. A Itera guarda a única chave que pode trocar o programa.',
     'verify.trust.attester': 'A chave atestadora assina junto o aceite e pode reabrir uma missão. Ela não move recompensa, a menos que também seja aprovadora ou patrocinadora daquela missão, o que só vale para as missões da própria equipe.',
     'verify.trust.dispute': 'Não existe caminho de disputa se o patrocinador recusar um bom trabalho.',
@@ -237,10 +241,12 @@ export const VERIFY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.program.loading': 'Reading the program from Solana…',
     'verify.program.error': 'Could not read the program from the public node.',
     'verify.program.notProgram': 'The account at this address is not an upgradeable program.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.program.authority': 'Upgrade authority',
     'verify.program.noAuthority': 'none: nobody can replace this program',
     'verify.program.deployed': 'Last deployed in slot',
     'verify.program.dataAccount': 'Program data account',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.program.oneKey': 'One key can replace this program, and Itera holds it. Whoever holds the upgrade authority can swap the code for different code.',
     'verify.program.why': 'On devnet we keep the key so a bug can be fixed without starting over.',
     'verify.program.before': 'Before real money is at stake, the key must move to a multisig or the program must be made final. That has not been done.',
@@ -305,6 +311,7 @@ export const VERIFY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.gate.error': 'Could not load the source.',
     'verify.gate.codeLabel': 'The accept function of the escrow program',
     'verify.gate.notChecked': 'The program does not read the number of stamped days or the frozen flag. The Itera server reads those from the same asset account and refuses the claim when they are not enough.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.gate.signers': 'Accept needs two signatures: the learner\'s own wallet, and Itera\'s attester key, which vouches for the number of stamped days. Itera\'s treasury only pays the network fee.',
     'verify.gate.sample': 'Pre-filled with a sample escrow account.',
     'verify.gate.input': 'Escrow account address',
@@ -329,6 +336,7 @@ export const VERIFY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.trust.intro': 'The chain checks less than it may seem. These parts rest on Itera or on people:',
     'verify.trust.days': 'The Itera server decides how many stamped days are enough. The program only checks that the wallet owns an Itera certification.',
     'verify.trust.human': 'A person on the sponsor\'s team approves the work. That is a human judgement.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'verify.trust.key': 'The upgrade key. Itera holds the one key that can replace the program.',
     'verify.trust.attester': 'The attester key co-signs accept and can reopen a claim. It cannot move a reward unless it is also that bounty\'s approver or sponsor, which is true only for the team\'s own bounties.',
     'verify.trust.dispute': 'There is no dispute path if the sponsor rejects good work.',

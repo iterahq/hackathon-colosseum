@@ -9,6 +9,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
       'Um patrocinador trava a recompensa na blockchain. Só carteiras com a certificação on-chain exigida podem aceitar a tarefa. Quando o trabalho é aprovado, o escrow paga direto na sua carteira.',
     'bounty.custody':
       'A recompensa de cada missão fica travada num programa on-chain na Solana (devnet), que qualquer pessoa pode conferir. O próprio programa confere a certificação de quem aceita e só paga essa carteira, uma única vez. A equipe do patrocinador aprova o trabalho, mas não escolhe para onde o dinheiro vai.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.custody.program':
       'O programa confere, na própria Solana, que a carteira tem uma certificação da Itera antes de registrar quem aceitou, e só registra quem assinou com a própria carteira (a Itera paga a taxa de rede). Desistir também é uma assinatura do aluno. Depois o programa só paga essa carteira, uma única vez, ou devolve ao patrocinador. O servidor da Itera confere os dias carimbados (lendo a mesma certificação) e a equipe do patrocinador decide se o trabalho foi aprovado. O programa ainda pode ser atualizado por uma chave da Itera (devnet).',
     'bounty.custody.server':
@@ -63,8 +64,10 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.ledger.plain': 'Cada passo aparece aqui. Os que estão na Solana têm link para a transação e dizem quem assinou. Os demais são registro do servidor da Itera, e isso está escrito.',
     'bounty.ledger.signedLearner': 'Assinado pela carteira do aluno ({wallet}). A Itera só pagou a taxa de rede.',
     'bounty.ledger.signedItera': 'Assinado pela chave da Itera ({wallet}). O programa só deixa essa chave reabrir a missão, nunca mover o dinheiro dela.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.ledger.signedIteraOld': 'Assinado só pela chave da Itera: este aceite é anterior a 11/10/2026, quando o programa passou a exigir a assinatura do aluno.',
     'bounty.ledger.offchain': 'Registro do servidor da Itera. Este passo não tem transação.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.accept.signs': 'Sua carteira assina o aceite: o programa não registra ninguém sem a própria assinatura. A Itera paga a taxa de rede, você não precisa de SOL.',
     'bounty.withdraw.signs': 'Sua carteira assina a desistência e a conta de escrow deixa de apontar para você. Sem custo.',
     'bounty.signing': 'Aguardando a carteira…',
@@ -72,6 +75,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.err.sign.no_wallet': 'Nenhuma carteira Solana encontrada neste navegador. Abra a página no navegador onde a sua carteira está instalada.',
     'bounty.err.sign.wrong_wallet': 'A carteira conectada não é a da sua conta. Troque para a carteira com que você entrou e tente de novo.',
     'bounty.err.sign.wallet_failed': 'A carteira não concluiu a assinatura. Confira se ela está na devnet e tente de novo.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.err.sign.expired': 'O pedido expirou antes da assinatura chegar. Nada mudou. Tente de novo.',
     'bounty.err.sign.refused_by_program': 'O programa de escrow recusou: o estado da missão mudou na Solana. Recarregue a página.',
     'bounty.err.sign.client_outdated': 'Esta página está desatualizada. Recarregue e tente de novo.',
@@ -88,12 +92,14 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.event.rejected': 'Entrega recusada',
     'bounty.event.withdrawn': 'Aluno desistiu',
     'bounty.event.expired': 'Prazo vencido',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.event.paid': 'Pagamento enviado',
     'bounty.event.refund_started': 'Devolução iniciada',
     'bounty.event.refunded': 'Valor devolvido',
     'bounty.paid.label': 'Missão paga',
     'bounty.paid.title': 'Pago {sol} para {wallet}',
     'bounty.paid.plain': 'O escrow transferiu a recompensa para a carteira de quem entregou. A transação é pública.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.paid.tx': 'Ver o pagamento',
     'bounty.paid.profile': 'Ver o perfil',
     'bounty.paid.cert': 'Certificação que habilitou',
@@ -202,7 +208,9 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.hero.post': 'Publicar uma missão',
     'bounty.hero.mine': 'Minhas missões',
     'bounty.stats.paidHint.none': 'Nada pago ainda.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.stats.paidHint.rehearsal.one': '{n} pagamento, um ensaio feito pelo time com uma carteira de teste própria.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.stats.paidHint.rehearsal.many': '{n} pagamentos, ensaios feitos pelo time com carteiras de teste próprias.',
     'bounty.stats.paidHint.mixed.one': '{outside} para alunos de fora · {n} ensaio do time',
     'bounty.stats.paidHint.mixed.many': '{outside} para alunos de fora · {n} ensaios do time',
@@ -297,6 +305,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.post.cost': 'Quanto sai da sua carteira',
     'bounty.post.cost.reward': 'Recompensa',
     'bounty.post.cost.rent': 'Aluguel do escrow',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.post.cost.rentUnknown': 'A carteira mostra o aluguel antes de você assinar.',
     'bounty.post.cost.fee': 'Taxa',
     'bounty.post.cost.total': 'Total',
@@ -322,6 +331,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.tx.err.wallet.cancelled': 'Você cancelou na carteira. Nada foi enviado.',
     'bounty.tx.err.wallet.insufficient': 'Saldo insuficiente na carteira (devnet).',
     'bounty.tx.err.wallet.expired': 'A transação expirou antes de ser assinada. Tente de novo.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.tx.err.wallet.failed': 'A carteira não conseguiu assinar ou enviar. {detail}',
     'bounty.tx.err.insufficient_funds': 'Saldo insuficiente: a transação precisa de {need} SOL e a carteira tem {have} SOL (devnet).',
     'bounty.tx.err.not_fundable': 'Esta missão não pode ser financiada agora.',
@@ -367,6 +377,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.mine.rejectInfo': 'A missão reabre e o dinheiro continua travado.',
     'bounty.mine.rejected': 'Recusada. A missão está aberta de novo e o dinheiro continua travado.',
     'bounty.mine.paid': 'Paga para {wallet}.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.mine.paidTx': 'Ver o pagamento',
     'bounty.mine.paidDone': 'Pago. O escrow liberou a recompensa.',
     'bounty.mine.refunded': 'Valor devolvido para a sua carteira.',
@@ -405,6 +416,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
       'A sponsor locks the reward on chain. Only wallets with the required on-chain certification can take the task. When the work is approved, the escrow pays your wallet directly.',
     'bounty.custody':
       "Each bounty's reward is locked in an on-chain program on Solana (devnet), which anyone can check. The program itself checks the certification of whoever accepts and only pays that wallet, once. The sponsor's team approves the work, but does not choose where the money goes.",
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.custody.program':
       "The program checks, on Solana itself, that the wallet holds an Itera certification before it records who accepted, and it records only a wallet that signed for itself (Itera pays the network fee). Giving up is the learner's signature too. After that the program only pays that wallet, once, or returns the funds to the sponsor. The Itera server checks the stamped days (reading the same certification) and the sponsor's team decides whether the work is approved. The program can still be upgraded by a key Itera holds (devnet).",
     'bounty.custody.server':
@@ -459,8 +471,10 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.ledger.plain': "Every step is listed here. The ones on Solana link to their transaction and say who signed. The others are a record kept by Itera's server, and say so.",
     'bounty.ledger.signedLearner': "Signed by the learner's wallet ({wallet}). Itera only paid the network fee.",
     'bounty.ledger.signedItera': "Signed by Itera's key ({wallet}). The program lets that key reopen the bounty, never move its money.",
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.ledger.signedIteraOld': "Signed by Itera's key alone: this acceptance is from before 11 Oct 2026, when the program started requiring the learner's signature.",
     'bounty.ledger.offchain': "A record kept by Itera's server. This step has no transaction.",
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.accept.signs': 'Your wallet signs the acceptance: the program records nobody without their own signature. Itera pays the network fee, you need no SOL.',
     'bounty.withdraw.signs': 'Your wallet signs it and the escrow account stops naming you. No cost.',
     'bounty.signing': 'Waiting for your wallet…',
@@ -468,6 +482,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.err.sign.no_wallet': 'No Solana wallet found in this browser. Open the page in the browser where your wallet is installed.',
     'bounty.err.sign.wrong_wallet': 'The connected wallet is not the one of your account. Switch to the wallet you signed in with and try again.',
     'bounty.err.sign.wallet_failed': 'The wallet did not finish signing. Check that it is on devnet and try again.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.err.sign.expired': 'The request expired before the signature arrived. Nothing changed. Try again.',
     'bounty.err.sign.refused_by_program': 'The escrow program refused: the bounty changed on Solana. Reload the page.',
     'bounty.err.sign.client_outdated': 'This page is out of date. Reload and try again.',
@@ -484,12 +499,14 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.event.rejected': 'Delivery rejected',
     'bounty.event.withdrawn': 'Learner gave up',
     'bounty.event.expired': 'Deadline passed',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.event.paid': 'Payout sent',
     'bounty.event.refund_started': 'Refund started',
     'bounty.event.refunded': 'Funds returned',
     'bounty.paid.label': 'Bounty paid',
     'bounty.paid.title': 'Paid {sol} to {wallet}',
     'bounty.paid.plain': 'The escrow sent the reward to the wallet of the person who delivered. The transaction is public.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.paid.tx': 'View the payout',
     'bounty.paid.profile': 'View the profile',
     'bounty.paid.cert': 'Certification that qualified them',
@@ -598,7 +615,9 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.hero.post': 'Post a bounty',
     'bounty.hero.mine': 'My bounties',
     'bounty.stats.paidHint.none': 'Nothing paid yet.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.stats.paidHint.rehearsal.one': '{n} payout, a rehearsal run by the team with its own test wallet.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.stats.paidHint.rehearsal.many': '{n} payouts, rehearsals run by the team with its own test wallets.',
     'bounty.stats.paidHint.mixed.one': '{outside} to outside learners · {n} team rehearsal',
     'bounty.stats.paidHint.mixed.many': '{outside} to outside learners · {n} team rehearsals',
@@ -693,6 +712,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.post.cost': 'What leaves your wallet',
     'bounty.post.cost.reward': 'Reward',
     'bounty.post.cost.rent': 'Escrow rent',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.post.cost.rentUnknown': 'Your wallet shows the rent before you sign.',
     'bounty.post.cost.fee': 'Fee',
     'bounty.post.cost.total': 'Total',
@@ -718,6 +738,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.tx.err.wallet.cancelled': 'You cancelled in the wallet. Nothing was sent.',
     'bounty.tx.err.wallet.insufficient': 'Not enough balance in the wallet (devnet).',
     'bounty.tx.err.wallet.expired': 'The transaction expired before it was signed. Try again.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.tx.err.wallet.failed': 'The wallet could not sign or send. {detail}',
     'bounty.tx.err.insufficient_funds': 'Not enough balance: the transaction needs {need} SOL and the wallet has {have} SOL (devnet).',
     'bounty.tx.err.not_fundable': 'This bounty cannot be funded right now.',
@@ -763,6 +784,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.mine.rejectInfo': 'The bounty reopens and the money stays locked.',
     'bounty.mine.rejected': 'Rejected. The bounty is open again and the money stays locked.',
     'bounty.mine.paid': 'Paid to {wallet}.',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.mine.paidTx': 'View the payment',
     'bounty.mine.paidDone': 'Paid. The escrow released the reward.',
     'bounty.mine.refunded': 'The money was returned to your wallet.',

@@ -51,6 +51,10 @@ export type Gate =
 
 export const APP_FILE = "src/App.tsx";
 export const DICTIONARY_FILE = "src/i18n/index.ts";
+/** Every dictionary of the app: the historical `index.ts` and the per-feature `*Messages.ts` bags split from it. */
+export const DICTIONARY_PATTERN = /^src\/i18n\/[A-Za-z0-9]+\.ts$/;
+export const isDictionaryFile = (file: string): boolean => DICTIONARY_PATTERN.test(file) && !/\.(test|spec)\.ts$/.test(file);
+export const dictionaryFiles = (paths: readonly string[]): string[] => paths.filter(isDictionaryFile).sort();
 
 const ROUTE = /\/(subscribe|signup)(?![A-Za-z0-9_-])/;
 /** A payment provider, or a path that sells: no whitespace needed, a bare URL is a hit. */
@@ -110,7 +114,7 @@ export function isProductSource(file: string): boolean {
   if (!SCAN_ROOTS.some((root) => file.startsWith(root))) return false;
   if (/\.(test|spec|stories|testkit)\.(ts|tsx)$/.test(file)) return false;
   if (/^src\/(test|test-utils|stories)\//.test(file)) return false;
-  return file !== DICTIONARY_FILE;
+  return !isDictionaryFile(file);
 }
 
 function parse(file: string, text: string): ts.SourceFile {
@@ -213,8 +217,13 @@ export function hitsOf(file: string, text: string, worded: ReadonlySet<string>):
   return hits;
 }
 
+/** The worded keys of every dictionary file of the tree. */
+export function wordedKeysOf(repo: Sources): string[] {
+  return [...new Set(dictionaryFiles(repo.paths).flatMap((file) => wordedKeys(repo.read(file))))].sort();
+}
+
 export function scan(repo: Sources): Hit[] {
-  const worded = new Set(wordedKeys(repo.read(DICTIONARY_FILE)));
+  const worded = new Set(wordedKeysOf(repo));
   return repo.paths.filter(isProductSource).flatMap((file) => hitsOf(file, repo.read(file), worded));
 }
 

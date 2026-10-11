@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { APP_FILE, DICTIONARY_FILE, scan, violations, wordedKeys, type Gate, type Sources } from "./shell-commerce";
+import { APP_FILE, DICTIONARY_FILE, scan, violations, wordedKeys, wordedKeysOf, type Gate, type Sources } from "./shell-commerce";
 
 /**
  * Plan 20261003-itera-player-mobile, row W-7 (Q-3, Q-11 = A): inside the native shell the app never
@@ -31,6 +31,8 @@ const GATED: Record<string, Gate> = {
   "src/consts/planIncludes.ts": { gate: "reached-through", symbols: ["PLAN_INCLUDES"] },
 
   "src/pages/auth/AuthPage.tsx": { gate: "web-only" },
+  "src/pages/auth/SignupPage.tsx": { gate: "web-only-route", page: "SignupPage" },
+  "src/components/try/TryDoneCard.tsx": { gate: "web-only" },
   "src/components/branded/AppHeader.tsx": { gate: "web-only" },
   "src/components/branded/LockedProgramView.tsx": { gate: "web-only" },
   "src/components/branded/VisitorBanner.tsx": { gate: "surface-branch", hits: 3 },
@@ -73,7 +75,23 @@ const GATED: Record<string, Gate> = {
  * Every `// not-commerce: <reason>` marker of the tree, as a count per file. A marker silences a
  * WORDING hit on its line or the next one, so each new marker is one visible line here.
  */
-const NOT_COMMERCE_MARKERS: Record<string, number> = { "src/lib/pageTitle.ts": 2 };
+const NOT_COMMERCE_MARKERS: Record<string, number> = {
+  "src/hooks/usePurchase.ts": 1,
+  "src/i18n/archiveMessages.ts": 2,
+  "src/i18n/bountyMessages.ts": 22,
+  "src/i18n/crystalsMessages.ts": 22,
+  "src/i18n/giftMessages.ts": 4,
+  "src/i18n/landingMessages.ts": 4,
+  "src/i18n/linkMessages.ts": 8,
+  "src/i18n/shopLayoutMessages.ts": 10,
+  "src/i18n/shopMessages.ts": 24,
+  "src/i18n/socialMessages.ts": 4,
+  "src/i18n/verifyMessages.ts": 8,
+  "src/i18n/wardrobeMessages.ts": 10,
+  "src/lib/pageTitle.ts": 2,
+  "src/services/shopNormalize.ts": 1,
+  "src/utils/purchaseFlow.ts": 1,
+};
 
 /** Every string that names `/subscribe` or `/signup`, per file. A new call site is a visible edit of this list. */
 const ROUTE_CALL_SITES: Record<string, number> = {
@@ -84,6 +102,7 @@ const ROUTE_CALL_SITES: Record<string, number> = {
   "src/components/branded/LockedProgramView.tsx": 1,
   "src/components/branded/VisitorBanner.tsx": 1,
   "src/components/live/GuestEndCard.tsx": 1,
+  "src/components/try/TryDoneCard.tsx": 1,
   "src/components/profile/SubscriptionSection.tsx": 1,
   "src/hooks/useCatalogScreen.ts": 1,
   "src/hooks/useHomeScreen.ts": 1,
@@ -96,7 +115,7 @@ const ROUTE_CALL_SITES: Record<string, number> = {
 
 /** The key families of the dictionary that carry the wording. A worded key outside them is a new surface. */
 const WORDED_KEY_FAMILIES =
-  /^(subscribe\.|subscription\.|auth\.(signUp|signUpError|signUpTitle|signUpWith|toSignup|signup\.panelTitle|progress\.label|progress\.subscription)$|catalog\.locked\.cta$|home\.visitor\.body$|program\.locked\.hint$|live\.guest\.end\.(subtitle|cta)$)/;
+  /^(subscribe\.|subscription\.|door\.(other\.createEmail|signUp\.)|try\.done\.email$|landing\.model\.learners\.body$|auth\.(signUp|signUpError|signUpTitle|signUpWith|toSignup|signup\.panelTitle|progress\.label|progress\.subscription)$|catalog\.locked\.cta$|home\.visitor\.body$|program\.locked\.hint$|live\.guest\.end\.(subtitle|cta)$)/;
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const real: Sources = {
@@ -118,13 +137,13 @@ describe("no subscription or sign-up surface inside the shell, the real tree", (
   }, 60_000);
 
   it("every worded dictionary key belongs to a known family", () => {
-    const keys = wordedKeys(real.read(DICTIONARY_FILE));
+    const keys = wordedKeysOf(real);
     expect(keys.length).toBeGreaterThan(50);
     expect(keys.filter((k) => !WORDED_KEY_FAMILIES.test(k))).toEqual([]);
   }, 60_000);
 
   it("the neutral screen and the sign-out label carry no commerce wording", () => {
-    const keys = new Set(wordedKeys(real.read(DICTIONARY_FILE)));
+    const keys = new Set(wordedKeysOf(real));
     expect(keys.has("shell.noAccess.title")).toBe(false);
     expect(keys.has("auth.logout")).toBe(false);
     expect(scan(real).filter((h) => h.file.startsWith("src/components/shell/"))).toEqual([]);

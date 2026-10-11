@@ -16,6 +16,7 @@ export const ARCHIVE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'archive.signed': 'Assinado por {signer}, a chave que é a autoridade de atualização da coleção na Solana. No Arweave o dono aparece como {owner}: é o SHA-256 dessa mesma chave.',
     'archive.when': 'Versão arquivada em {date}.',
     'archive.gateways': 'As cópias sobem em lote, e o lote é gravado num bloco do Arweave em cerca de meia hora. Hoje quem serve cada cópia é o gateway turbo-gateway.com. O arweave.net mostra o lote, mas não abria as cópias uma a uma quando conferimos (11/10/2026).',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'archive.notOnAsset': 'O endereço gravado no ativo ainda aponta para o servidor da Itera, porque a certificação muda a cada dia carimbado. O vínculo com a cópia é a assinatura e a etiqueta com o endereço do ativo.',
     'archive.check': 'Conferir as cópias no meu navegador',
     'archive.checking': 'Baixando e calculando…',
@@ -46,6 +47,7 @@ export const ARCHIVE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'archive.signed': "Signed by {signer}, the key that is the collection's update authority on Solana. On Arweave the owner shows as {owner}: the SHA-256 of that same key.",
     'archive.when': 'Version archived on {date}.',
     'archive.gateways': 'Copies are uploaded in a batch, and the batch is written to an Arweave block in about half an hour. Today the gateway turbo-gateway.com serves each copy. arweave.net shows the batch but did not open the copies one by one when we checked (11 Oct 2026).',
+    // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'archive.notOnAsset': "The address written on the asset still points to Itera's server, because the certification changes with every stamped day. What ties it to the copy is the signature and the tag carrying the asset address.",
     'archive.check': 'Check the copies in my browser',
     'archive.checking': 'Downloading and hashing…',
