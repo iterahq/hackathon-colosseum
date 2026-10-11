@@ -18,7 +18,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
         <span className={`${MONO_LABEL} min-w-0 truncate text-[#A0978A]`} data-testid="bounty-card-posted-by">
           {bounty.postedBy.kind === 'team'
             ? t('bounty.card.postedTeam', { name: bounty.postedBy.name })
-            : t('bounty.card.postedWallet', { name: bounty.postedBy.name, wallet: bounty.postedBy.walletShort ?? '' })}
+            : t(bounty.postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: bounty.postedBy.name, wallet: bounty.postedBy.walletShort ?? '' })}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
           {bounty.rehearsal && <RehearsalChip />}

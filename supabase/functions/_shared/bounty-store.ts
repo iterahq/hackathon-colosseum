@@ -22,7 +22,7 @@ import { rpc } from './rpc.ts';
 import { TransferBroadcastError, signatureFate, treasuryAddress } from './treasury.ts';
 
 export const BOUNTY_COLUMNS =
-  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url';
+  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by';
 export const CLAIM_COLUMNS =
   'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note';
 const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,signer,created_at';

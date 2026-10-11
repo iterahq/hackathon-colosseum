@@ -46,6 +46,8 @@ export interface BountyMoney {
 
 export interface PostedBy {
   kind: 'team' | 'wallet';
+  /** Posted by a wallet of one of the team's own test accounts. */
+  teamTest: boolean;
   name: string;
   wallet: string | null;
   walletShort: string | null;

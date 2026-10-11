@@ -32,7 +32,7 @@ function PostedBy({ bounty }: { bounty: BountyDetail }) {
       <span className={`${MONO_LABEL} text-[#A0978A]`}>
         {postedBy.kind === 'team'
           ? t('bounty.card.postedTeam', { name: postedBy.name })
-          : t('bounty.card.postedWallet', { name: postedBy.name, wallet: postedBy.walletShort ?? '' })}
+          : t(postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: postedBy.name, wallet: postedBy.walletShort ?? '' })}
       </span>
       {postedBy.kind === 'wallet' && postedBy.wallet && (
         <>
