@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
-import { checkRows, daysFooter, daysRuleText, eventLabel, judgePaidHint } from './bountyJudge';
+import { checkRows, daysFooter, daysRuleText, eventLabel, judgePaidHint, judgeSlotsText } from './bountyJudge';
 import type { BountyStats, JudgeInfo } from '@/types/bounty';
 
 const t = (locale: 'pt' | 'en') => (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -23,9 +23,24 @@ describe('judgePaidHint', () => {
     expect(judgePaidHint(t('en'), stats({}))).toBeNull();
   });
   it('keeps person-approved, team rehearsal and judge payouts apart', () => {
-    expect(judgePaidHint(t('en'), stats({ rehearsalPaidCount: 1, judgePaidCount: 2 }))).toBe('1 team rehearsal · 2 judge bounties (automatic check)');
-    expect(judgePaidHint(t('en'), stats({ outsidePaidCount: 1, rehearsalPaidCount: 1, judgePaidCount: 1 }))).toBe('1 approved by a person · 1 team rehearsal · 1 judge bounty (automatic check)');
-    expect(judgePaidHint(t('pt'), stats({ judgePaidCount: 3 }))).toBe('3 missões do jurado (verificação automática)');
+    expect(judgePaidHint(t('en'), stats({ paidCount: 3, rehearsalPaidCount: 1, judgePaidCount: 2 }))).toBe('3 payouts on chain: 1 team rehearsal · 2 judge bounties (automatic check)');
+    expect(judgePaidHint(t('en'), stats({ paidCount: 3, outsidePaidCount: 1, rehearsalPaidCount: 1, judgePaidCount: 1 }))).toBe('3 payouts on chain: 1 approved by a person · 1 team rehearsal · 1 judge bounty (automatic check)');
+    expect(judgePaidHint(t('pt'), stats({ paidCount: 3, judgePaidCount: 3 }))).toBe('3 pagamentos na chain: 3 missões do jurado (verificação automática)');
+  });
+  it('counts the team test runs of the judge bounty, so the parts add up to the total the tile shows', () => {
+    expect(judgePaidHint(t('en'), stats({ paidCount: 4, rehearsalPaidCount: 1, judgePaidCount: 1, judgeTeamTestPaidCount: 2 }))).toBe(
+      '4 payouts on chain: 1 team rehearsal · 1 judge bounty (automatic check) · 2 team test runs of the judge bounty',
+    );
+    expect(judgePaidHint(t('pt'), stats({ paidCount: 1, judgeTeamTestPaidCount: 1 }))).toBe('1 pagamento na chain: 1 teste do time na missão do jurado');
+  });
+});
+
+describe('judgeSlotsText', () => {
+  it('says how many copies are free only when there is more than one', () => {
+    expect(judgeSlotsText(t('en'), { openCount: 1, slotCount: 2 })).toBe('1 of 2 free now · one taker at a time on each');
+    expect(judgeSlotsText(t('pt'), { openCount: 0, slotCount: 3 })).toBe('0 de 3 livres agora · uma pessoa por vez em cada');
+    expect(judgeSlotsText(t('en'), { openCount: 1, slotCount: 1 })).toBeNull();
+    expect(judgeSlotsText(t('en'), {})).toBeNull();
   });
 });
 

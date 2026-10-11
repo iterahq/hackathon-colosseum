@@ -50,6 +50,11 @@ export interface CheckReport {
 export interface JudgeInfo {
   checks: Array<{ id: string; label: string }>;
   codeMax: number;
+  /** On the board: escrow accounts of this same bounty that are free now, and how many are live. One taker each. */
+  openCount?: number | null;
+  slotCount?: number | null;
+  /** On a held bounty's page: a free one of the same task. */
+  freeSlug?: string | null;
 }
 
 export interface BountyMoney {
@@ -134,6 +139,8 @@ export interface BountyStats {
   listedCount: number | null;
   judgePaidCount: number;
   judgePaidSol: string;
+  /** Judge bounties paid to the team's own test wallets: part of `paidCount` and `paidSol`. */
+  judgeTeamTestPaidCount?: number;
   openOnChainCount: number | null;
   daysByProgramCount: number | null;
   daysByAttesterCount: number | null;

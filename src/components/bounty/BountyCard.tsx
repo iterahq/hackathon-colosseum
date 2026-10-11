@@ -27,7 +27,7 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
           <StatusChip status={bounty.status} />
         </span>
       </div>
-      {bounty.judge && <JudgeCaption />}
+      {bounty.judge && <JudgeCaption judge={bounty.judge} />}
       <h3 className="[font:700_26px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <p className="line-clamp-3 [font:400_14px/1.5_Inter] text-[#C9BFB0]">{bounty.summary}</p>
       <div className="mt-auto flex flex-col gap-3 pt-1">

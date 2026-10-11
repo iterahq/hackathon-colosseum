@@ -72,7 +72,7 @@ export function toCheckReport(v: unknown): CheckReport | null {
 function toJudge(v: unknown): JudgeInfo | null {
   const r = row(v);
   if (r.approval !== 'automatic_check') return null;
-  return { checks: rows(r.checks).filter((c) => text(c.id)).map((c) => ({ id: String(c.id), label: text(c.label) ?? String(c.id) })), codeMax: int(r.code_max) ?? 8000 };
+  return { checks: rows(r.checks).filter((c) => text(c.id)).map((c) => ({ id: String(c.id), label: text(c.label) ?? String(c.id) })), codeMax: int(r.code_max) ?? 8000, openCount: int(r.open_count), slotCount: int(r.slot_count), freeSlug: text(r.free_slug) };
 }
 
 function toClaim(v: unknown): BountyClaim | null {
@@ -194,6 +194,7 @@ export function parseBoard(body: unknown): BountyBoard {
       listedCount: int(s.listed_count),
       judgePaidCount: int(s.judge_paid_count) ?? 0,
       judgePaidSol: text(s.judge_paid_sol) ?? '0 SOL',
+      judgeTeamTestPaidCount: int(s.judge_team_test_paid_count) ?? 0,
       openOnChainCount: int(s.open_on_chain_count),
       daysByProgramCount: int(s.days_by_program_count),
       daysByAttesterCount: int(s.days_by_attester_count),
