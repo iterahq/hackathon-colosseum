@@ -8,10 +8,20 @@ import { GraphHeader } from '@/components/graph/GraphHeader';
 import { NodeDetail } from '@/components/graph/NodeDetail';
 import { ANONYMOUS_WALLET, chainTargets, provenCount, trailProgress, viewsOf, type ChainState } from '@/components/graph/capabilityView';
 
+interface Props {
+  wallet: string;
+  capabilities: Capabilities;
+  /** The open node, when the page owns it: a page that mounts this section in two places (while loading, then loaded) keeps the panel open across the switch. */
+  selected?: string | null;
+  onSelect?: (id: string | null) => void;
+}
+
 /** The capability map of one wallet: header, graph, and the detail panel. Re-reads the chain itself in the browser. */
-export function CapabilityGraphSection({ wallet, capabilities }: { wallet: string; capabilities: Capabilities }) {
+export function CapabilityGraphSection({ wallet, capabilities, selected: ownedSelected, onSelect }: Props) {
   const { t } = useI18n();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [localSelected, setLocalSelected] = useState<string | null>(null);
+  const selected = onSelect ? (ownedSelected ?? null) : localSelected;
+  const setSelected = onSelect ?? setLocalSelected;
   const targets = useMemo(() => chainTargets(capabilities), [capabilities]);
   const query = useChainClaims(wallet, targets);
 

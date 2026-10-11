@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CapabilityGraphSection } from '@/components/graph/CapabilityGraphSection';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
@@ -33,6 +34,8 @@ export default function LearnerProfilePage() {
   const recheck = useRecheckProfile(valid ? wallet : '', locale);
   const graph = useWalletGraph(valid ? wallet : '', locale);
   const loading = valid && query.isPending;
+  // Owned here: the graph is on screen before the profile answers, and a node opened then stays open after.
+  const [openNode, setOpenNode] = useState<string | null>(null);
   const capabilities = profile?.capabilities ?? graph.data ?? (valid && lookup?.status !== 'invalid' ? staticCapabilities(locale) : null);
   const empty = profile && !profile.companion && profile.certifications.length === 0 && profile.medals.length === 0;
 
@@ -54,7 +57,7 @@ export default function LearnerProfilePage() {
             </div>
           </section>
         )}
-        {loading && capabilities && <CapabilityGraphSection wallet={wallet} capabilities={capabilities} />}
+        {loading && capabilities && <CapabilityGraphSection wallet={wallet} capabilities={capabilities} selected={openNode} onSelect={setOpenNode} />}
         {valid && query.isError && (
           <div role="alert" className="rounded-[14px] border border-[#262320] bg-[#141210] p-5 [font:500_14px_Inter] text-[#C9BFB0]" data-testid="profile-failed">
             {t('passport.credential.failed')}
@@ -95,7 +98,7 @@ export default function LearnerProfilePage() {
                 </Link>
               </div>
             </section>
-            {capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={capabilities} />}
+            {capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={capabilities} selected={openNode} onSelect={setOpenNode} />}
             {profile.avatars.length > 0 && (
               <ul className="flex flex-wrap gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-3" aria-label={t('profile.avatars')} data-testid="profile-avatars">
                 {profile.avatars.map((a) => (

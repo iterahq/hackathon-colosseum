@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import LearnerProfilePage from '@/pages/LearnerProfilePage';
@@ -7,7 +7,13 @@ import { parseProfile } from '@/services/learnerProfile.service';
 
 const useLearnerProfile = vi.fn();
 vi.mock('@/hooks/useLearnerProfile', () => ({ useLearnerProfile: (w: string, l: string) => useLearnerProfile(w, l), useWalletGraph: () => ({ data: undefined }), useRecheckProfile: () => ({ mutate: vi.fn(), isPending: false }) }));
-vi.mock('@/components/graph/CapabilityGraphSection', () => ({ CapabilityGraphSection: ({ wallet, capabilities }: { wallet: string; capabilities: { source?: string } }) => <div data-testid="capability-section" data-wallet={wallet} data-source={capabilities.source ?? 'chain'} /> }));
+vi.mock('@/components/graph/CapabilityGraphSection', () => ({
+  CapabilityGraphSection: ({ wallet, capabilities, selected, onSelect }: { wallet: string; capabilities: { source?: string }; selected?: string | null; onSelect?: (id: string | null) => void }) => (
+    <div data-testid="capability-section" data-wallet={wallet} data-source={capabilities.source ?? 'chain'} data-selected={selected ?? ''}>
+      <button type="button" data-testid="open-node" onClick={() => onSelect?.('html-tags')}>open</button>
+    </div>
+  ),
+}));
 // The gift block reads the session and the shop: it has its own test.
 vi.mock('@/components/gift/ProfileGift', () => ({ ProfileGift: ({ wallet }: { wallet: string }) => <div data-testid="profile-gift" data-wallet={wallet} /> }));
 
@@ -72,6 +78,25 @@ describe('LearnerProfilePage', () => {
     expect(useLearnerProfile).toHaveBeenCalledWith('', 'pt');
     expect(screen.getByTestId('profile-invalid')).toBeInTheDocument();
     expect(screen.queryByText('garbage')).not.toBeInTheDocument();
+  });
+
+  it('keeps a node opened while the profile was loading open once it has loaded', () => {
+    useLearnerProfile.mockReturnValue({ isPending: true, isError: false, data: undefined, refetch: vi.fn() });
+    const view = show();
+    fireEvent.click(screen.getByTestId('open-node'));
+    expect(screen.getByTestId('capability-section')).toHaveAttribute('data-selected', 'html-tags');
+    useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
+    view.rerender(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[`/u/${WALLET}`]}>
+          <Routes>
+            <Route path="/u/:wallet" element={<LearnerProfilePage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('profile-band')).toBeInTheDocument();
+    expect(screen.getByTestId('capability-section')).toHaveAttribute('data-selected', 'html-tags');
   });
 
   it('draws the graph from the shipped model while the profile is still loading', () => {

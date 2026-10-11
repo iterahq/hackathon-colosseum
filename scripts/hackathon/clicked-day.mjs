@@ -2,13 +2,16 @@
 // A robot learner completes ONE whole lesson day on the LIVE site by really clicking, dragging and typing in
 // the lesson player, with a brand-new wallet, then proves the certification (UI + API + chain).
 //   flock /tmp/hk/orch/locks/browser.lock node scripts/hackathon/clicked-day.mjs \
-//     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--stop-after N] [--verify-only]
+//     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--lang pt|en] [--stop-after N] [--verify-only]
+// `--lang` is the language the robot studies in: the page is set to it and the robot types what the lesson
+// asks for in THAT language (the headings of the editor exercises differ between pt and en).
 // It READS activity specs with psql (to know the right answer). It never writes progress, attempts or
 // achievements, and never calls `grade` or `passport` itself: every answer goes through the UI.
 // Environment (source ~/.config/itera-hackathon/supabase.env): HACKATHON_DB_PASSWORD, SUPABASE_ACCESS_TOKEN.
 import { createHash, generateKeyPairSync, createPrivateKey, sign } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { resolveSpec } from '../../supabase/functions/_shared/grading.ts';
 import { base58Encode } from '../../supabase/functions/_shared/solana-tx.ts';
 import { FUNCTIONS, PROJECT_REF, SUPABASE_URL, anonKey, psql, rpc, sleep } from './social-e2e.lib.mjs';
 
@@ -19,6 +22,7 @@ const OUT = option('out', '/tmp/hk/orch/graph-clicked-day');
 const WALLET_FILE = option('wallet-file', `${OUT}/wallet.json`);
 const STOP_AFTER = Number(option('stop-after', '0'));
 const VERIFY_ONLY = args.includes('--verify-only');
+const LANG = option('lang', 'pt') === 'en' ? 'en' : 'pt';
 const LESSON_ID = '0e7d6618-f9ba-46ba-bf28-71cf86f32716';
 const SIWS_HOST = 'hackathon.iterahq.dev';
 const PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
@@ -87,15 +91,25 @@ async function loadWallet(apikey) {
 const readActivities = () =>
   JSON.parse(
     psql(`select json_agg(json_build_object('id', id, 'kind', kind, 'spec', spec) order by ordinal, id) from itera.activities where lesson_id = :'lesson'::uuid and status = 'published';`, { lesson: LESSON_ID }),
-  );
+  ).map((activity) => ({ ...activity, spec: resolveSpec(activity.spec, LANG) }));
 
 const NAME = 'Robo QA';
-/** The text a learner would type into a Monaco editor for this activity. */
+/** The text a check of the activity expects, as the lesson words it in the robot's language. */
+const expected = (activity, checkId) => activity.spec.checks.find((check) => check.id === checkId)?.assert?.contains;
+
+/** The text a learner would type into a Monaco editor for this activity, following the prompt in `LANG`. */
 function codeSolution(activity, ordinal) {
   const starter = activity.spec.starter ?? '';
-  if (ordinal === 10) return starter.replace('<h1>Como encomendar</h1>', '<h2>Como encomendar</h2>');
-  if (ordinal === 14) return starter.replace('<title></title>', `<title>${NAME}</title>`).replace('<h1></h1>', `<h1>${NAME}</h1>`).replace('<h3>Sobre mim</h3>', '<h2>Sobre mim</h2>');
-  return `<!DOCTYPE html>\n<html>\n<head>\n<title>${NAME}</title>\n</head>\n<body>\n<h1>${NAME}</h1>\n<h2>Sobre mim</h2>\n<p>Estou aprendendo HTML.</p>\n<h2>Minhas metas</h2>\n</body>\n</html>\n`;
+  if (ordinal === 10) {
+    const heading = activity.spec.checks[0].assert.contains;
+    return starter.replace(`<h1>${heading}</h1>`, `<h2>${heading}</h2>`);
+  }
+  if (ordinal === 14) {
+    const about = activity.spec.checks[3].assert.contains;
+    return starter.replace('<title></title>', `<title>${NAME}</title>`).replace('<h1></h1>', `<h1>${NAME}</h1>`).replace(`<h3>${about}</h3>`, `<h2>${about}</h2>`);
+  }
+  const sentence = LANG === 'en' ? 'I am learning HTML.' : 'Estou aprendendo HTML.';
+  return `<!DOCTYPE html>\n<html>\n<head>\n<title>${NAME}</title>\n</head>\n<body>\n<h1>${NAME}</h1>\n<h2>${expected(activity, 'sobre-mim')}</h2>\n<p>${sentence}</p>\n<h2>${expected(activity, 'frase-metas')}</h2>\n</body>\n</html>\n`;
 }
 
 // ── The robot ─────────────────────────────────────────────────────────────────────────────────
@@ -273,8 +287,16 @@ async function runLesson(wallet, activities) {
   const browser = await chromium.launch({ headless: true });
   let completed = false;
   try {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'en-US' });
-    await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [`sb-${PROJECT_REF}-auth-token`, JSON.stringify(wallet.session)]);
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: LANG === 'en' ? 'en-US' : 'pt-BR' });
+    await context.addInitScript(([key, value, lang]) => {
+      // The lesson preview is a sandboxed frame with no storage: only the page itself is prepared.
+      try {
+        localStorage.setItem(key, value);
+        localStorage.setItem('itera.locale', lang);
+      } catch {
+        /* sandboxed frame */
+      }
+    }, [`sb-${PROJECT_REF}-auth-token`, JSON.stringify(wallet.session), LANG]);
     const page = await context.newPage();
     page.on('request', (request) => {
       if (request.url().includes('/functions/v1/grade') && request.method() === 'POST') gradeCalls.push({ activity: currentId, status: null, verdict: null, sent: Object.keys(request.postDataJSON() ?? {}), request });
