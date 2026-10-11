@@ -15,8 +15,11 @@ describe('circuit normalisers', () => {
         stamp_fee_lamports: 5000,
         outside: { total_lamports: 550_000, purchases: 1, stamps_funded: 110, test_accounts_left_out: 1 },
         shop: { min_usd_cents: 20, max_usd_cents: 1000, items: 40 },
+        treasury: 'T',
+        authority: 'A',
         treasury_explorer_url: 'https://e/t',
         authority_explorer_url: 'https://e/a',
+        stamps_issued: 7,
         wallet: { lamports: 550_000, stamps_funded: 110 },
       })
     ).toEqual({
@@ -29,14 +32,17 @@ describe('circuit normalisers', () => {
       stampFeeLamports: 5000,
       outside: { lamports: 550_000, stampsFunded: 110, purchases: 1, testAccountsLeftOut: 1 },
       shop: { minUsdCents: 20, maxUsdCents: 1000, items: 40 },
+      treasury: 'T',
+      authority: 'A',
       treasuryExplorerUrl: 'https://e/t',
       authorityExplorerUrl: 'https://e/a',
+      stampsIssued: 7,
       wallet: { lamports: 550_000, stampsFunded: 110 },
     });
   });
 
   it('reads an empty or malformed answer as zero', () => {
-    expect(toCircuitCounter(null)).toEqual({ lamports: 0, stampsFunded: 0, purchases: 0, asOf: null, purchaseLamports: 0, sharePercent: 50, stampFeeLamports: 5000, outside: null, shop: null, treasuryExplorerUrl: null, authorityExplorerUrl: null, wallet: null });
+    expect(toCircuitCounter(null)).toEqual({ lamports: 0, stampsFunded: 0, purchases: 0, asOf: null, purchaseLamports: 0, sharePercent: 50, stampFeeLamports: 5000, outside: null, shop: null, treasury: null, authority: null, treasuryExplorerUrl: null, authorityExplorerUrl: null, stampsIssued: null, wallet: null });
     expect(toCircuitShare({ lamports: -5, stamps_funded: 'x' })).toEqual({ lamports: 0, stampsFunded: 0 });
   });
 

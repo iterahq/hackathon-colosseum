@@ -37,13 +37,13 @@ export const SOCIAL_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'endorse.public.label': 'Endossada por',
     'endorse.public.tx': 'Ver a transação do endosso',
     'circuit.name': 'Circuito',
-    'circuit.mine': 'Suas compras já pagaram {n} carimbos de outros alunos',
+    'circuit.mine': 'Suas compras já cobrem até {n} carimbos de outros alunos',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'circuit.none': 'Cada compra sua paga carimbos de outros alunos',
-    'circuit.total': 'no total a loja pagou {n}',
+    'circuit.total': 'no total a loja já cobre até {n}',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'circuit.how': 'Metade de cada compra vai, on-chain, para a carteira que paga a taxa de rede dos carimbos. É por isso que nenhum aluno paga para ganhar uma certificação.',
-    'circuit.purchase': '+{n} carimbos pagos pra outros alunos',
+    'circuit.purchase': '+{n} carimbos cobertos pra outros alunos',
     'circuit.profile': 'as compras desta carteira já pagaram a taxa de rede de {n} carimbos de outros alunos.',
   },
   en: {
@@ -82,14 +82,14 @@ export const SOCIAL_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'endorse.dialog.confirm': 'Endorse on-chain',
     'endorse.public.label': 'Endorsed by',
     'endorse.public.tx': 'See the endorsement transaction',
-    'circuit.name': 'Circuito',
-    'circuit.mine': "Your purchases have paid for {n} stamps of other learners",
+    'circuit.name': 'Circuit',
+    'circuit.mine': 'Your purchases cover up to {n} stamps of other learners',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'circuit.none': "Each purchase of yours pays for other learners' stamps",
-    'circuit.total': 'in total the shop has paid for {n}',
+    'circuit.total': 'in total the shop covers up to {n}',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'circuit.how': 'Half of every purchase goes, on-chain, to the wallet that pays the network fee of the stamps. That is why no learner pays to earn a certification.',
-    'circuit.purchase': '+{n} stamps paid for other learners',
+    'circuit.purchase': '+{n} stamps covered for other learners',
     'circuit.profile': "this wallet's purchases have paid the network fee of {n} stamps of other learners.",
   },
 };

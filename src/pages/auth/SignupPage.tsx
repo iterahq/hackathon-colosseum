@@ -20,6 +20,9 @@ const MIN_PASSWORD = 8;
 const INCLUDES = ['door.signUp.includes.trails', 'door.signUp.includes.stamps', 'door.signUp.includes.bounties', 'door.signUp.includes.noEmail'] as const;
 
 /** The i18n key for a sign-up failure, by the code GoTrue returns. */
+/** The shape of an address, before the server is asked: one @, something on both sides, a dot after it. */
+export const looksLikeEmail = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 export function signUpErrorKey(code: string | null, message: string | null): { key: string; detail?: string } {
   if (code === 'user_already_exists' || /already registered/i.test(message ?? '')) return { key: 'door.signUp.error.exists' };
   if (code === 'weak_password') return { key: 'door.signUp.error.weak' };
@@ -67,6 +70,10 @@ export default function SignupPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
+    if (!looksLikeEmail(email)) {
+      setError(t('door.signUp.error.email'));
+      return;
+    }
     if (password.length < MIN_PASSWORD) {
       setError(t('door.signUp.error.weak'));
       return;
@@ -99,7 +106,7 @@ export default function SignupPage() {
         </div>
       }
     >
-      <form onSubmit={onSubmit} className="flex flex-col gap-3" data-testid="signup-form">
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3" data-testid="signup-form">
         <Label htmlFor="signup-email">{t('auth.email')}</Label>
         <Input
           id="signup-email"
