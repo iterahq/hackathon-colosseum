@@ -107,7 +107,7 @@ async function createFrom(db: IteraClient, template: BountyTemplate, config: Rec
 
 /**
  * Keeps each active template's bounties available: an unfunded one is funded, and new ones are created and funded
- * from the treasury up to `keep_open`, inside the day's cap and above the treasury's floor. One refill at a time.
+ * from the treasury until `keep_open` of them are free to take, inside the day's cap and above the treasury's floor. One refill at a time.
  * Never throws; answers how many bounties it opened.
  */
 export async function refillTemplates(db: IteraClient, now: Date): Promise<number> {
@@ -127,7 +127,9 @@ export async function refillTemplates(db: IteraClient, now: Date): Promise<numbe
       const available = rows.filter((row) => AVAILABLE.includes(row.status) && Date.parse(row.expires_at) > now.getTime());
       const createdToday = rows.filter((row) => now.getTime() - Date.parse(row.created_at) < DAY_MS).length;
       const unfunded = available.filter((row) => row.status === 'awaiting_funding');
-      const missing = refillCount(template, available.length, createdToday);
+      // `keep_open` is how many copies are FREE to take: one that somebody holds does not count, so the next visitor still finds one.
+      const free = available.filter((row) => row.status === 'open' || row.status === 'awaiting_funding');
+      const missing = refillCount(template, free.length, createdToday);
       for (let index = 0; index < unfunded.length + missing; index += 1) {
         if ((await balanceOf(treasury)) < REFILL_TREASURY_FLOOR_LAMPORTS) {
           console.error('bounty refill skipped: the treasury is at its floor', template.key);

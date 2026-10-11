@@ -87,10 +87,24 @@ check('the page shows the delivered code and the report of the check to anyone',
 const kinds = (page.events ?? []).map((event) => event.kind);
 check('the ledger has every step: funded, accepted, submitted, approved, paid', ['funded', 'accepted', 'submitted', 'approved', 'paid'].every((kind) => kinds.includes(kind)), kinds.join());
 
+// The board lists the judge bounty as ONE card (the oldest free copy) and says how many copies are free.
+const judgeCards = (answer) => (answer.bounties ?? []).filter((bounty) => bounty.judge && ['open', 'claimed', 'submitted', 'paying'].includes(bounty.status));
+const freeCopies = (answer) => judgeCards(answer).reduce((sum, bounty) => sum + (bounty.judge.open_count ?? (bounty.status === 'open' ? 1 : 0)), 0);
+
 const after = await board();
-const next = available(after).find((bounty) => bounty.id !== judge.id);
 check('the paid judge bounty left the cards and is in the judge history as a team test payout', !(after.bounties ?? []).some((bounty) => bounty.id === judge.id) && after.judge.latest.some((entry) => entry.slug === judge.slug && entry.team_test === true));
 check('a payout to a team test account is not counted as a judge payout to an outsider', after.stats.judge_paid_count === before.stats.judge_paid_count);
+check('and is counted in the paid total as a team test run, so the parts add up', after.stats.judge_team_test_paid_count === before.stats.judge_team_test_paid_count + 1 && after.stats.paid_count === after.stats.rehearsal_paid_count + after.stats.outside_paid_count + after.stats.judge_paid_count + after.stats.judge_team_test_paid_count, JSON.stringify({ paid: after.stats.paid_count, tests: after.stats.judge_team_test_paid_count }));
+
+// A free copy is there at once when one was free, else as soon as the refill (set off by the sweep) funds one.
+await get('bounty-board/sweep');
+let refilled = await board();
+for (let waited = 0; waited < 150 && freeCopies(refilled) < 2; waited += 10) {
+  await sleep(10_000);
+  await get('bounty-board/sweep');
+  refilled = await board();
+}
+const next = available(refilled).find((bounty) => bounty.id !== judge.id);
 check('another judge bounty is available', Boolean(next));
 if (next) {
   const again = await call('bounty-claim', learner, { action: 'status', bounty: next.id });
@@ -98,13 +112,7 @@ if (next) {
   const second = await acceptBounty(learner, next.id);
   check('and is refused a second one', second.http === 409 && second.j.error === 'judged_before', JSON.stringify(second.j).slice(0, 200));
 }
-await get('bounty-board/sweep');
-let refilled = await board();
-for (let waited = 0; waited < 120 && available(refilled).length < 2; waited += 10) {
-  await sleep(10_000);
-  await get('bounty-board/sweep');
-  refilled = await board();
-}
-check('the refill put a new judge bounty on the board, funded from the treasury', available(refilled).length >= 2);
+check('the refill keeps two free copies, funded from the treasury', freeCopies(refilled) >= 2, `${freeCopies(refilled)} free`);
+check('the board shows them as one card that says how many are free', judgeCards(refilled).length === 1 && judgeCards(refilled)[0].judge.open_count === freeCopies(refilled) && judgeCards(refilled)[0].judge.slot_count >= 2, JSON.stringify(judgeCards(refilled).map((bounty) => [bounty.slug, bounty.status, bounty.judge.open_count, bounty.judge.slot_count])));
 console.log(JSON.stringify({ bounty: judge.slug, learner: learner.address, accept: explorer('tx', accepted.j.chain.signature), payout: explorer('tx', page.payout.signature) }));
 done();
