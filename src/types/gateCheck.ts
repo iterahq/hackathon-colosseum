@@ -22,4 +22,6 @@ export interface GateCheck {
   /** A sent check: the failed transaction itself. */
   signature: string | null;
   explorerUrl: string | null;
+  /** A direct bounty: the one wallet it names, and whether it is the team's own rehearsal. */
+  direct: { invitee: string; teamTest: boolean } | null;
 }
