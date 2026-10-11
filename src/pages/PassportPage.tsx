@@ -14,7 +14,7 @@ import { pageColor } from '@/components/passport/pageVariant';
 import { useUserStats } from '@/hooks/useContent';
 import { usePassportView } from '@/hooks/usePassportView';
 import { useI18n } from '@/i18n';
-import { isGold, pendingOf } from '@/utils/passport';
+import { isGold } from '@/utils/passport';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
 
 const GRID = {
@@ -39,7 +39,7 @@ export default function PassportPage() {
   const shared = started.filter((p) => p.mintStatus === 'minted' && p.assetAddress);
   const color = first ? pageColor(first) : TRAIL_COLORS[1];
   const pending = view.isPending ? 0 : view.totals.pending;
-  const heldPage = view.pages.find((p) => pendingOf(p) > 0) ?? null;
+  const heldLesson = view.heldLessonId;
 
   return (
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={GRID}>
@@ -51,7 +51,7 @@ export default function PassportPage() {
             id="held"
             title={t(pending === 1 ? 'passport.held.title' : 'passport.held.title.other', { n: pending })}
             body={t('passport.held.body')}
-            action={heldPage ? <Link to="/" className="inline-flex min-h-11 items-center self-start rounded [font:700_13px_JetBrains_Mono] text-[#F2C66D] underline-offset-2 hover:underline" data-testid="held-stamp-open">{t('passport.held.lesson')} →</Link> : undefined}
+            action={heldLesson ? <Link to={`/lesson/${heldLesson}`} className="inline-flex min-h-11 items-center self-start rounded [font:700_13px_JetBrains_Mono] text-[#F2C66D] underline-offset-2 hover:underline" data-testid="held-stamp-open">{t('passport.held.lesson')} →</Link> : undefined}
             testId="passport-held"
           />
         )}

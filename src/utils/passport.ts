@@ -98,6 +98,16 @@ export const totals = (pages: readonly PassportPageData[], medals: readonly Pass
   medals: medals.filter((m) => m.earned).length,
 });
 
+/** The first day done whose stamp is not on chain, as a lesson id: where "redo one exercise" leads. */
+export function heldLessonId(trails: readonly Trail[], rows: readonly UserAchievement[]): string | null {
+  const stamped = new Set(rows.filter((r) => r.achievementKey === 'day_stamp' && r.mintStatus === 'minted').map((r) => r.refId));
+  for (const trail of trails) {
+    const day = trail.days.find((d) => d.total > 0 && d.done >= d.total && !stamped.has(d.id));
+    if (day) return day.id;
+  }
+  return null;
+}
+
 /** Days done on this page whose stamp is not on chain yet. */
 export const pendingOf = (p: { daysDone: number; daysStamped: number }): number => Math.max(0, p.daysDone - p.daysStamped);
 

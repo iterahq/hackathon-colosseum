@@ -96,6 +96,7 @@ export function GuidedCodeBlank({
       <input
         {...marks}
         data-blank-kind="text"
+        data-blank-id={blank.id}
         aria-label={label}
         aria-invalid={invalid}
         disabled={readOnly}

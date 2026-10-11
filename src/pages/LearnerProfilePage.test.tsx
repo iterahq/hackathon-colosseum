@@ -15,6 +15,7 @@ vi.mock('@/components/graph/CapabilityGraphSection', () => ({
   ),
 }));
 // The gift block reads the session and the shop: it has its own test.
+vi.mock('@/hooks/useProgressStory', () => ({ useProgressStory: () => ({ daysDone: 0, daysStamped: 0, daysPending: 0, daysTotal: 0, verified: null, capabilitiesTotal: null, wallet: null, pending: false }) }));
 vi.mock('@/components/gift/ProfileGift', () => ({ ProfileGift: ({ wallet }: { wallet: string }) => <div data-testid="profile-gift" data-wallet={wallet} /> }));
 
 const WALLET = 'CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW';

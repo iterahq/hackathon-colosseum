@@ -41,7 +41,7 @@ export type LessonEndView =
   /** The plain completion card. `note` adds the line about the stamp arriving later. */
   | { kind: 'card'; note: 'stampLater' | null }
   /** The day is whole but the server holds its stamp: the card says why, in the server's words. */
-  | { kind: 'card'; note: 'pendingReview'; reason: ReviewReason; eta: string | null }
+  | { kind: 'card'; note: 'pendingReview'; reason: ReviewReason; minSeconds: number | null; clearsBy: string | null }
   /** The day is not whole: no ceremony, the card says how many are left. */
   | { kind: 'incomplete'; missing: number; done: number; total: number }
   /** Nothing yet: the trails are still being read (bounded by the caller). */

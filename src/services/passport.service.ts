@@ -25,7 +25,12 @@ function dayPendingReview(raw: unknown): DayPendingReview | null {
   const v = raw as Partial<DayPendingReview> | null | undefined;
   if (!v || typeof v !== 'object') return null;
   const reason = REASONS.find((r) => r === v.reason) ?? 'unverified';
-  return { lesson_id: String(v.lesson_id ?? ''), reason, eta: typeof v.eta === 'string' ? v.eta : null };
+  return {
+    lesson_id: String(v.lesson_id ?? ''),
+    reason,
+    min_seconds: typeof v.min_seconds === 'number' ? v.min_seconds : null,
+    clears_by: typeof v.clears_by === 'string' ? v.clears_by : null,
+  };
 }
 
 /** `lessonId` is the lesson just finished: the answer then says whether that day is whole (`day_incomplete`). */

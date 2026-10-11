@@ -82,8 +82,10 @@ export type ReviewReason = 'too_fast' | 'missing_results' | 'unverified';
 export interface DayPendingReview {
   lesson_id: string;
   reason: ReviewReason;
-  /** When the server expects to decide, if it says. */
-  eta?: string | null;
+  /** `too_fast`: the least seconds a day's answers must span. */
+  min_seconds?: number | null;
+  /** What releases the stamp: `redo_one_activity` = pass any one exercise of the day again; nobody reviews by hand. */
+  clears_by?: string | null;
 }
 
 export interface DayIncomplete {

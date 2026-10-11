@@ -29,16 +29,31 @@ export function HeldStampNotice({ title, body, next, action, id, testId = 'held-
   );
 }
 
-/** The end of a lesson whose day the server holds: the reason in the server's own terms. */
-export function LessonHeldNotice({ reason, eta }: { reason: ReviewReason; eta: string | null }) {
-  const { t, locale } = useI18n();
-  const when = eta ? new Date(eta) : null;
-  const estimate = when && !Number.isNaN(when.getTime()) ? t('lessonEnd.held.eta', { eta: when.toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) }) : null;
+interface LessonProps {
+  reason: ReviewReason;
+  minSeconds: number | null;
+  clearsBy: string | null;
+  /** Reopens the lesson from activity 1: the way to pass one exercise again. */
+  onReview?: () => void;
+}
+
+/** The end of a lesson whose day the server holds: the reason, what releases it, and the button that does it. */
+export function LessonHeldNotice({ reason, minSeconds, clearsBy, onReview }: LessonProps) {
+  const { t } = useI18n();
+  const redo = clearsBy === 'redo_one_activity';
+  const next = redo ? t('lessonEnd.held.redo', { min: minSeconds ?? 20 }) : t('lessonEnd.held.next');
   return (
     <HeldStampNotice
       title={t('lessonEnd.held.title')}
       body={t(`lessonEnd.held.${reason}`)}
-      next={[t('lessonEnd.held.next'), estimate].filter(Boolean).join(' ')}
+      next={next}
+      action={
+        redo && onReview ? (
+          <button type="button" onClick={onReview} className="inline-flex h-11 items-center justify-center self-start rounded-full border border-[#F2C66D] px-5 [font:700_14px_JetBrains_Mono] text-[#F2C66D] hover:bg-[#F2C66D]/10" data-testid="lesson-held-redo">
+            {t('lessonEnd.held.redoCta')}
+          </button>
+        ) : undefined
+      }
       testId="lesson-held-stamp"
     />
   );
