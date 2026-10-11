@@ -9,6 +9,8 @@ export interface PassingAttempt {
   answer_hash: string;
   spec_hash: string;
   created_at: string;
+  /** When the learner last passed the activity again; absent when the first pass is the only one. */
+  last_passed_at?: string;
 }
 
 /**
@@ -94,7 +96,9 @@ export async function loadPassingAttempts(db: IteraClient, userId: string): Prom
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`graded_attempts: ${error.message}`);
     for (const row of (data ?? []) as PassingAttempt[]) {
-      if (!first.has(row.activity_id)) first.set(row.activity_id, row);
+      const known = first.get(row.activity_id);
+      if (!known) first.set(row.activity_id, row);
+      else known.last_passed_at = row.created_at;
     }
     if (!data || data.length < PAGE_SIZE) return first;
   }

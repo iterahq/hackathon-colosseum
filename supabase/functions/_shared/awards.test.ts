@@ -289,7 +289,17 @@ describe('server-graded completions', () => {
     const burst: ProgressRow[] = activitiesOf('l1').map((activity_id) => ({ activity_id, status: 'completed', completed_at: '2026-10-12T15:00:00Z', written_by_client: false }));
     const input = graded(burst, [attempt('l1-a'), attempt('l1-b')]);
     expect(computeAwards(input)).toEqual([]);
-    expect(dayPendingReview(input, 'l1')?.reason).toBe('too_fast');
+    expect(dayPendingReview(input, 'l1')).toEqual({ lesson_id: 'l1', reason: 'too_fast', min_seconds: 2, clears_by: 'redo_one_activity' });
+  });
+
+  it('a day held for its speed is stamped once one exercise is passed again later', () => {
+    const burst: ProgressRow[] = activitiesOf('l1').map((activity_id) => ({ activity_id, status: 'completed', completed_at: '2026-10-12T15:00:00Z', written_by_client: false }));
+    const [id, first] = attempt('l1-b');
+    const input = graded(burst, [attempt('l1-a'), [id, { ...first, last_passed_at: '2026-10-12T15:00:30Z' }]]);
+    expect(dayPendingReview(input, 'l1')).toBeNull();
+    const awards = computeAwards(input);
+    expect(keys(awards)).toEqual(['insert:day_stamp', 'insert:first_stamp', 'insert:trail_pass']);
+    expect(find(awards, 'day_stamp')?.earned_at).toBe('2026-10-12T15:00:00Z');
   });
 
   it('a legacy day from before the cutoff keeps counting and carries no proof', () => {
