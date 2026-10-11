@@ -1,72 +1,259 @@
 {
   "name": "itera_bounty_escrow",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "address": "ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq",
   "cluster": "devnet",
   "metadata": {
     "framework": "native (solana-program 2.1, no Anchor): the first byte of the instruction data is the discriminator",
     "source": "/verify/bounty-escrow.rs",
     "binary": "/verify/itera_bounty_escrow.so",
-    "binary_sha256": "0e8db8db19ae83094aca2335a0b0f9d230d55cb8d8134a567e09808631d33f6d",
+    "binary_sha256": "17c346404f60ba1f6d76d889aa1b25ccd5333ae661dc1b2f383d1e76fb5787f9",
     "built_by": "GitHub Actions workflow bounty-escrow-build (cargo build-sbf, Solana toolchain 3.1.14)",
     "upgrade_authority": "read it live: getAccountInfo of the program's data account, bytes 12..45"
   },
   "constants": [
-    { "name": "ITERA_ATTESTER", "type": "pubkey", "value": "AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA" },
-    { "name": "MPL_CORE", "type": "pubkey", "value": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d" },
-    { "name": "SEED", "type": "bytes", "value": "bounty" }
+    {
+      "name": "ITERA_ATTESTER",
+      "type": "pubkey",
+      "value": "AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA"
+    },
+    {
+      "name": "MPL_CORE",
+      "type": "pubkey",
+      "value": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+    },
+    {
+      "name": "SEED",
+      "type": "bytes",
+      "value": "bounty"
+    }
   ],
   "instructions": [
     {
       "name": "create",
-      "discriminator": [0],
+      "discriminator": [
+        0
+      ],
       "args": [
-        { "name": "id", "type": { "array": ["u8", 16] } },
-        { "name": "amount", "type": "u64" },
-        { "name": "expires_at", "type": "i64" }
+        {
+          "name": "id",
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        }
       ],
       "accounts": [
-        { "name": "funder", "signer": true, "writable": true },
-        { "name": "bounty", "writable": true, "pda": { "seeds": ["\"bounty\"", "id", "sponsor", "approver", "collection", "amount (u64 LE)", "expires_at (i64 LE)"] } },
-        { "name": "sponsor" },
-        { "name": "approver" },
-        { "name": "collection" },
-        { "name": "system_program", "address": "11111111111111111111111111111111" }
+        {
+          "name": "funder",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "name": "bounty",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              "\"bounty\"",
+              "id",
+              "sponsor",
+              "approver",
+              "collection",
+              "amount (u64 LE)",
+              "expires_at (i64 LE)"
+            ]
+          }
+        },
+        {
+          "name": "sponsor"
+        },
+        {
+          "name": "approver"
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
       ],
       "checks": "The account is the PDA of exactly these terms and does not exist; amount > 0; expiry in the future. Moves amount + rent from the funder."
     },
     {
       "name": "accept",
-      "discriminator": [1],
+      "discriminator": [
+        1
+      ],
       "args": [],
       "accounts": [
-        { "name": "attester", "signer": true, "docs": "The bounty's approver, or ITERA_ATTESTER" },
-        { "name": "bounty", "writable": true },
-        { "name": "claimant", "signer": true },
-        { "name": "certification", "docs": "The claimant's Metaplex Core asset" }
+        {
+          "name": "attester",
+          "signer": true,
+          "docs": "signer on a 195-byte bounty (the approver or ITERA_ATTESTER); not read on a gated bounty"
+        },
+        {
+          "name": "bounty",
+          "writable": true
+        },
+        {
+          "name": "claimant",
+          "signer": true
+        },
+        {
+          "name": "certification",
+          "docs": "The claimant's Metaplex Core asset"
+        }
       ],
-      "checks": "Open and not expired; the claimant signed; the certification account is owned by Metaplex Core, its first byte is 1 (AssetV1), bytes 1..33 (owner) equal the claimant, byte 33 is 2 (update authority = collection) and bytes 34..66 equal the collection the bounty names. Records claimant and certification."
+      "checks": "Open and not expired; the claimant signed; the certification account is owned by Metaplex Core, its first byte is 1 (AssetV1), bytes 1..33 (owner) equal the claimant, byte 33 is 2 (update authority = collection) and bytes 34..66 equal the collection the bounty names. On a gated bounty (228 bytes) the program also reads the asset's plugins: PermanentFreezeDelegate must say frozen, and the Attributes plugin, written only by the update authority, must carry program and trail that hash to the trail in the terms and days_done >= min_days; no attester signs. On a 195-byte bounty an attester signs instead (the approver or ITERA_ATTESTER) and the days are its word. Records claimant and certification."
     },
     {
       "name": "release",
-      "discriminator": [2],
+      "discriminator": [
+        2
+      ],
       "args": [],
-      "accounts": [{ "name": "approver", "signer": true }, { "name": "bounty", "writable": true }, { "name": "claimant", "writable": true }],
+      "accounts": [
+        {
+          "name": "approver",
+          "signer": true
+        },
+        {
+          "name": "bounty",
+          "writable": true
+        },
+        {
+          "name": "claimant",
+          "writable": true
+        }
+      ],
       "checks": "Claimed, and the account passed is the recorded claimant. Pays amount, marks paid."
     },
     {
       "name": "unclaim",
-      "discriminator": [3],
+      "discriminator": [
+        3
+      ],
       "args": [],
-      "accounts": [{ "name": "authority", "signer": true, "docs": "The recorded claimant, the approver, or ITERA_ATTESTER" }, { "name": "bounty", "writable": true }],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "docs": "The recorded claimant, the approver, or ITERA_ATTESTER"
+        },
+        {
+          "name": "bounty",
+          "writable": true
+        }
+      ],
       "checks": "Claimed. Clears claimant and certification, marks open."
     },
     {
       "name": "refund",
-      "discriminator": [4],
+      "discriminator": [
+        4
+      ],
       "args": [],
-      "accounts": [{ "name": "authority", "signer": true, "docs": "The approver or the sponsor; any signer once the bounty is past its expiry" }, { "name": "bounty", "writable": true }, { "name": "sponsor", "writable": true }],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "docs": "The approver or the sponsor; any signer once the bounty is past its expiry"
+        },
+        {
+          "name": "bounty",
+          "writable": true
+        },
+        {
+          "name": "sponsor",
+          "writable": true
+        }
+      ],
       "checks": "Open, and the destination is the recorded sponsor. Pays amount, marks refunded."
+    },
+    {
+      "name": "create_gated",
+      "discriminator": [
+        5
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        },
+        {
+          "name": "min_days",
+          "type": "u8"
+        },
+        {
+          "name": "trail",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ],
+      "accounts": [
+        {
+          "name": "funder",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "name": "bounty",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              "\"bounty\"",
+              "id",
+              "sponsor",
+              "approver",
+              "collection",
+              "amount (u64 LE)",
+              "expires_at (i64 LE)"
+            ]
+          }
+        },
+        {
+          "name": "sponsor"
+        },
+        {
+          "name": "approver"
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "checks": "The same as create, with two more terms in the address and in the account: min_days (1..255) and trail = sha256(program attribute, line feed, trail attribute) of the certification the bounty asks for. The account is 228 bytes."
     }
   ],
   "accounts": [
@@ -74,35 +261,242 @@
       "name": "Bounty",
       "size": 195,
       "fields": [
-        { "name": "tag", "offset": 0, "type": "u8", "docs": "always 1" },
-        { "name": "bump", "offset": 1, "type": "u8" },
-        { "name": "status", "offset": 2, "type": "u8", "docs": "0 open, 1 claimed, 2 paid, 3 refunded" },
-        { "name": "id", "offset": 3, "type": { "array": ["u8", 16] } },
-        { "name": "sponsor", "offset": 19, "type": "pubkey", "docs": "the only refund destination" },
-        { "name": "approver", "offset": 51, "type": "pubkey", "docs": "the only key that can release" },
-        { "name": "collection", "offset": 83, "type": "pubkey" },
-        { "name": "amount", "offset": 115, "type": "u64" },
-        { "name": "expires_at", "offset": 123, "type": "i64" },
-        { "name": "claimant", "offset": 131, "type": "pubkey", "docs": "all zero while nobody holds the bounty" },
-        { "name": "certification", "offset": 163, "type": "pubkey" }
+        {
+          "name": "tag",
+          "offset": 0,
+          "type": "u8",
+          "docs": "always 1"
+        },
+        {
+          "name": "bump",
+          "offset": 1,
+          "type": "u8"
+        },
+        {
+          "name": "status",
+          "offset": 2,
+          "type": "u8",
+          "docs": "0 open, 1 claimed, 2 paid, 3 refunded"
+        },
+        {
+          "name": "id",
+          "offset": 3,
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "sponsor",
+          "offset": 19,
+          "type": "pubkey",
+          "docs": "the only refund destination"
+        },
+        {
+          "name": "approver",
+          "offset": 51,
+          "type": "pubkey",
+          "docs": "the only key that can release"
+        },
+        {
+          "name": "collection",
+          "offset": 83,
+          "type": "pubkey"
+        },
+        {
+          "name": "amount",
+          "offset": 115,
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "offset": 123,
+          "type": "i64"
+        },
+        {
+          "name": "claimant",
+          "offset": 131,
+          "type": "pubkey",
+          "docs": "all zero while nobody holds the bounty"
+        },
+        {
+          "name": "certification",
+          "offset": 163,
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "GatedBounty",
+      "size": 228,
+      "fields": [
+        {
+          "name": "tag",
+          "offset": 0,
+          "type": "u8",
+          "docs": "always 2"
+        },
+        {
+          "name": "bump",
+          "offset": 1,
+          "type": "u8"
+        },
+        {
+          "name": "status",
+          "offset": 2,
+          "type": "u8",
+          "docs": "0 open, 1 claimed, 2 paid, 3 refunded"
+        },
+        {
+          "name": "id",
+          "offset": 3,
+          "type": {
+            "array": [
+              "u8",
+              16
+            ]
+          }
+        },
+        {
+          "name": "sponsor",
+          "offset": 19,
+          "type": "pubkey",
+          "docs": "the only refund destination"
+        },
+        {
+          "name": "approver",
+          "offset": 51,
+          "type": "pubkey",
+          "docs": "the only key that can release"
+        },
+        {
+          "name": "collection",
+          "offset": 83,
+          "type": "pubkey"
+        },
+        {
+          "name": "amount",
+          "offset": 115,
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "offset": 123,
+          "type": "i64"
+        },
+        {
+          "name": "claimant",
+          "offset": 131,
+          "type": "pubkey",
+          "docs": "all zero while nobody holds the bounty"
+        },
+        {
+          "name": "certification",
+          "offset": 163,
+          "type": "pubkey"
+        },
+        {
+          "name": "min_days",
+          "offset": 195,
+          "type": "u8",
+          "docs": "stamped days the certification must carry (its days_done attribute)"
+        },
+        {
+          "name": "trail",
+          "offset": 196,
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
+          "docs": "sha256(program attribute, line feed, trail attribute)"
+        }
       ]
     }
   ],
   "errors": [
-    { "code": 6000, "name": "WrongEscrowAccount" },
-    { "code": 6001, "name": "AlreadyExists" },
-    { "code": 6002, "name": "InvalidAmount" },
-    { "code": 6003, "name": "InvalidExpiry" },
-    { "code": 6004, "name": "NotApprover" },
-    { "code": 6005, "name": "NotOpen" },
-    { "code": 6006, "name": "NotClaimed" },
-    { "code": 6007, "name": "Expired" },
-    { "code": 6008, "name": "NotACertification" },
-    { "code": 6009, "name": "CertificationNotOwnedByClaimant" },
-    { "code": 6010, "name": "CertificationOfAnotherCollection" },
-    { "code": 6011, "name": "WrongClaimant" },
-    { "code": 6012, "name": "WrongSponsor" },
-    { "code": 6013, "name": "NotAuthorized" },
-    { "code": 6014, "name": "ClaimantMustSign" }
+    {
+      "code": 6000,
+      "name": "WrongEscrowAccount"
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyExists"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidAmount"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidExpiry"
+    },
+    {
+      "code": 6004,
+      "name": "NotApprover"
+    },
+    {
+      "code": 6005,
+      "name": "NotOpen"
+    },
+    {
+      "code": 6006,
+      "name": "NotClaimed"
+    },
+    {
+      "code": 6007,
+      "name": "Expired"
+    },
+    {
+      "code": 6008,
+      "name": "NotACertification"
+    },
+    {
+      "code": 6009,
+      "name": "CertificationNotOwnedByClaimant"
+    },
+    {
+      "code": 6010,
+      "name": "CertificationOfAnotherCollection"
+    },
+    {
+      "code": 6011,
+      "name": "WrongClaimant"
+    },
+    {
+      "code": 6012,
+      "name": "WrongSponsor"
+    },
+    {
+      "code": 6013,
+      "name": "NotAuthorized"
+    },
+    {
+      "code": 6014,
+      "name": "ClaimantMustSign"
+    },
+    {
+      "code": 6015,
+      "name": "CertificationNotFrozen"
+    },
+    {
+      "code": 6016,
+      "name": "CertificationWithoutStamps"
+    },
+    {
+      "code": 6017,
+      "name": "CertificationOfAnotherTrail"
+    },
+    {
+      "code": 6018,
+      "name": "NotEnoughStampedDays"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidRequirement"
+    }
   ]
 }

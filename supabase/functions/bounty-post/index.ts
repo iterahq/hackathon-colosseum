@@ -12,6 +12,8 @@ import {
   refreshFunding,
   syncWithEscrow,
   unclaimOnChain,
+  gateOf,
+  gatedEscrows,
 } from '../_shared/bounty-store.ts';
 import {
   MAX_REWARD_LAMPORTS,
@@ -67,7 +69,8 @@ function limits(rent: bigint | null) {
 
 /** What anyone may read before signing in: the trails a bounty can ask for and the limits of the form. */
 async function options(db: IteraClient, cors: Cors): Promise<Response> {
-  const [trails, config, rent] = await Promise.all([loadTrails(db), loadConfig(db), escrowRentLamports().catch(() => null)]);
+  const config = await loadConfig(db);
+  const [trails, rent] = await Promise.all([loadTrails(db), escrowRentLamports(gatedEscrows(config)).catch(() => null)]);
   return json({ cluster: 'devnet', program_id: config.bounty_escrow_program ?? null, trails, limits: limits(rent) }, 200, { ...cors, 'Cache-Control': 'public, max-age=60' });
 }
 
@@ -125,15 +128,6 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
   const id = crypto.randomUUID();
   const suffix = id.slice(0, 6);
   const slug = `${slugify(pickText(input.title_i18n, input.source_lang))}-${suffix}`;
-  // The sponsor's wallet is the refund destination AND the approver the program records: no key of ours is in the money path.
-  const escrow = await escrowPda(config.bounty_escrow_program, {
-    bountyId: id,
-    sponsor: wallet,
-    approver: wallet,
-    collection: config.collection_passports,
-    amount: BigInt(input.reward_lamports),
-    expiresAt: Math.floor(Date.parse(input.expires_at) / 1000),
-  });
   const requirement: Requirement = {
     program: PROGRAM_SLUG,
     unit_id: trail.unit_id,
@@ -142,6 +136,17 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
     min_days: input.min_days,
     total_days: trail.total_days,
   };
+  const gated = gatedEscrows(config);
+  // The sponsor's wallet is the refund destination AND the approver the program records: no key of ours is in the money path.
+  const escrow = await escrowPda(config.bounty_escrow_program, {
+    bountyId: id,
+    sponsor: wallet,
+    approver: wallet,
+    collection: config.collection_passports,
+    amount: BigInt(input.reward_lamports),
+    expiresAt: Math.floor(Date.parse(input.expires_at) / 1000),
+    gate: gated ? await gateOf(requirement) : null,
+  });
   const { error } = await db.from('bounties').insert({
     id,
     slug,
@@ -156,6 +161,7 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
     reward_lamports: input.reward_lamports,
     escrow_kind: 'program',
     escrow_address: escrow,
+    escrow_gated: gated,
     refund_address: wallet,
     claim_hours: input.claim_hours,
     expires_at: input.expires_at,
@@ -195,7 +201,7 @@ async function fundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: 
   if (publicStatus(bounty, new Date()) !== 'awaiting_funding') return json({ error: 'not_fundable' }, 409, cors);
   const terms = await escrowTerms(bounty, await loadConfig(db));
   if (!terms) return json({ error: 'unavailable' }, 503, cors);
-  const [existing, balance, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(wallet), escrowRentLamports()]);
+  const [existing, balance, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(wallet), escrowRentLamports(terms.gate !== null)]);
   if (existing) {
     const status = (await refreshFunding(db, bounty)).status;
     return json({ error: 'already_funded', status }, 409, cors);

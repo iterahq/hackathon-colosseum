@@ -360,6 +360,18 @@ function gradeChecks(spec: Json, source: string, parseHtml: HtmlParser): boolean
   });
 }
 
+/** Each static check against one HTML source, in order: the lesson engine's own asserts, run outside a lesson. */
+export function staticCheckResults(checks: readonly unknown[], source: string, parseHtml: HtmlParser): boolean[] {
+  const document = parseHtml(`${source}<script></script>`);
+  return checks.map((check) => {
+    try {
+      return isObject(check) && isObject(check.assert) && isStaticCheck(check) && evaluateCheck(check, source, document);
+    } catch {
+      return false;
+    }
+  });
+}
+
 /**
  * The verdict for one submission. A learner who says they missed is recorded as
  * a miss. A claimed pass on a `server` activity stands only if the answer

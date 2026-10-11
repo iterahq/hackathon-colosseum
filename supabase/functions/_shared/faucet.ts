@@ -3,6 +3,21 @@ export const DROP_LAMPORTS = 10_000_000n;
 /** What the treasury gives away in any 24 hours: 0.3 SOL, thirty claims. */
 export const DAILY_BUDGET_LAMPORTS = 300_000_000n;
 export const MAX_CLAIMS = 200;
+
+/**
+ * The two drops. `shop`: enough for the cheapest item. `sponsor`: enough to lock the smallest bounty a wallet may
+ * post (0.01 SOL), the rent of its escrow account and the fee, so the sponsor side can be tried with a fresh wallet.
+ * One of each per learner and per wallet, each inside its own daily budget.
+ */
+export const FAUCETS = {
+  shop: { table: 'devnet_airdrops', dropLamports: DROP_LAMPORTS, dailyBudgetLamports: DAILY_BUDGET_LAMPORTS, memo: 'faucet' },
+  sponsor: { table: 'devnet_sponsor_drops', dropLamports: 15_000_000n, dailyBudgetLamports: 300_000_000n, memo: 'faucet-sponsor' },
+} as const;
+export type FaucetPurpose = keyof typeof FAUCETS;
+
+export function faucetPurpose(value: unknown): FaucetPurpose {
+  return value === 'sponsor' ? 'sponsor' : 'shop';
+}
 /**
  * A claim that was not seen confirmed is looked at again only after this long:
  * well past the life of a blockhash, so a transfer the chain does not have by
@@ -56,6 +71,6 @@ export function unconfirmedStep(fate: 'landed' | 'failed' | 'in_flight' | 'unkno
 }
 
 /** The memo of a faucet transfer: the wallet it pays, never an internal id. */
-export function faucetMemo(wallet: string): string {
-  return `faucet:${wallet}`;
+export function faucetMemo(wallet: string, purpose: FaucetPurpose = 'shop'): string {
+  return `${FAUCETS[purpose].memo}:${wallet}`;
 }

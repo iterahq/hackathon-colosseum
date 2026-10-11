@@ -20,7 +20,7 @@
 // on chain: about 0.012 SOL of the treasury, of which 0.002 goes to the claimant.
 import { compileMessage, memoInstruction } from '../../supabase/functions/_shared/solana-message.ts';
 import { buildTransferMessage } from '../../supabase/functions/_shared/solana-tx.ts';
-import { ESCROW_ERRORS, acceptInstruction, createInstruction, escrowPda, parseEscrowState, refundInstruction, releaseInstruction, unclaimInstruction } from '../../supabase/functions/_shared/bounty-program.ts';
+import { ESCROW_ERRORS, acceptInstruction, createInstruction, escrowPda, parseEscrowState, refundInstruction, releaseInstruction, trailHash, unclaimInstruction } from '../../supabase/functions/_shared/bounty-program.ts';
 import { balance, check, completeDays, done, explorer, latestBlockhash, loadTreasury, login, passport, rpc, send as sendMessage, sendBy, signedBy, sleep, wallet } from './bounty-e2e.lib.mjs';
 
 const PROGRAM = process.env.BOUNTY_ESCROW_PROGRAM ?? 'ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq';
@@ -106,7 +106,7 @@ check('refund while claimed is refused', (await simulate([treasury], [refund(X)]
 check('PROGRAM refuses an unclaim signed by a stranger', (await simulate([stranger], [unclaim(X, stranger.address)])) === 'not_authorized');
 
 // Giving up: the claimant's own signature, nobody else's permission. The attester here only pays the fee.
-const gaveUp = await send([treasury, claimant], [unclaim(X, claimant.address), memoInstruction(`itera-bounty:${idX}:withdraw`)]);
+const gaveUp = await send([treasury, claimant], [unclaim(X, claimant.address), memoInstruction(`itera-bounty:${idX}:give-up`)]);
 console.log('  unclaim (signed by the claimant)', explorer('tx', gaveUp));
 account = await state(X);
 check('after the claimant gave up the account is open and names nobody', account?.status === 'open' && account.claimant === null && account.certification === null);
@@ -173,5 +173,55 @@ console.log('  refund of an expired bounty, signed by a stranger', explorer('tx'
 const sweptTx = await rpc('getTransaction', [swept, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
 const sponsorAt = sweptTx.transaction.message.accountKeys.indexOf(treasury.address);
 check('the money went to the recorded sponsor, whoever signed', sweptTx.meta.postBalances[sponsorAt] - sweptTx.meta.preBalances[sponsorAt] === Number(AMOUNT) && (await state(W))?.status === 'refunded');
-console.log(JSON.stringify({ X, Y, Z, W }));
+
+// --- Gated bounties: the terms name the trail and the days, the program reads them from the certification, nobody co-signs ---
+const html = await trailHash('itera-v2', 'Week 1 · HTML');
+const css = await trailHash('itera-v2', 'Week 2 · CSS');
+const gatedAccept = (escrow, wallet, asset, first = wallet) => acceptInstruction({ programId: PROGRAM, attester: first, escrow, claimant: wallet, certification: asset, gated: true });
+const idG = crypto.randomUUID();
+const termsG = termsOf(idG, { gate: { minDays: 1, trail: html } });
+const G = await escrowPda(PROGRAM, termsG);
+check('a gated bounty lives at another address than the same terms without a gate', G !== (await escrowPda(PROGRAM, termsOf(idG))));
+check('create_gated with a gate the address was not derived from is refused', (await simulate([treasury], [create(G, termsOf(idG, { gate: { minDays: 2, trail: html } }))])) === 'wrong_escrow_account');
+const zeroDays = createInstruction({ programId: PROGRAM, funder: treasury.address, escrow: G, ...termsG });
+zeroDays.data[33] = 0;
+check('create_gated asking for zero days is refused', (await simulate([treasury], [zeroDays])) === 'invalid_requirement');
+console.log('  create_gated', explorer('tx', await send([treasury], [create(G, termsG), memoInstruction(`itera-bounty:${idG}:fund`)])), '\n  escrow account', G);
+account = await state(G);
+check('the gated account holds its terms: 1 stamped day of the HTML trail', account?.status === 'open' && account.gate?.minDays === 1 && account.gate.trail === html && account.amount === AMOUNT);
+check("PROGRAM refuses a wallet presenting someone else's certification on a gated bounty", (await simulate([stranger, uncertified], [gatedAccept(G, uncertified.address, certification, stranger.address)])) === 'certification_not_owned_by_claimant');
+const gatedWithoutClaimant = { ...gatedAccept(G, claimant.address, certification, treasury.address) };
+gatedWithoutClaimant.accounts = gatedWithoutClaimant.accounts.map((meta) => (meta.address === claimant.address ? { address: meta.address } : meta.address === treasury.address ? { address: meta.address, signer: true } : meta));
+check('PROGRAM refuses to record a claimant who did not sign on a gated bounty, even with the attester signing', (await simulate([treasury], [gatedWithoutClaimant])) === 'claimant_must_sign');
+check('PROGRAM refuses a Core account that is not an asset on a gated bounty', (await simulate([stranger, claimant], [gatedAccept(G, claimant.address, PASSPORTS, stranger.address)])) === 'not_a_certification');
+const aloneTx = await send([claimant], [gatedAccept(G, claimant.address, certification), memoInstruction(`itera-bounty:${idG}:accept`)]);
+console.log('  gated accept sent by the claimant ALONE (own fee, no Itera key)', explorer('tx', aloneTx));
+const alone = await rpc('getTransaction', [aloneTx, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
+const aloneKeys = alone.transaction.message.accountKeys;
+check('the gated accept on chain has ONE signer, the claimant, and no Itera key anywhere in it', alone.transaction.message.header.numRequiredSignatures === 1 && aloneKeys[0] === claimant.address && !aloneKeys.includes(treasury.address));
+account = await state(G);
+check('the gated bounty is held by the claimant with the certification recorded', account?.status === 'claimed' && account.claimant === claimant.address && account.certification === certification);
+check("Itera's attester may still reopen a gated claim (a hold that timed out)", (await simulate([treasury], [unclaim(G)])) === 'ok');
+const beforeG = await balance(claimant.address);
+console.log('  release of the gated bounty', explorer('tx', await send([treasury], [release(G, claimant.address), memoInstruction(`itera-bounty:${idG}:payout`)])));
+check('the gated bounty paid the claimant exactly the amount', (await balance(claimant.address)) - beforeG === Number(AMOUNT) && (await state(G))?.status === 'paid');
+
+const idH = crypto.randomUUID();
+const termsH = termsOf(idH, { gate: { minDays: 200, trail: html } });
+const H = await escrowPda(PROGRAM, termsH);
+await send([treasury], [create(H, termsH)]);
+check('PROGRAM refuses a certification with fewer stamped days than the terms ask', (await simulate([claimant], [gatedAccept(H, claimant.address, certification)])) === 'not_enough_stamped_days');
+const attestedH = acceptInstruction({ programId: PROGRAM, attester: treasury.address, escrow: H, claimant: claimant.address, certification });
+check("PROGRAM refuses it even with Itera's attester co-signing: on a gated bounty nobody can vouch for the days", (await simulate([treasury, claimant], [attestedH])) === 'not_enough_stamped_days');
+check('the approver refunds a gated bounty nobody holds', (await simulate([treasury], [refund(H)])) === 'ok');
+await send([treasury], [refund(H), memoInstruction(`itera-bounty:${idH}:refund`)]);
+
+const idI = crypto.randomUUID();
+const termsI = termsOf(idI, { gate: { minDays: 1, trail: css } });
+const I = await escrowPda(PROGRAM, termsI);
+await send([treasury], [create(I, termsI)]);
+check('PROGRAM refuses a certification of another trail than the terms name', (await simulate([claimant], [gatedAccept(I, claimant.address, certification)])) === 'certification_of_another_trail');
+await send([treasury], [refund(I), memoInstruction(`itera-bounty:${idI}:refund`)]);
+check('both refused gated bounties went back to the sponsor', (await state(H))?.status === 'refunded' && (await state(I))?.status === 'refunded');
+console.log(JSON.stringify({ X, Y, Z, W, G, H, I }));
 done();

@@ -8,9 +8,15 @@
 //! * `accept` records a claimant only if THE CLAIMANT SIGNED and the
 //!   certification account passed in is a Metaplex Core asset owned by that
 //!   claimant and belonging to the collection the bounty names. The program
-//!   reads the asset account itself. An attester co-signs (the bounty's
-//!   approver, or Itera's attester key): it vouches for what the program does
-//!   not read (how many days the certification has stamped).
+//!   reads the asset account itself.
+//!   A GATED bounty (`create_gated`, 228 bytes) also names a trail and a
+//!   number of stamped days in its terms, and `accept` reads them from the
+//!   asset: the soulbound freeze, the `program` and `trail` attributes and
+//!   `days_done`. Nobody co-signs: the claimant's signature is the only one
+//!   the program asks for.
+//!   A bounty created with `create` (195 bytes) names no days: an attester
+//!   co-signs its accept (the bounty's approver, or Itera's attester key)
+//!   and vouches for what the program does not read there.
 //! * `unclaim` reopens a held bounty. The claimant can always sign it (giving
 //!   up needs nobody's permission); so can the approver and the attester.
 //! * `release` pays the recorded claimant, once. Only the approver signs it.
@@ -27,6 +33,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
     entrypoint,
+    hash::hashv,
     entrypoint::ProgramResult,
     program::invoke_signed,
     program_error::ProgramError,
@@ -50,9 +57,21 @@ const CORE_UPDATE_AUTHORITY_COLLECTION: u8 = 2;
 /// unless it is also that bounty's approver or sponsor.
 pub const ITERA_ATTESTER: Pubkey = pubkey!("AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA");
 
+/// The plugin header and registry that follow the asset in a Core account, and the two plugins read here.
+const CORE_PLUGIN_HEADER_V1: u8 = 3;
+const CORE_PLUGIN_REGISTRY_V1: u8 = 4;
+const CORE_PLUGIN_PERMANENT_FREEZE_DELEGATE: u8 = 5;
+const CORE_PLUGIN_ATTRIBUTES: u8 = 6;
+/// `Authority::UpdateAuthority`: only the collection's authority can write the plugin.
+const CORE_AUTHORITY_UPDATE_AUTHORITY: u8 = 2;
+const CORE_AUTHORITY_ADDRESS: u8 = 3;
+
 pub const SEED: &[u8] = b"bounty";
 pub const STATE_LEN: usize = 195;
+/// A gated bounty: the same 195 bytes, then `min_days` and the trail it asks for.
+pub const GATED_STATE_LEN: usize = 228;
 const TAG: u8 = 1;
+const TAG_GATED: u8 = 2;
 
 pub const OPEN: u8 = 0;
 pub const CLAIMED: u8 = 1;
@@ -70,6 +89,8 @@ const O_AMOUNT: usize = 115;
 const O_EXPIRES: usize = 123;
 const O_CLAIMANT: usize = 131;
 const O_CERT: usize = 163;
+const O_MIN_DAYS: usize = 195;
+const O_TRAIL: usize = 196;
 
 #[repr(u32)]
 pub enum EscrowError {
@@ -88,6 +109,11 @@ pub enum EscrowError {
     WrongSponsor = 6012,
     NotAuthorized = 6013,
     ClaimantMustSign = 6014,
+    CertificationNotFrozen = 6015,
+    CertificationWithoutStamps = 6016,
+    CertificationOfAnotherTrail = 6017,
+    NotEnoughStampedDays = 6018,
+    InvalidRequirement = 6019,
 }
 
 impl From<EscrowError> for ProgramError {
@@ -106,6 +132,7 @@ pub fn process_instruction(program_id: &Pubkey, accounts: &[AccountInfo], data: 
         2 => release(program_id, accounts),
         3 => unclaim(program_id, accounts),
         4 => refund(program_id, accounts),
+        5 => create_gated(program_id, accounts, rest),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
@@ -124,10 +151,117 @@ fn u64_at(data: &[u8], offset: usize) -> u64 {
 
 /// The bounty account, checked to be ours.
 fn check_bounty(program_id: &Pubkey, bounty: &AccountInfo) -> ProgramResult {
-    if bounty.owner != program_id || bounty.data_len() != STATE_LEN || bounty.try_borrow_data()?[O_TAG] != TAG {
+    if bounty.owner != program_id {
+        return Err(EscrowError::WrongEscrowAccount.into());
+    }
+    let tag = bounty.try_borrow_data()?.first().copied();
+    let known = (bounty.data_len() == STATE_LEN && tag == Some(TAG)) || (bounty.data_len() == GATED_STATE_LEN && tag == Some(TAG_GATED));
+    if !known {
         return Err(EscrowError::WrongEscrowAccount.into());
     }
     Ok(())
+}
+
+/// The trail a gated bounty asks for: sha256 of the certification's `program` attribute, a line feed, its `trail` attribute.
+pub fn trail_hash(program: &[u8], trail: &[u8]) -> [u8; 32] {
+    hashv(&[program, b"\n", trail]).to_bytes()
+}
+
+fn take<'a>(data: &'a [u8], at: &mut usize, len: usize) -> Result<&'a [u8], ProgramError> {
+    let end = at.checked_add(len).ok_or(EscrowError::NotACertification)?;
+    let bytes = data.get(*at..end).ok_or(EscrowError::NotACertification)?;
+    *at = end;
+    Ok(bytes)
+}
+
+fn take_u32(data: &[u8], at: &mut usize) -> Result<usize, ProgramError> {
+    let bytes = take(data, at, 4)?;
+    Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize)
+}
+
+fn take_u64(data: &[u8], at: &mut usize) -> Result<usize, ProgramError> {
+    let bytes = take(data, at, 8)?;
+    usize::try_from(u64_at(bytes, 0)).map_err(|_| EscrowError::NotACertification.into())
+}
+
+/// A borsh string: its bytes.
+fn take_string<'a>(data: &'a [u8], at: &mut usize) -> Result<&'a [u8], ProgramError> {
+    let len = take_u32(data, at)?;
+    take(data, at, len)
+}
+
+/// What a gated bounty reads from a certification beyond its owner and collection.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Stamps {
+    /// The PermanentFreezeDelegate plugin says frozen: the certification cannot change wallets.
+    pub frozen: bool,
+    pub trail: [u8; 32],
+    pub days_done: u64,
+}
+
+/// Decimal digits only, at most four: the value `days_done` is written with.
+fn days_of(value: &[u8]) -> Option<u64> {
+    if value.is_empty() || value.len() > 4 || !value.iter().all(u8::is_ascii_digit) {
+        return None;
+    }
+    Some(value.iter().fold(0u64, |days, digit| days * 10 + u64::from(digit - b'0')))
+}
+
+/// Reads the plugins of a Core asset account (`AssetV1`, plugin header, plugin registry): the soulbound freeze and
+/// the attributes `program`, `trail` and `days_done`. The attributes count only when the plugin is under the update
+/// authority, which for a certification is its collection: the owner of the asset cannot write them.
+pub fn read_stamps(asset: &[u8]) -> Result<Stamps, ProgramError> {
+    let mut at = 1 + 32;
+    let update_authority = take(asset, &mut at, 1)?[0];
+    if update_authority != 0 {
+        take(asset, &mut at, 32)?;
+    }
+    take_string(asset, &mut at)?;
+    take_string(asset, &mut at)?;
+    if take(asset, &mut at, 1)?[0] != 0 {
+        take(asset, &mut at, 8)?;
+    }
+    if take(asset, &mut at, 1).map_err(|_| EscrowError::CertificationWithoutStamps)?[0] != CORE_PLUGIN_HEADER_V1 {
+        return Err(EscrowError::CertificationWithoutStamps.into());
+    }
+    let mut at = take_u64(asset, &mut at)?;
+    if take(asset, &mut at, 1)?[0] != CORE_PLUGIN_REGISTRY_V1 {
+        return Err(EscrowError::CertificationWithoutStamps.into());
+    }
+    let mut frozen = false;
+    let mut program: Option<&[u8]> = None;
+    let mut trail: Option<&[u8]> = None;
+    let mut days_done: Option<u64> = None;
+    for _ in 0..take_u32(asset, &mut at)? {
+        let plugin = take(asset, &mut at, 1)?[0];
+        let authority = take(asset, &mut at, 1)?[0];
+        if authority == CORE_AUTHORITY_ADDRESS {
+            take(asset, &mut at, 32)?;
+        }
+        let mut body = take_u64(asset, &mut at)?;
+        if plugin == CORE_PLUGIN_PERMANENT_FREEZE_DELEGATE {
+            frozen = take(asset, &mut body, 2)? == [CORE_PLUGIN_PERMANENT_FREEZE_DELEGATE, 1];
+        }
+        if plugin == CORE_PLUGIN_ATTRIBUTES && authority == CORE_AUTHORITY_UPDATE_AUTHORITY {
+            if take(asset, &mut body, 1)?[0] != CORE_PLUGIN_ATTRIBUTES {
+                return Err(EscrowError::NotACertification.into());
+            }
+            for _ in 0..take_u32(asset, &mut body)? {
+                let key = take_string(asset, &mut body)?;
+                let value = take_string(asset, &mut body)?;
+                match key {
+                    b"program" => program = Some(value),
+                    b"trail" => trail = Some(value),
+                    b"days_done" => days_done = days_of(value),
+                    _ => {}
+                }
+            }
+        }
+    }
+    match (program, trail, days_done) {
+        (Some(program), Some(trail), Some(days_done)) => Ok(Stamps { frozen, trail: trail_hash(program, trail), days_done }),
+        _ => Err(EscrowError::CertificationWithoutStamps.into()),
+    }
 }
 
 fn check_approver(bounty_data: &[u8], approver: &AccountInfo) -> ProgramResult {
@@ -149,6 +283,27 @@ fn pay_out(bounty: &AccountInfo, destination: &AccountInfo, lamports: u64) -> Pr
 /// accounts: funder (signer, writable), bounty (writable), sponsor, approver, collection, system program
 /// bounty = PDA of ["bounty", id, sponsor, approver, collection, amount LE, expires_at LE]
 fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    if data.len() != 32 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    open_bounty(program_id, accounts, data, None)
+}
+
+/// data: id [16] | amount u64 LE | expires_at i64 LE | min_days u8 | trail [32]
+/// accounts: the same as `create`
+/// bounty = PDA of ["bounty", id, sponsor, approver, collection, amount LE, expires_at LE, min_days, trail]
+/// `trail` = sha256(program attribute, "\n", trail attribute) of the certification the bounty asks for.
+fn create_gated(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    if data.len() != 65 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+    if data[32] == 0 {
+        return Err(EscrowError::InvalidRequirement.into());
+    }
+    open_bounty(program_id, accounts, &data[..32], Some(&data[32..65]))
+}
+
+fn open_bounty(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8], requirement: Option<&[u8]>) -> ProgramResult {
     let iter = &mut accounts.iter();
     let funder = next_account_info(iter)?;
     let bounty = next_account_info(iter)?;
@@ -157,9 +312,6 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     let collection = next_account_info(iter)?;
     let system = next_account_info(iter)?;
 
-    if data.len() != 32 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
     let id = &data[0..16];
     let amount = u64_at(data, 16);
     let expires_at = i64::from_le_bytes(u64_at(data, 24).to_le_bytes());
@@ -172,15 +324,11 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     }
     // The address commits to every term. Whatever exists at a bounty's address was created with exactly the
     // terms it was posted with, so nobody can occupy it with other terms: creating it IS funding it.
-    let seeds: [&[u8]; 7] = [
-        SEED,
-        id,
-        sponsor.key.as_ref(),
-        approver.key.as_ref(),
-        collection.key.as_ref(),
-        &data[16..24],
-        &data[24..32],
-    ];
+    let mut seeds: Vec<&[u8]> = vec![SEED, id, sponsor.key.as_ref(), approver.key.as_ref(), collection.key.as_ref(), &data[16..24], &data[24..32]];
+    if let Some(requirement) = requirement {
+        seeds.push(&requirement[..1]);
+        seeds.push(&requirement[1..]);
+    }
     let (expected, bump) = Pubkey::find_program_address(&seeds, program_id);
     if expected != *bounty.key {
         return Err(EscrowError::WrongEscrowAccount.into());
@@ -195,18 +343,18 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
         return Err(EscrowError::InvalidExpiry.into());
     }
 
-    let lamports = Rent::get()?
-        .minimum_balance(STATE_LEN)
-        .checked_add(amount)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+    let len = if requirement.is_some() { GATED_STATE_LEN } else { STATE_LEN };
+    let lamports = Rent::get()?.minimum_balance(len).checked_add(amount).ok_or(ProgramError::ArithmeticOverflow)?;
+    let bump_seed = [bump];
+    seeds.push(&bump_seed);
     invoke_signed(
-        &system_instruction::create_account(funder.key, bounty.key, lamports, STATE_LEN as u64, program_id),
+        &system_instruction::create_account(funder.key, bounty.key, lamports, len as u64, program_id),
         &[funder.clone(), bounty.clone(), system.clone()],
-        &[&[seeds[0], seeds[1], seeds[2], seeds[3], seeds[4], seeds[5], seeds[6], &[bump]]],
+        &[seeds.as_slice()],
     )?;
 
     let mut state = bounty.try_borrow_mut_data()?;
-    state[O_TAG] = TAG;
+    state[O_TAG] = if requirement.is_some() { TAG_GATED } else { TAG };
     state[O_BUMP] = bump;
     state[O_STATUS] = OPEN;
     state[O_ID..O_ID + 16].copy_from_slice(id);
@@ -215,10 +363,14 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     state[O_COLLECTION..O_COLLECTION + 32].copy_from_slice(collection.key.as_ref());
     state[O_AMOUNT..O_AMOUNT + 8].copy_from_slice(&amount.to_le_bytes());
     state[O_EXPIRES..O_EXPIRES + 8].copy_from_slice(&expires_at.to_le_bytes());
+    if let Some(requirement) = requirement {
+        state[O_MIN_DAYS..GATED_STATE_LEN].copy_from_slice(requirement);
+    }
     Ok(())
 }
 
-/// accounts: attester (signer: the approver or ITERA_ATTESTER), bounty (writable), claimant (signer), certification (the claimant's Core asset)
+/// accounts: attester, bounty (writable), claimant (signer), certification (the claimant's Core asset)
+/// attester: on a 195-byte bounty a signer, the approver or ITERA_ATTESTER. On a gated bounty nobody: the account is not read.
 fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let iter = &mut accounts.iter();
     let attester = next_account_info(iter)?;
@@ -228,7 +380,10 @@ fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
 
     check_bounty(program_id, bounty)?;
     let mut state = bounty.try_borrow_mut_data()?;
-    if *attester.key == ITERA_ATTESTER {
+    let gated = state[O_TAG] == TAG_GATED;
+    if gated {
+        // The terms name the days: the asset account answers below and nobody vouches for anything.
+    } else if *attester.key == ITERA_ATTESTER {
         if !attester.is_signer {
             return Err(EscrowError::NotApprover.into());
         }
@@ -260,6 +415,18 @@ fn accept(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     }
     if asset[33] != CORE_UPDATE_AUTHORITY_COLLECTION || key_at(&asset, 34) != key_at(&state, O_COLLECTION) {
         return Err(EscrowError::CertificationOfAnotherCollection.into());
+    }
+    if gated {
+        let stamps = read_stamps(&asset)?;
+        if !stamps.frozen {
+            return Err(EscrowError::CertificationNotFrozen.into());
+        }
+        if stamps.trail != state[O_TRAIL..GATED_STATE_LEN] {
+            return Err(EscrowError::CertificationOfAnotherTrail.into());
+        }
+        if stamps.days_done < u64::from(state[O_MIN_DAYS]) {
+            return Err(EscrowError::NotEnoughStampedDays.into());
+        }
     }
 
     state[O_CLAIMANT..O_CLAIMANT + 32].copy_from_slice(claimant.key.as_ref());

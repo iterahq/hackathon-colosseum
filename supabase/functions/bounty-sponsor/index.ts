@@ -13,6 +13,8 @@ import {
   refreshFunding,
   refundBounty,
   settleTransfer,
+  gateOf,
+  gatedEscrows,
 } from '../_shared/bounty-store.ts';
 import { bountyView, fundingTarget, parseNewBounty, trailAttribute, transferMemo, type BountyRow, type ClaimRow, type Requirement } from '../_shared/bounty.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
@@ -81,6 +83,15 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
 
   const id = crypto.randomUUID();
   const program = (sponsor.config.collection_passports && sponsor.config.bounty_escrow_program) || null;
+  const requirement: Requirement = {
+    program: PROGRAM_SLUG,
+    unit_id: trail.unit_id,
+    trail: trailAttribute(pickText(trail.title, 'en')),
+    trail_title: trail.title,
+    min_days: input.min_days,
+    total_days: trail.total_days,
+  };
+  const gated = program !== null && gatedEscrows(sponsor.config);
   // The escrow address commits to these terms: the account at it can only ever be this bounty's.
   const escrow = program
     ? await escrowPda(program, {
@@ -90,16 +101,9 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
         collection: sponsor.config.collection_passports,
         amount: BigInt(input.reward_lamports),
         expiresAt: Math.floor(Date.parse(input.expires_at) / 1000),
+        gate: gated ? await gateOf(requirement) : null,
       })
     : await escrowAddress(id);
-  const requirement: Requirement = {
-    program: PROGRAM_SLUG,
-    unit_id: trail.unit_id,
-    trail: trailAttribute(pickText(trail.title, 'en')),
-    trail_title: trail.title,
-    min_days: input.min_days,
-    total_days: trail.total_days,
-  };
   const { error } = await db.from('bounties').insert({
     id,
     slug: input.slug,
@@ -115,6 +119,7 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
     // With the escrow program configured, the program holds the money; otherwise an account whose key the server derives.
     escrow_kind: program ? 'program' : 'derived_account',
     escrow_address: escrow,
+    escrow_gated: gated,
     refund_address: refundAddress,
     claim_hours: input.claim_hours,
     expires_at: input.expires_at,

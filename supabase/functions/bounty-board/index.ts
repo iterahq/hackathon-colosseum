@@ -1,7 +1,9 @@
 import { loadTestAccountIds } from '../_shared/test-accounts.ts';
 import { isSolanaAddress } from '../_shared/address.ts';
-import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, recordWalletPayout, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
-import { boardStats, bountyView, earningsView, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, recordWalletPayout, settleTransfer, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
+import { boardStats, bountyView, earningsView, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { countOpenEscrows } from '../_shared/bounty-chain.ts';
+import { judgeHistory, refillTemplates, settleJudged } from '../_shared/bounty-judge.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
@@ -44,11 +46,27 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   const [{ bounties, claims }, config, tests] = await Promise.all([currentBounties(db, now), loadConfig(db), loadTestAccountIds(db)]);
   const rehearsals = rehearsalIds(bounties, claims, tests);
   const teamTests = teamTestSponsored(bounties, tests);
+  const [judged, openOnChain] = await Promise.all([
+    judgeHistory(db, tests),
+    // The escrow accounts the chain shows as open, whether or not the board lists them: the difference is said, not hidden.
+    config.bounty_escrow_program ? countOpenEscrows(config.bounty_escrow_program).catch(() => null) : null,
+  ]);
+  const live = bounties.filter((bounty) => ['open', 'claimed', 'submitted', 'paying'].includes(publicStatus(bounty, now)));
+  const listedOpen = bounties.filter((bounty) => bounty.escrow_kind === 'program' && bounty.status === 'open').length;
   return json(
     {
       cluster: 'devnet',
       read_at: now.toISOString(),
-      stats: boardStats(bounties, now, rehearsals, teamTests),
+      stats: {
+        ...boardStats(bounties, now, rehearsals, teamTests, judged),
+        listed_count: live.length,
+        open_on_chain_count: openOnChain,
+        hidden_test_count: openOnChain === null ? null : Math.max(0, openOnChain - listedOpen),
+        // Of the bounties that can still be taken or are held: how many have the days in the escrow's own terms, and how many rely on Itera's attester.
+        days_by_program_count: live.filter((bounty) => bounty.escrow_kind === 'program' && bounty.escrow_gated).length,
+        days_by_attester_count: live.filter((bounty) => !(bounty.escrow_kind === 'program' && bounty.escrow_gated)).length,
+      },
+      judge: { paid_count: judged.count, team_test_paid_count: judged.team_test_count, latest: judged.latest },
       bounties: bounties.map((bounty) =>
         bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id), teamTestSponsor: teamTests.has(bounty.id) }),
       ),
@@ -75,6 +93,11 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
   // A bounty someone just funded opens on the next read: the balance of its escrow account decides.
   if (bounty.status === 'awaiting_funding') bounty = await refreshFunding(db, bounty).catch(() => bounty as BountyRow);
   // A sponsor's wallet may have paid straight on the program: the page says paid as soon as the account does.
+  // A delivery the check approved whose payout was not seen confirmed: this read finishes it.
+  if (bounty.auto_check && bounty.status === 'paying') {
+    await settleTransfer(db, bounty.id).catch((error) => console.error('bounty-board: judge payout not settled', error instanceof Error ? error.message : error));
+    bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
+  }
   if (bounty.origin === 'wallet' && (bounty.status === 'submitted' || bounty.status === 'paying')) {
     await recordWalletPayout(db, bounty.id).catch((error) => console.error('bounty-board: payout not recorded', error instanceof Error ? error.message : error));
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
@@ -109,7 +132,8 @@ Deno.serve(async (request) => {
     if (first === undefined) return await board(db, request, cors);
     // The scheduler's door (`0202_bounty_refund_schedule.sql`). Public on purpose: all it can do is return expired money to its sponsor.
     if (first === 'sweep' && second === undefined) {
-      inBackground(sweepExpired(db, new Date(), SWEEP_ON_SCHEDULE));
+      // The same schedule keeps the judge bounties available: paid ones are replaced from the treasury.
+      inBackground(sweepExpired(db, new Date(), SWEEP_ON_SCHEDULE).then(() => settleJudged(db, SWEEP_ON_SCHEDULE)).then(() => refillTemplates(db, new Date())));
       return json({ sweeping: true }, 202, { ...cors, 'Cache-Control': 'no-store' });
     }
     if (first === 'wallet') {

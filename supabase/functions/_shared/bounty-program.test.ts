@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ESCROW_STATE_BYTES,
+  GATED_ESCROW_STATE_BYTES,
   acceptInstruction,
   bountyIdBytes,
   createInstruction,
@@ -8,6 +9,7 @@ import {
   parseEscrowState,
   refundInstruction,
   releaseInstruction,
+  trailHash,
   unclaimInstruction,
 } from './bounty-program';
 import { SYSTEM_PROGRAM, base58Decode } from './solana-tx';
@@ -88,6 +90,7 @@ describe('escrow program client', () => {
 
   it('reads the account the program wrote', () => {
     expect(parseEscrowState(state(0, false))).toEqual({
+      gate: null,
       status: 'open',
       id: ID,
       sponsor: TREASURY,
@@ -107,5 +110,58 @@ describe('escrow program client', () => {
     expect(parseEscrowState(new Uint8Array(10))).toBeNull();
     expect(parseEscrowState(new Uint8Array(ESCROW_STATE_BYTES))).toBeNull();
     expect(parseEscrowState(state(9, false))).toBeNull();
+  });
+});
+
+describe('gated escrows: the terms name the trail and the days', () => {
+  const terms = { bountyId: ID, sponsor: TREASURY, approver: TREASURY, collection: COLLECTION, amount: 10_000_000n, expiresAt: 1_800_000_000 };
+
+  it('hashes the program and trail attributes the way the program does', async () => {
+    expect(await trailHash('itera-v2', 'Week 1 · HTML')).toBe('ba8491ad9ff1b2e903987756e6e7e652f8e612a05eb10a706783f0cd68a9260d');
+  });
+
+  it('puts the gate in the address: other days, another account', async () => {
+    const trail = await trailHash('itera-v2', 'Week 1 · HTML');
+    const plain = await escrowPda(PROGRAM, terms);
+    const oneDay = await escrowPda(PROGRAM, { ...terms, gate: { minDays: 1, trail } });
+    const twoDays = await escrowPda(PROGRAM, { ...terms, gate: { minDays: 2, trail } });
+    expect(new Set([plain, oneDay, twoDays]).size).toBe(3);
+  });
+
+  it('builds create_gated with the gate after the terms', async () => {
+    const trail = await trailHash('itera-v2', 'Week 1 · HTML');
+    const instruction = createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate: { minDays: 3, trail } });
+    expect(instruction.data.length).toBe(66);
+    expect(instruction.data[0]).toBe(5);
+    expect(instruction.data[33]).toBe(3);
+    expect(Buffer.from(instruction.data.slice(34)).toString('hex')).toBe(trail);
+    expect(createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms }).data.length).toBe(33);
+  });
+
+  it('refuses a gate of zero days or a trail that is not a hash', () => {
+    expect(() => createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate: { minDays: 0, trail: 'ab'.repeat(32) } })).toThrow();
+    expect(() => createInstruction({ programId: PROGRAM, funder: TREASURY, escrow: ESCROW, ...terms, gate: { minDays: 1, trail: 'abcd' } })).toThrow();
+  });
+
+  it('asks nobody but the claimant to sign the accept of a gated bounty', () => {
+    const gated = acceptInstruction({ programId: PROGRAM, attester: TREASURY, escrow: ESCROW, claimant: CLAIMANT, certification: CERT, gated: true });
+    expect(gated.accounts.filter((account) => account.signer).map((account) => account.address)).toEqual([CLAIMANT]);
+    const attested = acceptInstruction({ programId: PROGRAM, attester: TREASURY, escrow: ESCROW, claimant: CLAIMANT, certification: CERT });
+    expect(attested.accounts.filter((account) => account.signer).map((account) => account.address)).toEqual([TREASURY, CLAIMANT]);
+  });
+
+  it('reads the gate of a 228-byte account and none from a 195-byte one', () => {
+    const old = state(0, false);
+    expect(parseEscrowState(old)?.gate).toBeNull();
+    const gated = new Uint8Array(GATED_ESCROW_STATE_BYTES);
+    gated.set(old);
+    gated[0] = 2;
+    gated[195] = 3;
+    gated.fill(0xab, 196);
+    expect(parseEscrowState(gated)).toMatchObject({ status: 'open', gate: { minDays: 3, trail: 'ab'.repeat(32) } });
+    gated[0] = 1;
+    expect(parseEscrowState(gated)).toBeNull();
+    old[0] = 2;
+    expect(parseEscrowState(old)).toBeNull();
   });
 });

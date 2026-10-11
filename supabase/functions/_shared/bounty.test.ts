@@ -1,3 +1,6 @@
+import { JSDOM } from 'jsdom';
+import { judgeCode, parseCodeSubmission, refillCount, DELIVERY_CODE_MAX, type AutoCheck } from './bounty';
+import type { HtmlParser } from './grading';
 import { describe, expect, it } from 'vitest';
 import {
   TRANSFER_LEASE_MS,
@@ -266,6 +269,7 @@ describe('bountyView', () => {
       refund_address: AUTHORITY,
       program_id: null,
       program_explorer_url: null,
+      days_checked_by: 'attester',
     });
   });
 
@@ -442,5 +446,83 @@ describe('bountyView for a wallet sponsor and for a rehearsal', () => {
     expect(view.rehearsal).toBe(true);
     expect(view.claim?.submission_url).toBe('https://site.example/rehearsal/form.html');
     expect(view.claim?.submission_mirrored).toBe(true);
+  });
+});
+
+const parseHtml: HtmlParser = (source) => {
+  const { document } = new JSDOM(source).window;
+  return {
+    count: (selector) => document.querySelectorAll(selector).length,
+    text: (selector) => document.querySelector(selector)?.textContent ?? null,
+    attr: (selector, name) => document.querySelector(selector)?.getAttribute(name) ?? null,
+  };
+};
+
+const CHECK: AutoCheck = {
+  version: 1,
+  language: 'html',
+  checks: [
+    { id: 'doctype', label: { en: 'doctype' }, assert: { type: 'source_has', tag: 'doctype' } },
+    { id: 'title', label: { en: 'title' }, selector: 'head > title', assert: { type: 'exists' } },
+    { id: 'h1', label: { en: 'h1' }, selector: 'body h1', assert: { type: 'count', equals: 1 } },
+    { id: 'p', label: { en: 'p' }, selector: 'body p', assert: { type: 'exists' } },
+    { id: 'closed', label: { en: 'closed' }, selector: 'html, head, title, body, h1, p', assert: { type: 'closes' } },
+  ],
+};
+const PAGE = '<!DOCTYPE html>\n<html>\n<head><title>Mine</title></head>\n<body>\n<h1>Hello</h1>\n<p>I want to build a timetable.</p>\n</body>\n</html>';
+const failed = (code: string) => judgeCode({ auto_check: CHECK }, code, parseHtml, NOW)?.checks.filter((check) => !check.passed).map((check) => check.id);
+
+describe('judge bounty: the check on the delivered code', () => {
+  it('passes a page with the five things asked', () => {
+    expect(judgeCode({ auto_check: CHECK }, PAGE, parseHtml, NOW)).toEqual({ version: 1, passed: true, checked_at: NOW.toISOString(), checks: CHECK.checks.map((check) => ({ id: check.id, passed: true })) });
+  });
+
+  it('names each check a delivery fails', () => {
+    expect(failed(PAGE.replace('<!DOCTYPE html>\n', ''))).toEqual(['doctype']);
+    expect(failed(PAGE.replace('<title>Mine</title>', ''))).toEqual(['title']);
+    expect(failed(PAGE.replace('<h1>Hello</h1>', '<h1>Hello</h1><h1>Again</h1>'))).toEqual(['h1']);
+    expect(failed(PAGE.replace('<p>I want to build a timetable.</p>', ''))).toEqual(['p']);
+    expect(failed(PAGE.replace('</h1>', ''))).toContain('closed');
+    expect(failed('hello')).toEqual(['doctype', 'title', 'h1', 'p']);
+  });
+
+  it('does not pay for a script that writes the tags, nor for tags in a comment', () => {
+    expect(failed('<!DOCTYPE html><html><head></head><body><script>document.write("<title>x</title><h1>a</h1><p>b</p>")</script></body></html>')).toEqual(['title', 'h1', 'p']);
+    expect(failed('<!-- <!DOCTYPE html> --><html><head><title>x</title></head><body><!-- <h1>a</h1><p>b</p> --></body></html>')).toEqual(['doctype', 'h1', 'p']);
+  });
+
+  it('has no verdict for a bounty with no check: a person reviews it', () => {
+    expect(judgeCode({ auto_check: null }, PAGE, parseHtml, NOW)).toBeNull();
+    expect(judgeCode({ auto_check: { ...CHECK, checks: [] } }, PAGE, parseHtml, NOW)).toBeNull();
+  });
+
+  it('refuses a check the engine cannot run statically instead of passing it', () => {
+    const dynamic: AutoCheck = { ...CHECK, checks: [{ id: 'style', label: { en: 'style' }, selector: 'h1', assert: { type: 'computed_style', property: 'color' } }] };
+    expect(judgeCode({ auto_check: dynamic }, PAGE, parseHtml, NOW)?.passed).toBe(false);
+  });
+});
+
+describe('judge bounty: the delivery', () => {
+  it('takes code up to the limit and nothing empty', () => {
+    expect(parseCodeSubmission({ code: PAGE })).toBe(PAGE);
+    expect(parseCodeSubmission({ code: '   ' })).toBeNull();
+    expect(parseCodeSubmission({ code: 'a'.repeat(DELIVERY_CODE_MAX + 1) })).toBeNull();
+    expect(parseCodeSubmission({ url: 'https://example.com' })).toBeNull();
+  });
+});
+
+describe('judge bounty: the refill', () => {
+  const template = { active: true, keep_open: 2, daily_cap: 40 };
+  it('tops up to what stays available', () => {
+    expect(refillCount(template, 0, 0)).toBe(2);
+    expect(refillCount(template, 1, 5)).toBe(1);
+    expect(refillCount(template, 2, 5)).toBe(0);
+    expect(refillCount(template, 3, 5)).toBe(0);
+  });
+  it('stops at the cap of the day and when switched off', () => {
+    expect(refillCount(template, 0, 39)).toBe(1);
+    expect(refillCount(template, 0, 40)).toBe(0);
+    expect(refillCount(template, 0, 55)).toBe(0);
+    expect(refillCount({ ...template, active: false }, 0, 0)).toBe(0);
   });
 });
