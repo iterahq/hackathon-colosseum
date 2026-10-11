@@ -1,7 +1,9 @@
 //! Itera bounty escrow.
 //!
-//! One program-derived account per bounty holds the reward. The program, not
-//! the Itera server, decides where that money can go:
+//! One program-derived account per bounty holds the reward. Its address is
+//! derived from the bounty id AND its terms (sponsor, approver, collection,
+//! amount, expiry). The program, not the Itera server, decides where that
+//! money can go:
 //!
 //! * `accept` records a claimant only if the certification account passed in is
 //!   a Metaplex Core asset owned by that claimant and belonging to the
@@ -132,6 +134,7 @@ fn pay_out(bounty: &AccountInfo, destination: &AccountInfo, lamports: u64) -> Pr
 
 /// data: id [16] | amount u64 LE | expires_at i64 LE
 /// accounts: funder (signer, writable), bounty (writable), sponsor, approver, collection, system program
+/// bounty = PDA of ["bounty", id, sponsor, approver, collection, amount LE, expires_at LE]
 fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     let iter = &mut accounts.iter();
     let funder = next_account_info(iter)?;
@@ -154,7 +157,18 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     if *system.key != system_program::ID {
         return Err(ProgramError::IncorrectProgramId);
     }
-    let (expected, bump) = Pubkey::find_program_address(&[SEED, id], program_id);
+    // The address commits to every term. Whatever exists at a bounty's address was created with exactly the
+    // terms it was posted with, so nobody can occupy it with other terms: creating it IS funding it.
+    let seeds: [&[u8]; 7] = [
+        SEED,
+        id,
+        sponsor.key.as_ref(),
+        approver.key.as_ref(),
+        collection.key.as_ref(),
+        &data[16..24],
+        &data[24..32],
+    ];
+    let (expected, bump) = Pubkey::find_program_address(&seeds, program_id);
     if expected != *bounty.key {
         return Err(EscrowError::WrongEscrowAccount.into());
     }
@@ -175,7 +189,7 @@ fn create(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> Program
     invoke_signed(
         &system_instruction::create_account(funder.key, bounty.key, lamports, STATE_LEN as u64, program_id),
         &[funder.clone(), bounty.clone(), system.clone()],
-        &[&[SEED, id, &[bump]]],
+        &[&[seeds[0], seeds[1], seeds[2], seeds[3], seeds[4], seeds[5], seeds[6], &[bump]]],
     )?;
 
     let mut state = bounty.try_borrow_mut_data()?;

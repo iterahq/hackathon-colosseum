@@ -1,5 +1,5 @@
 import { findProgramAddress, type Instruction } from './solana-message.ts';
-import { SYSTEM_PROGRAM, base58Encode } from './solana-tx.ts';
+import { SYSTEM_PROGRAM, base58Decode, base58Encode } from './solana-tx.ts';
 
 /** The escrow program's instructions and account layout (`programs/bounty-escrow/src/lib.rs`). */
 export const ESCROW_STATE_BYTES = 195;
@@ -51,8 +51,34 @@ function uuidOf(bytes: Uint8Array): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-export async function escrowPda(programId: string, bountyId: string): Promise<string> {
-  return (await findProgramAddress([SEED, bountyIdBytes(bountyId)], programId)).address;
+export interface EscrowSeedTerms {
+  bountyId: string;
+  sponsor: string;
+  approver: string;
+  collection: string;
+  amount: bigint;
+  expiresAt: number;
+}
+
+function u64le(value: bigint): Uint8Array {
+  const bytes = new Uint8Array(8);
+  new DataView(bytes.buffer).setBigUint64(0, BigInt.asUintN(64, value), true);
+  return bytes;
+}
+
+/**
+ * The escrow account of a bounty. The address commits to the bounty id and to
+ * every term, so an account at this address can only have been created with
+ * these terms: nobody can occupy it with others.
+ */
+export async function escrowPda(programId: string, terms: EscrowSeedTerms): Promise<string> {
+  const key = (address: string) => {
+    const bytes = base58Decode(address, 32);
+    if (!bytes) throw new Error('not a Solana address');
+    return bytes;
+  };
+  const seeds = [SEED, bountyIdBytes(terms.bountyId), key(terms.sponsor), key(terms.approver), key(terms.collection), u64le(terms.amount), u64le(BigInt(terms.expiresAt))];
+  return (await findProgramAddress(seeds, programId)).address;
 }
 
 export function createInstruction(input: {
