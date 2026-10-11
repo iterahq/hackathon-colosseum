@@ -12,3 +12,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://hackathon-colosseum.178-105-2-230.sslip.io/sitemap.xml

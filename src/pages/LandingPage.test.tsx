@@ -45,10 +45,26 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-cta-profile')).toHaveAttribute('href', `/u/${EXAMPLE_WALLET}`);
     expect(screen.getAllByTestId('landing-step')).toHaveLength(3);
     const stats = screen.getAllByTestId('landing-stat').map((s) => s.textContent);
-    expect(stats).toEqual(['4open bounties', '0.28 SOLin escrow', '1bounties paid', '3,465stamps funded by the Circuit', '29shop purchases']);
+    expect(stats).toEqual(['4open bounties', '0.28 SOLin escrow', '1bounties paid', '3,465stamps paid for by shop purchases', '29real shop purchases']);
     expect(screen.getByTestId('landing-example')).toHaveTextContent('Week 1 · HTML · 5/5 days · gold');
     expect(screen.getByTestId('landing-example')).toHaveTextContent('4 of 28 capabilities verified on chain · 2 medals');
     expect(screen.getByTestId('landing-example')).toHaveTextContent('Verified on chain');
+    localStorage.clear();
+  });
+
+  it('tells a stranger who it is for, who pays and who built it, with no invented number', () => {
+    mount('en');
+    expect(screen.getByTestId('landing-story')).toHaveTextContent('People learning to code from zero');
+    expect(screen.getByTestId('landing-story')).toHaveTextContent('Educar+ institute in Rio de Janeiro');
+    expect(screen.getByTestId('landing-model')).toHaveTextContent('Stripe, live since September 2026');
+    expect(screen.getByTestId('landing-model')).toHaveTextContent('nothing is charged today');
+    expect(screen.getByTestId('landing-model-build')).toHaveTextContent('no real money moves');
+    const members = screen.getAllByTestId('landing-team-member').map((m) => m.textContent);
+    expect(members[0]).toContain('Samuel Stefano');
+    expect(members[1]).toContain('Tainan Fidelis');
+    expect(screen.getByTestId('landing-team')).not.toHaveTextContent(/\d+ (students|learners|followers|years)/);
+    expect(screen.queryByTestId('landing-pitch-video')).toBeNull();
+    expect(screen.queryByTestId('landing-verify')).toBeNull();
     localStorage.clear();
   });
 
