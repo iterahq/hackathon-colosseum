@@ -1,5 +1,5 @@
 /** The end of a lesson: what the client knows, what `passport` answered, and the screen that follows. */
-import type { PassportResult } from '@/types/achievements';
+import type { PassportResult, ReviewReason } from '@/types/achievements';
 import type { CeremonyModel } from '@/utils/ceremony';
 
 /** Where the lesson sits in a trail with a certification, as the client knows it before the server answers. */
@@ -18,7 +18,7 @@ export type TrailKnowledge = 'loading' | 'none' | TrailPreview;
 export type PassportCall =
   | { state: 'idle' }
   | { state: 'pending' }
-  | { state: 'done'; result: Pick<PassportResult, 'day_incomplete'>; model: CeremonyModel | null }
+  | { state: 'done'; result: Pick<PassportResult, 'day_incomplete' | 'day_pending_review'>; model: CeremonyModel | null }
   /** `silent`: the function is missing or not for this caller (401/403/404). */
   | { state: 'error'; silent: boolean }
   | { state: 'timeout' };
@@ -40,6 +40,8 @@ export interface LessonEndInput {
 export type LessonEndView =
   /** The plain completion card. `note` adds the line about the stamp arriving later. */
   | { kind: 'card'; note: 'stampLater' | null }
+  /** The day is whole but the server holds its stamp: the card says why, in the server's words. */
+  | { kind: 'card'; note: 'pendingReview'; reason: ReviewReason; eta: string | null }
   /** The day is not whole: no ceremony, the card says how many are left. */
   | { kind: 'incomplete'; missing: number; done: number; total: number }
   /** Nothing yet: the trails are still being read (bounded by the caller). */

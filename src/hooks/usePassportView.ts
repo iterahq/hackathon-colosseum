@@ -14,13 +14,13 @@ export function usePassportView() {
   const dashboard = useTrailDashboard({ enabled: !visitor });
   const achievements = useAchievements({ enabled: !visitor });
   const { trails, featured } = dashboard;
-  const { items } = achievements;
+  const { items, earned } = achievements;
 
   const model = useMemo(() => {
-    const pages = buildPages(trails, items, tText);
+    const pages = buildPages(trails, items, tText, earned);
     const medals = buildMedals(items, tText);
     return { pages, medals, totals: totals(pages, medals) };
-  }, [trails, items, tText]);
+  }, [trails, items, earned, tText]);
 
   return {
     ...model,

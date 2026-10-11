@@ -1,7 +1,11 @@
 /** The one progress story every signed-in surface leads with. */
 export interface ProgressStory {
-  /** Days finished (stamped on chain when a wallet holds them). */
+  /** Days whose activities are all done. */
   daysDone: number;
+  /** Days whose stamp is written on chain: the only number the UI calls "stamped". */
+  daysStamped: number;
+  /** Days done whose stamp is not on chain (held by the server, or still minting). */
+  daysPending: number;
   /** Days in every trail the learner can take. */
   daysTotal: number;
   /** Capabilities verified on chain, when the wallet's graph was read. */

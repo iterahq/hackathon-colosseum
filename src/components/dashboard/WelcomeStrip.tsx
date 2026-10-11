@@ -48,10 +48,17 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2" data-testid="welcome-stats">
-        <Link to="/passport" className={`${CHIP} border-[#3FD17F]/50 text-[#F4EDE2] hover:border-[#3FD17F]`} data-testid="welcome-days">
-          <HeaderIcon name="passport" size={16} className="text-[#3FD17F]" />
-          {t(story.wallet ? 'dash.welcome.days' : 'dash.welcome.daysNoWallet', { n: story.daysDone, total: story.daysTotal })}
-        </Link>
+        {story.daysTotal > 0 && (
+          <Link to="/passport" className={`${CHIP} border-[#3FD17F]/50 text-[#F4EDE2] hover:border-[#3FD17F]`} data-testid="welcome-days">
+            <HeaderIcon name="passport" size={16} className="text-[#3FD17F]" />
+            {t(story.wallet ? 'dash.welcome.days' : 'dash.welcome.daysNoWallet', { n: story.wallet ? story.daysStamped : story.daysDone, total: story.daysTotal })}
+          </Link>
+        )}
+        {story.wallet && story.daysPending > 0 && (
+          <Link to="/passport#held" className={`${CHIP} border-[#F2C66D]/50 text-[#F2C66D] hover:border-[#F2C66D]`} data-testid="welcome-pending">
+            {t(`dash.welcome.pending${story.daysPending === 1 ? '' : '.other'}`, { n: story.daysPending })}
+          </Link>
+        )}
         {story.verified != null && story.capabilitiesTotal != null && (
           <Link to={`/u/${story.wallet}`} className={`${CHIP} hover:border-[#3FD17F] hover:text-[#F4EDE2]`} data-testid="welcome-proven">
             <HeaderIcon name="verify" size={16} className="text-[#3FD17F]" />

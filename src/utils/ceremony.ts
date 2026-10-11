@@ -57,6 +57,7 @@ export function mergeResults(results: readonly PassportResult[]): PassportResult
     remaining: last?.remaining ?? 0,
     mint: last?.mint,
     day_incomplete: last?.day_incomplete,
+    day_pending_review: last?.day_pending_review,
   };
 }
 

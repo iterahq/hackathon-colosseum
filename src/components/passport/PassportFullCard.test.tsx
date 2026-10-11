@@ -5,7 +5,7 @@ import { PassportFullCard } from '@/components/passport/PassportFullCard';
 import type { PassportPageData } from '@/types/achievements';
 
 const page = (over: Partial<PassportPageData>): PassportPageData =>
-  ({ trailId: 't', trailTitle: 'HTML', colorIndex: 1, totalDays: 5, daysDone: 4, tier: 'bronze', locked: false, mintStatus: 'unclaimed', assetAddress: null, txSignature: null, credentialId: null, earnedAt: '2026-10-05T10:00:00Z', ...over }) as PassportPageData;
+  ({ trailId: 't', trailTitle: 'HTML', colorIndex: 1, totalDays: 5, daysDone: 4, daysAwarded: over.daysDone ?? 4, daysStamped: over.daysDone ?? 4, tier: 'bronze', locked: false, mintStatus: 'unclaimed', assetAddress: null, txSignature: null, credentialId: null, earnedAt: '2026-10-05T10:00:00Z', ...over }) as PassportPageData;
 
 const show = (p: PassportPageData) => render(<I18nProvider><PassportFullCard page={p} /></I18nProvider>);
 

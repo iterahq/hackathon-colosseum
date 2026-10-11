@@ -20,6 +20,8 @@ export function useAchievements({ enabled = true }: { enabled?: boolean } = {}) 
 
   return {
     items,
+    /** Every row the learner earned, one per day stamp: the catalog join above keeps only one per key. */
+    earned: mine.data ?? [],
     earnedCount: items.filter((a) => a.earned).length,
     isPending: catalog.isPending || mine.isPending,
     isError: catalog.isError || mine.isError,

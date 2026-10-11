@@ -21,7 +21,7 @@ function Thumb({ page, onOpen }: { page: PassportPageData; onOpen: (trailId: str
   const { t, locale } = useI18n();
   const variant = pageVariant(page);
   const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
-  const art = <PassportArt src={pageArtSrc(page, locale)} title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysDone} variant={variant} width={96} ribbon={t('passport.ribbon')} />;
+  const art = <PassportArt src={pageArtSrc(page, locale)} title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysStamped} variant={variant} width={96} ribbon={t('passport.ribbon')} />;
   return (
     <div data-testid="passport-card" data-variant={variant} className="flex w-24 flex-col items-start gap-1.5 [font:500_11px_JetBrains_Mono]">
       {variant === 'locked' ? (
@@ -31,7 +31,7 @@ function Thumb({ page, onOpen }: { page: PassportPageData; onOpen: (trailId: str
           {art}
         </button>
       )}
-      <span style={{ color: variant === 'gold' ? '#F2C66D' : '#C9BFB0' }}>{variant === 'locked' ? '🔒' : t('passport.days', { done: page.daysDone, total: page.totalDays })}</span>
+      <span style={{ color: variant === 'gold' ? '#F2C66D' : '#C9BFB0' }}>{variant === 'locked' ? '🔒' : t('passport.days', { done: page.daysStamped, total: page.totalDays })}</span>
       {minted && <OnChainMark txSignature={page.txSignature} assetAddress={page.assetAddress} />}
     </div>
   );

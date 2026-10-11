@@ -25,7 +25,9 @@ export function lessonEndView(input: LessonEndInput): LessonEndView {
 
   if (call.state === 'done') {
     if (serverSaysIncomplete(call.result.day_incomplete)) return incomplete(call.result.day_incomplete.done, call.result.day_incomplete.total);
-    return call.model ? { kind: 'ceremony', model: call.model } : CARD;
+    if (call.model) return { kind: 'ceremony', model: call.model };
+    const held = call.result.day_pending_review;
+    return held ? { kind: 'card', note: 'pendingReview', reason: held.reason, eta: held.eta ?? null } : CARD;
   }
   // A ceremony was due only for a day finished now, in a trail the client can name.
   const due = fresh && trail !== 'none' && trail !== 'loading';

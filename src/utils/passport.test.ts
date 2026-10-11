@@ -37,6 +37,17 @@ describe('buildPages', () => {
     expect(pages[0].assetAddress).toBeNull();
   });
 
+  it('counts a day as stamped only from its own minted row, never from the activities done', () => {
+    const rows = [
+      { ...earned('t10'), id: 'r1', achievementKey: 'day_stamp' },
+      { ...earned('t11'), id: 'r2', achievementKey: 'day_stamp', mintStatus: 'pending' as const },
+      { ...earned('zz'), id: 'r3', achievementKey: 'day_stamp' },
+    ];
+    const [page] = buildPages([trail('t1', 3, 5)], [], pick, rows);
+    expect(page).toMatchObject({ daysDone: 3, daysAwarded: 2, daysStamped: 1 });
+    expect(buildPages([trail('t1', 3, 5)], [], pick)[0]).toMatchObject({ daysDone: 3, daysAwarded: 0, daysStamped: 0 });
+  });
+
   it('marks locked pages with the predecessor name', () => {
     const [page] = buildPages([trail('t3', 0, 3, 'locked')], [], pick);
     expect(page).toMatchObject({ locked: true, lockedBy: 'HTML' });
@@ -59,8 +70,9 @@ describe('buildMedals and totals', () => {
   });
 
   it('counts stamps, started pages and earned medals', () => {
-    const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [], pick);
+    const rows = Array.from({ length: 3 }, (_, i) => ({ ...earned(`t1${i}`), id: `r${i}`, achievementKey: 'day_stamp' }));
+    const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [], pick, rows);
     const medals = buildMedals([item('m', 'streak', { earned: earned(null) })], pick);
-    expect(totals(pages, medals)).toEqual({ pages: 1, stamps: 4, medals: 1 });
+    expect(totals(pages, medals)).toEqual({ pages: 1, stamps: 3, pending: 1, held: 1, medals: 1 });
   });
 });

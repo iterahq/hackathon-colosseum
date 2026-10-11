@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import '@/components/dashboard/dashboard.css';
 import { PassportGraph } from '@/components/graph/PassportGraph';
@@ -8,12 +8,13 @@ import { CopyButton } from '@/components/passport/CopyButton';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { PassportFullCard } from '@/components/passport/PassportFullCard';
 import { PassportHero } from '@/components/passport/PassportHero';
+import { HeldStampNotice } from '@/components/passport/HeldStampNotice';
 import { PassportPage as Page } from '@/components/passport/PassportPage';
 import { pageColor } from '@/components/passport/pageVariant';
 import { useUserStats } from '@/hooks/useContent';
 import { usePassportView } from '@/hooks/usePassportView';
 import { useI18n } from '@/i18n';
-import { isGold } from '@/utils/passport';
+import { isGold, pendingOf } from '@/utils/passport';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
 
 const GRID = {
@@ -37,12 +38,23 @@ export default function PassportPage() {
   const first = view.pages.find((p) => p.trailId === view.featuredId) ?? view.pages.find((p) => !p.locked) ?? null;
   const shared = started.filter((p) => p.mintStatus === 'minted' && p.assetAddress);
   const color = first ? pageColor(first) : TRAIL_COLORS[1];
+  const pending = view.isPending ? 0 : view.totals.pending;
+  const heldPage = view.pages.find((p) => pendingOf(p) > 0) ?? null;
 
   return (
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={GRID}>
       <DashboardTopBar xp={stats.data?.totalXp ?? null} achievements={view.isPending ? null : view.earnedCount} activities={stats.data?.completedActivities ?? null} streak={stats.data?.streakDays ?? null} />
       <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-14 pt-6 sm:px-8 xl:pt-10">
-        <PassportHero wallet={view.walletAddress} pages={view.totals.pages} stamps={view.totals.stamps} medals={view.totals.medals} />
+        <PassportHero wallet={view.walletAddress} pages={view.totals.pages} stamps={view.totals.stamps} pending={pending} medals={view.totals.medals} />
+        {view.walletAddress && pending > 0 && (
+          <HeldStampNotice
+            id="held"
+            title={t(pending === 1 ? 'passport.held.title' : 'passport.held.title.other', { n: pending })}
+            body={t('passport.held.body')}
+            action={heldPage ? <Link to="/" className="inline-flex min-h-11 items-center self-start rounded [font:700_13px_JetBrains_Mono] text-[#F2C66D] underline-offset-2 hover:underline" data-testid="held-stamp-open">{t('passport.held.lesson')} →</Link> : undefined}
+            testId="passport-held"
+          />
+        )}
         {!view.walletAddress && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-4" data-testid="passport-no-wallet">
             <span className="[font:500_14px_Inter] text-[#C9BFB0]">{t('passport.noWallet.banner')}</span>

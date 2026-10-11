@@ -4,6 +4,7 @@
  * Best effort: a missing, unauthorised or broken function leaves the plain completion card.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
@@ -64,6 +65,7 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 export function usePassport({ lessonId, fresh, done, total }: Options) {
   const { session, signInWithSolana } = useAuth();
   const { locale, tText } = useI18n();
+  const queryClient = useQueryClient();
   const guest = isGuestAccessToken(session?.access_token);
   const learner = Boolean(session) && !guest;
   const dashboard = useTrailDashboard({ enabled: learner });
@@ -109,6 +111,8 @@ export function usePassport({ lessonId, fresh, done, total }: Options) {
       setCall(keep('minting') ?? { state: 'pending' });
       try {
         const result = await withTimeout(callFirst(locale, lessonId), PASSPORT_TIMEOUT_MS);
+        // The header pill and the certifications page count stamps from the earned rows: re-read them now.
+        void queryClient.invalidateQueries({ queryKey: ['achievements'] });
         if (!current()) return;
         const model = ceremonyFromResult(result, lessonId, locale);
         if (model) confirmed.current = model;
@@ -119,7 +123,7 @@ export function usePassport({ lessonId, fresh, done, total }: Options) {
         setCall(keep('failed') ?? (e instanceof PassportTimeout ? { state: 'timeout' } : { state: 'error', silent: status != null && SILENT.has(status) }));
       }
     },
-    [lessonId, locale]
+    [lessonId, locale, queryClient]
   );
 
   const due = shouldCallPassport({ done, total });
