@@ -58,6 +58,17 @@ export interface GradeVerdict {
   xp_awarded?: number;
   /** Graded for a visitor with no session: nothing was recorded. */
   guest?: boolean;
+  /** A visitor's pass only: when the server graded it, signed. Sent back by the claim after a sign-in. */
+  receipt?: { graded_at: string; sig: string };
+}
+
+/** One pass of a visitor, as `claimGuestPasses` sends it. */
+export interface GuestClaimItem {
+  activityId: string;
+  response: string | null;
+  actions?: readonly RecordedAction[];
+  receipt?: { graded_at: string; sig: string };
+  settledAt: number;
 }
 
 /** The server caps the text of an answer; a longer one is cut here so the request is not refused whole. */
@@ -154,4 +165,28 @@ export async function judgeAnswer(
   const verdict = await submitForGrading({ activityId, passed: true, response, answer: submission.answer ?? null });
   if (verdict) judgedVerdicts.set(judgedKey(activityId, response), { verdict, at: Date.now() });
   return verdict;
+}
+
+/**
+ * Records, in one request, the passes a visitor settled before signing in. The
+ * server grades each again and dates it by its own receipt. Returns the ids
+ * that landed; `null` when the request itself failed.
+ */
+export async function claimGuestPasses(items: readonly GuestClaimItem[]): Promise<ReadonlySet<string> | null> {
+  const claim = items.map((item) => ({
+    activity_id: item.activityId,
+    response: typeof item.response === 'string' ? item.response.slice(0, MAX_GRADED_RESPONSE_CHARS) : null,
+    answer: submittedAnswer(item.actions),
+    trace: gestureTrace(item.actions),
+    receipt: item.receipt ?? null,
+    settled_at: item.settledAt,
+  }));
+  try {
+    const { data, error } = await getSupabase().functions.invoke('grade', { method: 'POST', body: { claim } });
+    const claimed = (data as { claimed?: unknown } | null)?.claimed;
+    if (error || !Array.isArray(claimed)) return null;
+    return new Set(claimed.filter((row): row is { activity_id: string; landed: boolean } => row?.landed === true && typeof row.activity_id === 'string').map((row) => row.activity_id));
+  } catch {
+    return null;
+  }
 }

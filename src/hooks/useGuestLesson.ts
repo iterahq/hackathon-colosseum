@@ -72,7 +72,7 @@ export function useGuestLesson(activities: readonly Activity[]) {
     if (!isExerciseActivity(activity)) return;
     void submitForGrading({ activityId: activity.id, passed: correct, response: detail?.response ?? null, actions: detail?.actions }).then((verdict) => {
       if (!verdict) return;
-      setAnswers(writeGuestAnswer(activity.id, { ...entry, serverVerdict: verdict.verdict === 'pass' ? 'pass' : 'fail' }));
+      setAnswers(writeGuestAnswer(activity.id, { ...entry, serverVerdict: verdict.verdict === 'pass' ? 'pass' : 'fail', ...(verdict.receipt ? { receipt: verdict.receipt } : {}) }));
     });
   }, []);
 

@@ -36,18 +36,17 @@ export default function TryLessonPage() {
   usePageTitle(t('try.title'));
   const lesson = useGuestLesson(data?.activities ?? []);
   const [claim, setClaim] = useState<'idle' | 'saving' | 'failed'>('idle');
-  const [claimProgress, setClaimProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     if (authLoading || !signedIn) return;
     setClaim('saving');
-    void claimGuestAnswers((done, total) => setClaimProgress({ done, total })).then(({ attempted, landed }) => {
+    void claimGuestAnswers().then(({ attempted, landed }) => {
       if (landed === attempted) navigate(`/lesson/${GUEST_LESSON_ID}`, { replace: true });
       else setClaim('failed');
     });
   }, [authLoading, signedIn, navigate]);
 
-  if (claim !== 'idle') return <TryClaimScreen state={claim} progress={claimProgress} />;
+  if (claim !== 'idle') return <TryClaimScreen state={claim} />;
 
   const { current, finished, pending } = lesson;
   return (

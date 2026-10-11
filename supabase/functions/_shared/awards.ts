@@ -1,4 +1,4 @@
-import { lessonPlausibility, type ReviewReason } from './plausibility.ts';
+import { lessonPlausibility, minLessonSpanMs, type ReviewReason } from './plausibility.ts';
 import { combineProofs, lessonProof, type LessonProof, type PassingAttempt } from './proof.ts';
 import { WEEKLY_GOAL, weeklyGoalHits } from './weekly-goal.ts';
 
@@ -177,6 +177,10 @@ export function dayIncomplete(input: Pick<AwardsInput, 'activities' | 'progress'
 export interface PendingReview {
   lesson_id: string;
   reason: ReviewReason;
+  /** `too_fast` only: the least time, in seconds, between the first and the last answer of the day. */
+  min_seconds?: number;
+  /** `too_fast` only: what lifts the hold. Nobody reviews by hand: passing any one exercise of the day again does it. */
+  clears_by?: 'redo_one_activity';
 }
 
 type ReviewInput = Pick<AwardsInput, 'lessons' | 'activities' | 'progress' | 'passedActivityIds' | 'attempts' | 'proofCutoff' | 'existing'>;
@@ -211,16 +215,25 @@ function reviewLessons(input: ReviewInput): { done: CompletedLesson[]; pending: 
         continue;
       }
       // A completion the server recorded after grading is judged by the floor like one a client recorded.
-      const reason = lessonPlausibility(
-        activities.map((activity, index) => ({
-          activityId: activity.id,
-          completedAt: times[index] as string,
-          writtenByClient: byClient.has(activity.id) || attempts.has(activity.id),
-          hasPassedResult: passed.has(activity.id) || attempts.has(activity.id),
-        })),
-      );
+      const completions = activities.map((activity, index) => ({
+        activityId: activity.id,
+        completedAt: times[index] as string,
+        writtenByClient: byClient.has(activity.id) || attempts.has(activity.id),
+        hasPassedResult: passed.has(activity.id) || attempts.has(activity.id),
+      }));
+      let reason = lessonPlausibility(completions);
+      // A day held for its speed is not held for good: an exercise passed again later counts at the time of that pass.
+      if (reason === 'too_fast') {
+        reason = lessonPlausibility(
+          completions.map((completion) => ({ ...completion, completedAt: attempts.get(completion.activityId)?.last_passed_at ?? completion.completedAt })),
+        );
+      }
       if (reason) {
-        pending.push({ lesson_id: lesson.id, reason });
+        pending.push(
+          reason === 'too_fast'
+            ? { lesson_id: lesson.id, reason, min_seconds: Math.ceil(minLessonSpanMs(activities.length) / 1000), clears_by: 'redo_one_activity' }
+            : { lesson_id: lesson.id, reason },
+        );
         continue;
       }
     }

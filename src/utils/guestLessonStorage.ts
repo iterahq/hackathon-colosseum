@@ -25,6 +25,7 @@ export function readGuestAnswers(): GuestAnswers {
         ...(typeof v.response === 'string' ? { response: v.response } : {}),
         ...(Array.isArray(v.actions) ? { actions: v.actions } : {}),
         ...(v.serverVerdict === 'pass' || v.serverVerdict === 'fail' ? { serverVerdict: v.serverVerdict } : {}),
+        ...(v.receipt && typeof v.receipt.graded_at === 'string' && typeof v.receipt.sig === 'string' ? { receipt: { graded_at: v.receipt.graded_at, sig: v.receipt.sig } } : {}),
       };
     }
     return out;

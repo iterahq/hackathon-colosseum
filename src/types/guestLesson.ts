@@ -8,6 +8,8 @@ export interface GuestAnswer {
   actions?: RecordedAction[];
   /** What the server said when asked without an account; absent when it could not be asked. */
   serverVerdict?: 'pass' | 'fail';
+  /** The server's signed note of when it graded this pass; a sign-in sends it back so the day keeps its real times. */
+  receipt?: { graded_at: string; sig: string };
 }
 
 export type GuestAnswers = Record<string, GuestAnswer>;
