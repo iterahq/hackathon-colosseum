@@ -33,9 +33,11 @@ interface CardProps {
   onRedoMissing?: () => void;
   /** One extra line under the count (the stamp that will land later). */
   note?: string;
+  /** On a phone the card fills the screen when it stands alone; false when something follows it below. */
+  fill?: boolean;
 }
 
-export function LessonCompleteCard({ doneCount, total, nextLessonId, onReview, missing = 0, onRedoMissing, note }: CardProps) {
+export function LessonCompleteCard({ doneCount, total, nextLessonId, onReview, missing = 0, onRedoMissing, note, fill = true }: CardProps) {
   const { t } = useI18n();
   const { outfit } = useLessonCompanion();
   const incomplete = missing > 0;
@@ -44,7 +46,7 @@ export function LessonCompleteCard({ doneCount, total, nextLessonId, onReview, m
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`rounded-3xl border border-border bg-card p-10 text-center ${PHONE_FILL}`}
+      className={`rounded-3xl border border-border bg-card p-10 text-center ${fill ? PHONE_FILL : 'max-sm:p-6'}`}
       data-testid="lesson-complete"
       data-state={incomplete ? 'incomplete' : 'complete'}
     >

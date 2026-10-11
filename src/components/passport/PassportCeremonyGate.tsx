@@ -54,7 +54,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
   if (view.kind === 'card') {
     return (
       <div className="flex flex-col gap-4">
-        <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note ? t('lessonEnd.stampLater') : undefined} />
+        <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note ? t('lessonEnd.stampLater') : undefined} fill={false} />
         <LoopPanel trail={trail} day={day} />
       </div>
     );
