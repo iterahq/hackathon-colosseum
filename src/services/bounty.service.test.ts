@@ -76,6 +76,8 @@ describe('parseBoard', () => {
       outsidePaidSol: '0 SOL',
       heldCount: 0,
       outsideSponsorCount: 0,
+      hiddenTestCount: null,
+      listedCount: null,
     });
     expect(board.readAt).toBeNull();
   });
@@ -91,6 +93,10 @@ describe('parseBoard', () => {
     });
     expect(board.readAt).toBe('2026-10-11T12:00:00Z');
     expect(board.stats).toMatchObject({ rehearsalPaidCount: 2, rehearsalPaidSol: '0.2 SOL', outsidePaidCount: 1, outsidePaidSol: '0.1 SOL', heldCount: 2, outsideSponsorCount: 1 });
+  });
+  it('reads the hidden test count and the listed count when the board sends them', () => {
+    const board = parseBoard({ stats: { hidden_test_count: 3, listed_count: 5 }, bounties: [] });
+    expect(board.stats).toMatchObject({ hiddenTestCount: 3, listedCount: 5 });
   });
 });
 

@@ -112,6 +112,8 @@ export interface BountyStats {
   outsidePaidSol: string;
   heldCount: number;
   outsideSponsorCount: number;
+  hiddenTestCount: number | null;
+  listedCount: number | null;
 }
 
 export interface BountyBoard {

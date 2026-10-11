@@ -7,7 +7,7 @@ import { useBountyBoard, useBountySession } from '@/hooks/useBounties';
 import { useIsBountyStaff } from '@/hooks/useIsBountyStaff';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
-import { formatWhen, plural, sortBounties } from '@/utils/bounty';
+import { formatWhen, hiddenTestsLine, plural, sortBounties } from '@/utils/bounty';
 import type { BountyStats } from '@/types/bounty';
 
 function Stat({ label, value, hint, testId }: { label: string; value: string; hint: string; testId: string }) {
@@ -39,6 +39,7 @@ export default function BountiesPage() {
   const staff = useIsBountyStaff();
   const stats = board.data?.stats;
   const items = board.data ? sortBounties(board.data.bounties) : [];
+  const hiddenTests = hiddenTestsLine(t, stats, items.length);
 
   return (
     <BountyShell>
@@ -70,6 +71,11 @@ export default function BountiesPage() {
       {board.data?.readAt && (
         <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-read-at">
           {t('bounty.stats.readAt', { time: formatWhen(board.data.readAt, locale) })}
+        </p>
+      )}
+      {hiddenTests && (
+        <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-hidden-tests">
+          {hiddenTests}
         </p>
       )}
       {board.isPending && (

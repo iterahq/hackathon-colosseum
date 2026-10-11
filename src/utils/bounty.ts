@@ -41,6 +41,11 @@ export function plural(t: (key: string, vars?: Record<string, string | number>) 
   return t(`${key}${n === 1 ? '.one' : '.many'}`, { n, ...vars });
 }
 
+export function hiddenTestsLine(t: (key: string, vars?: Record<string, string | number>) => string, stats: { hiddenTestCount: number | null; listedCount: number | null } | undefined, fallbackListed: number): string | null {
+  const hidden = stats?.hiddenTestCount ?? 0;
+  return hidden > 0 ? plural(t, 'bounty.stats.hiddenTests', hidden, { listed: stats?.listedCount ?? fallbackListed, hidden }) : null;
+}
+
 export const MAX_DELIVERY_URL = 500;
 
 export type DeliveryUrlProblem = 'empty' | 'not_url' | 'http' | 'too_long';
