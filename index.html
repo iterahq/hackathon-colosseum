@@ -68,6 +68,14 @@
             window.__iteraProfile = { wallet: u[1], lang: lang, response: get('learner-profile/' + u[1]) };
           }
           if (c) window.__iteraCredential = { asset: c[1], lang: lang, response: get('credential-verify/' + c[1]) };
+          var b = /^\/bounties\/?$/.test(location.pathname) ? '' : (/^\/bounties\/([a-z0-9][a-z0-9-]{2,62})\/?$/.exec(location.pathname) || [])[1];
+          if (b !== undefined) window.__iteraBoard = { key: b, lang: lang, response: get('bounty-board' + (b ? '/' + b : '')) };
+          if (location.pathname === '/') {
+            window.__iteraBoard = { key: '', lang: lang, response: get('bounty-board') };
+            window.__iteraCircuit = { key: 'all', lang: lang, response: fetch(base + '/functions/v1/circuit') };
+            window.__iteraCircuit.response.catch(function () {});
+            window.__iteraProfile = { wallet: 'CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya', lang: lang, response: get('learner-profile/CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya') };
+          }
         } catch (e) {}
       })();
     </script>
