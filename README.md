@@ -127,7 +127,7 @@ keys still say `passport`; only user-facing text says "Certification".
  Supabase (project nyzcbnnbffsizshiolbh)        Solana devnet
    Auth (email, Sign in with Solana)              Metaplex Core: 4 collections,
    Postgres schema `itera` (RLS on)  <--- reads -- certifications, medals, companions, avatars
-   Edge functions (Deno, 26) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
+   Edge functions (Deno, 27) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
         ^         authority key + treasury key are function secrets
         |
  public readers: /c/<asset>, /u/<wallet>, Solana Action (Blink)
@@ -175,9 +175,9 @@ feature, the instructor and admin screens, subscription billing code (Stripe), t
 tooling. Of the 2,493 tracked files at `main` when this was written, roughly 2,000 are TypeScript; the copy point already
 contained about 2,000 files. The inherited product is large and is not claimed.
 
-**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-11, 82 commits after the copy point, merged PRs #1 to
-#83; +64.6k / -5.2k lines in 802 files against the copy point; everything under `supabase/functions/` and 52 new
-migrations 0110 to 0210; counts as of main `77dea24`, see the disclosure file for the exact list):
+**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-11, 110 commits after the copy point, merged PRs #1 to
+#112; +68.1k / -5.2k lines in 844 files against the copy point; everything under `supabase/functions/` and 55 new
+migrations 0110 to 0210; counts as of main `f93240f`, see the disclosure file for the exact list):
 
 - Wallet auth: Sign in with Solana (Phantom), provisioning trigger, nickname step, link a wallet to an e-mail account.
 - Credentials: Certifications (stamp per day, gold, server-paid, server-generated SVG art), medals, stamp ceremony,
@@ -230,6 +230,11 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
 ## Known limits
 
 - Devnet only. No real money moves. Prices are fixed in lamports with no live quote; mainnet would use USDC.
+- Every account in this database was created during the hackathon: three belong to people (the owner's wallet, a demo
+  e-mail, the sponsor e-mail) and the rest are our own test runs (tagged in `itera.test_accounts`). One real certification
+  exists (the owner's, eight claims on chain) and no bounty has been paid to a real learner. The counters on the landing
+  page and in the shop count real accounts only; the larger totals (52 certifications, 312 claims, 5 005 stamps funded)
+  are test runs on devnet. What is true is that the whole loop runs end to end on devnet and anyone can verify every step.
 - The server authority pays for and signs every mint and stamp; key custody is a function secret, not a multisig.
 - Grading of choice, fill, order, match and static code checks is server-side (`grade`), 118 of 234 activities. The
   answer keys of the simple kinds still reach the browser for instant feedback, so server grading stops forged
