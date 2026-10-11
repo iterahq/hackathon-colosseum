@@ -6,8 +6,16 @@ import LandingPage from './LandingPage';
 import { EXAMPLE_WALLET } from '@/components/landing/landingStyles';
 
 const data = vi.hoisted(() => ({
-  board: { isPending: false, isError: false, data: { stats: { openCount: 4, lockedSol: '0.28 SOL', paidCount: 1, paidSol: '0.005 SOL' }, bounties: [] } } as Record<string, unknown>,
-  circuit: { isPending: false, isError: false, data: { stampsFunded: 3465, purchases: 29 } } as Record<string, unknown>,
+  board: {
+    isPending: false,
+    isError: false,
+    data: { stats: { openCount: 4, lockedSol: '0.28 SOL', paidCount: 1, paidSol: '0.005 SOL', rehearsalPaidCount: 1, outsidePaidCount: 0 }, bounties: [], readAt: '2026-10-11T14:05:00Z' },
+  } as Record<string, unknown>,
+  circuit: {
+    isPending: false,
+    isError: false,
+    data: { stampsFunded: 3465, purchases: 29, sharePercent: 50, stampFeeLamports: 5000, asOf: '2026-10-11T14:06:00Z', shop: { minUsdCents: 20, maxUsdCents: 1000, items: 40 } },
+  } as Record<string, unknown>,
   profile: {
     isPending: false,
     data: {
@@ -45,7 +53,19 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-cta-profile')).toHaveAttribute('href', `/u/${EXAMPLE_WALLET}`);
     expect(screen.getAllByTestId('landing-step')).toHaveLength(3);
     const stats = screen.getAllByTestId('landing-stat').map((s) => s.textContent);
-    expect(stats).toEqual(['4open bounties', '0.28 SOLin escrow', '1bounties paid', '3,465stamps paid for by shop purchases', '29real shop purchases']);
+    expect(stats).toEqual([
+      '4open bounties',
+      '0.28 SOLin escrow',
+      '1bounty paid0 to outside learners · 1 team rehearsal',
+      '3,465stamps paid for by the shopfrom 29 purchases: 50% of each ÷ 5,000 lamports per stamp',
+      "29shop purchaseson devnet, the team's test runs included",
+    ]);
+    expect(screen.getByTestId('landing-live-readat')).toHaveTextContent(/Read at .*never go down/);
+    expect(screen.getByTestId('landing-live')).not.toHaveTextContent(/left out/);
+    expect(screen.getByTestId('landing-lede')).toHaveTextContent('Learn to code in 5-day trails. Each finished day is stamped on a credential in your wallet. That credential unlocks paid work.');
+    expect(screen.getByTestId('landing-hero')).not.toHaveTextContent(/soulbound|Metaplex|escrow|evidence hash/i);
+    expect(screen.getByTestId('landing-cta-email')).toHaveAttribute('href', '/signup');
+    expect(screen.getByTestId('landing-cta-try')).toHaveAttribute('href', '/try');
     expect(screen.getByTestId('landing-example')).toHaveTextContent('Week 1 · HTML · 5/5 days · gold');
     expect(screen.getByTestId('landing-example')).toHaveTextContent('4 of 28 capabilities verified on chain · 2 medals');
     expect(screen.getByTestId('landing-example')).toHaveTextContent('Verified on chain');
@@ -58,6 +78,8 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-story')).toHaveTextContent('Educar+ institute in Rio de Janeiro');
     expect(screen.getByTestId('landing-model')).toHaveTextContent('Stripe, live since September 2026');
     expect(screen.getByTestId('landing-model')).toHaveTextContent('nothing is charged today');
+    expect(screen.getByTestId('landing-model-shop')).toHaveTextContent('from US$ 0.20 to US$ 10.00');
+    expect(screen.getByTestId('landing-steps')).toHaveTextContent('The program on chain checks that the accepting wallet holds an Itera certification; Itera checks the stamped days.');
     expect(screen.getByTestId('landing-model-build')).toHaveTextContent('no real money moves');
     const members = screen.getAllByTestId('landing-team-member').map((m) => m.textContent);
     expect(members[0]).toContain('Samuel Stefano');
@@ -83,6 +105,7 @@ describe('LandingPage', () => {
     expect(screen.queryAllByTestId('landing-stat')).toHaveLength(0);
     expect(screen.queryByTestId('landing-example')).toBeNull();
     expect(screen.getByText('No reading right now.')).toBeInTheDocument();
+    expect(screen.getByTestId('landing-model-shop')).toHaveTextContent('priced in the shop itself');
     localStorage.clear();
   });
 });
