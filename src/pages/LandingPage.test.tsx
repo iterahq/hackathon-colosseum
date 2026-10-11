@@ -79,7 +79,7 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-model')).toHaveTextContent('Stripe, live since September 2026');
     expect(screen.getByTestId('landing-model')).toHaveTextContent('nothing is charged today');
     expect(screen.getByTestId('landing-model-shop')).toHaveTextContent('from US$ 0.20 to US$ 10.00');
-    expect(screen.getByTestId('landing-steps')).toHaveTextContent('The program on chain checks that the accepting wallet holds an Itera certification; Itera checks the stamped days.');
+    expect(screen.getByTestId('landing-steps')).toHaveTextContent('the program on chain reads them from the credential in your wallet before it lets you accept.');
     expect(screen.getByTestId('landing-model-build')).toHaveTextContent('no real money moves');
     const members = screen.getAllByTestId('landing-team-member').map((m) => m.textContent);
     expect(members[0]).toContain('Samuel Stefano');

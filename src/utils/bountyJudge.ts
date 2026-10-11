@@ -19,7 +19,7 @@ export function checkRows(judge: JudgeInfo, report: CheckReport | null): CheckRo
 
 /** The payout line of the stats: person-approved, team rehearsal and judge payouts kept apart. `null` when no judge bounty was paid. */
 export function judgePaidHint(t: Translate, stats: BountyStats): string | null {
-  if (stats.judgePaidCount <= 0) return null;
+  if (!(stats.judgePaidCount > 0)) return null;
   const parts: string[] = [];
   if (stats.outsidePaidCount > 0) parts.push(plural(t, 'bounty.stats.part.outside', stats.outsidePaidCount));
   if (stats.rehearsalPaidCount > 0) parts.push(plural(t, 'bounty.stats.part.rehearsal', stats.rehearsalPaidCount));
