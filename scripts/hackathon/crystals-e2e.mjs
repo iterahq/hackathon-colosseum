@@ -234,7 +234,8 @@ async function main() {
   const thin = await spend(cy, { item_key: 'special_dourado' });
   check('an epic avatar needs 2 500: 402 with the price', thin.status === 402 && thin.body.price === 2500, JSON.stringify(thin.body));
   const legend = await spend(cy, { item_key: 'base_guerreiro' });
-  check('a legendary avatar is sold for crystals too (10 000): 402 with the price', legend.status === 402 && legend.body.price === 10000, JSON.stringify(legend.body));
+  // This build keeps the legendary and mythic avatars off the shelf (`shop_items.active = false`, a data flag): refused before any price.
+  check('a legendary avatar is off the shelf on this build: item_inactive, no price', legend.status >= 400 && legend.body.error === 'item_inactive' && legend.body.price === undefined, JSON.stringify(legend.body));
   const bronze = await spend(cy, { item_key: 'border_bronze' });
   check('a for-sale border costs 100 crystals and does not equip itself', bronze.status === 200 && bronze.body.item?.kind === 'border' && bronze.body.theme?.border?.key === 'border_none', JSON.stringify(bronze.body).slice(0, 200));
 
@@ -275,11 +276,12 @@ async function main() {
 
   console.log('\n== shop v3: seasons and the SOL rail ==');
   const natal = await spend(cy, { item_key: 'event_natal' });
-  check('a seasonal avatar out of its window is refused for crystals: 409 out_of_season', natal.status === 409 && natal.body.error === 'out_of_season', JSON.stringify(natal.body));
+  // The seasonal avatars are legendary, so on this build they are off the shelf whatever the season: the season rule is not reachable from outside.
+  check('a seasonal (legendary) avatar is refused for crystals: item_inactive', natal.status >= 400 && natal.body.error === 'item_inactive', JSON.stringify(natal.body));
   const intent = await cy.call('purchase-intent', { item_key: 'event_verao' });
-  check('…and for SOL: purchase-intent 409 out_of_season (before any funds check)', intent.status === 409 && intent.body.error === 'out_of_season', JSON.stringify(intent.body));
+  check('…and for SOL: purchase-intent refuses it as item_inactive (before any funds check)', intent.status >= 400 && intent.body.error === 'item_inactive', JSON.stringify(intent.body));
   const listedNatal = (await cy.get('shop-items')).body.find((entry) => entry.key === 'event_natal');
-  check('…the list still shows it, with its season and the next window', listedNatal?.season?.key === 'natal' && listedNatal.season.available === false && listedNatal.season.starts_at.endsWith('-12-01T00:00:00.000Z') && listedNatal.includes?.[0]?.key === 'border_pinho', JSON.stringify(listedNatal?.season ?? null));
+  check('…and the public list does not offer it', listedNatal === undefined, JSON.stringify(listedNatal ?? null));
   const solBorder = await cy.call('purchase-intent', { item_key: 'border_circuit' });
   check('a for-sale border is on the SOL rail (this wallet has no SOL: 402 insufficient_funds)', solBorder.status === 402, JSON.stringify(solBorder.body));
   const solSignature = await cy.call('purchase-intent', { item_key: 'border_sol' });

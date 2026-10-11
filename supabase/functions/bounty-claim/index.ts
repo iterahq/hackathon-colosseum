@@ -72,6 +72,16 @@ async function status(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
 const SIGN_RATE: RateLimit = { limit: 40, windowMs: 10 * 60_000 };
 
 /** What a failed co-signed send means to the caller. `null`: not ours to explain, rethrow. */
+/** The id of the live claim the tables hold for this wallet on this bounty, or `null`. */
+async function holdsClaim(db: IteraClient, bountyId: string, wallet: string): Promise<string | null> {
+  const { data, error } = await db.from('bounty_claims').select('id').eq('bounty_id', bountyId).eq('wallet', wallet).in('status', ['active', 'submitted', 'approved']).limit(1);
+  if (error) {
+    console.error('bounty claim lookup failed', bountyId, error.message);
+    return null;
+  }
+  return (data?.[0]?.id as string | undefined) ?? null;
+}
+
 async function sendFailure(db: IteraClient, bounty: BountyRow, error: unknown, cors: Cors): Promise<Response | null> {
   if (error instanceof CosignError) return json({ error: error.code }, error.code === 'expired' ? 409 : 400, cors);
   if (error instanceof RpcNodeError && isExpiredBlockhash(error.nodeMessage)) return json({ error: 'expired' }, 409, cors);
@@ -134,8 +144,11 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
 
   // The chain picks the winner: the program records the first accept that lands and refuses the rest.
   let signature: string;
+  // Whether THIS request saw its own transaction confirmed (not merely an account that names the wallet).
+  let landed = false;
   try {
     signature = await sendCosigned(signed, wallet, instructions);
+    landed = true;
   } catch (error) {
     if (error instanceof TransferBroadcastError) {
       // Handed to the node and not seen confirmed: the account says whether it landed, or whether another wallet's did first.
@@ -150,11 +163,19 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
     }
   }
   // The account now names this wallet. If our tables cannot follow, it is reopened: the page and the chain never part ways.
+  // Unless the tables already hold this wallet's claim on this bounty: the same accept sent twice (a double click, a retry)
+  // is one claim, and undoing it on chain would leave the page saying "accepted" over an account that is open again.
   const result = await record().catch(async (error) => {
-    await reopenOnChain(db, bounty, wallet);
+    if (!(await holdsClaim(db, bounty.id, wallet))) await reopenOnChain(db, bounty, wallet);
     throw error;
   });
   if (result?.status !== 'ok' || !result.claim_id) {
+    const held = await holdsClaim(db, bounty.id, wallet);
+    if (held) {
+      // The twin request recorded the claim. If this one carries the transaction that landed, the ledger shows that one.
+      if (landed) await recordStepSignature(db, { bountyId: bounty.id, claimId: held, kind: 'accepted', signature, signer: wallet });
+      return json({ error: 'not_open', reason: 'already_yours' }, 409, cors);
+    }
     // Our tables refused what the chain took (this learner took another bounty meanwhile): the account is reopened.
     const reopened = await reopenOnChain(db, bounty, wallet);
     console.error('bounty accept landed on chain and was refused by the tables', bounty.id, result?.status, reopened);
