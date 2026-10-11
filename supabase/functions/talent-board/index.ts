@@ -68,6 +68,9 @@ function avatarOf(catalog: AvatarCatalog | null, key: string | null, owned: Set<
   return { key: view.key, title: view.title, thumb_url: view.thumb_url, rarity: view.rarity };
 }
 
+const GRAPH_ORDER = ITERA_V2_GRAPH.claims.map((entry) => entry.id);
+const order = (key: string) => { const index = GRAPH_ORDER.indexOf(key); return index < 0 ? GRAPH_ORDER.length : index; };
+
 async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
   const listings = ok<ListingRow[]>((await db.from('talent_listings').select(LISTING_COLUMNS).order('listed_at', { ascending: false }).limit(LISTING_SCAN)) as never, 'talent_listings');
   if (listings.length === 0) return [];
@@ -125,7 +128,7 @@ async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
       stamped_days: facts.reduce((sum, entry) => sum + entry.stamped_days, 0),
       total_days: facts.reduce((sum, entry) => sum + entry.total_days, 0),
       certifications: rows.length,
-      capabilities: [...written].map(([key, value]) => ({ key, title: value.title })),
+      capabilities: [...written].map(([key, value]) => ({ key, title: value.title })).sort((a, b) => order(a.key) - order(b.key)),
       bounties_paid: money.count,
       bounties_paid_lamports: money.lamports,
       last_stamp_at: lastStamp,
@@ -146,7 +149,7 @@ async function board(db: IteraClient, request: Request, cors: Cors): Promise<Res
       read_at: new Date().toISOString(),
       total_listed: all.length,
       filter: { capability: filter.capability, min_days: filter.minDays },
-      capabilities: capabilityOptions(all, ITERA_V2_GRAPH.claims.map((entry) => entry.id)),
+      capabilities: capabilityOptions(all, GRAPH_ORDER),
       learners: shown,
     },
     200,
