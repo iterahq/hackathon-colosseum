@@ -60,7 +60,7 @@ export default function OtpLoginPage() {
   }
 
   return (
-    <AuthShell title={t('auth.otp.title')} subtitle={t('auth.otp.subtitle')} testId="otp-page">
+    <AuthShell title={t('auth.otp.title')} subtitle={t(sent ? 'auth.otp.subtitle' : 'auth.otp.subtitleBefore')} testId="otp-page">
       {!sent ? (
         <form onSubmit={onSend} className="flex flex-col gap-3" data-testid="otp-send-form">
           <Label htmlFor="otp-email">{t('auth.email')}</Label>

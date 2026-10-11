@@ -138,12 +138,13 @@ export default function SignupPage() {
         <SubscriptionIncludesPanel compact />
       </div>
       <p className="mt-6 text-center text-xs text-muted-foreground">
+        {t('auth.haveAccount')}{' '}
         <Link
           to="/login"
           className="font-medium text-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="signup-back-to-login"
         >
-          {t('auth.haveAccount')}
+          {t('auth.toLogin')}
         </Link>
       </p>
     </AuthShell>

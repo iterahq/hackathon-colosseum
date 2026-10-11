@@ -3,6 +3,7 @@ export const TERA_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'dash.trails.lockedGroup': 'Bloqueadas ({n})',
     'tera.notFound.title': 'O Tera procurou em todo lugar e não achou essa página.',
+    'tera.notFound.pageTitle': 'Página não encontrada',
     'tera.notFound.body': 'O endereço pode ter mudado ou nunca ter existido.',
     'tera.notFound.cta': 'Voltar para o painel',
     'tera.error.title': 'Algo quebrou aqui. O Tera já foi avisado.',
@@ -13,6 +14,7 @@ export const TERA_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   en: {
     'dash.trails.lockedGroup': 'Locked ({n})',
     'tera.notFound.title': "Tera looked everywhere and couldn't find this page.",
+    'tera.notFound.pageTitle': 'Page not found',
     'tera.notFound.body': 'The address may have changed or never existed.',
     'tera.notFound.cta': 'Back to the dashboard',
     'tera.error.title': 'Something broke here. Tera has been told.',
