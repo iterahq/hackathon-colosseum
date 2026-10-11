@@ -2,7 +2,9 @@
 // A robot learner completes ONE whole lesson day on the LIVE site by really clicking, dragging and typing in
 // the lesson player, with a brand-new wallet, then proves the certification (UI + API + chain).
 //   flock /tmp/hk/orch/locks/browser.lock node scripts/hackathon/clicked-day.mjs \
-//     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--lang pt|en] [--stop-after N] [--verify-only]
+//     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--lang pt|en] [--stop-after N] [--verify-only] [--guest]
+// `--guest` plays the landing's first path: the whole day at /try with NO session (answers kept in the browser),
+// then the wallet's session appears (the sign-in) and the page claims the answers; the day must be stamped at once.
 // `--lang` is the language the robot studies in: the page is set to it and the robot types what the lesson
 // asks for in THAT language (the headings of the editor exercises differ between pt and en).
 // It READS activity specs with psql (to know the right answer). It never writes progress, attempts or
@@ -23,6 +25,9 @@ const OUT = option('out', '/tmp/hk/orch/graph-clicked-day');
 const WALLET_FILE = option('wallet-file', `${OUT}/wallet.json`);
 const STOP_AFTER = Number(option('stop-after', '0'));
 const VERIFY_ONLY = args.includes('--verify-only');
+const GUEST = args.includes('--guest');
+const GUEST_ANSWERS_KEY = 'itera.guest.day1.v1';
+const ACTIVITY_BOX = GUEST ? 'try-activity' : 'lesson-activity';
 const LANG = option('lang', 'pt') === 'en' ? 'en' : 'pt';
 const LESSON_ID = '0e7d6618-f9ba-46ba-bf28-71cf86f32716';
 const SIWS_HOST = 'hackathon.iterahq.dev';
@@ -131,7 +136,7 @@ function codeSolution(activity, ordinal) {
 const CONTINUE = /^(Continuar|Continue)$/;
 
 async function handle(page, activity, ordinal, ctx) {
-  const root = page.getByTestId('lesson-activity');
+  const root = page.getByTestId(ACTIVITY_BOX);
   const spec = activity.spec;
   const footer = page.getByTestId('feedback-footer');
   const footerContinue = page.getByTestId('feedback-footer-continue');
@@ -305,22 +310,25 @@ async function runLesson(wallet, activities) {
   let completed = false;
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: LANG === 'en' ? 'en-US' : 'pt-BR' });
+    const sessionKey = `sb-${PROJECT_REF}-auth-token`;
     await context.addInitScript(([key, value, lang]) => {
       // The lesson preview is a sandboxed frame with no storage: only the page itself is prepared.
       try {
-        localStorage.setItem(key, value);
+        if (value) localStorage.setItem(key, value);
         localStorage.setItem('itera.locale', lang);
       } catch {
         /* sandboxed frame */
       }
-    }, [`sb-${PROJECT_REF}-auth-token`, JSON.stringify(wallet.session), LANG]);
+    }, [sessionKey, GUEST ? null : JSON.stringify(wallet.session), LANG]);
     const page = await context.newPage();
     page.on('request', (request) => {
       if (request.url().includes('/functions/v1/grade') && request.method() === 'POST') gradeCalls.push({ activity: currentId, status: null, verdict: null, sent: Object.keys(request.postDataJSON() ?? {}), request });
     });
+    const passportAnswers = [];
     page.on('response', async (response) => {
       const request = response.request();
       const url = response.url();
+      if (url.includes('/functions/v1/passport') && request.method() === 'POST') passportAnswers.push(await response.json().catch(() => null));
       if (url.includes('/functions/v1/grade') && request.method() === 'POST') {
         const call = gradeCalls.find((entry) => entry.request === request);
         if (call) {
@@ -331,11 +339,13 @@ async function runLesson(wallet, activities) {
       if (url.includes('/rest/v1/progress') && request.method() !== 'GET') progressWrites.push(`${request.method()} ${response.status()} ${request.postData()?.slice(0, 80)}`);
     });
 
-    await page.goto(`${BASE}/lesson/${LESSON_ID}`, { waitUntil: 'domcontentloaded' });
-    proof('lesson opened at /lesson/<id>', page.url().includes(`/lesson/${LESSON_ID}`), page.url());
-    await nicknameStep(page);
-    const activityBox = page.getByTestId('lesson-activity');
-    const ceremony = page.locator('[data-testid="ceremony-status"], [data-testid="credential-card"], [data-testid="lesson-end-hold"]').first();
+    await page.goto(GUEST ? `${BASE}/try` : `${BASE}/lesson/${LESSON_ID}`, { waitUntil: 'domcontentloaded' });
+    if (GUEST) proof('visitor: /try opened with no session in the browser', page.url().endsWith('/try') && (await page.evaluate((key) => localStorage.getItem(key), sessionKey)) === null, page.url());
+    else proof('lesson opened at /lesson/<id>', page.url().includes(`/lesson/${LESSON_ID}`), page.url());
+    if (!GUEST) await nicknameStep(page);
+    const activityBox = page.getByTestId(ACTIVITY_BOX);
+    const lessonEnd = '[data-testid="ceremony-status"], [data-testid="credential-card"], [data-testid="lesson-end-hold"]';
+    const ceremony = page.locator(GUEST ? '[data-testid="try-done"]' : lessonEnd).first();
     let handled = 0;
     let lastId = null;
     for (let guard = 0; guard < 60; guard += 1) {
@@ -371,6 +381,26 @@ async function runLesson(wallet, activities) {
         log(`stopping after activity ${ordinal} as asked`);
         break;
       }
+    }
+    if (completed && GUEST) {
+      await shot(page, 'visitor-end-card');
+      const kept = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), GUEST_ANSWERS_KEY)) ?? '{}');
+      const receipts = Object.values(kept).filter((answer) => answer?.receipt?.sig).length;
+      proof('visitor: every answer is kept in this browser, the graded ones with the server\'s signed receipt', Object.keys(kept).length === activities.length && receipts >= 8, `${Object.keys(kept).length} answers · ${receipts} receipts`);
+      // The sign-in: the wallet's session appears in the browser and the visitor comes back to /try.
+      await page.evaluate(([key, value]) => localStorage.setItem(key, value), [sessionKey, JSON.stringify(wallet.session)]);
+      const claimStarted = Date.now();
+      await page.goto(`${BASE}/try`, { waitUntil: 'domcontentloaded' });
+      await page.waitForURL(new RegExp(`/lesson/${LESSON_ID}`), { timeout: 45_000 }).catch(() => {});
+      const claimMs = Date.now() - claimStarted;
+      const claims = gradeCalls.filter((call) => call.sent.includes('claim'));
+      proof('after the sign-in the answers are claimed in ONE request and the lesson opens', page.url().includes(`/lesson/${LESSON_ID}`) && claims.length === 1 && claims[0].status === 200, `${claims.length} claim request(s), HTTP ${claims[0]?.status} · /try -> lesson in ${claimMs} ms`);
+      proof('the claim takes under 8 s on the page (was 21 s)', claimMs < 8_000, `${claimMs} ms`);
+      await nicknameStep(page);
+      await page.locator(lessonEnd).first().waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {});
+      for (let wait = 0; wait < 40 && passportAnswers.length === 0; wait += 1) await page.waitForTimeout(500);
+      const held = passportAnswers.find((answer) => answer?.day_pending_review);
+      proof('the day is NOT held for review after the claim', passportAnswers.length > 0 && !held, held ? JSON.stringify(held.day_pending_review) : `${passportAnswers.length} passport answer(s), none held`);
     }
     if (completed) {
       await page.waitForTimeout(2500);
