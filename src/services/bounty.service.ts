@@ -83,7 +83,7 @@ export function parseBounty(v: unknown): Bounty | null {
       totalDays: int(req.total_days) ?? 0,
     },
     escrow: text(escrow.address)
-      ? { address: String(escrow.address), explorerUrl: text(escrow.explorer_url), targetLamports: int(escrow.target_lamports) ?? 0, refundAddress: text(escrow.refund_address) }
+      ? { address: String(escrow.address), explorerUrl: text(escrow.explorer_url), targetLamports: int(escrow.target_lamports) ?? 0, refundAddress: text(escrow.refund_address), custody: escrow.custody === 'program' ? 'program' : 'itera_server', programId: text(escrow.program_id), programExplorerUrl: text(escrow.program_explorer_url) }
       : null,
     claimHours: int(r.claim_hours) ?? 72,
     expiresAt: text(r.expires_at),

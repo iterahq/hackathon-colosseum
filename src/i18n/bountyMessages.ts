@@ -8,7 +8,14 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.hero.sub':
       'Um patrocinador trava a recompensa na blockchain. Só carteiras com a certificação on-chain exigida podem aceitar a tarefa. Quando o trabalho é aprovado, o escrow paga direto na sua carteira.',
     'bounty.custody':
-      'O valor de cada missão fica numa conta de escrow própria na Solana (devnet), que qualquer pessoa pode conferir. Hoje quem assina a liberação é o servidor da Itera; um programa on-chain é o próximo passo.',
+      'A recompensa de cada missão fica travada num programa on-chain na Solana (devnet), que qualquer pessoa pode conferir. O próprio programa confere a certificação de quem aceita e só paga essa carteira, uma única vez. A equipe do patrocinador aprova o trabalho, mas não escolhe para onde o dinheiro vai.',
+    'bounty.custody.program':
+      'O programa confere, na própria Solana, que a carteira tem uma certificação da Itera antes de registrar quem aceitou. Depois só paga essa carteira, uma única vez, ou devolve ao patrocinador. O servidor da Itera confere os dias carimbados (lendo a mesma certificação) e a equipe do patrocinador decide se o trabalho foi aprovado.',
+    'bounty.custody.server':
+      'O valor desta missão fica numa conta de escrow própria na Solana (devnet), que qualquer pessoa pode conferir. Nesta missão quem assina a liberação é o servidor da Itera.',
+    'bounty.escrow.plain.program': 'Um programa on-chain guarda o valor desta missão. Qualquer pessoa pode conferir o saldo e as regras.',
+    'bounty.escrow.program': 'Programa de escrow',
+    'bounty.escrow.targetHint.program': 'A recompensa inteira, travada até a entrega ser aprovada.',
     'bounty.devnet': 'devnet',
     'bounty.nav.board': 'Missões',
     'bounty.nav.app': 'Abrir o app',
@@ -181,7 +188,14 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.hero.sub':
       'A sponsor locks the reward on chain. Only wallets with the required on-chain certification can take the task. When the work is approved, the escrow pays your wallet directly.',
     'bounty.custody':
-      "Each bounty's funds sit in its own escrow account on Solana (devnet), which anyone can check. Today the Itera server signs the release; an on-chain program is the next step.",
+      "Each bounty's reward is locked in an on-chain program on Solana (devnet), which anyone can check. The program itself checks the certification of whoever accepts and only pays that wallet, once. The sponsor's team approves the work, but does not choose where the money goes.",
+    'bounty.custody.program':
+      "The program checks, on Solana itself, that the wallet holds an Itera certification before it records who accepted. After that it only pays that wallet, once, or returns the funds to the sponsor. The Itera server checks the stamped days (reading the same certification) and the sponsor's team decides whether the work is approved.",
+    'bounty.custody.server':
+      "This bounty's funds sit in its own escrow account on Solana (devnet), which anyone can check. For this bounty the Itera server signs the release.",
+    'bounty.escrow.plain.program': "An on-chain program holds this bounty's funds. Anyone can check the balance and the rules.",
+    'bounty.escrow.program': 'Escrow program',
+    'bounty.escrow.targetHint.program': 'The whole reward, locked until the delivery is approved.',
     'bounty.devnet': 'devnet',
     'bounty.nav.board': 'Bounties',
     'bounty.nav.app': 'Open the app',

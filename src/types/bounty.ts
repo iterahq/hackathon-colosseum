@@ -15,6 +15,10 @@ export interface BountyEscrow {
   explorerUrl: string | null;
   targetLamports: number;
   refundAddress: string | null;
+  /** `program`: an on-chain program holds the funds. `itera_server`: an account whose key the Itera server holds. */
+  custody: 'program' | 'itera_server';
+  programId: string | null;
+  programExplorerUrl: string | null;
 }
 
 export interface BountyClaim {

@@ -96,9 +96,17 @@ export function trailAttribute(titleEn: string): string {
   return titleEn.length <= TRAIL_ATTRIBUTE_MAX ? titleEn : `${titleEn.slice(0, TRAIL_ATTRIBUTE_MAX - 1).trimEnd()}…`;
 }
 
-/** What the escrow account must hold for a bounty to open: the reward and the fee of the one transfer that empties it. */
+/** What a server-held escrow account must hold for a bounty to open: the reward and the fee of the one transfer that empties it. */
 export function fundingTarget(rewardLamports: bigint | number): bigint {
   return BigInt(rewardLamports) + BASE_FEE_LAMPORTS;
+}
+
+/**
+ * What funding a bounty costs its sponsor. A program escrow costs the reward
+ * plus the rent of its account (`escrowRentLamports`, asked from the node).
+ */
+export function fundingCost(bounty: Pick<BountyRow, 'escrow_kind' | 'reward_lamports'>, escrowRentLamports: bigint): bigint {
+  return bounty.escrow_kind === 'program' ? BigInt(bounty.reward_lamports) + escrowRentLamports : fundingTarget(bounty.reward_lamports);
 }
 
 /**
@@ -111,7 +119,7 @@ export function drainLamports(balance: bigint): bigint | null {
   return lamports > 0n ? lamports : null;
 }
 
-export function transferMemo(bountyId: string, kind: 'fund' | 'payout' | 'refund'): string {
+export function transferMemo(bountyId: string, kind: 'fund' | 'accept' | 'payout' | 'refund'): string {
   return `itera-bounty:${bountyId}:${kind}`;
 }
 
@@ -292,8 +300,11 @@ export function bountyView(input: {
   lang: Lang;
   now: Date;
   functionsBase: string;
+  /** The escrow program's id, for bounties it holds. */
+  programId?: string;
 }) {
   const { bounty, claim, lang } = input;
+  const program = bounty.escrow_kind === 'program' ? (input.programId ?? null) : null;
   const status = publicStatus(bounty, input.now);
   const paid = bounty.status === 'paid';
   return {
@@ -320,8 +331,10 @@ export function bountyView(input: {
       custody: bounty.escrow_kind === 'program' ? 'program' : 'itera_server',
       address: bounty.escrow_address,
       explorer_url: explorerUrl('address', bounty.escrow_address),
-      target_lamports: Number(fundingTarget(bounty.reward_lamports)),
+      target_lamports: Number(bounty.escrow_kind === 'program' ? BigInt(bounty.reward_lamports) : fundingTarget(bounty.reward_lamports)),
       refund_address: bounty.refund_address,
+      program_id: program,
+      program_explorer_url: explorerUrl('address', program),
     },
     claim_hours: bounty.claim_hours,
     expires_at: bounty.expires_at,

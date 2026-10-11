@@ -37,7 +37,7 @@ export function signerFromSeed(seed: Uint8Array, address: string): Promise<Trans
 }
 
 /** The treasury keypair from `SOLANA_TREASURY_SECRET` (64 bytes as a JSON array or base58). */
-function loadTreasury(): Promise<TransferSigner> {
+export function treasurySigner(): Promise<TransferSigner> {
   const secret = secretFrom('SOLANA_TREASURY_SECRET');
   return signerFromSeed(secret.slice(0, 32), base58Encode(secret.slice(32)));
 }
@@ -62,39 +62,46 @@ export interface TreasuryTransfer {
 }
 
 /**
- * Sends lamports from `signer` (fee payer and source) and waits for
+ * Signs a message with `signer` (its only signer), sends it and waits for
  * confirmation. Returns the signature. Throws `TransferBroadcastError` for any
  * failure after the node accepted the transaction; any other error means
  * nothing was sent.
  */
-export async function sendTransfer(signer: TransferSigner, input: TreasuryTransfer): Promise<string> {
+export async function sendMessage(
+  signer: TransferSigner,
+  messageOf: (recentBlockhash: string) => Uint8Array,
+  onBroadcast?: (signature: string) => Promise<void>,
+): Promise<string> {
   const { blockhash } = await latestBlockhash();
-  const message = buildTransferMessage({
-    payer: signer.address,
-    recipient: input.recipient,
-    lamports: input.lamports,
-    memo: input.memo,
-    recentBlockhash: blockhash,
-  });
+  const message = messageOf(blockhash);
   const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', signer.key, message as Uint8Array<ArrayBuffer>));
   const sent = await rpc<string>('sendTransaction', [
     base64Encode(serializeTransaction(message, signature)),
     { encoding: 'base64', preflightCommitment: 'confirmed' },
   ]);
   try {
-    await input.onBroadcast?.(sent);
+    await onBroadcast?.(sent);
     const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
     while (Date.now() < deadline) {
       const statuses = await rpc<{ value: Array<{ err: unknown; confirmationStatus?: string } | null> }>('getSignatureStatuses', [[sent]]);
       const status = statuses.value[0];
-      if (status?.err) throw new Error(`transfer ${sent} failed`);
+      if (status?.err) throw new Error(`transaction ${sent} failed`);
       if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return sent;
       await new Promise((resolve) => setTimeout(resolve, CONFIRM_POLL_MS));
     }
-    throw new Error(`transfer ${sent} was not confirmed in time`);
+    throw new Error(`transaction ${sent} was not confirmed in time`);
   } catch (error) {
     throw new TransferBroadcastError(sent, error instanceof Error ? error.message : String(error));
   }
+}
+
+/** Sends lamports from `signer` (fee payer and source). Same contract as `sendMessage`. */
+export function sendTransfer(signer: TransferSigner, input: TreasuryTransfer): Promise<string> {
+  return sendMessage(
+    signer,
+    (recentBlockhash) => buildTransferMessage({ payer: signer.address, recipient: input.recipient, lamports: input.lamports, memo: input.memo, recentBlockhash }),
+    input.onBroadcast,
+  );
 }
 
 export type SignatureFate = 'landed' | 'failed' | 'in_flight' | 'unknown';
@@ -116,7 +123,7 @@ export async function signatureFate(signature: string): Promise<SignatureFate> {
 
 /** Sends lamports from the treasury. Same contract as `sendTransfer`. */
 export async function sendFromTreasury(input: TreasuryTransfer): Promise<string> {
-  return sendTransfer(await loadTreasury(), input);
+  return sendTransfer(await treasurySigner(), input);
 }
 
 /** The mint authority's address, read from the authority's own secret (bytes 32..64 are the public key). */
@@ -125,7 +132,7 @@ export function authorityAddress(): string {
 }
 
 export async function treasuryAddress(): Promise<string> {
-  return (await loadTreasury()).address;
+  return (await treasurySigner()).address;
 }
 
 /**

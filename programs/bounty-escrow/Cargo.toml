@@ -1,0 +1,21 @@
+[package]
+name = "itera-bounty-escrow"
+version = "0.1.0"
+edition = "2021"
+description = "Itera bounties: one escrow account per bounty, released only to a wallet holding an Itera certification"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+solana-program = "2.1"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+opt-level = "z"
+
+[workspace]
