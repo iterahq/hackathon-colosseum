@@ -1,7 +1,6 @@
 /** Strings of the "what a stamp attests" block of /verify: who grades each kind of activity and which tables a stamp reads. */
 export const PROVE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
-    'verify.nav.stamp': 'Carimbo',
     'verify.stamp.title': 'O que um carimbo atesta',
     'verify.stamp.intro':
       'Um dia é carimbado quando cada atividade dele tem um veredito de acerto no servidor da Itera. O navegador não corrige as respostas que valem: ele recebe a lição sem o gabarito, envia a resposta e recebe o veredito.',
@@ -38,7 +37,6 @@ export const PROVE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'verify.stamp.script': 'Para testar: scripts/hackathon/answer-key-attacks.mjs no repositório tenta carimbar o Dia 1 só com o que o navegador recebe, e tenta escrever resultado e XP direto no banco.',
   },
   en: {
-    'verify.nav.stamp': 'Stamp',
     'verify.stamp.title': 'What a stamp attests',
     'verify.stamp.intro':
       'A day is stamped when every activity in it has a passing verdict on Itera\'s server. The browser does not grade the answers that count: it receives the lesson without the answer key, sends the answer and gets the verdict back.',
