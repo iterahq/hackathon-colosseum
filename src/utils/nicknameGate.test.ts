@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  generatedNameIn,
   isWalletUser,
   normalizeNickname,
   shouldShowNicknameGate,
+  wasNicknameAsked,
 } from './nicknameGate';
 
 const wallet = { app_metadata: { provider: 'web3' }, identities: [] };
@@ -51,5 +53,28 @@ describe('shouldShowNicknameGate, generated names', () => {
     expect(shouldShowNicknameGate({ user: wallet as never, profile: { displayName: 'Tera Curioso 482' }, skipped: false })).toBe(true);
     expect(shouldShowNicknameGate({ user: wallet as never, profile: { displayName: 'Tera Curioso 482' }, skipped: true })).toBe(false);
     expect(shouldShowNicknameGate({ user: wallet as never, profile: { displayName: 'Marina' }, skipped: false })).toBe(false);
+  });
+});
+
+describe('generatedNameIn', () => {
+  it('translates the word of a generated name and keeps the number', () => {
+    expect(generatedNameIn('Tera Ousado 477', 'en')).toBe('Tera Bold 477');
+    expect(generatedNameIn('Tera Bold 477', 'pt')).toBe('Tera Ousado 477');
+  });
+
+  it('leaves alone a name already in that language and a name somebody chose', () => {
+    expect(generatedNameIn('Tera Bold 477', 'en')).toBeNull();
+    expect(generatedNameIn('Tera Ousado 477', 'pt')).toBeNull();
+    expect(generatedNameIn('Marina', 'en')).toBeNull();
+    expect(generatedNameIn('Tera Zzz 123', 'en')).toBeNull();
+    expect(generatedNameIn(null, 'en')).toBeNull();
+  });
+});
+
+describe('wasNicknameAsked', () => {
+  it('reads the mark of the account', () => {
+    expect(wasNicknameAsked({ user_metadata: { nickname_asked: true } } as never)).toBe(true);
+    expect(wasNicknameAsked({ user_metadata: {} } as never)).toBe(false);
+    expect(wasNicknameAsked(null)).toBe(false);
   });
 });

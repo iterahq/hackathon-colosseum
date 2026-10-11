@@ -183,12 +183,15 @@ export function choiceOptionState({
   shown,
   chosen,
   isCorrectOption,
+  hideKey = false,
 }: {
   shown: boolean;
   chosen: boolean;
   isCorrectOption: boolean;
+  /** The host keeps the answer key off a miss: only what the learner picked is marked. */
+  hideKey?: boolean;
 }): ChoiceOptionState {
-  if (shown && isCorrectOption) return 'correct';
+  if (shown && isCorrectOption && !hideKey) return 'correct';
   if (shown && chosen && !isCorrectOption) return 'wrong';
   return chosen ? 'chosen' : 'idle';
 }

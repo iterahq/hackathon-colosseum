@@ -19,6 +19,13 @@ export function isAddressLikeName(displayName: string | null | undefined): boole
   return name === '' || ADDRESS_LIKE.test(name) || isGeneratedTeraName(name);
 }
 
+/** The account-level mark that the question was already put to this learner. Lives in the auth user's metadata, so it follows the account to any browser. */
+export const NICKNAME_ASKED_FLAG = 'nickname_asked';
+
+export function wasNicknameAsked(user: Pick<User, 'user_metadata'> | null | undefined): boolean {
+  return user?.user_metadata?.[NICKNAME_ASKED_FLAG] === true;
+}
+
 export interface NicknameGateInput {
   user: Pick<User, 'app_metadata' | 'identities'> | null | undefined;
   /** null while loading or when the profile could not be read: never block. */
@@ -63,4 +70,25 @@ export function rememberNicknameSkipped(authUid: string): void {
   } catch {
     // Storage unavailable: the step simply shows again next time.
   }
+}
+
+const GENERATED_WORDS: ReadonlyArray<readonly [pt: string, en: string]> = [
+  ['Curioso', 'Curious'], ['Focado', 'Focused'], ['Veloz', 'Swift'], ['Criativo', 'Creative'], ['Atento', 'Alert'],
+  ['Valente', 'Brave'], ['Sereno', 'Calm'], ['Esperto', 'Clever'], ['Ligeiro', 'Quick'], ['Firme', 'Steady'],
+  ['Brilhante', 'Bright'], ['Paciente', 'Patient'], ['Ousado', 'Bold'], ['Tranquilo', 'Easygoing'], ['Sagaz', 'Sharp'],
+  ['Dedicado', 'Dedicated'], ['Animado', 'Lively'], ['Constante', 'Constant'], ['Engenhoso', 'Inventive'], ['Gentil', 'Kind'],
+];
+
+/**
+ * The name provisioning gave a wallet learner ("Tera Ousado 477"), in the
+ * language of the account ("Tera Bold 477"). `null` when it is not a generated
+ * name or is already in that language.
+ */
+export function generatedNameIn(displayName: string | null | undefined, locale: 'pt' | 'en'): string | null {
+  const match = /^Tera\s+([\p{L}]+)\s+(\d{3})$/u.exec((displayName ?? '').trim());
+  if (!match) return null;
+  const pair = GENERATED_WORDS.find(([pt, en]) => pt === match[1] || en === match[1]);
+  if (!pair) return null;
+  const word = locale === 'en' ? pair[1] : pair[0];
+  return word === match[1] ? null : `Tera ${word} ${match[2]}`;
 }

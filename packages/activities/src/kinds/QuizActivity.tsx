@@ -51,6 +51,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useActivityI18n } from '../context.js';
+import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import type { QuizOption, QuizSpec } from '../specs.js';
 import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
@@ -84,6 +85,7 @@ export function QuizActivity({
   reveal?: boolean;
 }) {
   const { t, locale } = useActivityI18n();
+  const hidesAnswerOnMiss = useHostHidesAnswerOnMiss();
   const tera = useTeraMentioned();
   const spec = activity.spec as unknown as QuizSpec;
   const options = useMemo(() => spec?.options ?? [], [spec?.options]);
@@ -103,6 +105,8 @@ export function QuizActivity({
     correct: isQuizCorrect,
     hasAnswer: selected !== null,
   });
+  // A miss in a host that keeps the key: mark the pick, not the answer. The instructor's reveal still shows it.
+  const hidesKey = hidesAnswerOnMiss && !reveal && m.gradeResult === false;
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída"). Grade off the CURRENT selection — the machine's
@@ -117,7 +121,7 @@ export function QuizActivity({
     onComplete(isQuizCorrect, {
       response: chosen ? quizOptionLabel(chosen, selected as number) : '',
       actions: trace.drain(),
-      explanation: answerExplanationText(activity.spec, locale, isQuizCorrect),
+      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isQuizCorrect),
     });
   }
 
@@ -165,6 +169,7 @@ export function QuizActivity({
             shown: m.shown,
             chosen,
             isCorrectOption: Boolean(o.isCorrect),
+            hideKey: hidesKey,
           });
           const showCorrect = state === 'correct';
           const showWrong = state === 'wrong';

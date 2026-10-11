@@ -234,6 +234,8 @@ export async function persistActivityProgress(
     // unsaved completion.
     const verdict = await submitForGrading({ activityId, passed, response, actions });
     if (!verdict) return false;
+    // Graded without a session: the server recorded nothing, so nothing is durable.
+    if (verdict.guest) return false;
     if (passed && verdict.verdict !== 'pass') return false;
 
     // Results: the attempt log — every attempt, with the REAL outcome AND what

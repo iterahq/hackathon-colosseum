@@ -19,6 +19,7 @@ import { GRAPH_MESSAGES } from './graphMessages';
 import { SHOP_MESSAGES } from './shopMessages';
 import { CRYSTALS_MESSAGES } from './crystalsMessages';
 import { UX_MESSAGES } from './uxMessages';
+import { LESSON_RULES_MESSAGES } from './lessonRulesMessages';
 import { AVATAR_MESSAGES } from './avatarMessages';
 import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
@@ -1078,7 +1079,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscribe.includes.catalog': 'Catálogo completo de programas e atividades',
     'subscribe.includes.live': 'Aulas ao vivo com o instrutor',
     'subscribe.includes.aiReview': 'Exercícios revisados pelo Instrutor IA',
-    'subscribe.includes.badges': 'Badges verificáveis do que você concluiu',
+    'subscribe.includes.badges': 'Certificações verificadas na Solana do que você concluiu',
     'subscribe.terms':
       'Assinatura mensal, renovada automaticamente até você cancelar. O cancelamento vale no fim do período já pago — você não perde o que pagou. Cobrança pela Stripe; o cartão não passa pela Itera.',
     'subscription.resume.action': 'Reativar assinatura',
@@ -1241,6 +1242,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...SHOP_MESSAGES.pt,
     ...CRYSTALS_MESSAGES.pt,
     ...UX_MESSAGES.pt,
+    ...LESSON_RULES_MESSAGES.pt,
     ...AVATAR_MESSAGES.pt,
     ...LINK_MESSAGES.pt,
     ...GIFT_MESSAGES.pt,
@@ -2440,6 +2442,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...SHOP_MESSAGES.en,
     ...CRYSTALS_MESSAGES.en,
     ...UX_MESSAGES.en,
+    ...LESSON_RULES_MESSAGES.en,
     ...AVATAR_MESSAGES.en,
     ...LINK_MESSAGES.en,
     ...GIFT_MESSAGES.en,

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import LessonPlayer from '@/pages/LessonPlayer';
+import { useHostVerdictRecorder } from '@iterahq/activities';
 import {
   buildAttemptFeedback,
   fetchAnswerActions,
@@ -99,8 +100,16 @@ vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
       if (settleOnMount) onComplete(settleOnMount.correct, { response: settleOnMount.response });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+    const recordVerdict = useHostVerdictRecorder();
     return (
     <>
+      {/* A kind that shows its own verdict and waits for its own "continue": the verdict rides up first. */}
+      <button data-testid="stub-verdict-pass" onClick={() => recordVerdict?.(true, { response: 'Tudo preenchido' })}>
+        veredito certo
+      </button>
+      <button data-testid="stub-verdict-miss" onClick={() => recordVerdict?.(false, { response: 'Pela metade' })}>
+        veredito errado
+      </button>
       <span
         data-testid="stub-state"
         data-status={activity.status ?? ''}
@@ -533,34 +542,78 @@ describe('the result stands — it is recorded at the answer and survives a relo
       expect(inserts['activity_results']).toHaveLength(1);
     });
 
-    it('does not strand a learner who reloads out of lives before pressing Continue', async () => {
+    it('has no attempt budget: a spent one from an older build neither locks the exercise nor records a miss', async () => {
       saveCodeAttempts('a1', '5');
       renderPlayer();
       await waitForPlayerReady();
-      // Pre-fix: a1 on screen, no submit, no Continue, forward disabled — for good.
       expect(shownId()).toBe('a1');
-      await screen.findByTestId('lesson-retry-missed');
-      expect(screen.getByTestId('concept-continue')).toBeTruthy();
-      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-      expect((inserts['activity_results'][0] as { passed: boolean }).passed).toBe(false);
+      expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+      expect(screen.getByTestId('stub-state').getAttribute('data-status')).not.toBe('done');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(inserts['activity_results']).toBeUndefined();
+    });
 
-      fireEvent.click(screen.getByTestId('concept-continue'));
+    it("records a pass at the verdict: leaving without the exercise's own Continue keeps it", async () => {
+      const data = lessonData();
+      data.activities[1] = { ...data.activities[1], kind: 'code_fill_type' } as Activity;
+      useLessonContent.mockReturnValue({ data, isPending: false, isError: false, refetch: vi.fn() });
+      renderPlayer();
+      await waitForPlayerReady();
+      fireEvent.click(screen.getByTestId('stub-correct'));
+      fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+      await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+
+      fireEvent.click(screen.getByTestId('stub-verdict-pass'));
+      // On the server before anything else is pressed.
+      await waitFor(() => expect(inserts['activity_results']?.length).toBe(2), { timeout: 5000 });
+      const row = inserts['activity_results'][1] as { activity_id: string; passed: boolean; feedback: { response?: string } };
+      expect(row).toMatchObject({ activity_id: 'a2', passed: true });
+      expect(row.feedback.response).toBe('Tudo preenchido');
+      expect(shownId()).toBe('a2');
+
+      // The judge's route: away by the header, never pressing Continue.
+      fireEvent.click(screen.getByTestId('lesson-prev'));
+      await waitFor(() => expect(shownId()).toBe('a1'));
+      fireEvent.click(screen.getByTestId('lesson-next'));
+      await waitFor(() => expect(shownId()).toBe('a2'));
+      await waitFor(() => expect(screen.getByTestId('stub-state').getAttribute('data-status')).toBe('done'));
+      expect(inserts['activity_results']).toHaveLength(2);
+    });
+
+    it('moves on from a recorded pass without writing it twice', async () => {
+      const data = lessonData();
+      data.activities[0] = { ...data.activities[0], kind: 'code_fill_type' } as Activity;
+      useLessonContent.mockReturnValue({ data, isPending: false, isError: false, refetch: vi.fn() });
+      renderPlayer();
+      await waitForPlayerReady();
+      fireEvent.click(screen.getByTestId('stub-verdict-pass'));
+      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      fireEvent.click(screen.getByTestId('stub-correct'));
       await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
       expect(inserts['activity_results']).toHaveLength(1);
     });
 
-    it('records running out of lives once, not on every visit', async () => {
-      saveCodeAttempts('a1', '5');
-      const first = renderPlayer();
-      await waitForPlayerReady();
-      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-      first.unmount();
-      progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    it('sends a miss to the server at its verdict, once, and a later pass still counts', async () => {
       renderPlayer();
       await waitForPlayerReady();
-      expect(shownId()).toBe('a2');
-      fireEvent.click(screen.getByTestId('lesson-prev'));
-      await waitFor(() => expect(shownId()).toBe('a1'));
+      fireEvent.click(screen.getByTestId('stub-verdict-miss'));
+      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      expect((inserts['activity_results'][0] as { passed: boolean }).passed).toBe(false);
+      expect(shownId()).toBe('a1');
+      expect(screen.getByTestId('stub-state').getAttribute('data-status')).not.toBe('done');
+
+      fireEvent.click(screen.getByTestId('stub-correct'));
+      await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+      expect((inserts['activity_results'] as Array<{ passed: boolean }>).map((r) => r.passed)).toEqual([false, true]);
+    });
+
+    it('does not write a miss twice when the learner continues anyway', async () => {
+      renderPlayer();
+      await waitForPlayerReady();
+      fireEvent.click(screen.getByTestId('stub-verdict-miss'));
+      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      fireEvent.click(screen.getByTestId('stub-wrong'));
+      await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
       expect(inserts['activity_results']).toHaveLength(1);
     });
 

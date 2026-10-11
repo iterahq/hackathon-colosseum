@@ -19,7 +19,7 @@ describe('XrayHint', () => {
   it('asks for the mouse on a screen that hovers', () => {
     mockHover(false);
     render(<XrayHint />);
-    expect(screen.getByTestId('xray-hint').textContent).toBe('Passe o mouse aqui');
+    expect(screen.getByTestId('xray-hint').textContent).toBe('Passe por aqui');
   });
 
   it('asks for the finger on a touch-only screen', () => {

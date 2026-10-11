@@ -86,12 +86,15 @@ export async function markQuestionOptions(canvasElement: Canvas, labels: string[
 }
 
 /**
- * `inspect`: aponta cada peça da PÁGINA, uma por uma. Cada primeira descoberta
+ * `inspect`: escolhe cada peça da PÁGINA e depois a linha dela no código. Cada par certo
  * vira uma ficha; achar todas abre o gate. Mouse e dedo são o mesmo pointer event.
  */
 export async function discoverAllTwins(canvasElement: Canvas) {
-  for (const target of within(canvasElement).getAllByTestId('inspect-page-target')) {
-    await userEvent.hover(target);
+  const pieces = within(canvasElement).getAllByTestId('inspect-page-target');
+  const lines = within(canvasElement).getAllByTestId('inspect-code-target');
+  for (const [index, piece] of pieces.entries()) {
+    await userEvent.click(piece);
+    await userEvent.click(lines[index]);
   }
 }
 

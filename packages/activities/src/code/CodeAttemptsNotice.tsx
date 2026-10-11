@@ -1,5 +1,6 @@
 import { Heart, HeartCrack } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { useHostUnlimitedAttempts } from '../components/hostLessonRules.js';
 import { attemptBudget, attemptNotice, CODE_ATTEMPT_BUDGET } from './attemptBudget.js';
 
 /**
@@ -22,6 +23,15 @@ export function CodeAttemptsNotice({ spent, note }: { spent: number; note?: stri
   const { t } = useActivityI18n();
   const { remaining, exhausted } = attemptBudget(spent);
   const notice = attemptNotice(spent);
+  const unlimited = useHostUnlimitedAttempts();
+
+  if (unlimited) {
+    return note ? (
+      <p className="mt-2 text-xs text-muted-foreground sm:mt-3" data-testid="code-checks-frozen">
+        {note}
+      </p>
+    ) : null;
+  }
 
   return (
     <p

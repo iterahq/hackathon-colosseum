@@ -30,10 +30,10 @@ export function NicknameForm({ saving, happy, onSubmit, onSkip }: NicknameFormPr
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="flex w-full max-w-[420px] flex-col items-center gap-5 px-6 text-center"
+      className="mx-auto flex w-full max-w-[420px] flex-col items-center gap-5 px-6 text-center"
     >
       <TeraAvatar mood={happy ? 'happy' : 'neutral'} size="xl" />
-      <h1 className="[font:700_40px/1_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2]">
+      <h1 id="nickname-gate-title" className="[font:700_40px/1_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2]">
         {t('tera.nickname.title')}
       </h1>
       <div className="flex w-full flex-col gap-2 text-left">

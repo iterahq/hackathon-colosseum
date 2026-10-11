@@ -367,6 +367,13 @@ const PUBLIC_RUNTIME_SURFACE = [
   'useHostOwnsSettledAction',
   'HostExplainsMisses',
   'useHostExplainsMisses',
+  // The lesson player's rules for a miss: the key stays hidden, no attempt budget, the verdict rides up at the submit.
+  'HostHidesAnswerOnMiss',
+  'useHostHidesAnswerOnMiss',
+  'HostUnlimitedAttempts',
+  'useHostUnlimitedAttempts',
+  'HostRecordsVerdict',
+  'useHostVerdictRecorder',
   'ActivityTextarea',
   'SandboxBubble',
   'SandboxChatLog',

@@ -165,13 +165,13 @@ async function handle(page, activity, ordinal, ctx) {
       const codeTargets = root.getByTestId('inspect-code-target');
       const count = await pageTargets.count();
       for (let index = 0; index < count; index += 1) {
-        await pageTargets.nth(index).hover();
+        await pageTargets.nth(index).click();
         await page.waitForTimeout(250);
-        await codeTargets.nth(index).hover();
+        await codeTargets.nth(index).click();
         await page.waitForTimeout(250);
       }
       await settle('inspect');
-      return `hovered ${count} page elements and their code lines, then footer Continue`;
+      return `paired ${count} page elements with their code lines, then footer Continue`;
     }
     case 'single_choice': {
       await root.locator(`[data-testid="single-choice-option"][data-option-id="${spec.correct_option_id}"]`).click();

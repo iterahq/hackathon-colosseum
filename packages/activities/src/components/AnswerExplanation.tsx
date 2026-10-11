@@ -41,6 +41,7 @@ import { ExplanationDisclosure } from './ExplanationDisclosure.js';
 import { RichSpans } from './RichSpans.js';
 import { TeraAvatar } from './TeraAvatar.js';
 import { useHostExplainsMisses } from './explainedMiss.js';
+import { useHostHidesAnswerOnMiss } from './hostLessonRules.js';
 
 /**
  * The authored "porquê" as text for a MISS, or `undefined` when there is none or
@@ -82,9 +83,12 @@ export function AnswerExplanation({
 }) {
   const { t, locale } = useActivityI18n();
   const explainsMisses = useHostExplainsMisses();
+  const hidesAnswerOnMiss = useHostHidesAnswerOnMiss();
   const playSound = useActivitySound();
   const text = (resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
   if (!shown || correct === true || text === '' || (handedUp && explainsMisses)) return null;
+  // The authored explanation names the answer.
+  if (hidesAnswerOnMiss && correct === false) return null;
 
   return (
     <div className="mt-4 rounded-2xl border border-border bg-card px-4 py-1" data-testid="answer-explanation">

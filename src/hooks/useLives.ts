@@ -6,7 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { useCompanion } from '@/hooks/useCompanion';
-import { reportLessonEnd, reportLifeLost } from '@/services/companion.service';
+import { reportLessonEnd, reportLifeLost, reviveLives } from '@/services/companion.service';
+import { SERVER_LIVES_EVENT, type ServerLivesDetail } from '@/services/grade.service';
+import { toLives } from '@/services/shopNormalize';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import type { CompanionSnapshot, LivesState, LivesUpdate } from '@/types/shop';
 import { livesActive, loseLife, regenerate, secondsToNextLife } from '@/utils/lives';
@@ -69,6 +71,18 @@ export function useLives({ harness = false, enabled = true }: { harness?: boolea
       queryClient.setQueryData<CompanionSnapshot>(key, (prev) => (prev ? { ...prev, lives: update.lives, companion: update.companion ?? prev.companion, chain: update.chain ?? prev.chain } : prev)),
     [queryClient, key]
   );
+
+  // A miss graded by the server carries the lives it left: that count is the one shown.
+  useEffect(() => {
+    if (!active) return;
+    const onServerLives = (event: Event) => {
+      const next = toLives((event as CustomEvent<ServerLivesDetail>).detail?.lives);
+      if (!next) return;
+      queryClient.setQueryData<CompanionSnapshot>(key, (prev) => (prev ? { ...prev, lives: reviveLives((event as CustomEvent<ServerLivesDetail>).detail.lives, next) } : prev));
+    };
+    window.addEventListener(SERVER_LIVES_EVENT, onServerLives);
+    return () => window.removeEventListener(SERVER_LIVES_EVENT, onServerLives);
+  }, [active, queryClient, key]);
 
   /** A wrong answer: one life, once per attempt. Shown at once, then replaced by the server's count. */
   const lose = useCallback(

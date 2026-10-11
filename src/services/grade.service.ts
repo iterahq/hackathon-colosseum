@@ -12,6 +12,21 @@ export interface GradeRequest {
   answer: Record<string, unknown> | null;
 }
 
+/** What a miss cost, as the server decided it. */
+export interface GradeMiss {
+  charge: 'charged' | 'already_charged' | 'lesson_cap';
+  life_lost: boolean;
+  lesson_cap: number;
+}
+
+/** Fired with the raw `lives` block of a grade answer: the server is the only judge of a life. */
+export const SERVER_LIVES_EVENT = 'itera:server-lives';
+
+export interface ServerLivesDetail {
+  lives: unknown;
+  miss: GradeMiss | null;
+}
+
 /** Answer of `POST /functions/v1/grade`. */
 export interface GradeVerdict {
   verdict: 'pass' | 'fail';
@@ -20,6 +35,10 @@ export interface GradeVerdict {
   attempt_id: string;
   answer_hash: string;
   graded_at: string;
+  miss?: GradeMiss;
+  lives?: unknown;
+  /** Graded for a visitor with no session: nothing was recorded. */
+  guest?: boolean;
 }
 
 /** The server caps the text of an answer; a longer one is cut here so the request is not refused whole. */
@@ -60,7 +79,11 @@ export async function submitForGrading(input: {
   };
   try {
     const { data, error } = await getSupabase().functions.invoke('grade', { method: 'POST', body });
-    return !error && isVerdict(data) ? data : null;
+    if (error || !isVerdict(data)) return null;
+    if (data.lives && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent<ServerLivesDetail>(SERVER_LIVES_EVENT, { detail: { lives: data.lives, miss: data.miss ?? null } }));
+    }
+    return data;
   } catch {
     return null;
   }
