@@ -37,9 +37,9 @@ describe('judgePaidHint', () => {
 
 describe('judgeBoardTitle', () => {
   it('counts every judge payout the way the tile does, and says how many the list shows', () => {
-    expect(judgeBoardTitle(t('en'), { outside: 1, teamTests: 5, listed: 5 })).toBe('6 judge bounty payouts by the automatic check · 1 to outside wallets · 5 team test runs · latest 5 below');
-    expect(judgeBoardTitle(t('en'), { outside: 1, teamTests: 0, listed: 1 })).toBe('1 judge bounty payout by the automatic check · 1 to an outside wallet · 0 team test runs');
-    expect(judgeBoardTitle(t('pt'), { outside: 0, teamTests: 2, listed: 2 })).toBe('2 pagamentos da missão do jurado pela verificação automática · 0 a carteiras de fora · 2 em testes do time');
+    expect(judgeBoardTitle(t('en'), { outside: 1, teamTests: 5, listed: 5 })).toBe('6 judge bounty payouts by the automatic check · outside wallets: 1 · team test runs: 5 · latest 5 below');
+    expect(judgeBoardTitle(t('en'), { outside: 1, teamTests: 0, listed: 1 })).toBe('1 judge bounty payout by the automatic check · outside wallets: 1 · team test runs: 0');
+    expect(judgeBoardTitle(t('pt'), { outside: 0, teamTests: 2, listed: 2 })).toBe('2 pagamentos da missão do jurado pela verificação automática · carteiras de fora: 0 · testes do time: 2');
     expect(judgeBoardTitle(t('en'), { outside: 0, teamTests: 0, listed: 0 })).toBe("Judge bounties: none paid to an outside wallet yet · the team's latest test runs below");
   });
 });
