@@ -21,7 +21,7 @@ export function EscrowPanel({ bounty }: { bounty: Bounty }) {
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t(program ? 'bounty.escrow.plain.program' : 'bounty.escrow.plain')}</p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
           <dt className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.escrow.address')}</dt>
           <dd className="flex flex-wrap items-center gap-2">
             <CopyAddress address={escrow.address} />
