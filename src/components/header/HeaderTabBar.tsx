@@ -9,6 +9,12 @@ interface Props {
 }
 
 /** Phone navigation: a fixed bottom tab bar, one equal column per nav entry (44px+ targets), the active one lit green with a top notch. */
+/** A tab fits about ten letters on a phone: a label that has a `.short` twin uses it here. */
+function shortLabel(t: (key: string) => string, key: string): string {
+  const short = t(`${key}.short`);
+  return short === `${key}.short` ? t(key) : short;
+}
+
 export function HeaderTabBar({ active }: Props) {
   const { t } = useI18n();
 
@@ -30,7 +36,7 @@ export function HeaderTabBar({ active }: Props) {
                 className={`hd-focus flex h-full min-h-11 flex-col items-center justify-center gap-1 ${on ? 'text-[#3FD17F]' : 'text-[#A0978A]'}`}
               >
                 <HeaderIcon name={icon} size={22} />
-                <span className="max-w-full truncate px-0.5 [font:600_10px_JetBrains_Mono] uppercase tracking-[.04em] max-[400px]:[font-size:8.5px] max-[400px]:tracking-normal">{t(key)}</span>
+                <span className="max-w-full truncate px-0.5 [font:600_10px_JetBrains_Mono] uppercase tracking-[.04em] max-[400px]:[font-size:8.5px] max-[400px]:tracking-normal">{shortLabel(t, key)}</span>
               </Link>
             </li>
           );
