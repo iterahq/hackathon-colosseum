@@ -151,7 +151,7 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
   const judge = useJudgeSubmit();
   return (
     <>
-      <StepProgress kind="accept" step={accept} />
+      {bounty.status !== 'paid' && <StepProgress kind="accept" step={accept} />}
       <StepProgress kind="withdraw" step={withdraw} />
       <JudgeProgress judge={judge} paid={bounty.status === 'paid'} />
       <PanelView bounty={bounty} accept={accept} withdraw={withdraw} judge={judge} />
