@@ -41,6 +41,11 @@ export function plural(t: (key: string, vars?: Record<string, string | number>) 
   return t(`${key}${n === 1 ? '.one' : '.many'}`, { n, ...vars });
 }
 
+export function hiddenTestsLine(t: (key: string, vars?: Record<string, string | number>) => string, stats: { hiddenTestCount: number | null; listedCount: number | null } | undefined, fallbackListed: number): string | null {
+  const hidden = stats?.hiddenTestCount ?? 0;
+  return hidden > 0 ? plural(t, 'bounty.stats.hiddenTests', hidden, { listed: stats?.listedCount ?? fallbackListed, hidden }) : null;
+}
+
 export const MAX_DELIVERY_URL = 500;
 
 export type DeliveryUrlProblem = 'empty' | 'not_url' | 'http' | 'too_long';
@@ -113,6 +118,9 @@ export function statusTone(status: BountyStatus): StatusTone {
   if (status === 'paid') return 'paid';
   return 'muted';
 }
+
+/** A posted bounty nobody funded: it is not on the board. A draft past its date reads `expired` with no money in. */
+export const isDraft = (b: Pick<Bounty, 'status' | 'funding'>): boolean => b.status === 'awaiting_funding' || (b.status === 'expired' && !b.funding);
 
 export const REFUNDABLE: readonly BountyStatus[] = ['open', 'expired', 'awaiting_funding'];
 

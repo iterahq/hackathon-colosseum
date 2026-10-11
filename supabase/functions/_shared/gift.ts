@@ -47,9 +47,23 @@ export function cleanName(name: unknown): string | null {
   return text.length <= NAME_MAX ? text : `${text.slice(0, NAME_MAX - 1).trimEnd()}…`;
 }
 
-/** How a learner is named in public: the nickname when there is one, else the short wallet. */
-export function publicLabel(name: string | null, wallet: string): string {
-  return name ?? shortWallet(wallet);
+const GENERATED_WORDS: ReadonlyArray<readonly [pt: string, en: string]> = [
+  ['Curioso', 'Curious'], ['Focado', 'Focused'], ['Veloz', 'Swift'], ['Criativo', 'Creative'], ['Atento', 'Alert'],
+  ['Valente', 'Brave'], ['Sereno', 'Calm'], ['Esperto', 'Clever'], ['Ligeiro', 'Quick'], ['Firme', 'Steady'],
+  ['Brilhante', 'Bright'], ['Paciente', 'Patient'], ['Ousado', 'Bold'], ['Tranquilo', 'Easygoing'], ['Sagaz', 'Sharp'],
+  ['Dedicado', 'Dedicated'], ['Animado', 'Lively'], ['Constante', 'Constant'], ['Engenhoso', 'Inventive'], ['Gentil', 'Kind'],
+];
+
+/**
+ * How a learner is named in public: a nickname they typed as typed; the name provisioning generated ("Tera Focado 496")
+ * in the reader's language; else the short wallet. A generated name whose word is in neither list falls back to the wallet.
+ */
+export function publicLabel(name: string | null, wallet: string, lang?: Lang): string {
+  if (name === null) return shortWallet(wallet);
+  const generated = lang ? /^Tera\s+(\p{L}+)\s+(\d{3})$/u.exec(name) : null;
+  if (!lang || !generated) return name;
+  const pair = GENERATED_WORDS.find(([pt, en]) => pt === generated[1] || en === generated[1]);
+  return pair ? `Tera ${pair[lang === 'en' ? 1 : 0]} ${generated[2]}` : shortWallet(wallet);
 }
 
 /** One entry of the RPC `getSignaturesForAddress` answer, as far as it is read here. */
@@ -150,7 +164,7 @@ export function dialToUrl(actionUrl: string, cluster = 'devnet'): string {
 
 const TEXT = {
   pt: {
-    title: (who: string) => `Dê uma vida pro Tera de ${who}`,
+    title: (who: string) => `Dê uma vida ao Tera de ${who}`,
     description: (price: string) =>
       `Uma vida (${price}, devnet) para o Tera companheiro desta pessoa na Itera. A vida fica gravada on-chain no NFT do companheiro dela.`,
     label: 'Dar uma vida',
@@ -180,7 +194,7 @@ const TEXT = {
     },
   },
   en: {
-    title: (who: string) => `Give ${who}'s Tera a life`,
+    title: (who: string) => `Give a life to ${who}'s Tera`,
     description: (price: string) =>
       `One life (${price}, devnet) for this learner's Tera companion at Itera. The life is written on-chain to their companion NFT.`,
     label: 'Gift a life',

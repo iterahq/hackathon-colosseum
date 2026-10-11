@@ -48,6 +48,18 @@ describe('names', () => {
     expect(publicLabel(null, WALLET)).toBe('BNCk…BoqH');
   });
 
+  it('renders a generated nickname in the reader\'s language', () => {
+    expect(publicLabel('Tera Focado 496', WALLET, 'en')).toBe('Tera Focused 496');
+    expect(publicLabel('Tera Focused 496', WALLET, 'pt')).toBe('Tera Focado 496');
+    expect(publicLabel('Tera Focado 496', WALLET, 'pt')).toBe('Tera Focado 496');
+  });
+
+  it('keeps a nickname the learner typed, and falls back to the wallet for an unknown generated word', () => {
+    expect(publicLabel('Duda', WALLET, 'en')).toBe('Duda');
+    expect(publicLabel('Tera Duda', WALLET, 'en')).toBe('Tera Duda');
+    expect(publicLabel('Tera Mystery 123', WALLET, 'en')).toBe('BNCk…BoqH');
+  });
+
   it('cleans a nickname for a public title', () => {
     expect(cleanName('  Duda \n Lima ')).toBe('Duda Lima');
     expect(cleanName('a\u0000b\u0085c')).toBe('abc');
@@ -122,13 +134,13 @@ describe('action payloads', () => {
     expect(body).toEqual({
       type: 'action',
       icon: input.icon,
-      title: "Give Duda's Tera a life",
+      title: "Give a life to Duda's Tera",
       description: expect.stringContaining('0.00055 SOL'),
       label: 'Gift a life',
       links: { actions: [{ type: 'transaction', label: 'Gift a life · 0.00055 SOL', href: input.href }] },
     });
     expect(body.icon).toMatch(/^https:\/\//);
-    expect(giftActionGet({ ...input, lang: 'pt' }).title).toBe('Dê uma vida pro Tera de Duda');
+    expect(giftActionGet({ ...input, lang: 'pt' }).title).toBe('Dê uma vida ao Tera de Duda');
   });
 
   it('GET is disabled, with the reason, when the recipient cannot receive', () => {

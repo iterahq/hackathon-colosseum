@@ -156,6 +156,8 @@ export function parseBoard(body: unknown): BountyBoard {
       outsidePaidSol: text(s.outside_paid_sol) ?? '0 SOL',
       heldCount: int(s.held_count) ?? 0,
       outsideSponsorCount: int(s.outside_sponsor_count) ?? 0,
+      hiddenTestCount: int(s.hidden_test_count),
+      listedCount: int(s.listed_count),
     },
     readAt: text(b.read_at),
     bounties: parseBounties(b.bounties),
@@ -388,24 +390,33 @@ export async function getMyBountyStatus(bounty: string): Promise<MyBountyStatus>
  * signs it (it pays nothing: the fee payer is Itera's treasury), and the backend sends it (`*_submit`).
  * A bounty with nothing on chain to sign (`sign: null`) goes straight to the second call.
  */
-async function signedStep(step: 'accept' | 'withdraw', bounty: string): Promise<void> {
+export type StepPhase = 'wallet' | 'confirming' | 'settling';
+
+export interface SignedStepResult {
+  explorerUrl: string | null;
+}
+
+async function signedStep(step: 'accept' | 'withdraw', bounty: string, onPhase: (phase: StepPhase) => void = () => undefined): Promise<SignedStepResult> {
   const prepared = (await claimCall(`${step}_prepare`, bounty)).data as { sign?: unknown } | null;
   const offer = parseSignOffer(prepared?.sign);
   if (prepared?.sign && !offer) throw new Error('bounty-claim: unreadable transaction');
-  await claimCall(`${step}_submit`, bounty, offer ? { ...(await signOffer(offer)) } : {});
+  let extra: Record<string, unknown> = {};
+  if (offer) {
+    onPhase('wallet');
+    extra = { ...(await signOffer(offer)) };
+  }
+  onPhase('confirming');
+  const submitted = await claimCall(`${step}_submit`, bounty, extra);
+  return { explorerUrl: text(row(row(submitted.data).chain).explorer_url) };
 }
 
-export async function acceptBounty(bounty: string): Promise<void> {
-  await signedStep('accept', bounty);
-}
+export const acceptBounty = (bounty: string, onPhase?: (phase: StepPhase) => void): Promise<SignedStepResult> => signedStep('accept', bounty, onPhase);
 
 export async function submitBounty(bounty: string, submissionUrl: string, note: string): Promise<void> {
   await claimCall('submit', bounty, note.trim() ? { url: submissionUrl, note: note.trim() } : { url: submissionUrl });
 }
 
-export async function withdrawBounty(bounty: string): Promise<void> {
-  await signedStep('withdraw', bounty);
-}
+export const withdrawBounty = (bounty: string, onPhase?: (phase: StepPhase) => void): Promise<SignedStepResult> => signedStep('withdraw', bounty, onPhase);
 
 const sponsorCall = (body: Record<string, unknown>) => callShop('bounty-sponsor', { body });
 
@@ -557,6 +568,10 @@ export async function rejectPosted(bounty: string, note: string): Promise<void> 
   await postCall(note.trim() ? { action: 'reject', bounty, note: note.trim() } : { action: 'reject', bounty });
 }
 
+export async function deletePostedDraft(bounty: string): Promise<void> {
+  await postCall({ action: 'delete', bounty });
+}
+
 export async function reportBounty(bounty: string, reason: string): Promise<void> {
   await postCall({ action: 'report', bounty, reason: reason.trim() });
 }
@@ -567,7 +582,7 @@ export interface TxErrorInfo {
   faucet: boolean;
 }
 
-const TX_CODES = ['insufficient_funds', 'not_fundable', 'already_funded', 'not_submitted', 'chain_mismatch', 'already_paid', 'self_review', 'not_refundable', 'already_refunded', 'broadcast_failed', 'too_many_today', 'too_many_live', 'no_wallet'];
+const TX_CODES = ['insufficient_funds', 'not_fundable', 'already_funded', 'not_submitted', 'chain_mismatch', 'already_paid', 'self_review', 'not_refundable', 'already_refunded', 'broadcast_failed', 'too_many_today', 'too_many_live', 'no_wallet', 'funded', 'not_a_draft'];
 
 const solText = (lamports: number): string => {
   const whole = Math.floor(lamports / 1_000_000_000);

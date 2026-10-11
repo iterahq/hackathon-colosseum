@@ -6,11 +6,12 @@ import { DeliverForm } from '@/components/bounty/DeliverForm';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { useCountdown } from '@/hooks/useCountdown';
-import { useAcceptBounty, useBountySession, useMyBountyStatus, useWithdrawBounty } from '@/hooks/useBounties';
+import { useBountySession, useMyBountyStatus, useSignedBountyStep } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { loginHref } from '@/lib/loginReturn';
-import { bountyErrorCode } from '@/services/bounty.service';
-import { formatRemaining } from '@/utils/bounty';
+import { bountyErrorCode, type StepPhase } from '@/services/bounty.service';
+import { actionTitle } from '@/utils/bountyAction';
+import { formatRemaining, plural } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
 const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty'] as const;
@@ -25,19 +26,40 @@ function errorText(t: (k: string) => string, scope: string, known: readonly stri
   return code && (SIGN_ERRORS as readonly string[]).includes(code) ? t(`bounty.err.sign.${code}`) : t('bounty.err.generic');
 }
 
-function Panel({ children, tone = 'plain' }: { children: ReactNode; tone?: 'plain' | 'good' }) {
+type Step = ReturnType<typeof useSignedBountyStep>;
+
+const stepLabel = (t: (k: string) => string, phase: StepPhase | null) => t(phase === 'wallet' || phase === null ? 'bounty.step.wallet' : 'bounty.step.confirming');
+
+function StepProgress({ kind, step }: { kind: 'accept' | 'withdraw'; step: Step }) {
   const { t } = useI18n();
+  if (step.pending) {
+    return (
+      <Notice testId={`bounty-${kind}-progress`}>
+        <span className="block">{stepLabel(t, step.phase)}</span>
+        {step.explorerUrl && <ExplorerAnchor href={step.explorerUrl} label={t('bounty.step.tx')} />}
+      </Notice>
+    );
+  }
+  if (!step.outcome) return null;
   return (
-    <section className={`${CARD} flex flex-col gap-3 p-4 sm:p-5 ${tone === 'good' ? '!border-[#3FD17F]' : ''}`} aria-label={t('bounty.action.title')} data-testid="bounty-action">
-      <h2 className={SECTION_TITLE}>{t('bounty.action.title')}</h2>
+    <Notice tone="good" testId={`bounty-${kind}-done`}>
+      <span className="block">{t(step.outcome === 'settled' ? `bounty.step.done.${kind}` : 'bounty.step.stale')}</span>
+      {step.explorerUrl && <ExplorerAnchor href={step.explorerUrl} label={t('bounty.step.tx')} />}
+    </Notice>
+  );
+}
+
+function Panel({ children, title, tone = 'plain' }: { children: ReactNode; title: string; tone?: 'plain' | 'good' }) {
+  return (
+    <section className={`${CARD} flex flex-col gap-3 p-4 sm:p-5 ${tone === 'good' ? '!border-[#3FD17F]' : ''}`} aria-label={title} data-testid="bounty-action">
+      <h2 className={SECTION_TITLE} data-testid="bounty-action-title">{title}</h2>
       {children}
     </section>
   );
 }
 
-function ActiveClaim({ bounty, status }: { bounty: BountyDetail; status: NonNullable<MyBountyStatus['claim']> }) {
+function ActiveClaim({ bounty, status, withdraw }: { bounty: BountyDetail; status: NonNullable<MyBountyStatus['claim']>; withdraw: Step }) {
   const { t } = useI18n();
-  const withdraw = useWithdrawBounty();
   const [confirming, setConfirming] = useState(false);
   const deadline = status.deadlineAt ? Date.parse(status.deadlineAt) : null;
   const left = useCountdown(Number.isFinite(deadline) ? deadline : null);
@@ -59,12 +81,12 @@ function ActiveClaim({ bounty, status }: { bounty: BountyDetail; status: NonNull
               {t('bounty.withdraw.confirm')}
               {bounty.escrow?.custody === 'program' && <span className="mt-1 block">{t('bounty.withdraw.signs')}</span>}
             </Notice>
-            {withdraw.isError && <Notice tone="error">{errorText(t, 'withdraw', WITHDRAW_ERRORS, withdraw.error)}</Notice>}
+            {withdraw.error !== null && !withdraw.pending && <Notice tone="error">{errorText(t, 'withdraw', WITHDRAW_ERRORS, withdraw.error)}</Notice>}
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={withdraw.isPending} onClick={() => withdraw.mutate(bounty.id)} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-withdraw-confirm">
-                {withdraw.isPending ? t('bounty.signing') : t('bounty.withdraw.yes')}
+              <button type="button" disabled={withdraw.pending} onClick={() => withdraw.run(bounty.id)} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-withdraw-confirm">
+                {withdraw.pending ? stepLabel(t, withdraw.phase) : t('bounty.withdraw.yes')}
               </button>
-              <button type="button" onClick={() => setConfirming(false)} className={`${BTN_SECONDARY} ${BTN_SMALL}`}>
+              <button type="button" disabled={withdraw.pending} onClick={() => setConfirming(false)} className={`${BTN_SECONDARY} ${BTN_SMALL}`}>
                 {t('bounty.withdraw.no')}
               </button>
             </div>
@@ -75,9 +97,8 @@ function ActiveClaim({ bounty, status }: { bounty: BountyDetail; status: NonNull
   );
 }
 
-function Accept({ bounty, status }: { bounty: BountyDetail; status: MyBountyStatus }) {
+function Accept({ bounty, status, accept }: { bounty: BountyDetail; status: MyBountyStatus; accept: Step }) {
   const { t } = useI18n();
-  const accept = useAcceptBounty();
   return (
     <>
       {status.proof && (
@@ -91,9 +112,9 @@ function Accept({ bounty, status }: { bounty: BountyDetail; status: MyBountyStat
           {t('bounty.accept.signs')}
         </p>
       )}
-      {accept.isError && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
-      <button type="button" disabled={accept.isPending} onClick={() => accept.mutate(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
-        {accept.isPending ? t('bounty.signing') : t('bounty.accept.cta')}
+      {accept.error !== null && !accept.pending && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
+      <button type="button" disabled={accept.pending} onClick={() => accept.run(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
+        {accept.pending ? stepLabel(t, accept.phase) : t('bounty.accept.cta')}
       </button>
     </>
   );
@@ -124,14 +145,28 @@ function Missing({ bounty, status }: { bounty: BountyDetail; status: MyBountySta
 }
 
 export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
+  const accept = useSignedBountyStep('accept');
+  const withdraw = useSignedBountyStep('withdraw');
+  return (
+    <>
+      <StepProgress kind="accept" step={accept} />
+      <StepProgress kind="withdraw" step={withdraw} />
+      <PanelView bounty={bounty} accept={accept} withdraw={withdraw} />
+    </>
+  );
+}
+
+function PanelView({ bounty, accept, withdraw }: { bounty: BountyDetail; accept: Step; withdraw: Step }) {
   const { t } = useI18n();
   const { signedIn } = useBountySession();
   const mine = useMyBountyStatus(bounty.id);
+  const heading = actionTitle(bounty, signedIn && mine.isSuccess ? mine.data : null);
+  const title = heading.count === undefined ? t(heading.key, heading.vars) : plural(t, heading.key, heading.count, heading.vars);
 
   if (!signedIn) {
     if (bounty.status !== 'open') return null;
     return (
-      <Panel>
+      <Panel title={title}>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.signIn.hint')}</p>
         <Link to={loginHref(`/bounties/${bounty.slug}`)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-sign-in">
           {t('bounty.signIn.cta')}
@@ -141,14 +176,14 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
   }
   if (mine.isPending) {
     return (
-      <Panel>
+      <Panel title={title}>
         <TeraLoader size="sm" label={t('bounty.action.reading')} data-testid="bounty-action-reading" />
       </Panel>
     );
   }
   if (mine.isError) {
     return (
-      <Panel>
+      <Panel title={title}>
         <LoadError onRetry={() => void mine.refetch()} />
       </Panel>
     );
@@ -160,17 +195,17 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
 
   if (wonIt || claim?.status === 'approved') {
     return (
-      <Panel tone="good">
+      <Panel title={title} tone="good">
         <p className="[font:700_28px/1.1_'Barlow_Condensed'] text-[#3FD17F]">{t('bounty.won.title')}</p>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.won.body', { sol: bounty.payout?.sol ?? bounty.rewardSol })}</p>
         <ExplorerAnchor href={bounty.payout?.explorerUrl ?? null} label={t('bounty.paid.tx')} />
       </Panel>
     );
   }
-  if (claim?.status === 'active' && bounty.status === 'claimed') return <Panel><ActiveClaim bounty={bounty} status={claim} /></Panel>;
+  if (claim?.status === 'active' && bounty.status === 'claimed') return <Panel title={title}><ActiveClaim bounty={bounty} status={claim} withdraw={withdraw} /></Panel>;
   if (claim?.status === 'submitted') {
     return (
-      <Panel>
+      <Panel title={title}>
         <Notice tone="good">{t('bounty.submitted.body')}</Notice>
       </Panel>
     );
@@ -182,7 +217,7 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
   if (!rejected && !open) return null;
 
   return (
-    <Panel>
+    <Panel title={title}>
       {rejected && (
         <Notice tone="error" testId="bounty-rejected">
           <strong className="text-[#F4EDE2]">{t('bounty.rejected.title')}</strong>
@@ -192,7 +227,7 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
       )}
       {open && busy && <Notice testId="bounty-busy">{t('bounty.busy')}</Notice>}
       {open && !busy && !status.eligible && <Missing bounty={bounty} status={status} />}
-      {open && !busy && status.eligible && <Accept bounty={bounty} status={status} />}
+      {open && !busy && status.eligible && <Accept bounty={bounty} status={status} accept={accept} />}
     </Panel>
   );
 }

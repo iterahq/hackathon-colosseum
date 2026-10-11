@@ -1,4 +1,5 @@
 /** Bounties. componente → hook → service → edge function. Every write refreshes every bounty read. */
+import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
@@ -9,6 +10,7 @@ import {
   bountyErrorCode,
   createBounty,
   createPostedBounty,
+  deletePostedDraft,
   fundBounty,
   getBounty,
   getBountyBoard,
@@ -26,7 +28,9 @@ import {
   setBountyHidden,
   submitBounty,
   withdrawBounty,
+  type StepPhase,
 } from '@/services/bounty.service';
+import { settleBountyStep, type StepKind } from '@/services/bountySettle';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import type { CreateBountyInput, CreatePostedInput, TxPhase, WalletTxKind } from '@/types/bounty';
 
@@ -72,9 +76,31 @@ function useWrite<V, R = void>(fn: (v: V) => Promise<R>) {
   return useMutation({ mutationFn: fn, onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.bounty.all }) });
 }
 
-export const useAcceptBounty = () => useWrite((bounty: string) => acceptBounty(bounty));
 export const useSubmitBounty = () => useWrite((v: { bounty: string; url: string; note: string }) => submitBounty(v.bounty, v.url, v.note));
-export const useWithdrawBounty = () => useWrite((bounty: string) => withdrawBounty(bounty));
+
+/** A step the learner's wallet signs. It stays pending until the page shows the new state, and it keeps the explorer link once the server answers. */
+export function useSignedBountyStep(kind: StepKind) {
+  const queryClient = useQueryClient();
+  const [phase, setPhase] = useState<StepPhase | null>(null);
+  const [explorerUrl, setExplorerUrl] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<'settled' | 'stale' | null>(null);
+  const mutation = useMutation({
+    mutationFn: async (bounty: string) => {
+      setOutcome(null);
+      setExplorerUrl(null);
+      setPhase('wallet');
+      const result = await (kind === 'accept' ? acceptBounty : withdrawBounty)(bounty, setPhase);
+      setExplorerUrl(result.explorerUrl);
+      setPhase('settling');
+      setOutcome((await settleBountyStep(queryClient, kind, bounty)) ? 'settled' : 'stale');
+    },
+    onSettled: () => {
+      setPhase(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.bounty.all });
+    },
+  });
+  return { run: mutation.mutate, pending: mutation.isPending, phase, explorerUrl, outcome, error: mutation.isError ? mutation.error : null };
+}
 
 export const useCreateBounty = () => useWrite((input: CreateBountyInput) => createBounty(input));
 export const useFundBounty = () => useWrite((bounty: string) => fundBounty(bounty));
@@ -108,6 +134,7 @@ export function useModeration() {
 }
 
 export const useCreatePostedBounty = () => useWrite((input: CreatePostedInput) => createPostedBounty(input));
+export const useDeleteDraft = () => useWrite((bounty: string) => deletePostedDraft(bounty));
 export const useRejectPosted = () => useWrite((v: { bounty: string; note: string }) => rejectPosted(v.bounty, v.note));
 export const useReportBounty = () => useWrite((v: { bounty: string; reason: string }) => reportBounty(v.bounty, v.reason));
 export const useSetHidden = () => useWrite((v: { bounty: string; hidden: boolean; reason: string }) => setBountyHidden(v.bounty, v.hidden, v.reason));

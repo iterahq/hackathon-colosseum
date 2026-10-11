@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { acceptFunctionSource, compareBinary, evidenceShellLine, evidenceVerdict, instructionRows, type EscrowIdl } from '@/lib/chain/verifyChecks';
+import { resources } from '@/i18n';
+import { acceptFunctionSource, compareBinary, evidenceShellLine, evidenceVerdict, instructionRows, localizeRow, type EscrowIdl } from '@/lib/chain/verifyChecks';
 import { sha256Hex } from '@/lib/chain/base58';
 
 describe('verify checks', () => {
@@ -37,5 +40,29 @@ describe('verify checks', () => {
 
   it('prints the shell line that hashes only the evidence field', () => {
     expect(evidenceShellLine('https://x.supabase.co', 'W', 'html-skeleton')).toContain('jq -j .evidence | sha256sum');
+  });
+});
+
+describe('instruction table in each language', () => {
+  const idl = JSON.parse(readFileSync(resolve(__dirname, '../../../public/verify/bounty-escrow.idl.json'), 'utf8')) as EscrowIdl;
+  const rows = instructionRows(idl);
+
+  it('keeps the English cells identical to the published IDL', () => {
+    for (const row of rows) expect(localizeRow(row, resources.en).checks).toBe(row.checks);
+  });
+
+  it('translates every cell of the Portuguese table', () => {
+    for (const row of rows) {
+      expect(resources.pt[`verify.source.checks.${row.name}`], row.name).toBeTruthy();
+      expect(localizeRow(row, resources.pt).checks).not.toBe(row.checks);
+    }
+  });
+
+  it('names the give-up the same way in both languages and says who signs accept', () => {
+    const unclaim = rows.find((row) => row.name === 'unclaim')!;
+    const accept = rows.find((row) => row.name === 'accept')!;
+    expect(localizeRow(unclaim, resources.en).name).toBe('Give up (unclaim in the program)');
+    expect(localizeRow(unclaim, resources.pt).name).toBe('Desistir (unclaim no programa)');
+    expect(localizeRow(accept, resources.en).signers).toEqual(["claimant (your wallet) + attester (Itera's key AMoT…3cA, which also pays the fee)"]);
   });
 });

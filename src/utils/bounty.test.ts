@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { checkDeliveryUrl, checkPostText, createErrorField, formatRemaining, isRewardInRange, isValidSlug, lamportsToSol, plural, safeHttpsUrl, slugify, solToLamports, sortBounties, statusTone, validatePostForm } from './bounty';
+import { resources } from '@/i18n';
+import { checkDeliveryUrl, hiddenTestsLine, isDraft, checkPostText, createErrorField, formatRemaining, isRewardInRange, isValidSlug, lamportsToSol, plural, safeHttpsUrl, slugify, solToLamports, sortBounties, statusTone, validatePostForm } from './bounty';
 
 describe('solToLamports', () => {
   it('converts without float drift', () => {
@@ -136,5 +137,32 @@ describe('post form', () => {
   it('refuses a reward above the cap and a form with no trail', () => {
     expect(validatePostForm({ ...ok, reward: '0.6' }, ctx).errors.reward).toBe('invalid');
     expect(validatePostForm(ok, { ...ctx, totalDays: null }).errors.requirement).toBe('invalid');
+  });
+});
+
+describe('hiddenTestsLine', () => {
+  const t = (locale: 'pt' | 'en') => (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
+  it('renders nothing when the board sends no count or zero', () => {
+    expect(hiddenTestsLine(t('en'), undefined, 4)).toBeNull();
+    expect(hiddenTestsLine(t('en'), { hiddenTestCount: null, listedCount: null }, 4)).toBeNull();
+    expect(hiddenTestsLine(t('en'), { hiddenTestCount: 0, listedCount: 4 }, 4)).toBeNull();
+  });
+  it('handles the singular and the plural in both languages', () => {
+    expect(hiddenTestsLine(t('en'), { hiddenTestCount: 1, listedCount: 4 }, 0)).toBe('4 listed · 1 hidden test bounty of the team (open on chain, kept off the board)');
+    expect(hiddenTestsLine(t('en'), { hiddenTestCount: 3, listedCount: 4 }, 0)).toBe('4 listed · 3 hidden test bounties of the team (open on chain, kept off the board)');
+    expect(hiddenTestsLine(t('pt'), { hiddenTestCount: 3, listedCount: null }, 2)).toBe('2 listadas · 3 missões de teste da equipe escondidas (abertas na chain, fora do quadro)');
+  });
+});
+
+describe('isDraft', () => {
+  const funding = { signature: 's', lamports: 1, sol: '1', at: null, wallet: null, explorerUrl: null };
+  it('is a bounty waiting for funding, or one that expired with nothing locked', () => {
+    expect(isDraft({ status: 'awaiting_funding', funding: null })).toBe(true);
+    expect(isDraft({ status: 'expired', funding: null })).toBe(true);
+  });
+  it('is not a bounty with money in or one that is live', () => {
+    expect(isDraft({ status: 'expired', funding })).toBe(false);
+    expect(isDraft({ status: 'open', funding })).toBe(false);
+    expect(isDraft({ status: 'refunded', funding: null })).toBe(false);
   });
 });
