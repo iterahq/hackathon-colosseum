@@ -2,12 +2,12 @@ import { useBountyBoard } from '@/hooks/useBounties';
 import { useCircuit } from '@/hooks/useCircuit';
 import { useI18n } from '@/i18n';
 import { plural } from '@/utils/bounty';
-import { paidHint, readAtLabel, stampsHint } from '@/utils/landingStats';
+import { paidHint, readAtLabel } from '@/utils/landingStats';
 import { LandingStat } from './LandingStat';
 
 /**
- * Live counters from the public bounty board and the Circuit. Totals, the team's own test runs included,
- * so nothing a judge reads here can shrink later; each number carries its qualifier inside its own card.
+ * Live counters from the public bounty board and the Circuit, the team's own test runs included; each number
+ * carries its qualifier inside its own card. The stamps tile is the count written on chain, never a capacity.
  * A failed read shows nothing, never a made-up number.
  */
 export function LandingLiveStats() {
@@ -30,7 +30,9 @@ export function LandingLiveStats() {
         )}
         {(circuit.isPending || counter) && (
           <>
-            <LandingStat value={counter ? counter.stampsFunded.toLocaleString(numberLocale) : null} label={t('landing.live.stampsFunded')} hint={counter ? stampsHint(counter, t, numberLocale) : null} testId="landing-stamps-hint" />
+            {(!counter || counter.stampsIssued !== null) && (
+              <LandingStat value={counter ? (counter.stampsIssued ?? 0).toLocaleString(numberLocale) : null} label={plural(t, 'landing.live.stampsIssued', counter?.stampsIssued ?? 0)} hint={counter ? t('landing.live.stampsIssuedHint') : null} testId="landing-stamps-hint" />
+            )}
             <LandingStat value={counter ? counter.purchases.toLocaleString(numberLocale) : null} label={plural(t, 'landing.live.purchases', counter?.purchases ?? 0)} hint={counter ? t('landing.live.purchasesHint') : null} testId="landing-purchases-hint" />
           </>
         )}

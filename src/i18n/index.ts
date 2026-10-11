@@ -1286,7 +1286,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.explainer.complete.title': 'Conclua um dia',
     'header.explainer.complete.body': 'Termine todas as atividades do dia.',
     'header.explainer.stamp.title': 'A Tera carimba na Solana',
-    'header.explainer.stamp.body': 'A Tera grava sua certificação na blockchain, com um carimbo só seu.',
+    'header.explainer.stamp.body': 'A Tera grava sua certificação na chain, com um carimbo só seu.',
     'header.explainer.verify.title': 'Qualquer pessoa verifica',
     'header.explainer.verify.body': 'Compartilhe o link e quem abrir confere que o carimbo é seu.',
     'header.explainer.cta': 'Ver minhas certificações',

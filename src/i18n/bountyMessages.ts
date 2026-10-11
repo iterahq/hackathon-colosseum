@@ -6,9 +6,9 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.eyebrow': 'Missões pagas · devnet',
     'bounty.hero.title': 'Sua certificação abre trabalho pago.',
     'bounty.hero.sub':
-      'Um patrocinador trava a recompensa na blockchain. Só carteiras com a certificação on-chain exigida podem aceitar a tarefa. Quando o trabalho é aprovado, o escrow paga direto na sua carteira.',
+      'Um patrocinador trava a recompensa na chain. Só carteiras com a certificação exigida na chain podem aceitar a tarefa. Quando o trabalho é aprovado, o escrow paga direto na sua carteira.',
     'bounty.custody':
-      'A recompensa de cada missão fica travada num programa on-chain na Solana (devnet), que qualquer pessoa pode conferir. O próprio programa confere que quem aceita tem uma certificação da Itera e só paga essa carteira, uma única vez. A equipe do patrocinador aprova o trabalho, mas não escolhe para onde o dinheiro vai.',
+      'A recompensa de cada missão fica travada num programa na Solana (devnet), que qualquer pessoa pode conferir. O próprio programa confere que quem aceita tem uma certificação da Itera e só paga essa carteira, uma única vez. A equipe do patrocinador aprova o trabalho, mas não escolhe para onde o dinheiro vai.',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.custody.program':
       'O programa confere, na própria Solana, que a carteira tem uma certificação da Itera antes de registrar quem aceitou, e só registra quem assinou com a própria carteira (a Itera paga a taxa de rede). Desistir também é uma assinatura do aluno. Depois o programa só paga essa carteira, uma única vez, ou devolve ao patrocinador. A equipe do patrocinador decide se o trabalho foi aprovado (numa missão do jurado, é uma verificação automática do servidor da Itera). O programa ainda pode ser atualizado por uma chave da Itera (devnet).',
@@ -421,7 +421,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.tx.err.funded': 'Esta missão já tem o valor travado na Solana, então não pode ser excluída. Peça o valor de volta se quiser encerrá-la.',
     'bounty.tx.err.not_a_draft': 'Só um rascunho sem valor travado pode ser excluído.',
     'bounty.tx.err.not_submitted': 'Esta missão não tem entrega para revisar.',
-    'bounty.tx.err.chain_mismatch': 'O registro on-chain não bate com a entrega. Atualize a página e tente de novo.',
+    'bounty.tx.err.chain_mismatch': 'O registro na chain não bate com a entrega. Atualize a página e tente de novo.',
     'bounty.tx.err.already_paid': 'Esta missão já foi paga.',
     'bounty.tx.err.self_review': 'Você não pode aprovar a sua própria entrega.',
     'bounty.tx.err.not_refundable': 'Esta missão não pode ser devolvida agora.',

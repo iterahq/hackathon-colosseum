@@ -50,8 +50,8 @@ describe('CapabilityGraphSection', () => {
     expect(view('c')).toHaveAttribute('data-view', 'open');
     expect(view('c')).toHaveAttribute('data-next', 'true');
     expect(screen.getByTestId('graph-counter')).toHaveTextContent('1 / 4');
-    expect(view('a')).toHaveAccessibleName(/Verificada na blockchain/);
-    expect(view('b')).toHaveAccessibleName(/Registrada, ainda não está na blockchain/);
+    expect(view('a')).toHaveAccessibleName(/Verificada na chain/);
+    expect(view('b')).toHaveAccessibleName(/Registrada, ainda não está na chain/);
   });
 
   it('a chain value that does not prefix the hash is never shown as verified', () => {
@@ -65,7 +65,7 @@ describe('CapabilityGraphSection', () => {
     chainQuery.mockReturnValue({ isSuccess: false, isError: false, isFetching: true, data: undefined, refetch: vi.fn() });
     show();
     expect(view('a')).toHaveAttribute('data-view', 'checking');
-    expect(screen.getByTestId('graph-chain-state')).toHaveTextContent('Conferindo a blockchain');
+    expect(screen.getByTestId('graph-chain-state')).toHaveTextContent('Conferindo a chain');
   });
 
   it('on RPC failure falls back to the weaker server label and offers a retry', () => {
@@ -73,7 +73,7 @@ describe('CapabilityGraphSection', () => {
     chainQuery.mockReturnValue({ isSuccess: false, isError: true, isFetching: false, data: undefined, refetch });
     show();
     expect(view('a')).toHaveAttribute('data-view', 'server');
-    expect(view('a')).not.toHaveAccessibleName(/Verificada na blockchain/);
+    expect(view('a')).not.toHaveAccessibleName(/Verificada na chain/);
     expect(view('a')).toHaveAccessibleName(/servidor da Itera/);
     fireEvent.click(screen.getByTestId('graph-retry'));
     expect(refetch).toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe('CapabilityGraphSection', () => {
     expect(help).toHaveTextContent('Prove completando o Dia 1 de Week 2 · CSS');
     const rows = within(help).getAllByTestId('graph-prereq');
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('Verificada na blockchain');
+    expect(rows[0]).toHaveTextContent('Verificada na chain');
     expect(rows[1]).toHaveTextContent('Registrada');
   });
 

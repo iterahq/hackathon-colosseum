@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { FOCUS, LABEL } from '@/components/world/worldStyles';
 import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
+import { VERIFY_PATH } from './landingFacts';
 import { EXAMPLE_WALLET, PRIMARY_CTA, SECONDARY_CTA } from './landingStyles';
 
 export function LandingHero() {
@@ -27,6 +28,9 @@ export function LandingHero() {
             {t('landing.cta.profile')}
           </Link>
         </div>
+        <p className="max-w-[52ch] [font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="landing-hero-time">
+          {t('landing.hero.time')}
+        </p>
         <p className="max-w-[52ch] [font:500_14px/1.5_Inter] text-[#A0978A]" data-testid="landing-cta-email-line">
           {t('landing.cta.emailLead')}{' '}
           <Link to="/signup" className={`rounded text-[#F4EDE2] underline underline-offset-4 hover:text-[#3FD17F] ${FOCUS}`} data-testid="landing-cta-email">
@@ -34,6 +38,14 @@ export function LandingHero() {
           </Link>
           {' '}
           {t('landing.cta.emailTail')}
+        </p>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 [font:600_13px_JetBrains_Mono] text-[#A0978A]" data-testid="landing-hero-links">
+          <Link to={VERIFY_PATH} className={`rounded hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-verify">
+            {t('landing.hero.verify')} →
+          </Link>
+          <Link to="/bounties" className={`rounded hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-hero-bounties">
+            {t('landing.hero.bounties')} →
+          </Link>
         </p>
       </div>
       <img
