@@ -379,7 +379,8 @@ export function bountyView(input: {
 
 export type BountyView = ReturnType<typeof bountyView>;
 
-export function boardStats(bounties: readonly BountyRow[], now: Date) {
+/** `paidToTests`: bounties whose payout went to one of the team's test accounts. On chain and listed, not counted as paid. */
+export function boardStats(bounties: readonly BountyRow[], now: Date, paidToTests: ReadonlySet<string> = new Set()) {
   let paid = 0n;
   let locked = 0n;
   let paidCount = 0;
@@ -387,6 +388,7 @@ export function boardStats(bounties: readonly BountyRow[], now: Date) {
   for (const bounty of bounties) {
     const status = publicStatus(bounty, now);
     if (status === 'paid') {
+      if (paidToTests.has(bounty.id)) continue;
       paid += BigInt(bounty.payout_lamports ?? 0);
       paidCount += 1;
     } else if (status === 'open' || status === 'claimed' || status === 'submitted' || status === 'paying') {
