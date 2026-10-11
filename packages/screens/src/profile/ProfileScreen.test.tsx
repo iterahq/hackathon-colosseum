@@ -57,7 +57,7 @@ describe('ProfileScreen: the page', () => {
     const h1 = screen.getByRole('heading', { level: 1 });
     expect(h1).toHaveTextContent('Meu perfil');
     expect(screen.getByRole('main')).toContainElement(h1);
-    expect(screen.getByText('Escolha como você aparece nas aulas e no ranking.').tagName).toBe('P');
+    expect(screen.getByText('Escolha como você aparece para os outros alunos.').tagName).toBe('P');
     expect(container.firstElementChild?.firstElementChild).toBe(screen.getByTestId('app-header'));
   });
 

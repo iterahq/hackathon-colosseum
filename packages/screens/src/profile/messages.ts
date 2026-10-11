@@ -9,7 +9,7 @@ export const PROFILE_MESSAGES = {
   pt: {
     'common.loading': 'Carregando…',
     'profile.title': 'Meu perfil',
-    'profile.subtitle': 'Escolha como você aparece nas aulas e no ranking.',
+    'profile.subtitle': 'Escolha como você aparece para os outros alunos.',
     'profile.nameLabel': 'Nome de exibição',
     'profile.namePlaceholder': 'Seu nome',
     'profile.avatarLabel': 'Escolha seu ícone',
@@ -37,7 +37,7 @@ export const PROFILE_MESSAGES = {
   en: {
     'common.loading': 'Loading…',
     'profile.title': 'My profile',
-    'profile.subtitle': 'Choose how you show up in classes and rankings.',
+    'profile.subtitle': 'Choose how you show up to other learners.',
     'profile.nameLabel': 'Display name',
     'profile.namePlaceholder': 'Your name',
     'profile.avatarLabel': 'Pick your icon',

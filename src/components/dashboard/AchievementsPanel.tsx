@@ -44,7 +44,7 @@ export function AchievementsPanel({ pages, medals, stamps, onOpenTrail }: Props)
   const completed = pages.filter(isGold).length;
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col justify-between gap-5 rounded-[14px] border border-[#262320] bg-[#141210] px-5 py-[22px]" data-testid="achievements">
+    <section className={`flex min-w-0 flex-col gap-5 rounded-[14px] border border-[#262320] bg-[#141210] px-5 py-[22px] ${FOCUS_BUILD ? '' : 'flex-1 justify-between'}`} data-testid="achievements">
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="m-0 [font:700_26px_'Barlow_Condensed']">{t('passport.title')}</h2>
