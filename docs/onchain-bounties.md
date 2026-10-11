@@ -25,7 +25,7 @@ sponsor ── create ──► bounty (awaiting_funding) ── fund ──► 
 | `db/migrations/0201_bounty_escrow_program.sql` | `onchain_config.bounty_escrow_program`: with it, new bounties are held by the program |
 | `db/migrations/0200_bounties.sql` | `itera.bounties`, `bounty_claims`, `bounty_events`, and the five functions that are the only writers of a status |
 | `supabase/functions/_shared/bounty.ts` | Pure rules: eligibility, amounts, the transfer decision, form checks, public views, the Action texts |
-| `programs/bounty-escrow/src/lib.rs` | The escrow program (native Solana program, no framework): create, accept, release, unclaim, refund |
+| `programs/bounty-escrow/src/lib.rs` | The escrow program (native Solana program, no framework): create, create_gated, create_direct, accept, release, unclaim, refund |
 | `.github/workflows/bounty-escrow-build.yml` | Builds the program on a runner (the dev box has no room for the SBF toolchain). Not a gate |
 | `supabase/functions/_shared/bounty-program.ts`, `solana-message.ts` | The program's instructions and account layout; a legacy message compiler and PDA derivation |
 | `supabase/functions/_shared/bounty-chain.ts` | Reads the escrow account, plans and sends the program calls |
@@ -38,6 +38,10 @@ sponsor ── create ──► bounty (awaiting_funding) ── fund ──► 
 | `supabase/functions/bounty-post` | Any wallet (JWT): post a bounty, the transactions it signs to fund / approve / refund, reject, report |
 | `db/migrations/0240_bounty_wallet_sponsors.sql` | `origin`, `sponsor_wallet`, `approver_address`, English slugs, moderation, reports |
 | `docs/hackathon/bounties-seed.json` | The four bounties DevFellowship posted |
+| `db/migrations/0340_bounty_direct.sql` | `bounties.invitee_wallet`, its check and index; `bounty_accept` answers `not_invited` |
+| `db/migrations/0341_bounty_escrow_direct_version.sql` | `onchain_config.bounty_escrow_version = 4`: the deployed program has direct bounties |
+| `programs/bounty-escrow/tests/direct.rs` | The program's direct paths, run natively with the runtime's three calls stubbed |
+| `scripts/hackathon/bounty-direct-e2e.mjs` | A direct bounty end to end on devnet, the refusals by the program included |
 
 ## Escrow
 
@@ -113,6 +117,72 @@ custodial escrow with a public ledger, and the UI says so on those bounties.
 
 Currency is **devnet SOL**. Devnet USDC only comes from a captcha faucet, which neither the sponsor nor a
 judge can refill on demand.
+
+## Direct bounty: a reward locked for one invited wallet
+
+A sponsor's wallet posts a bounty addressed to ONE learner wallet, the `invitee`. Everything else is a gated bounty a
+wallet posted: the sponsor's wallet funds it, is its refund destination and its approver; the invitee accepts with
+its own signature, delivers, and is paid by the sponsor's `release`.
+
+**Why the program has to enforce it.** A gated escrow account needs no attester on `accept`: the program reads the
+stamped days itself. So "only the invitee may accept" written only in our server would stop nobody: any wallet with
+the certification and a little SOL could send `accept` to the program directly. The invitation is therefore a term of
+the escrow account.
+
+**Layout and address.** `create_direct` (instruction tag 6) takes the data of `create_gated` followed by the 32 bytes
+of the invitee (97 bytes after the tag) and the same six accounts. The account is 260 bytes, tag 3: the 228 bytes of
+a gated account, then `invitee` at offset 228.
+
+```
+seeds = ["bounty", id (16), sponsor, approver, collection, amount (u64 LE), expires_at (i64 LE),
+         min_days (1), trail (32), invitee (32)]          10 seeds + the bump, each 32 bytes or less (limit: 16)
+```
+
+The address commits to the invitee like to every other term: an account at a direct bounty's address can only have
+been created for that wallet, and the same terms without an invitee (or with another) live at another address.
+
+| instruction on a direct account | signer | what the PROGRAM checks |
+|---|---|---|
+| `create_direct(id, amount, expires_at, min_days, trail, invitee)` | funder (the sponsor's wallet) | what `create_gated` checks, with the invitee in the seeds; `min_days` at least 1 |
+| `accept` | the claimant alone | the claimant signed; **the claimant is the invitee the account names, else `NotInvited` (6020)**; open; not expired; the certification is a Core asset owned by the claimant, in the collection the bounty names, frozen, of the trail in the terms, with `days_done >= min_days`. An attester co-signing changes nothing |
+| `release`, `unclaim`, `refund` | as on any bounty | as on any bounty. `unclaim` leaves the invitee in place; past the expiry anyone may send `refund` and the money goes to the recorded sponsor |
+
+`NotInvited` is answered before the certification is looked at: a wallet that was not invited learns nothing else.
+The invitee still has to qualify: an invited wallet without the stamped days is refused with the gated errors.
+
+**Who checks what.**
+
+| | the program (on chain) | the server |
+|---|---|---|
+| Only the invitee may hold the bounty | yes: `accept` | also: `bounty-claim` answers `403 not_invited` before preparing anything, `bounty_accept` (SQL) answers `not_invited` |
+| The invitee holds the certification and the days | yes: read from the asset account | read first (`eligibilityOf`) so the page can say why not |
+| The invitee is not the sponsor | no (the program would allow it) | yes: `own_invitee` at posting, a check constraint on the row, `own_bounty` at accept |
+| Where the money can go | the invitee (after `release` by the sponsor) or the sponsor | builds the unsigned transactions; holds no key of this money before the expiry |
+| That the public board does not list it | n/a (the account is public on chain) | yes: `listBounties` leaves rows with an invitee out |
+
+The view of a bounty says `direct: true`, `invitee_wallet` and `invite_enforced_by: "program"`. A direct bounty is not
+secret: its page by slug is public, its escrow account names the invitee on chain, and `GET bounty-board/invited/<wallet>`
+lists what was addressed to a wallet. What the board hides is the offer, from wallets that could not take it.
+
+**A direct bounty is "open" only when its account exists with exactly these terms**, invitee included
+(`matchesTerms`). An account with the same id for another wallet, or with no invitee, is not this bounty's escrow.
+
+**Counters.** Direct bounties are not in the board's list or in `open_count` / `locked_*` / `paid_*`. `stats` carries
+them apart: `direct_open`, `direct_held`, `direct_locked_lamports|sol`, `direct_paid`, `direct_paid_lamports|sol`, and
+`direct_team_test` (how many of those the team's own test accounts posted or were paid for). `open_on_chain_count`
+counts the 260-byte accounts too, and `hidden_test_count` subtracts the direct ones the stats already name. A paid
+direct bounty counts in what its payee earned (`bounty-board/wallet/<address>`), like any other.
+
+**Expiry.** Nothing special: past `expires_at` the sweep (`sweepExpired`, every ten minutes) sends the program's
+`refund` with Itera's key and the money returns to the sponsor's wallet. Proven on devnet by `bounty-direct-e2e.mjs`.
+
+**Posting.** `bounty-post` `create` with `invitee_wallet`; before it, `invitee_check` tells the form whether that
+wallet is a learner's and holds the days today, so nobody locks money for a wallet that cannot accept. Posting needs
+`onchain_config.bounty_escrow_version >= 4` (`503 direct_unavailable` otherwise). The team console (`bounty-sponsor`)
+posts no direct bounties.
+
+**Not built.** Changing the invitee of a posted bounty (refund it and post another); inviting more than one wallet;
+a notification to the invitee (the inbox is a read).
 
 ## Bounties posted by any wallet (`origin = wallet`)
 
@@ -241,6 +311,36 @@ A bounty that was just funded opens on this read. `404 bounty_not_found`. Not ca
 `verified` is the node's answer for each payout signature (`getSignatureStatuses`, one call); only
 verified payouts count in the totals. A wallet with nothing answers `200` with zeros. `400 invalid_address`.
 Cached 20 s. This is the endpoint `/u/<wallet>` reads for "earned X from N bounties".
+
+### `GET /bounty-board/invited/<address>` (public): the direct bounties addressed to a wallet
+
+```json
+{ "wallet": "<address>", "cluster": "devnet", "read_at": "<ISO>", "chain_read": true, "open_count": 1, "bounties": [ <bounty> ] }
+```
+
+Newest first, the same `<bounty>` as the board (with `direct: true`), once funded and unless moderation hid it. Rows
+of automated runs are included: it is that wallet's own inbox. The escrow accounts are read before one is shown as
+open. `400 invalid_address`. 30 calls a minute per address, on top of the board's 120.
+
+### Direct bounties in the other contracts
+
+- Every `<bounty>` also carries `"direct": false | true, "invitee_wallet": "<address>|null", "invitee_wallet_short": "BRNk…6Upx|null",
+  "invitee_profile_url": "…/u/<wallet>|null", "invite_enforced_by": "program|null"`.
+- `GET /bounty-board`: `stats` gains the `direct_*` figures above; no direct bounty is in `bounties`.
+- `GET /bounty-post`: `"direct": true` when the program has direct bounties; `limits.direct_escrow_rent_lamports`.
+- `POST /bounty-post` `create` takes an optional `invitee_wallet`. `400 invalid_invitee` (not a wallet address),
+  `400 own_invitee` (the sponsor's own wallet), `503 direct_unavailable`. A direct bounty answers
+  `{ created, id, slug, direct: true, invitee_wallet, invitee_known, invitee_eligible, invitee_reason, invitee_proof, invite_enforced_by: "program" }`;
+  any other `{ created, id, slug, direct: false }`. The bounty is created even when `invitee_eligible` is false: the
+  form warns, the sponsor decides (the invitee may stamp the days before the bounty expires).
+- `POST /bounty-post` `{ "action": "invitee_check", "wallet": "<address>", "unit_id": "<uuid>", "min_days": 1 }` (signed-in
+  wallet, 30 a minute): `200 { wallet, direct_available, known_learner, eligible, reason: null | "no_certification" | "not_enough_days",
+  proof: { asset, days_done, explorer_url } | null, requirement: { unit_id, min_days, total_days } }` ·
+  `400 invalid_invitee | own_invitee | invalid_requirement`. Writes nothing.
+- `POST /bounty-claim`: on a direct bounty any wallet but the invitee gets `403 { error: "not_invited", invitee_wallet }`
+  from `accept_prepare` / `accept_submit`, and from `status` `403` with the usual fields beside the error
+  (`eligible: false, reason: "not_invited", proof: null, claim, busy_elsewhere`). `reason` gains `"not_invited"`.
+  A direct accept the program itself refused surfaces as `403 { error: "refused_by_program", reason: "not_invited" }`.
 
 ### `POST /bounty-claim` (user JWT, checked in code)
 
@@ -411,6 +511,17 @@ environment variables. They leave throwaway wallet accounts behind: run `select 
 - **Automatic refund on devnet** (10 checks): a funded bounty past its date is refunded by one unauthenticated call
   to the sweep, to the refund address fixed at creation; a held bounty and a bounty inside its date are left
   alone; a second sweep pays nothing again.
+- **Direct bounty on devnet** (`scripts/hackathon/bounty-direct-e2e.mjs`, 53 checks, 2026-10-11, after the upgrade of
+  slot 510040266): a wallet posts a bounty for learner A and funds it (`create_direct`, a 260-byte account naming A);
+  learner B, who holds the same certification, is answered `not_invited` by the API and `NotInvited` (6020) by the
+  program when it sends `accept` itself, with Itera's attester co-signing, or presenting A's certification; the same
+  instruction signed by A passes; A accepts, delivers and is paid by the sponsor's wallet alone; the board never
+  listed the bounty, `invited/<A>` did; a second direct bounty past its date is returned to the sponsor by the public
+  sweep, in a transaction the sponsor did not sign. `RUN=<label> [KEEP_OPEN=1] node scripts/hackathon/bounty-direct-e2e.mjs`.
+- **The program's direct paths, natively** (`programs/bounty-escrow/tests/direct.rs`, 8 tests, run by the build
+  workflow before `cargo build-sbf`): the bytes `create_direct` writes, the address refusing another invitee, a gated
+  bounty unchanged, accept by the invitee, an eligible stranger refused, the invitee without the days refused, the
+  invitation surviving a give-up, the refund past the expiry.
 - **Sign-in return**: `loginReturn.test.ts`, `AuthPage.return.test.tsx` (a foreign `next` never leaves the app).
 - **Attack, on devnet**: a sponsor funds a bounty from their own wallet, signs the program's `refund` directly and
   leaves the bounty looking open. The next learner's accept is refused by the program, the row reads `refunded`, and
