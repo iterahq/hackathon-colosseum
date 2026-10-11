@@ -22,12 +22,22 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
             : t(bounty.postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: bounty.postedBy.name, wallet: bounty.postedBy.walletShort ?? '' })}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
+          {bounty.writtenIn && bounty.writtenIn !== locale && (
+            <span
+              className={`inline-flex items-center rounded-full border border-[#2E2A25] px-2 py-0.5 [font:700_11px_JetBrains_Mono] uppercase text-[#C9BFB0]`}
+              title={t(bounty.writtenIn === 'en' ? 'bounty.card.langEn' : 'bounty.card.langPt')}
+              aria-label={t(bounty.writtenIn === 'en' ? 'bounty.card.langEn' : 'bounty.card.langPt')}
+              data-testid="bounty-card-lang"
+            >
+              {bounty.writtenIn}
+            </span>
+          )}
           {bounty.judge && <JudgeChip />}
           {bounty.rehearsal && <RehearsalChip />}
           <StatusChip status={bounty.status} />
         </span>
       </div>
-      {bounty.judge && <JudgeCaption judge={bounty.judge} />}
+      {bounty.judge && <JudgeCaption judge={bounty.judge} needsLine />}
       <h3 className="[font:700_26px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <p className="line-clamp-3 [font:400_14px/1.5_Inter] text-[#C9BFB0]">{bounty.summary}</p>
       <div className="mt-auto flex flex-col gap-3 pt-1">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
-import { checkRows, daysFooter, daysRuleText, eventLabel, judgeBoardTitle, judgePaidHint, judgeSlotsText, signerCaptionKey } from './bountyJudge';
+import { checkRows, daysFooter, daysRuleText, eventLabel, judgeBoardTitle, judgePaidHint, judgeSlotsText, openHint, signerCaptionKey } from './bountyJudge';
 import type { BountyStats, JudgeInfo } from '@/types/bounty';
 
 const t = (locale: 'pt' | 'en') => (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -103,5 +103,17 @@ describe('signerCaptionKey', () => {
   it('without the role, a learner step signed by the wallet it names is the learner`s', () => {
     expect(signerCaptionKey({ kind: 'accepted', wallet: LEARNER, signedBy: LEARNER, signedRole: null })).toBe('bounty.ledger.signedLearner');
     expect(signerCaptionKey({ kind: 'accepted', wallet: LEARNER, signedBy: TREASURY, signedRole: null })).toBe('bounty.ledger.signedIteraPlain');
+  });
+});
+
+describe('openHint', () => {
+  it.each(['pt', 'en'] as const)('keeps the old hint when bounties equal places (%s)', (locale) => {
+    expect(openHint(t(locale), { bounties: 3, places: 3, held: 0 })).toBe(t(locale)('bounty.stats.openHint'));
+    expect(openHint(t(locale), { bounties: 3, places: 3, held: 2 })).toBe(t(locale)('bounty.stats.openHintHeld', { held: 2 }));
+  });
+  it('names both numbers when they differ', () => {
+    expect(openHint(t('en'), { bounties: 9, places: 11, held: 0 })).toBe('9 bounties · 11 places to take');
+    expect(openHint(t('pt'), { bounties: 9, places: 11, held: 0 })).toBe('9 missões · 11 vagas');
+    expect(openHint(t('en'), { bounties: 9, places: 11, held: 2 })).toBe('9 bounties · 11 places to take · 2 being worked on');
   });
 });

@@ -19,13 +19,14 @@ export function JudgeChip() {
   );
 }
 
-export function JudgeCaption({ className = '', judge = null }: { className?: string; judge?: JudgeInfo | null }) {
+export function JudgeCaption({ className = '', judge = null, needsLine = false }: { className?: string; judge?: JudgeInfo | null; needsLine?: boolean }) {
   const { t } = useI18n();
   const slots = judge ? judgeSlotsText(t, judge) : null;
   return (
     <p className={`min-w-0 [font:500_12px/1.4_JetBrains_Mono] text-[#A0978A] [overflow-wrap:anywhere] ${className}`} data-testid="bounty-judge-caption">
       {t('bounty.judge.caption')}
       {slots && <span className="block text-[#F2C66D]" data-testid="bounty-judge-slots">{slots}</span>}
+      {needsLine && <span className="block" data-testid="bounty-judge-needs">{t('bounty.judge.needs')}</span>}
     </p>
   );
 }
@@ -154,13 +155,21 @@ export function JudgePaidBlock({ bounty }: { bounty: BountyDetail }) {
 
 export function JudgeBoardBlock({ judge, paidCount, teamTestCount = 0 }: { judge: JudgeSummary; paidCount: number; teamTestCount?: number }) {
   const { t, locale } = useI18n();
+  const [expanded, setExpanded] = useState(false);
   if (paidCount <= 0 && judge.latest.length === 0) return null;
   const title = judgeBoardTitle(t, { outside: paidCount, teamTests: teamTestCount, listed: judge.latest.length });
   return (
     <section className="flex flex-col gap-2" aria-label={title} data-testid="bounty-judge-board">
-      <p className={`${MONO_LABEL} text-[#F2C66D]`}>{title}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={`${MONO_LABEL} min-w-0 text-[#F2C66D]`}>{title}</p>
+        {judge.latest.length > 0 && !expanded && (
+          <button type="button" onClick={() => setExpanded(true)} className={`${MONO_LABEL} min-h-8 text-[#3FD17F] underline sm:hidden`} data-testid="bounty-judge-expand">
+            {t('bounty.judge.seeAll', { n: judge.latest.length })}
+          </button>
+        )}
+      </div>
       {judge.latest.length > 0 && (
-        <ul className="flex flex-col gap-1">
+        <ul className={`flex-col gap-1 ${expanded ? 'flex' : 'hidden sm:flex'}`}>
           {judge.latest.map((payout) => (
             <li key={`${payout.slug}-${payout.paidAt ?? ''}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 [font:500_12px_JetBrains_Mono] text-[#C9BFB0]" data-testid="bounty-judge-latest">
               <span>{payout.walletShort}</span>

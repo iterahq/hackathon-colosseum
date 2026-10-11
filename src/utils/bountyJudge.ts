@@ -77,6 +77,13 @@ export function daysRuleText(t: Translate, daysCheckedBy: 'program' | 'attester'
   return daysCheckedBy === 'program' ? plural(t, 'bounty.days.program', minDays) : t('bounty.days.attester');
 }
 
+/** The hint under the open tile: bounties listed and places to take, both when they differ (one judge bounty has several slots). */
+export function openHint(t: Translate, input: { bounties: number; places: number; held: number }): string {
+  const { bounties, places, held } = input;
+  if (bounties === places) return t(held > 0 ? 'bounty.stats.openHintHeld' : 'bounty.stats.openHint', { held });
+  return t(held > 0 ? 'bounty.stats.openSplitHeld' : 'bounty.stats.openSplit', { bounties, places, held });
+}
+
 /** The board footer about where the days are read, from the counts of the bounties listed. `null` when the board does not say. */
 export function daysFooter(t: Translate, stats: BountyStats): string | null {
   const program = stats.daysByProgramCount;
