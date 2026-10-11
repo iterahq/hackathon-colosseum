@@ -309,6 +309,17 @@ What is **not** automatic: a learner whose delivery the sponsor never reviews ha
 
 ## Tests
 
+Run from a clone (devnet; credentials of the hackathon project in the environment, keys in local files, nothing secret in the scripts):
+
+```bash
+source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN
+node scripts/hackathon/bounty-program-e2e.mjs   # the escrow program called directly, 27 checks, ~0.006 SOL of the treasury
+node scripts/hackathon/bounty-e2e.mjs           # the whole flow through the API, 52 checks, ~0.02 SOL (authority + treasury)
+```
+
+Both need Node 22.18 or newer (they import the functions' TypeScript modules as they are). Each header lists its
+environment variables. They leave throwaway wallet accounts behind: run `select itera.tag_test_accounts();` afterwards.
+
 - Unit (`npx vitest run -c vitest.supabase.config.ts <files>`): `bounty.test.ts`, `bounty-escrow.test.ts`,
   `bounty-chain.test.ts` (the plans), `bounty-program.test.ts` (encoding, account layout),
   `solana-message.test.ts` (message bytes equal to the hand-written transfer; PDAs equal to the Solana CLI's).
