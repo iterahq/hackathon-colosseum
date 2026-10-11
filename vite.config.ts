@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from "fs";
 import { monacoSelfHost } from "./scripts/vendor-monaco";
 import { sourceStamp } from "./scripts/source-stamp";
 import { universalScreens } from "./scripts/vite/universal-screens";
+import { stripHtmlCommentsPlugin } from "./scripts/vite/strip-html-comments";
 
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
@@ -46,6 +47,7 @@ export default defineConfig(({ mode }) => ({
     monacoSelfHost(),
     react(),
     ...universalScreens(),
+    stripHtmlCommentsPlugin(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {
