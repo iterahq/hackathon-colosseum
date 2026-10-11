@@ -166,3 +166,12 @@ describe('isDraft', () => {
     expect(isDraft({ status: 'refunded', funding: null })).toBe(false);
   });
 });
+
+describe('who can take it', () => {
+  const say = (locale: 'pt' | 'en', key: string, n: number) => plural((k, vars = {}) => (resources[locale][k] ?? k).replace(/\{(\w+)\}/g, (_, name) => String(vars[name])), key, n, { trail: 'Week 1', min: 1 });
+  it('names only the invited wallet on a direct bounty, with the certification and days still needed', () => {
+    expect(say('en', 'bounty.detail.requirementDirectBody', 5)).toBe('Only the invited wallet. It also needs the on-chain certification for Week 1, with at least 1 of 5 stamped days.');
+    expect(say('pt', 'bounty.detail.requirementDirectBody', 1)).toContain('Só a carteira convidada');
+    expect(say('pt', 'bounty.detail.requirementDirectBody', 5)).toContain('dias carimbados');
+  });
+});
