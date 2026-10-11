@@ -154,9 +154,11 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
 export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en', { fresh = false }: { fresh?: boolean } = {}): Promise<ProfileLookup> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
   const started = Date.now();
-  const res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
-    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
-  });
+  const live = () =>
+    fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    });
+  const res = await ((fresh ? null : takePreload('__iteraProfile', wallet, lang)) ?? live()).catch(live);
   if (res.status === 400 || res.status === 404) return { status: 'invalid' };
   if (!res.ok) throw new Error(`learner-profile failed (${res.status})`);
   const body: unknown = await res.json();
@@ -188,25 +190,26 @@ export function staticCapabilities(lang: 'pt' | 'en'): Capabilities {
   };
 }
 
-interface GraphPreload {
-  wallet: string;
+interface Preload {
+  wallet?: string;
+  asset?: string;
   lang: string;
   response: Promise<Response>;
 }
 
-/** `index.html` starts this request for `/u/<wallet>` before the bundle loads; it is used once. */
-function takePreload(wallet: string, lang: string): Promise<Response> | null {
-  const holder = window as unknown as { __iteraGraph?: GraphPreload | null };
-  const preload = holder.__iteraGraph;
-  holder.__iteraGraph = null;
-  return preload && preload.wallet === wallet && preload.lang === lang ? preload.response : null;
+/** `index.html` starts these requests for `/u/<wallet>` and `/c/<asset>` before the bundle loads; each is used once. */
+export function takePreload(name: '__iteraGraph' | '__iteraProfile' | '__iteraCredential', key: string, lang: string): Promise<Response> | null {
+  const holder = window as unknown as Record<string, Preload | null | undefined>;
+  const preload = holder[name];
+  holder[name] = null;
+  return preload && (preload.wallet ?? preload.asset) === key && preload.lang === lang ? preload.response : null;
 }
 
 /** What our tables hold for a wallet, with no chain read: fast, and never `verified` by itself. */
 export async function getWalletGraph(wallet: string, lang: 'pt' | 'en'): Promise<Capabilities | null> {
   if (!url) throw new Error('Supabase not configured.');
   const fresh = () => fetch(`${url}/functions/v1/capability-graph/${encodeURIComponent(wallet)}?lang=${lang}`);
-  const res = await (takePreload(wallet, lang) ?? fresh()).catch(fresh);
+  const res = await (takePreload('__iteraGraph', wallet, lang) ?? fresh()).catch(fresh);
   if (res.status === 400) return null;
   if (!res.ok) throw new Error(`capability-graph failed (${res.status})`);
   const parsed = parseCapabilities(row(await res.json()).capabilities);

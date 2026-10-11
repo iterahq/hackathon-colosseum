@@ -51,18 +51,23 @@
       })();
     </script>
     <script>
-      // /u/<wallet> is opened cold by people who never saw the app: ask for the wallet's graph now, while the
-      // bundle downloads (`getWalletGraph` picks the answer up), so the page is not waiting on JavaScript to start.
+      // /u/<wallet> and /c/<asset> are opened cold by people who never saw the app: their answers are asked for now,
+      // while the bundle downloads (the services pick them up), so the page is not waiting on JavaScript to start.
       (function () {
         try {
-          var m = /^\/u\/([1-9A-HJ-NP-Za-km-z]{32,44})\/?$/.exec(location.pathname);
           var base = '%VITE_SUPABASE_URL%';
-          if (!m || base.indexOf('https://') !== 0) return;
+          if (base.indexOf('https://') !== 0) return;
           var stored = localStorage.getItem('itera.locale');
           var browser = ((navigator.languages && navigator.languages[0]) || navigator.language || 'pt').toLowerCase();
           var lang = stored === 'en' || stored === 'pt' ? stored : browser.indexOf('pt') === 0 ? 'pt' : 'en';
-          window.__iteraGraph = { wallet: m[1], lang: lang, response: fetch(base + '/functions/v1/capability-graph/' + m[1] + '?lang=' + lang) };
-          window.__iteraGraph.response.catch(function () {});
+          var get = function (path) { var r = fetch(base + '/functions/v1/' + path + '?lang=' + lang); r.catch(function () {}); return r; };
+          var u = /^\/u\/([1-9A-HJ-NP-Za-km-z]{32,44})\/?$/.exec(location.pathname);
+          var c = /^\/c\/([1-9A-HJ-NP-Za-km-z]{32,44})\/?$/.exec(location.pathname);
+          if (u) {
+            window.__iteraGraph = { wallet: u[1], lang: lang, response: get('capability-graph/' + u[1]) };
+            window.__iteraProfile = { wallet: u[1], lang: lang, response: get('learner-profile/' + u[1]) };
+          }
+          if (c) window.__iteraCredential = { asset: c[1], lang: lang, response: get('credential-verify/' + c[1]) };
         } catch (e) {}
       })();
     </script>
