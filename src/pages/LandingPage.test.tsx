@@ -64,7 +64,7 @@ describe('LandingPage', () => {
     expect(members[1]).toContain('Tainan Fidelis');
     expect(screen.getByTestId('landing-team')).not.toHaveTextContent(/\d+ (students|learners|followers|years)/);
     expect(screen.queryByTestId('landing-pitch-video')).toBeNull();
-    expect(screen.queryByTestId('landing-verify')).toBeNull();
+    expect(screen.getByTestId('landing-verify')).toHaveAttribute('href', '/verify');
     localStorage.clear();
   });
 
