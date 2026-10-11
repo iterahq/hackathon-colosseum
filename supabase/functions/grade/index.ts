@@ -33,54 +33,10 @@ async function loadActivityAs(token: string, activityId: string): Promise<Activi
   return data as ActivityRow | null;
 }
 
-async function iteraUserOf(db: IteraClient, token: string): Promise<string | 'unauthorized' | 'no_itera_profile'> {
+/** The auth user behind the bearer token; `null` without a valid one. */
+async function authSubjectOf(db: IteraClient, token: string): Promise<string | null> {
   const { data, error } = await db.auth.getUser(token);
-  if (error || !data.user) return 'unauthorized';
-  const { data: identity, error: identityError } = await db
-    .from('identities')
-    .select('user_id')
-    .eq('provider_subject', data.user.id)
-    .limit(1)
-    .maybeSingle();
-  if (identityError) throw new Error(`identities: ${identityError.message}`);
-  return identity ? (identity.user_id as string) : 'no_itera_profile';
-}
-
-async function recentAttempts(db: IteraClient, userId: string): Promise<number> {
-  const since = new Date(Date.now() - 60_000).toISOString();
-  const { count, error } = await db
-    .from('graded_attempts')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', since);
-  if (error) throw new Error(`graded_attempts count: ${error.message}`);
-  return count ?? 0;
-}
-
-/** The completion is written here and nowhere else. A row already completed keeps its time. */
-async function recordProgress(db: IteraClient, userId: string, activityId: string, passed: boolean): Promise<void> {
-  const key = { user_id: userId, activity_id: activityId };
-  if (!passed) {
-    const { error } = await db
-      .from('progress')
-      .upsert({ ...key, status: 'in_progress', completed_at: null }, { onConflict: 'user_id,activity_id', ignoreDuplicates: true });
-    if (error) throw new Error(`progress miss: ${error.message}`);
-    return;
-  }
-  const completion = { status: 'completed', completed_at: new Date().toISOString(), written_by_client: false };
-  const { data, error } = await db
-    .from('progress')
-    .upsert({ ...key, ...completion }, { onConflict: 'user_id,activity_id', ignoreDuplicates: true })
-    .select('activity_id');
-  if (error) throw new Error(`progress insert: ${error.message}`);
-  if ((data ?? []).length > 0) return;
-  const { error: updateError } = await db
-    .from('progress')
-    .update(completion)
-    .eq('user_id', userId)
-    .eq('activity_id', activityId)
-    .neq('status', 'completed');
-  if (updateError) throw new Error(`progress update: ${updateError.message}`);
+  return error || !data.user ? null : data.user.id;
 }
 
 Deno.serve(async (request) => {
@@ -103,46 +59,40 @@ Deno.serve(async (request) => {
     const token = bearerToken(request);
     if (!token) return json({ error: 'unauthorized' }, 401, cors);
     const db = serviceClient();
-    const [userId, activity] = await Promise.all([iteraUserOf(db, token), loadActivityAs(token, activityId)]);
-    if (userId === 'unauthorized') return json({ error: 'unauthorized' }, 401, cors);
-    if (userId === 'no_itera_profile') return json({ error: 'no_itera_profile' }, 403, cors);
+    const [subject, activity] = await Promise.all([authSubjectOf(db, token), loadActivityAs(token, activityId)]);
+    if (!subject) return json({ error: 'unauthorized' }, 401, cors);
     if (!activity) return json({ error: 'activity_not_found' }, 404, cors);
-
-    if ((await recentAttempts(db, userId)) >= MAX_ATTEMPTS_PER_MINUTE) {
-      return json({ error: 'too_many_attempts', retryable: true }, 429, cors);
-    }
 
     const grade = gradeSubmission(activity.kind, activity.spec, { answer, response }, claimedPassed, parseHtmlDocument);
     const answerHash = sha256Hex(`${activity.id}\n${canonicalJson({ answer, response })}`);
-    const { data: attempt, error } = await db
-      .from('graded_attempts')
-      .insert({
-        user_id: userId,
-        activity_id: activity.id,
-        lesson_id: activity.lesson_id,
-        kind: activity.kind,
-        mode: grade.mode,
-        passed: grade.passed,
-        claimed_passed: claimedPassed,
-        reason: grade.reason ?? null,
-        answer_hash: answerHash,
-        spec_hash: sha256Hex(canonicalJson(activity.spec)),
-        grader: GRADER_VERSION,
-      })
-      .select('id,created_at')
-      .single();
-    if (error) throw new Error(`graded_attempts: ${error.message}`);
-
-    await recordProgress(db, userId, activity.id, grade.passed);
+    // One round trip: the learner behind the token, the rate limit, the attempt row and the progress row.
+    const { data, error } = await db.rpc('record_graded_attempt', {
+      p_subject: subject,
+      p_activity_id: activity.id,
+      p_lesson_id: activity.lesson_id,
+      p_kind: activity.kind,
+      p_mode: grade.mode,
+      p_passed: grade.passed,
+      p_claimed_passed: claimedPassed,
+      p_reason: grade.reason ?? null,
+      p_answer_hash: answerHash,
+      p_spec_hash: sha256Hex(canonicalJson(activity.spec)),
+      p_grader: GRADER_VERSION,
+      p_max_per_minute: MAX_ATTEMPTS_PER_MINUTE,
+    });
+    if (error) throw new Error(`record_graded_attempt: ${error.message}`);
+    const attempt = data as { error?: string; attempt_id?: string; graded_at?: string };
+    if (attempt.error === 'no_itera_profile') return json({ error: 'no_itera_profile' }, 403, cors);
+    if (attempt.error === 'too_many_attempts') return json({ error: 'too_many_attempts', retryable: true }, 429, cors);
 
     return json(
       {
         verdict: grade.passed ? 'pass' : 'fail',
         mode: grade.mode,
         ...(grade.reason ? { reason: grade.reason } : {}),
-        attempt_id: attempt.id,
+        attempt_id: attempt.attempt_id,
         answer_hash: answerHash,
-        graded_at: attempt.created_at,
+        graded_at: attempt.graded_at,
       },
       200,
       cors,
