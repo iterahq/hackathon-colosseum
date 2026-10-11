@@ -27,7 +27,7 @@ export function CodeAttemptsNotice({ spent, note }: { spent: number; note?: stri
 
   if (unlimited) {
     return note ? (
-      <p className="mt-2 text-xs text-muted-foreground sm:mt-3" data-testid="code-checks-frozen">
+      <p className="mt-2 text-xs text-muted-foreground first-letter:uppercase sm:mt-3" data-testid="code-checks-frozen">
         {note}
       </p>
     ) : null;
