@@ -1,6 +1,8 @@
 import { avatarImageUrl, includesOf, isFreeAvatar, isOwnedRow, isSoldOut, reservationUntil, tierName, type AvatarAssetRow } from './avatars.ts';
 import { loadAvatarCatalog, loadAvatarRow, loadSupply, mintAvatar, reserve, supabaseUrl } from './avatar-store.ts';
 import { GLOBAL_REF } from './awards.ts';
+import { withClaims } from './claims.ts';
+import { claimsByRow } from './claims-store.ts';
 import { changeLives, ensureCompanion, syncMirror } from './companion-store.ts';
 import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics } from './cosmetics.ts';
 import { trailCosmeticPurchases } from './cosmetics-store.ts';
@@ -134,7 +136,9 @@ async function loadPassport({ db, userId, refId }: ShopContext): Promise<Achieve
     .eq('ref_id', refId)
     .maybeSingle();
   if (error) throw new Error(`user_achievements: ${error.message}`);
-  return data as AchievementRow | null;
+  const row = data as AchievementRow | null;
+  // The proven claims ride in `state` for the chain write, as in `restoreCosmetics`: a cosmetic must not drop them from the asset.
+  return row && withClaims(row, (await claimsByRow(db, [row.id])).get(row.id) ?? []);
 }
 
 /** A passport cosmetic: stored on the `trail_pass` row and written to the asset's attributes. */

@@ -1,5 +1,6 @@
 import type { ArtInput, Lang } from './art.ts';
 import type { I18nText, Tier } from './awards.ts';
+import { claimAttributes, claimsOf } from './claims.ts';
 import { cosmeticsOf } from './cosmetics.ts';
 import { endorsementAttributes, endorsementsOf } from './endorsement.ts';
 import { podiumPositionOf } from './podium.ts';
@@ -103,7 +104,7 @@ export function assetName(row: AchievementRow, catalog: CatalogEntry): string {
 export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): OnchainAttribute[] {
   if (row.achievement_key === 'trail_pass') {
     const { ink, frame } = cosmeticsOf(row.state);
-    return [
+    const attributes = [
       { key: 'kind', value: 'trail_passport' },
       { key: 'program', value: String(row.state.program_slug ?? '') },
       { key: 'trail', value: clip(pickText(row.state.trail_title, 'en'), 80) },
@@ -116,6 +117,7 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       ...(frame ? [{ key: 'frame', value: frame }] : []),
       ...endorsementAttributes(endorsementsOf(row.state)),
     ];
+    return [...attributes, ...claimAttributes(claimsOf(row.state), attributes)];
   }
   const position = podiumPositionOf(row.achievement_key);
   if (position !== null || row.achievement_key === 'weekly_goal') {
