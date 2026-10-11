@@ -86,12 +86,12 @@ export function buildMedals(items: readonly AchievementView[], pick: Pick): Pass
 }
 
 /**
- * Stamps = days written on chain across every page; `pending` = days done whose stamp is not on chain
- * (held by the server, or minting); `held` = the part of pending the server did not award. A page with
- * a day done counts as started.
+ * Certifications = pages whose asset is minted (the same count /u reads from the chain); stamps = days
+ * written on chain across every page; `pending` = days done whose stamp is not on chain (held by the
+ * server, or minting); `held` = the part of pending the server did not award.
  */
 export const totals = (pages: readonly PassportPageData[], medals: readonly PassportMedal[]) => ({
-  pages: pages.filter((p) => p.daysDone > 0).length,
+  pages: pages.filter((p) => p.mintStatus === 'minted').length,
   stamps: pages.reduce((s, p) => s + p.daysStamped, 0),
   pending: pages.reduce((s, p) => s + pendingOf(p), 0),
   held: pages.reduce((s, p) => s + Math.max(0, p.daysDone - p.daysAwarded), 0),
