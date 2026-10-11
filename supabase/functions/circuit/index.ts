@@ -27,6 +27,18 @@ async function shopPriceRange(db: ReturnType<typeof serviceClient>): Promise<{ m
   return { min_usd_cents: Math.min(...cents), max_usd_cents: Math.max(...cents), items: cents.length };
 }
 
+/** Day stamps really written on chain so far: the count the capacity above is measured against. */
+async function stampsIssued(db: ReturnType<typeof serviceClient>, tests: ReadonlySet<string>): Promise<{ all: number; outside: number }> {
+  const users: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from('user_achievements').select('user_id').eq('achievement_key', 'day_stamp').eq('mint_status', 'minted').order('id').range(from, from + PAGE - 1);
+    if (error) throw new Error(`user_achievements stamps: ${error.message}`);
+    users.push(...((data ?? []) as Array<{ user_id: string }>).map((row) => row.user_id));
+    if (!data || data.length < PAGE) break;
+  }
+  return { all: users.length, outside: users.filter((user) => !tests.has(user)).length };
+}
+
 /**
  * Public counter of the Circuito: what the shop moved from the treasury to the key that pays for stamps.
  * The headline counts EVERY confirmed transfer, the team's own test runs included, so it never shrinks
@@ -56,6 +68,7 @@ Deno.serve(async (request) => {
       if (!data || data.length < PAGE) break;
     }
     const [config, mine, tests, shop] = await Promise.all([loadConfig(db), wallet ? walletCircuit(db, wallet) : null, loadTestAccountIds(db), shopPriceRange(db)]);
+    const issued = await stampsIssued(db, tests);
     const outsideRows = all.filter((row) => !tests.has(row.user_id));
     const outside = circuitTotals(outsideRows);
     const purchaseLamports = all.reduce((sum, row) => sum + BigInt(row.lamports ?? 0), 0n);
@@ -66,11 +79,13 @@ Deno.serve(async (request) => {
       {
         as_of: new Date().toISOString(),
         ...circuitTotals(all),
+        /** `stamps_funded` is a capacity (the share of the purchases divided by the fee of one stamp). This is the count of stamps written on chain. */
+        stamps_issued: issued.all,
         purchase_lamports: Number(purchaseLamports),
         share_percent: Number(CIRCUIT_SHARE_PERCENT),
         stamp_fee_lamports: Number(STAMP_FEE_LAMPORTS),
         includes_team_tests: true,
-        outside: { total_lamports: outside.total_lamports, purchases: outside.purchases, stamps_funded: outside.stamps_funded, test_accounts_left_out: testBuyers },
+        outside: { total_lamports: outside.total_lamports, purchases: outside.purchases, stamps_funded: outside.stamps_funded, stamps_issued: issued.outside, test_accounts_left_out: testBuyers },
         shop,
         cluster: config.cluster ?? 'devnet',
         treasury: config.treasury ?? null,
