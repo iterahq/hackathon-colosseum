@@ -27,11 +27,11 @@ describe('NotFoundRoute', () => {
     localStorage.clear();
   });
 
-  it('shows Tera looking everywhere, with one plain link back to the dashboard', () => {
+  it('shows Tera looking everywhere, with one plain link back to the start', () => {
     const { container } = renderAt('/there-is-no-such-route');
     expect(screen.getByText('O Tera procurou em todo lugar e não achou essa página.')).toBeInTheDocument();
     expect(container.querySelectorAll('[data-tera="oops"]')).toHaveLength(1);
-    const link = screen.getByRole('link', { name: 'Voltar para o painel' });
+    const link = screen.getByRole('link', { name: 'Voltar para o início' });
     expect(link).toHaveAttribute('href', '/');
     expect(screen.getAllByRole('link')).toHaveLength(1);
   });
@@ -39,7 +39,7 @@ describe('NotFoundRoute', () => {
   it('speaks english when the locale is en', () => {
     renderAt('/x', 'en');
     expect(screen.getByText("Tera looked everywhere and couldn't find this page.")).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to the dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to the start' })).toBeInTheDocument();
   });
 
   it('logs the line monitoring reads, with the path, once per path', () => {
