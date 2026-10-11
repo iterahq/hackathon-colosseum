@@ -8,7 +8,7 @@ export function PaidBlock({ bounty }: { bounty: BountyDetail }) {
   const { t } = useI18n();
   const { claim, payout } = bounty;
   if (bounty.status !== 'paid' || !payout) return null;
-  const delivery = safeHttpsUrl(claim?.submissionUrl);
+  const delivery = bounty.judge ? null : safeHttpsUrl(claim?.submissionUrl);
   const winner = claim?.wallet ?? payout.wallet;
   return (
     <section className="flex flex-col gap-3 rounded-[14px] border-2 border-[#3FD17F] bg-[#3FD17F]/10 p-4 sm:p-5" aria-label={t('bounty.paid.label')} data-testid="bounty-paid">
