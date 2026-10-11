@@ -9,9 +9,9 @@ done during the competition is judged).
 - Last inherited commit: `1f5b925b` (2026-10-09 16:49 -0300), "feat: funnel events (DFL-00D3F) (#699)".
 - First hackathon commit: `34336b3` (2026-10-09 17:44 -0300), "chore: bootstrap hackathon copy (drop CI, isolation
   banner, API base build arg) (#1)". Its parent is the copy point.
-- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `65f9256`, 2026-10-11 00:48 -0300): 76 commits,
+- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `77dea24`, 2026-10-11 01:45 -0300): 82 commits,
   one per merged PR (squash merges), all by one git author account.
-- Diff against the copy point: 784 files changed, 662 added, 102 modified, 20 deleted; 63,860 lines added and 5,256 removed.
+- Diff against the copy point: 802 files changed, 680 added, 102 modified, 20 deleted; 64,670 lines added and 5,261 removed.
 - To refresh these numbers: `git rev-list --count 1f5b925b..origin/main`, `git diff --shortstat 1f5b925b origin/main`,
   `gh pr list --state merged --limit 200`.
 - Before the copy point the repository history has 721 commits. The history of the original product is included in
@@ -110,10 +110,16 @@ Merged pull requests (`gh pr list --state merged`, titles as merged; times are i
 | #75 | Public endpoints: per-address rate limit; manifest served as JSON | `itera.rate_take` (migration 0210), limits on five public functions. |
 | #76 | Public profile polish: graph in the first screen, 1180px page, invalid-wallet CTA | `/u/<wallet>` polish. |
 | #77 | Server-side grading: a completion comes only from an answer the server graded | `grade` function, `graded_attempts` (migration 0190), proof fields on the asset. |
+| #78 | Docs: README, disclosure and checklist match main (26 functions, 50 migrations, PRs #1-#77); Phantom manual test | The README, this file and the checklist brought to main. |
+| #79 | Public landing at / for a visitor (learn → prove → earn, live numbers) | Public landing page for a visitor: learn, prove, earn, live numbers. |
+| #80 | Audit fixes: crystals sheet footer, credential not-found state, gifted lives label, look chip names | Crystals sheet footer, credential not-found state, gifted-lives label, look chip names. |
+| #81 | Proof: the database refuses a completion written by a client | Migration 0191: a completion written by a client is refused by the database; one-call attempt recording. |
+| #82 | Try-on dialog: stacked pay keys, one balance line | Try-on dialog pay buttons stacked, one balance line. |
+| #83 | Lives: one life per activity, not per retry | One life lost per activity, not per retry. |
 
 Merged after this table was written: see `gh pr list --state merged`. Nothing is open at the time of writing.
 
-## Hackathon migrations (`db/migrations/`, 50 files)
+## Hackathon migrations (`db/migrations/`, 52 files)
 
 - `0110_identity_provider_solana.sql`
 - `0111_wallet_user_provisioning.sql`
