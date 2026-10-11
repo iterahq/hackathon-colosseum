@@ -22,6 +22,16 @@ describe('parseHeadline', () => {
   it('trims and collapses whitespace', () => {
     expect(parseHeadline('  Builds   pages  ')).toEqual({ ok: true, value: 'Builds pages' });
   });
+  it('strips zero-width and bidi controls before the checks', () => {
+    expect(parseHeadline('Front\u202Eend\u200B dev')).toEqual({ ok: true, value: 'Frontend dev' });
+    expect(parseHeadline('\u202Egnp.evil')).toEqual({ ok: true, value: 'gnp.evil' });
+  });
+
+  it('refuses a link hidden with a zero-width character', () => {
+    expect(parseHeadline('visit evil.c\u200Bom')).toEqual({ ok: false, error: 'invalid_headline' });
+    expect(parseHeadline('ww\u200Bw.evil')).toEqual({ ok: false, error: 'invalid_headline' });
+  });
+
   it('treats empty and missing as no headline', () => {
     expect(parseHeadline(undefined)).toEqual({ ok: true, value: null });
     expect(parseHeadline('   ')).toEqual({ ok: true, value: null });
@@ -30,7 +40,7 @@ describe('parseHeadline', () => {
     expect(parseHeadline('a'.repeat(120)).ok).toBe(true);
     expect(parseHeadline('a'.repeat(121))).toEqual({ ok: false, error: 'invalid_headline' });
   });
-  it.each(['see https://x.com', 'www.site.com', 'me@mail.com', 'ping @someone', 'my site.io', 'a<b>c', 'tab\u0007bell'])('refuses %s', (text) => {
+  it.each(['see https://x.com', 'www.site.com', 'me@mail.com', 'ping @someone', 'my site.io', 'a<b>c', 'tab\u0090bell'])('refuses %s', (text) => {
     expect(parseHeadline(text)).toEqual({ ok: false, error: 'invalid_headline' });
   });
   it('refuses a non-string', () => {
