@@ -69,7 +69,9 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
         )}
         {companion ? (
           <>
-            {companion.lives != null && <Row label={t('passport.credential.lives')}>{companion.lives}/{companion.maxLives}</Row>}
+            {companion.lives != null && (
+              <Row label={t('passport.credential.lives')}>{companion.lives > companion.maxLives ? t('passport.credential.livesBonus', { lives: companion.lives, max: companion.maxLives }) : `${companion.lives}/${companion.maxLives}`}</Row>
+            )}
             <Row label={t('passport.credential.outfit')}>{companion.outfit ? t(`ux.outfit.${companion.outfit}`) : t('passport.credential.noOutfit')}</Row>
             {companion.level != null && <Row label={t('passport.credential.level')}>{companion.level}</Row>}
             {companion.xp != null && <Row label={t('passport.credential.xp')}>{companion.xp}</Row>}

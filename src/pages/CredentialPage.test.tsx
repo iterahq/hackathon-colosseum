@@ -77,7 +77,7 @@ describe('CredentialPage (public)', () => {
   it('not found: says so and lets the visitor check another address', () => {
     useCredential.mockReturnValue({ isPending: false, isError: false, data: { status: 'not_found', ms: 20 } });
     show();
-    expect(screen.getByTestId('credential-not-found')).toHaveTextContent('Nenhum asset neste endereço.');
+    expect(screen.getByTestId('credential-not-found')).toHaveTextContent('Não existe credencial da Itera neste endereço.');
     expect(screen.getByTestId('credential-not-found')).toHaveTextContent('O Tera não achou nada neste endereço.');
     fireEvent.change(screen.getByLabelText('Endereço do asset'), { target: { value: 'Other' } });
     expect(screen.getByRole('button', { name: 'Verificar' })).toBeInTheDocument();

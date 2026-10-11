@@ -89,8 +89,7 @@ export default function CredentialPage() {
         )}
         {lookup?.status === 'not_found' && (
           <div className={`${NOTE} w-full`} data-testid="credential-not-found">
-            <TeraNote mood="oops" title={t('tera.credential.notFound')} className="!pt-2 pb-4" />
-            <p className="[font:700_26px_'Barlow_Condensed'] text-[#F4EDE2]">{t('passport.credential.notFound')}</p>
+            <TeraNote mood="oops" title={t('tera.credential.notFound')} body={t('passport.credential.notFound')} className="!pt-2 pb-2" />
             {looksLikeAddress(asset) && <p className="mt-1 [font:500_12px_JetBrains_Mono] break-all text-[#A0978A]">{asset}</p>}
             <p className="mt-4 [font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.credential.verifyOther')}</p>
             <VerifyOther />

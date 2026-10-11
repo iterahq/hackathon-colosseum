@@ -36,7 +36,7 @@ export function LookChip({ label, title, on, disabled, rarity, testId, onPick, c
         )}
         {rarity && rarity !== 'common' && !on && <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-full" style={{ background: RARITY_DOT[rarity] ?? NEUTRAL_DOT }} />}
       </span>
-      <span className="max-w-full truncate font-mono text-[10px] text-[#C9BFB0] sm:text-[11px]">{label}</span>
+      <span className="line-clamp-2 max-w-full break-words text-center font-mono text-[10px] leading-tight text-[#C9BFB0] sm:text-[11px]">{label}</span>
     </button>
   );
 }

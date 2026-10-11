@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { verifyCredential } from '@/services/credential.service';
+import { looksLikeAddress } from '@/utils/credential';
+import type { CredentialLookup } from '@/types/achievements';
 
-/** The public verification of one asset: componente → hook → service → edge function. */
+const NOT_AN_ADDRESS: CredentialLookup = { status: 'not_found', ms: 0 };
+
+/** The public verification of one asset: componente → hook → service → edge function. Text that is not an address never leaves the browser. */
 export function useCredential(asset: string, lang: string) {
   return useQuery({
     queryKey: queryKeys.achievements.credential(asset, lang),
-    queryFn: () => verifyCredential(asset, lang),
+    queryFn: () => (looksLikeAddress(asset) ? verifyCredential(asset, lang) : Promise.resolve(NOT_AN_ADDRESS)),
     enabled: Boolean(asset),
     retry: false,
     staleTime: 30_000,
