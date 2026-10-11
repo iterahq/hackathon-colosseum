@@ -37,6 +37,7 @@ export const ESCROW_ERRORS: Record<number, string> = {
   6011: 'wrong_claimant',
   6012: 'wrong_sponsor',
   6013: 'not_authorized',
+  6014: 'claimant_must_sign',
 };
 
 /** The 16 bytes of a uuid: the seed of its escrow account. */
@@ -112,10 +113,14 @@ export function createInstruction(input: {
   };
 }
 
-export function acceptInstruction(input: { programId: string; approver: string; escrow: string; claimant: string; certification: string }): Instruction {
+/**
+ * `attester` co-signs: the bounty's approver, or Itera's attester key. The
+ * claimant signs too: the program records nobody who did not ask for it.
+ */
+export function acceptInstruction(input: { programId: string; attester: string; escrow: string; claimant: string; certification: string }): Instruction {
   return {
     programId: input.programId,
-    accounts: [{ address: input.approver, signer: true }, { address: input.escrow, writable: true }, { address: input.claimant }, { address: input.certification }],
+    accounts: [{ address: input.attester, signer: true }, { address: input.escrow, writable: true }, { address: input.claimant, signer: true }, { address: input.certification }],
     data: Uint8Array.of(1),
   };
 }
@@ -128,10 +133,12 @@ export function releaseInstruction(input: { programId: string; approver: string;
   };
 }
 
-export function unclaimInstruction(input: { programId: string; approver: string; escrow: string }): Instruction {
-  return { programId: input.programId, accounts: [{ address: input.approver, signer: true }, { address: input.escrow, writable: true }], data: Uint8Array.of(3) };
+/** Reopens a held bounty. `authority`: the recorded claimant (giving up), the approver, or Itera's attester key. */
+export function unclaimInstruction(input: { programId: string; authority: string; escrow: string }): Instruction {
+  return { programId: input.programId, accounts: [{ address: input.authority, signer: true }, { address: input.escrow, writable: true }], data: Uint8Array.of(3) };
 }
 
+/** `authority`: the approver or the sponsor; once the bounty is past its expiry, any signer. */
 export function refundInstruction(input: { programId: string; authority: string; escrow: string; sponsor: string }): Instruction {
   return {
     programId: input.programId,

@@ -56,10 +56,70 @@ export function requiredSignatures(message: Uint8Array): number {
   return message[0];
 }
 
-export function memoInstruction(text: string): Instruction {
+/** A memo. The Memo program checks that every address in `signers` signed the transaction. */
+export function memoInstruction(text: string, signers: readonly string[] = []): Instruction {
   const data = new TextEncoder().encode(text);
   if (data.length === 0 || data.length > 256) throw new Error('memo must be 1..256 bytes');
-  return { programId: MEMO_PROGRAM, accounts: [], data };
+  return { programId: MEMO_PROGRAM, accounts: signers.map((address) => ({ address, signer: true })), data };
+}
+
+export interface DecodedMessage {
+  payer: string;
+  /** The accounts that must sign, in signature order (the payer first). */
+  signers: string[];
+  recentBlockhash: string;
+  instructions: Instruction[];
+}
+
+/** Reads a legacy transaction message back into its instructions. `null` when the bytes are not one (or are a versioned message). */
+export function decodeMessage(message: Uint8Array): DecodedMessage | null {
+  let offset = 0;
+  const take = (length: number): Uint8Array | null => {
+    if (length < 0 || offset + length > message.length) return null;
+    offset += length;
+    return message.subarray(offset - length, offset);
+  };
+  const compact = (): number | null => {
+    let value = 0;
+    for (let shift = 0; shift <= 14; shift += 7) {
+      const byte = take(1)?.[0];
+      if (byte === undefined) return null;
+      value |= (byte & 0x7f) << shift;
+      if ((byte & 0x80) === 0) return value;
+    }
+    return null;
+  };
+  const header = take(3);
+  if (!header || header[0] >= 0x80 || header[0] === 0) return null;
+  const [signatures, readonlySigned, readonlyUnsigned] = header;
+  const keyCount = compact();
+  if (keyCount === null || keyCount < signatures || signatures < readonlySigned || keyCount - signatures < readonlyUnsigned) return null;
+  const keys: string[] = [];
+  for (let index = 0; index < keyCount; index += 1) {
+    const bytes = take(32);
+    if (!bytes) return null;
+    keys.push(base58Encode(bytes));
+  }
+  const blockhash = take(32);
+  const count = compact();
+  if (!blockhash || count === null) return null;
+  const meta = (index: number): AccountMeta => ({
+    address: keys[index],
+    signer: index < signatures,
+    writable: index < signatures ? index < signatures - readonlySigned : index < keyCount - readonlyUnsigned,
+  });
+  const instructions: Instruction[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const program = take(1)?.[0];
+    const accountCount = compact();
+    const accountIndexes = accountCount === null ? null : take(accountCount);
+    const dataLength = compact();
+    const data = dataLength === null ? null : take(dataLength);
+    if (program === undefined || program >= keyCount || !accountIndexes || !data || [...accountIndexes].some((account) => account >= keyCount)) return null;
+    instructions.push({ programId: keys[program], accounts: [...accountIndexes].map(meta), data: Uint8Array.from(data) });
+  }
+  if (offset !== message.length) return null;
+  return { payer: keys[0], signers: keys.slice(0, signatures), recentBlockhash: base58Encode(blockhash), instructions };
 }
 
 const P = (1n << 255n) - 19n;

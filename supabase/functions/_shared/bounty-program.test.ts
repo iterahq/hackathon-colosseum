@@ -71,17 +71,18 @@ describe('escrow program client', () => {
     expect(instruction.accounts[0]).toMatchObject({ signer: true, writable: true });
   });
 
-  it('never marks a destination as a signer and only the approver signs', () => {
-    const accept = acceptInstruction({ programId: PROGRAM, approver: TREASURY, escrow: ESCROW, claimant: CLAIMANT, certification: CERT });
+  it('never marks a destination of money as a signer; accept needs the claimant beside the attester', () => {
+    const accept = acceptInstruction({ programId: PROGRAM, attester: TREASURY, escrow: ESCROW, claimant: CLAIMANT, certification: CERT });
     const release = releaseInstruction({ programId: PROGRAM, approver: TREASURY, escrow: ESCROW, claimant: CLAIMANT });
-    const unclaim = unclaimInstruction({ programId: PROGRAM, approver: TREASURY, escrow: ESCROW });
+    const unclaim = unclaimInstruction({ programId: PROGRAM, authority: TREASURY, escrow: ESCROW });
     const refund = refundInstruction({ programId: PROGRAM, authority: TREASURY, escrow: ESCROW, sponsor: TREASURY });
     expect([accept.data[0], release.data[0], unclaim.data[0], refund.data[0]]).toEqual([1, 2, 3, 4]);
     for (const instruction of [accept, release, unclaim, refund]) {
-      expect(instruction.accounts.filter((account) => account.signer).map((account) => account.address)).toEqual([TREASURY]);
+      expect(instruction.accounts.filter((account) => account.signer).map((account) => account.address)).toEqual(instruction === accept ? [TREASURY, CLAIMANT] : [TREASURY]);
       expect(instruction.accounts[1]).toEqual({ address: ESCROW, writable: true });
     }
-    expect(accept.accounts.slice(2)).toEqual([{ address: CLAIMANT }, { address: CERT }]);
+    expect(accept.accounts.slice(2)).toEqual([{ address: CLAIMANT, signer: true }, { address: CERT }]);
+    expect(unclaimInstruction({ programId: PROGRAM, authority: CLAIMANT, escrow: ESCROW }).accounts[0]).toEqual({ address: CLAIMANT, signer: true });
     expect(release.accounts[2]).toEqual({ address: CLAIMANT, writable: true });
   });
 

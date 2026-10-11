@@ -45,7 +45,8 @@ export async function readEscrows(programId: string, addresses: string[]): Promi
   return found;
 }
 
-function refusal(error: unknown): EscrowProgramError | null {
+/** The program's own reason when the node refused a transaction at simulation, `null` for any other failure. */
+export function refusal(error: unknown): EscrowProgramError | null {
   if (!(error instanceof RpcNodeError)) return null;
   const match = /custom program error: 0x([0-9a-f]+)/i.exec(error.nodeMessage);
   const code = match ? ESCROW_ERRORS[Number.parseInt(match[1], 16)] : undefined;
@@ -53,8 +54,9 @@ function refusal(error: unknown): EscrowProgramError | null {
 }
 
 /**
- * Sends instructions signed by the approver (the treasury key), with a memo
- * naming the bounty step. A refusal by the program at simulation surfaces as
+ * Sends instructions signed by this server's key (the treasury: Itera's
+ * attester, and the approver of Itera's own bounties), with a memo naming the
+ * bounty step. A refusal by the program at simulation surfaces as
  * `EscrowProgramError` and nothing is sent.
  */
 export async function sendAsApprover(instructions: Instruction[], memo: string, onBroadcast?: (signature: string) => Promise<void>): Promise<string> {
@@ -69,7 +71,10 @@ export async function sendAsApprover(instructions: Instruction[], memo: string, 
 export interface EscrowTerms {
   programId: string;
   escrow: string;
+  /** Signs `release`, and so decides when the reward is paid: the treasury for Itera's own bounties, the sponsor's wallet otherwise. */
   approver: string;
+  /** The key this server signs with (Itera's attester). It co-signs `accept` and may `unclaim`; it is the approver only of Itera's own bounties. */
+  attester: string;
   sponsor: string;
   collection: string;
   bountyId: string;
@@ -94,32 +99,36 @@ export function matchesTerms(state: EscrowState | null, terms: EscrowTerms): boo
   );
 }
 
-type Party = { programId: string; approver: string; escrow: string };
+type Party = { programId: string; approver: string; attester: string; escrow: string };
 
 /**
  * The instructions that take the escrow account from where it is to "held by
- * `claimant`". A claim our tables already let go of (rejected, withdrawn, out
- * of time) is released on chain first, in the same transaction.
+ * `claimant`", for the claimant to sign. A claim our tables already let go of
+ * and the chain still shows is released first, in the same transaction.
  */
-export function acceptPlan(state: EscrowState, party: Party, claimant: string, certification: string): Instruction[] | 'held' | 'closed' {
+export function acceptPlan(state: EscrowState, party: Party, claimant: string, certification: string): Instruction[] | 'closed' {
   if (state.status === 'paid' || state.status === 'refunded') return 'closed';
-  if (state.status === 'claimed' && state.claimant === claimant) return 'held';
-  return [...(state.status === 'claimed' ? [unclaimInstruction(party)] : []), acceptInstruction({ ...party, claimant, certification })];
+  const reopen = state.status === 'claimed' ? [unclaimInstruction({ programId: party.programId, authority: party.attester, escrow: party.escrow })] : [];
+  return [...reopen, acceptInstruction({ programId: party.programId, attester: party.attester, escrow: party.escrow, claimant, certification })];
 }
 
-/** The instructions that pay `claimant`. `done` when the account already says it paid them; `closed` when it can no longer. */
-export function releasePlan(state: EscrowState, party: Party, claimant: string, certification: string): Instruction[] | 'done' | 'closed' {
+/**
+ * The instructions that pay `claimant`. `done` when the account already says it
+ * paid them; `closed` when it cannot: it paid someone else, was refunded, or
+ * does not name this claimant (only their own signature can put them there).
+ */
+export function releasePlan(state: EscrowState, party: Party, claimant: string): Instruction[] | 'done' | 'closed' {
   if (state.status === 'paid') return state.claimant === claimant ? 'done' : 'closed';
-  if (state.status === 'refunded') return 'closed';
-  const accept = acceptPlan(state, party, claimant, certification);
-  return [...(Array.isArray(accept) ? accept : []), releaseInstruction({ ...party, claimant })];
+  if (state.status !== 'claimed' || state.claimant !== claimant) return 'closed';
+  return [releaseInstruction({ programId: party.programId, approver: party.approver, escrow: party.escrow, claimant })];
 }
 
-/** The instructions that return the money to the sponsor. */
+/** The instructions that return the money to the sponsor, signed by this server's key. */
 export function refundPlan(state: EscrowState, party: Party): Instruction[] | 'done' | 'closed' {
   if (state.status === 'refunded') return 'done';
   if (state.status === 'paid') return 'closed';
-  return [...(state.status === 'claimed' ? [unclaimInstruction(party)] : []), refundInstruction({ programId: party.programId, authority: party.approver, escrow: party.escrow, sponsor: state.sponsor })];
+  const reopen = state.status === 'claimed' ? [unclaimInstruction({ programId: party.programId, authority: party.attester, escrow: party.escrow })] : [];
+  return [...reopen, refundInstruction({ programId: party.programId, authority: party.attester, escrow: party.escrow, sponsor: state.sponsor })];
 }
 
 /** The rent the node asks for an escrow account, which whoever funds a bounty pays on top of the reward. */

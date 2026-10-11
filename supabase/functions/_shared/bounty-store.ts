@@ -1,4 +1,6 @@
 import { EscrowProgramError, readEscrow, readEscrows, refundPlan, releasePlan, acceptPlan, matchesTerms, sendAsApprover, type EscrowTerms } from './bounty-chain.ts';
+import { unclaimInstruction } from './bounty-program.ts';
+import { memoInstruction, type Instruction } from './solana-message.ts';
 import { escrowBalance, sendFromEscrow } from './bounty-escrow.ts';
 import {
   checkEligibility,
@@ -23,7 +25,7 @@ export const BOUNTY_COLUMNS =
   'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url';
 export const CLAIM_COLUMNS =
   'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note';
-const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,created_at';
+const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,signer,created_at';
 const BOARD_LIMIT = 60;
 const EVENT_LIMIT = 60;
 const ESCROW_HISTORY = 20;
@@ -121,10 +123,12 @@ function escrowHistory(address: string): Promise<SignatureInfo[]> {
 /** The terms a program-held bounty must show on chain. `null` when the program is not configured. */
 export async function escrowTerms(bounty: BountyRow, config: Record<string, string>): Promise<EscrowTerms | null> {
   if (!config.bounty_escrow_program || !config.collection_passports) return null;
+  const attester = await treasuryAddress();
   return {
     programId: config.bounty_escrow_program,
     escrow: bounty.escrow_address,
     approver: await approverOf(bounty),
+    attester,
     sponsor: bounty.refund_address,
     collection: config.collection_passports,
     bountyId: bounty.id,
@@ -165,32 +169,84 @@ export async function refreshFunding(db: IteraClient, bounty: BountyRow, known?:
 }
 
 /**
- * Records a claim on the escrow program, which checks the certification account
- * itself. Returns the signature, or `null` when the account already names this
- * wallet. Throws `EscrowProgramError` when the program refuses.
+ * What the claimant's wallet must sign to hold a program-held bounty: the
+ * program's `accept` (which checks the certification account itself) and the
+ * step's memo. Throws `EscrowProgramError` when the account cannot take a claim.
  */
-export async function acceptOnChain(db: IteraClient, bounty: BountyRow, claim: { id: string; wallet: string; proofAsset: string }): Promise<string | null> {
+export async function acceptInstructions(db: IteraClient, bounty: BountyRow, wallet: string, proofAsset: string): Promise<Instruction[]> {
   const terms = await escrowTerms(bounty, await loadConfig(db));
   if (!terms) throw new EscrowProgramError('not_configured');
   const state = await readEscrow(terms.programId, bounty.escrow_address);
   if (!state) throw new EscrowProgramError('wrong_escrow_account');
-  const plan = acceptPlan(state, terms, claim.wallet, claim.proofAsset);
-  if (plan === 'held') return null;
+  const plan = acceptPlan(state, terms, wallet, proofAsset);
   if (plan === 'closed') throw new EscrowProgramError('not_open');
-  let signature: string;
+  return [...plan, memoInstruction(transferMemo(bounty.id, 'accept'))];
+}
+
+/**
+ * What the claimant's wallet must sign to give a program-held bounty up: the
+ * program's `unclaim`, signed by the claimant alone. `null` when the account
+ * does not name this wallet (nothing to undo on chain).
+ */
+export async function withdrawInstructions(db: IteraClient, bounty: BountyRow, wallet: string): Promise<Instruction[] | null> {
+  const terms = await escrowTerms(bounty, await loadConfig(db));
+  if (!terms) return null;
+  const state = await readEscrow(terms.programId, bounty.escrow_address);
+  if (state?.status !== 'claimed' || state.claimant !== wallet) return null;
+  return [unclaimInstruction({ programId: terms.programId, authority: wallet, escrow: bounty.escrow_address }), memoInstruction(transferMemo(bounty.id, 'withdraw'))];
+}
+
+/** Whether the escrow account names `wallet` as the one holding the bounty. */
+export async function heldOnChainBy(db: IteraClient, bounty: BountyRow, wallet: string): Promise<boolean> {
+  const terms = await escrowTerms(bounty, await loadConfig(db));
+  const state = terms ? await readEscrow(terms.programId, bounty.escrow_address) : null;
+  return state?.status === 'claimed' && state.claimant === wallet;
+}
+
+/** Reopens an escrow account that names `wallet`, signed by Itera's attester key. Whether it did. Never throws. */
+export async function reopenOnChain(db: IteraClient, bounty: BountyRow, wallet: string): Promise<boolean> {
   try {
-    signature = await sendAsApprover(plan, transferMemo(bounty.id, 'accept'));
+    const terms = await escrowTerms(bounty, await loadConfig(db));
+    if (!terms) return false;
+    const state = await readEscrow(terms.programId, bounty.escrow_address);
+    if (state?.status !== 'claimed' || state.claimant !== wallet) return false;
+    await sendAsApprover([unclaimInstruction({ programId: terms.programId, authority: terms.attester, escrow: bounty.escrow_address })], transferMemo(bounty.id, 'rejected'));
+    return true;
   } catch (error) {
-    if (!(error instanceof TransferBroadcastError)) throw error;
-    // Sent and not seen confirmed. The account decides whether the claim exists; a claim that is not on chain
-    // must not stand, or a later payout would have to accept first and could be refused as expired.
-    const after = await readEscrow(terms.programId, bounty.escrow_address);
-    if (after?.status !== 'claimed' || after.claimant !== claim.wallet) throw new EscrowProgramError('not_recorded');
-    signature = error.signature;
+    console.error('bounty escrow not reopened', bounty.id, error instanceof Error ? error.message : error);
+    return false;
   }
-  const { error } = await db.from('bounty_events').update({ signature }).eq('bounty_id', bounty.id).eq('claim_id', claim.id).eq('kind', 'accepted');
-  if (error) console.error('bounty accept signature not recorded', bounty.id, signature, error.message);
-  return signature;
+}
+
+type ClaimStep = 'accepted' | 'withdrawn' | 'expired' | 'rejected';
+
+/** Puts the transaction of a claim's step on its ledger row, with the wallet that signed the program's instruction. */
+export async function recordStepSignature(db: IteraClient, step: { bountyId: string; claimId: string; kind: ClaimStep; signature: string; signer: string }): Promise<void> {
+  const { error } = await db.from('bounty_events').update({ signature: step.signature, signer: step.signer }).eq('bounty_id', step.bountyId).eq('claim_id', step.claimId).eq('kind', step.kind);
+  if (error) console.error('bounty step signature not recorded', step.bountyId, step.kind, step.signature, error.message);
+}
+
+/**
+ * Reopens the escrow account of a claim our tables just let go of without the
+ * learner (out of time, delivery rejected), so the account stops naming them.
+ * Signed by Itera's attester key; the transaction lands on the step's ledger
+ * row. Never throws: a failure leaves the account behind the page, and the next
+ * accept or refund reopens it in its own transaction.
+ */
+export async function unclaimOnChain(db: IteraClient, bounty: BountyRow, kind: 'expired' | 'rejected', claim: { id: string; wallet: string }): Promise<string | null> {
+  try {
+    if (bounty.escrow_kind !== 'program') return null;
+    const terms = await escrowTerms(bounty, await loadConfig(db));
+    if (!terms) return null;
+    const state = await readEscrow(terms.programId, bounty.escrow_address);
+    if (state?.status !== 'claimed' || state.claimant !== claim.wallet) return null;
+    const signature = await sendAsApprover([unclaimInstruction({ programId: terms.programId, authority: terms.attester, escrow: bounty.escrow_address })], transferMemo(bounty.id, kind));
+    await recordStepSignature(db, { bountyId: bounty.id, claimId: claim.id, kind, signature, signer: terms.attester });
+    return signature;
+  } catch (error) {
+    console.error('bounty claim not reopened on chain', bounty.id, kind, error instanceof Error ? error.message : error);
+    return null;
+  }
 }
 
 /** Hands a bounty whose learner ran out of time back to the board. Never throws. */
@@ -201,7 +257,10 @@ export async function expireStaleClaims(db: IteraClient, bounties: BountyRow[], 
     if (bounty.status !== 'claimed' || !claim || Date.parse(claim.deadline_at) > now.getTime()) continue;
     const { data, error } = await db.rpc('bounty_release_claim', { p_bounty: bounty.id, p_reason: 'expired', p_user_id: null });
     if (error) console.error('bounty expire failed', error.message);
-    else if (data === 'ok') changed = true;
+    else if (data === 'ok') {
+      changed = true;
+      await unclaimOnChain(db, bounty, 'expired', claim);
+    }
   }
   return changed;
 }
@@ -309,9 +368,8 @@ async function sendThroughProgram(db: IteraClient, transfer: Transfer): Promise<
   }
   // A bounty a wallet posted: this server holds no key of it. It can record what the sponsor's wallet already did,
   // and return expired money to that wallet (`walletRefundable`); it can never pay anyone.
-  const treasury = await treasuryAddress();
-  const ours = terms.approver === treasury;
-  const plan = claim ? releasePlan(state, terms, claim.wallet, claim.proof_asset) : refundPlan(state, ours ? terms : { ...terms, approver: treasury });
+  const ours = terms.approver === terms.attester;
+  const plan = claim ? releasePlan(state, terms, claim.wallet) : refundPlan(state, terms);
   if (!ours && claim && Array.isArray(plan)) {
     console.error('bounty payout waits for its sponsor wallet', bounty.id);
     return 'stuck';
@@ -406,17 +464,29 @@ export async function refundBounty(db: IteraClient, bounty: BountyRow, actorWall
 }
 
 /**
- * Brings our row in line with an escrow that closed without us: the sponsor's
- * own wallet may refund an unclaimed bounty straight on the program. Only ever
- * moves an open bounty to refunded, and only when the chain already says so.
+ * Brings our row in line with an escrow that moved without us. The sponsor's
+ * own wallet may refund an unclaimed bounty straight on the program: an open
+ * bounty the chain shows as refunded is marked refunded. The claimant's own
+ * wallet may give a bounty up straight on the program: a held bounty the chain
+ * shows as open goes back to the board. Only ever follows the chain.
  */
 export async function syncWithEscrow(db: IteraClient, bountyId: string): Promise<void> {
   const bounty = await loadBounty(db, { id: bountyId });
-  if (!bounty || bounty.escrow_kind !== 'program' || bounty.status !== 'open') return;
+  if (!bounty || bounty.escrow_kind !== 'program' || (bounty.status !== 'open' && bounty.status !== 'claimed')) return;
   const terms = await escrowTerms(bounty, await loadConfig(db));
   if (!terms) return;
   const state = await readEscrow(terms.programId, bounty.escrow_address);
-  if (state?.status === 'refunded') await refundBounty(db, bounty, null);
+  if (bounty.status === 'open') {
+    if (state?.status === 'refunded') await refundBounty(db, bounty, null);
+    return;
+  }
+  const claim = bounty.claim_id ? (await loadClaims(db, [bounty.claim_id])).get(bounty.claim_id) : undefined;
+  if (!claim || state?.status !== 'open') return;
+  const { data, error } = await db.rpc('bounty_release_claim', { p_bounty: bounty.id, p_reason: 'withdrawn', p_user_id: claim.user_id });
+  if (error) throw new Error(`bounty_release_claim: ${error.message}`);
+  if (data !== 'ok') return;
+  const signature = findPayment(await escrowHistory(bounty.escrow_address).catch(() => [] as SignatureInfo[]), transferMemo(bounty.id, 'withdraw'));
+  if (signature) await recordStepSignature(db, { bountyId: bounty.id, claimId: claim.id, kind: 'withdrawn', signature, signer: claim.wallet });
 }
 
 /**
