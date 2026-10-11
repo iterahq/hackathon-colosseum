@@ -144,8 +144,48 @@ Merged pull requests (`gh pr list --state merged`, titles as merged; times are i
 | #109 | First certification of a fresh wallet: retry the mint, certification first, failure reason kept | First certification of a fresh wallet: retry the mint, certification first, failure reason kept. |
 | #111 | Bounties: the blink label no longer needs the node; doc for the board reading the chain and the rate limits | Bounties: the blink label no longer needs the node; doc for the board reading the chain and the rate limits. |
 | #112 | Bounties: a second one-day starter bounty in the seed | Bounties: a second one-day starter bounty in the seed. |
+| #191 | Talent board: opt-in listing, public /talent, nav | `talent-board` function, `itera.talent_listings` (migration 0330), `/talent`. |
+| #192 | nginx: /talent is an app route | `/talent` answered with the app shell. |
+| #194 | Talent cards polish | Stacked card actions, four capability chips in graph order. |
+| #195 | Direct bounty: a reward locked for one invited wallet, enforced by the escrow program | `create_direct` in `programs/bounty-escrow`, devnet program upgrade, migrations 0340 and 0341, server routes. |
+| #197 | Direct bounty: devnet e2e (53 checks) and contract documentation | `scripts/hackathon/bounty-direct-e2e.mjs`, "Direct bounty" in `docs/onchain-bounties.md`. |
+| #198 | Direct bounty UI: invitee on the post form, bounty states, invites inbox, 260-byte escrow decode, profile action | Post form `?to=<wallet>`, invites inbox, direct states on the bounty page. |
+| #199 | Talent headline: strip bidi and zero-width characters | Headline cleaned like sponsor text before the link checks. |
+| #200 | Bounty page: no empty card on settled bounties, direct requirement text, sponsor signer on the ledger | Settled bounty shows no empty action card; the ledger names the sponsor wallet as signer of new funding and payout steps. |
+| #201 | /verify: the escrow program refusing a wallet that was not invited | `gate-check?direct=1` and the second check on `/verify#gate`. |
 
 Merged after this table was written: see `gh pr list --state merged`. Nothing is open at the time of writing.
+
+## Talent board and direct bounty (added in the last hours)
+
+Until now a sponsor posted a bounty and waited for a learner. These two features add the other side: train, prove, earn.
+
+- **Talent board** (`/talent`). A learner who opted in is listed as a card built only from what the chain shows for their
+  wallet: stamped days, certifications, verified capabilities, paid bounties. A company filters the cards and opens the
+  public profile `/u/<wallet>` to check the chain itself. Code: `supabase/functions/talent-board/`,
+  `supabase/functions/_shared/talent.ts`, table `itera.talent_listings` (migration 0330, service role only, RLS on),
+  page `src/pages/TalentPage.tsx`, `src/components/talent/`. The headline is plain text, cleaned of bidi and
+  zero-width characters, with no link, e-mail or @handle. Nobody is listed without opting in, and listing needs a linked
+  wallet and at least one stamped day.
+- **Direct bounty** (pt "Missão direta"). From a card, a company sends a paid bounty addressed to ONE wallet. The reward
+  is locked in the same escrow program, in a 260-byte account (tag 3) that holds the invited wallet at offset 228; the
+  invitee is also in the account's address seeds. **The program refuses any other wallet** with `NotInvited`
+  (custom error 6020, `0x1784`), before it reads any certification. The invited wallet still needs the certification
+  and the stamped days. Code: `programs/bounty-escrow/src/lib.rs` (instruction `create_direct`, tag 6),
+  `supabase/functions/_shared/bounty*.ts`, `bounty-post` (`invitee_check`, `create`), `bounty-board/invited/<wallet>`
+  (inbox), migrations 0340 and 0341, UI under `src/components/bounty/` (`DirectInviteeBlock`, `InviteInbox`).
+- **Program upgrade** (same program id): [upgrade transaction](https://explorer.solana.com/tx/fFneX6xapUMV2oj4ufkbMzYAfuGF7PnJmiyvShN8XjY4xirFzwThf8bC3PV5nvsAVNAHme9NWhQhRNGmjp8Cycs?cluster=devnet),
+  binary sha256 `0aebb785dad58cbad7020ec3929de553552618ff20fe5576835668fe96e362ed`, recorded on `/verify` ("Check the deployed code").
+- **End to end on devnet** (`scripts/hackathon/bounty-direct-e2e.mjs`, 53 checks):
+  [`create_direct`](https://explorer.solana.com/tx/5oHjZgbaKEHwSbxg8sARBLHfeBqHk8kZ1CDMKJgMVTASECsYN9bRuqxUDsobg8LFhVGAS3mSbu5SBJQvjjpBcQDT?cluster=devnet),
+  [accept by the invitee](https://explorer.solana.com/tx/4rrbjY9ozUPC8h3FGUKjyUSPYGX8JpQY8jJy4nvwqXZhivYvcsDLc1iEnQrbqpnMkA8AB8ksBSazEV2DomWUg9Y1?cluster=devnet),
+  [payout](https://explorer.solana.com/tx/3dTp1gpeFTuXWh3UqrUmUH2iB2VcJWE3WeKZRySf5tG6c3AtCWE7qC7rW1C1hrSngjaWSim4QysJc3exrxRYDKZs?cluster=devnet),
+  [refund by sweep](https://explorer.solana.com/tx/5FMDdNVfw7dSzZHRbHcGoWmEpR3B91b6qcMJNdiCJkogoHKPqGG2dxwJqMdTHcnwhoTeD24NGjWKvYxw6tXHoWSP?cluster=devnet).
+  The refusal of a wallet that was not invited is a signed simulation plus one send refused at preflight: a refused
+  transaction never lands, so it has no explorer link. Anyone can repeat the simulation on `/verify#gate`.
+- **Limits.** The invitee of a posted bounty cannot be changed (refund and post again). The invitee gets no notification:
+  the inbox is a read. Team (Itera-funded) bounties cannot be direct. A bounty the team posted for rehearsal is labelled
+  as the team's own wherever it shows.
 
 ## Hackathon migrations (`db/migrations/`, 55 files)
 
@@ -204,6 +244,9 @@ Merged after this table was written: see `gh pr list --state merged`. Nothing is
 - `0201_bounty_escrow_program.sql`
 - `0202_bounty_refund_schedule.sql`
 - `0210_rate_hits.sql`
+- `0330_talent_listings.sql`
+- `0340_bounty_direct.sql`
+- `0341_bounty_escrow_direct_version.sql`
 
 ## Hackathon edge functions (`supabase/functions/`, 27 functions plus `_shared/`)
 
@@ -211,6 +254,7 @@ Merged after this table was written: see `gh pr list --state merged`. Nothing is
 - `bounty-action`
 - `bounty-board`
 - `bounty-claim`
+- `bounty-post`
 - `bounty-sponsor`
 - `capability-graph`
 - `circuit`
@@ -220,6 +264,7 @@ Merged after this table was written: see `gh pr list --state merged`. Nothing is
 - `credential-verify`
 - `crystals`
 - `endorse`
+- `gate-check`
 - `gifts`
 - `grade`
 - `learner-profile`
@@ -233,6 +278,7 @@ Merged after this table was written: see `gh pr list --state merged`. Nothing is
 - `share-meta`
 - `shop-claim`
 - `shop-items`
+- `talent-board`
 - `wallet-faucet`
 
 Also new: `scripts/hackathon/` (end-to-end scripts for the deployed devnet backend), `docs/onchain-passport.md`,

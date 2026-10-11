@@ -112,6 +112,8 @@ keys still say `passport`; only user-facing text says "Certification".
   the program and, with it, every rule above. On devnet that is deliberate, to fix bugs during the hackathon; it is
   the first thing to remove (or hand to a multisig) before real money. Full model:
   [`docs/onchain-bounties.md`](docs/onchain-bounties.md).
+  **Direct bounty:** from a learner's card on `/talent` a company can lock a reward for ONE wallet; the program refuses any
+  other wallet (`NotInvited`, 6020), and `/verify#gate` lets anyone watch it refuse.
 - **Grading runs on the server.** The player sends each answer to the `grade` function, which reads the exercise
   with the learner's own session, grades it and is the only writer of a completion; the database refuses a
   completion written by a client. Of the 234 activities of the demo program, 118 are graded on the server (choices,
