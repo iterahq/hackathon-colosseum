@@ -148,7 +148,17 @@ export async function acceptOnChain(db: IteraClient, bounty: BountyRow, claim: {
   const plan = acceptPlan(state, terms, claim.wallet, claim.proofAsset);
   if (plan === 'held') return null;
   if (plan === 'closed') throw new EscrowProgramError('not_open');
-  const signature = await sendAsApprover(plan, transferMemo(bounty.id, 'accept'));
+  let signature: string;
+  try {
+    signature = await sendAsApprover(plan, transferMemo(bounty.id, 'accept'));
+  } catch (error) {
+    if (!(error instanceof TransferBroadcastError)) throw error;
+    // Sent and not seen confirmed. The account decides whether the claim exists; a claim that is not on chain
+    // must not stand, or a later payout would have to accept first and could be refused as expired.
+    const after = await readEscrow(terms.programId, bounty.escrow_address);
+    if (after?.status !== 'claimed' || after.claimant !== claim.wallet) throw new EscrowProgramError('not_recorded');
+    signature = error.signature;
+  }
   const { error } = await db.from('bounty_events').update({ signature }).eq('bounty_id', bounty.id).eq('claim_id', claim.id).eq('kind', 'accepted');
   if (error) console.error('bounty accept signature not recorded', bounty.id, signature, error.message);
   return signature;
@@ -262,6 +272,12 @@ async function sendThroughProgram(db: IteraClient, transfer: Transfer): Promise<
     await mark(db, bounty.id, ['refunding'], 'refunded', { wallet: recipient, lamports: 0n, signature: null });
     return 'settled';
   }
+  // An account at the address that is not this bounty's holds none of its money: there is nothing of ours to move.
+  if (state.id !== terms.bountyId || state.approver !== terms.approver || state.sponsor !== terms.sponsor) {
+    if (done !== 'refunded') return 'stuck';
+    await mark(db, bounty.id, ['refunding'], 'refunded', { wallet: recipient, lamports: 0n, signature: null });
+    return 'settled';
+  }
   const plan = claim ? releasePlan(state, terms, claim.wallet, claim.proof_asset) : refundPlan(state, terms);
   if (plan === 'closed') {
     console.error('bounty transfer stuck: the escrow account is closed another way', bounty.id, state.status);
@@ -355,7 +371,7 @@ export async function syncWithEscrow(db: IteraClient, bountyId: string): Promise
  * Open bounties whose escrow the chain already shows as refunded (see
  * `syncWithEscrow`) leave the board: one read of the accounts, then one row each.
  */
-async function syncOpenEscrows(db: IteraClient): Promise<number> {
+export async function syncOpenEscrows(db: IteraClient): Promise<number> {
   const config = await loadConfig(db);
   if (!config.bounty_escrow_program) return 0;
   const { data, error } = await db.from('bounties').select('id,escrow_address').eq('status', 'open').eq('escrow_kind', 'program').limit(100);

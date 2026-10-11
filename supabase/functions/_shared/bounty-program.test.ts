@@ -41,9 +41,22 @@ function state(status: number, claimed: boolean): Uint8Array {
 }
 
 describe('escrow program client', () => {
-  it('derives the escrow account of a bounty', async () => {
-    expect(await escrowPda(PROGRAM, ID)).toBe(ESCROW);
+  const terms = { bountyId: ID, sponsor: TREASURY, approver: TREASURY, collection: COLLECTION, amount: 50_000_000n, expiresAt: 1_800_000_000 };
+
+  it('derives the escrow account from the bounty id and its terms (same address as the Solana CLI)', async () => {
+    expect(await escrowPda(PROGRAM, terms)).toBe('HQHpzHkzEKZs16gqrqB7zPtGj5imL7EJffpFrDFiGXXM');
     expect(() => bountyIdBytes('not-a-uuid')).toThrow();
+  });
+
+  it.each([
+    ['another refund destination', { sponsor: CLAIMANT }],
+    ['another approver', { approver: CLAIMANT }],
+    ['another collection', { collection: CLAIMANT }],
+    ['another amount', { amount: 1n }],
+    ['another expiry', { expiresAt: 1_800_000_001 }],
+    ['another bounty', { bountyId: '11111111-1111-4111-8111-111111111111' }],
+  ])('gives %s a different address, so foreign terms cannot occupy this one', async (_, change) => {
+    expect(await escrowPda(PROGRAM, { ...terms, ...change })).not.toBe(await escrowPda(PROGRAM, terms));
   });
 
   it('encodes create as tag, id, amount and expiry', () => {

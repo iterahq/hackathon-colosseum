@@ -41,13 +41,17 @@ sponsor ── create ──► bounty (awaiting_funding) ── fund ──► 
 
 ### The escrow program (`escrow_kind = program`, every bounty posted now)
 
-One program-derived account per bounty, seeds `["bounty", <16 bytes of the bounty id>]`, holds the reward
+One program-derived account per bounty holds the reward. Its seeds are `["bounty", <16 bytes of the bounty id>,
+sponsor, approver, collection, amount (u64 LE), expires_at (i64 LE)]`: **the address commits to the terms**. An
+account at a bounty's address can only have been created with exactly the terms the bounty was posted with, so
+nobody can occupy it with others; creating it is funding it. (The four bounties funded before this rule sit at
+addresses derived from the id alone; their accounts already exist with our terms.) The account holds the reward
 and 195 bytes of state: status, sponsor (the refund destination), approver, the certification collection,
 amount, expiry, claimant and the certification that qualified them.
 
 | instruction | signer | what the PROGRAM checks |
 |---|---|---|
-| `create(id, amount, expires_at)` | funder | the account is the bounty's PDA and does not exist; amount > 0; expiry in the future. Moves `amount` + rent from the funder |
+| `create(id, amount, expires_at)` | funder | the account is the PDA of these exact terms and does not exist; amount > 0; expiry in the future. Moves `amount` + rent from the funder |
 | `accept` | approver | the bounty is open and not expired; the certification account is owned by Metaplex Core, is an `AssetV1`, **its owner is the claimant** and **its collection is the one the bounty names**. Records claimant and certification |
 | `release` | approver | the bounty is claimed and the account passed is the recorded claimant. Pays `amount`, marks `paid` |
 | `unclaim` | approver | the bounty is claimed. Reopens it |
@@ -298,9 +302,8 @@ What is **not** automatic: a learner whose delivery the sponsor never reviews ha
 - One winner per bounty. A learner holds one bounty at a time.
 - No dispute path: a rejection reopens the bounty and the learner sees the sponsor's note. Not built, on purpose.
 - A sponsor who never reviews a delivery leaves the reward locked; only the sponsor (approve or reject) unlocks it.
-- A bounty's escrow address is known before it is funded. Someone could create that account first with other
-  terms; the server ignores it and the bounty never opens (post it again). Only unfunded bounties are exposed.
-- The public routes (`bounty-board`, `bounty-action`) have no per-IP rate limit.
+- The public routes are throttled per address (`bounty-board` 120 per minute, `bounty-action` 30); the limiter fails
+  open when its counter cannot be reached.
 - Rewards are devnet SOL and have no monetary value.
 
 ## Tests
@@ -326,3 +329,7 @@ What is **not** automatic: a learner whose delivery the sponsor never reviews ha
 - **Attack, on devnet**: a sponsor funds a bounty from their own wallet, signs the program's `refund` directly and
   leaves the bounty looking open. The next learner's accept is refused by the program, the row reads `refunded`, and
   it cannot be taken afterwards (6 checks).
+- **Attack, on devnet** (found by the adversarial pass, A7b): a stranger tries to create the escrow account of an
+  unfunded bounty with its own approver, its own refund address, one lamport, or another expiry. The program
+  refuses each (`wrong_escrow_account`); the only `create` the address accepts carries the bounty's own terms, and
+  that is funding it. The sponsor then funds and the bounty opens.

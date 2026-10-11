@@ -94,7 +94,18 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
   if (!refundAddress) return json({ error: 'invalid_refund_address' }, 400, cors);
 
   const id = crypto.randomUUID();
-  const program = sponsor.config.bounty_escrow_program || null;
+  const program = (sponsor.config.collection_passports && sponsor.config.bounty_escrow_program) || null;
+  // The escrow address commits to these terms: the account at it can only ever be this bounty's.
+  const escrow = program
+    ? await escrowPda(program, {
+        bountyId: id,
+        sponsor: refundAddress,
+        approver: await treasuryAddress(),
+        collection: sponsor.config.collection_passports,
+        amount: BigInt(input.reward_lamports),
+        expiresAt: Math.floor(Date.parse(input.expires_at) / 1000),
+      })
+    : await escrowAddress(id);
   const requirement: Requirement = {
     program: PROGRAM_SLUG,
     unit_id: trail.unit_id,
@@ -117,7 +128,7 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
     reward_lamports: input.reward_lamports,
     // With the escrow program configured, the program holds the money; otherwise an account whose key the server derives.
     escrow_kind: program ? 'program' : 'derived_account',
-    escrow_address: program ? await escrowPda(program, id) : await escrowAddress(id),
+    escrow_address: escrow,
     refund_address: refundAddress,
     claim_hours: input.claim_hours,
     expires_at: input.expires_at,
@@ -139,13 +150,20 @@ async function fund(db: IteraClient, sponsor: Sponsor, bounty: BountyRow, cors: 
     if (bounty.escrow_kind === 'program') {
       const terms = await escrowTerms(bounty, sponsor.config);
       if (!terms) return json({ error: 'treasury_unavailable' }, 503, cors);
-      if (await readEscrow(terms.programId, bounty.escrow_address)) return json({ funded: true, status: (await refreshFunding(db, bounty)).status }, 200, cors);
+      if (await readEscrow(terms.programId, bounty.escrow_address)) {
+        const status = (await refreshFunding(db, bounty)).status;
+        // An account that is there and is not this bounty's (a bounty posted before the address committed to its terms).
+        return status === 'open' ? json({ funded: true, status }, 200, cors) : json({ error: 'escrow_occupied', status }, 409, cors);
+      }
       const signature = await sendAsApprover([createFor(terms, treasury)], transferMemo(bounty.id, 'fund'));
       const after = await refreshFunding(db, bounty, { wallet: treasury, signature });
       return json({ funded: after.status === 'open', status: after.status, signature }, 200, cors);
     }
     const missing = fundingTarget(bounty.reward_lamports) - (await escrowBalance(bounty.escrow_address));
-    if (missing <= 0n) return json({ funded: true, status: (await refreshFunding(db, bounty)).status }, 200, cors);
+    if (missing <= 0n) {
+      const status = (await refreshFunding(db, bounty)).status;
+      return json({ funded: status === 'open', status }, 200, cors);
+    }
     const signature = await sendFromTreasury({ recipient: bounty.escrow_address, lamports: missing, memo: transferMemo(bounty.id, 'fund') });
     const after = await refreshFunding(db, bounty, { wallet: treasury, signature });
     return json({ funded: after.status === 'open', status: after.status, signature }, 200, cors);
