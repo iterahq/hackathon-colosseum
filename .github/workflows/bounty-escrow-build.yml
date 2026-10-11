@@ -6,7 +6,7 @@ name: bounty-escrow-build
 on:
   workflow_dispatch:
   push:
-    branches: [feat/bounty-escrow-program, feat/r2-escrow-program]
+    branches: [feat/bounty-escrow-program, feat/r2-escrow-program, feat/r3-escrow-gated]
     paths:
       - programs/bounty-escrow/**
       - .github/workflows/bounty-escrow-build.yml
@@ -28,6 +28,7 @@ jobs:
         working-directory: programs/bounty-escrow
         run: |
           solana --version
+          cargo test
           cargo build-sbf
           ls -la target/deploy
           sha256sum target/deploy/itera_bounty_escrow.so

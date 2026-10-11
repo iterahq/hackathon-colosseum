@@ -6,10 +6,11 @@ import {
   releaseInstruction,
   unclaimInstruction,
   ESCROW_ERRORS,
+  type EscrowGate,
   type EscrowState,
 } from './bounty-program.ts';
 import { compileMessage, memoInstruction, type Instruction } from './solana-message.ts';
-import { ESCROW_STATE_BYTES } from './bounty-program.ts';
+import { ESCROW_STATE_BYTES, GATED_ESCROW_STATE_BYTES } from './bounty-program.ts';
 import { RpcNodeError, rpc } from './rpc.ts';
 import { sendMessage, treasurySigner } from './treasury.ts';
 
@@ -43,6 +44,16 @@ export async function readEscrows(programId: string, addresses: string[]): Promi
     if (state) found.set(addresses[index], state);
   });
   return found;
+}
+
+/** How many escrow accounts of the program are OPEN on chain right now (status byte 0), of either layout. */
+export async function countOpenEscrows(programId: string): Promise<number> {
+  const counts = await Promise.all(
+    [ESCROW_STATE_BYTES, GATED_ESCROW_STATE_BYTES].map((dataSize) =>
+      rpc<unknown[]>('getProgramAccounts', [programId, { commitment: 'confirmed', encoding: 'base64', dataSlice: { offset: 0, length: 0 }, filters: [{ dataSize }, { memcmp: { offset: 2, bytes: '1' } }] }]),
+    ),
+  );
+  return counts.reduce((sum, accounts) => sum + accounts.length, 0);
 }
 
 /** The program's own reason when the node refused a transaction at simulation, `null` for any other failure. */
@@ -80,6 +91,8 @@ export interface EscrowTerms {
   bountyId: string;
   amount: bigint;
   expiresAt: number;
+  /** The days and trail the program itself checks at `accept`. `null`: a bounty from before gated escrows. */
+  gate: EscrowGate | null;
 }
 
 export function createFor(terms: EscrowTerms, funder: string): Instruction {
@@ -95,7 +108,9 @@ export function matchesTerms(state: EscrowState | null, terms: EscrowTerms): boo
     state.sponsor === terms.sponsor &&
     state.collection === terms.collection &&
     state.amount >= terms.amount &&
-    state.expiresAt >= terms.expiresAt
+    state.expiresAt >= terms.expiresAt &&
+    (state.gate?.minDays ?? 0) === (terms.gate?.minDays ?? 0) &&
+    (state.gate?.trail ?? '') === (terms.gate?.trail ?? '')
   );
 }
 
@@ -109,7 +124,7 @@ type Party = { programId: string; approver: string; attester: string; escrow: st
 export function acceptPlan(state: EscrowState, party: Party, claimant: string, certification: string): Instruction[] | 'closed' {
   if (state.status === 'paid' || state.status === 'refunded') return 'closed';
   const reopen = state.status === 'claimed' ? [unclaimInstruction({ programId: party.programId, authority: party.attester, escrow: party.escrow })] : [];
-  return [...reopen, acceptInstruction({ programId: party.programId, attester: party.attester, escrow: party.escrow, claimant, certification })];
+  return [...reopen, acceptInstruction({ programId: party.programId, attester: party.attester, escrow: party.escrow, claimant, certification, gated: Boolean(state.gate) })];
 }
 
 /**
@@ -132,6 +147,6 @@ export function refundPlan(state: EscrowState, party: Party): Instruction[] | 'd
 }
 
 /** The rent the node asks for an escrow account, which whoever funds a bounty pays on top of the reward. */
-export async function escrowRentLamports(): Promise<bigint> {
-  return BigInt(await rpc<number>('getMinimumBalanceForRentExemption', [ESCROW_STATE_BYTES]));
+export async function escrowRentLamports(gated = false): Promise<bigint> {
+  return BigInt(await rpc<number>('getMinimumBalanceForRentExemption', [gated ? GATED_ESCROW_STATE_BYTES : ESCROW_STATE_BYTES]));
 }

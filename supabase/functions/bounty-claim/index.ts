@@ -8,11 +8,14 @@ import {
   loadClaims,
   openClaimOf,
   recordStepSignature,
+  inBackground,
   reopenOnChain,
   syncWithEscrow,
   withdrawInstructions,
 } from '../_shared/bounty-store.ts';
-import { parseSubmission, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { judgeCode, parseCodeSubmission, parseSubmission, publicStatus, type BountyRow, type ClaimRow } from '../_shared/bounty.ts';
+import { alreadyJudged, approveByCheck, refillTemplates } from '../_shared/bounty-judge.ts';
+import { parseHtmlDocument } from '../_shared/html-document.ts';
 import { CosignError, isExpiredBlockhash, offerCosigned, parseSignedByWallet, sendCosigned, type SignedByWallet } from '../_shared/cosign.ts';
 import { takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import type { Instruction } from '../_shared/solana-message.ts';
@@ -36,6 +39,7 @@ function ownClaim(claim: ClaimRow | null | undefined, caller: Caller) {
     submission_note: claim.submission_note,
     submitted_at: claim.submitted_at,
     review_note: claim.review_note,
+    check_report: claim.check_report,
   };
 }
 
@@ -63,6 +67,8 @@ async function status(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
       proof: eligibility.proof,
       claim: ownClaim(current, caller) ?? ownClaim(last.data as unknown as ClaimRow | null, caller),
       busy_elsewhere: open !== null && open.bounty_id !== bounty.id,
+      // A judge bounty pays each learner and each wallet once.
+      judged_before: bounty.auto_check !== null && caller.wallet !== null && (await alreadyJudged(db, caller.iteraUserId, caller.wallet)),
     },
     200,
     cors,
@@ -111,6 +117,7 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
   }
   if (bounty.sponsor_wallet && bounty.sponsor_wallet === caller.wallet) return json({ error: 'own_bounty' }, 403, cors);
   if (await openClaimOf(db, caller.iteraUserId)) return json({ error: 'already_claiming' }, 409, cors);
+  if (bounty.auto_check && (await alreadyJudged(db, caller.iteraUserId, caller.wallet))) return json({ error: 'judged_before' }, 409, cors);
   const wallet = caller.wallet;
   const proof = eligibility.proof;
   const record = async () => {
@@ -185,7 +192,32 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, signed
   return json({ accepted: true, proof, chain: { status: 'recorded', signature, signed_by: wallet, explorer_url: explorerUrl('tx', signature) } }, 200, cors);
 }
 
+const CHECK_RATE: RateLimit = { limit: 30, windowMs: 10 * 60_000 };
+
+/**
+ * The delivery of a bounty judged by a check: the code is run through the bounty's asserts here. A delivery that
+ * fails changes nothing and says which checks failed. One that passes is recorded, approved with no reviewer and
+ * paid by the escrow program in this same call.
+ */
+async function submitToCheck(db: IteraClient, caller: Caller, bounty: BountyRow, body: Record<string, unknown>, cors: Cors): Promise<Response> {
+  const code = parseCodeSubmission(body);
+  if (!code) return json({ error: 'invalid_submission' }, 400, cors);
+  const verdict = await takeRate(db, 'bounty-claim-check', caller.iteraUserId, CHECK_RATE);
+  if (!verdict.allowed) return tooMany(verdict, cors);
+  const claim = bounty.status === 'claimed' && bounty.claim_id ? (await loadClaims(db, [bounty.claim_id])).get(bounty.claim_id) : undefined;
+  if (!claim || claim.status !== 'active' || claim.user_id !== caller.iteraUserId) return json({ error: 'not_active' }, 409, cors);
+  const report = judgeCode(bounty, code, parseHtmlDocument, new Date());
+  if (!report) return json({ error: 'invalid_submission' }, 400, cors);
+  if (!report.passed) return json({ submitted: false, report }, 200, cors);
+  const after = await approveByCheck(db, bounty, caller.iteraUserId, code, report);
+  if (after === 'not_active') return json({ error: 'not_active' }, 409, cors);
+  inBackground(refillTemplates(db, new Date()));
+  const signature = after.payout_signature ?? after.transfer_signature;
+  return json({ submitted: true, report, auto_approved: true, payout: { status: after.status, signature, explorer_url: explorerUrl('tx', signature), lamports: after.payout_lamports ?? after.reward_lamports } }, 200, cors);
+}
+
 async function submit(db: IteraClient, caller: Caller, bounty: BountyRow, body: Record<string, unknown>, cors: Cors): Promise<Response> {
+  if (bounty.auto_check) return submitToCheck(db, caller, bounty, body, cors);
   const submission = parseSubmission(body);
   if (!submission) return json({ error: 'invalid_submission' }, 400, cors);
   const { data, error } = await db.rpc('bounty_submit', { p_bounty: bounty.id, p_user_id: caller.iteraUserId, p_url: submission.url, p_note: submission.note });
@@ -237,7 +269,7 @@ Deno.serve(async (request) => {
     const db = serviceClient();
     const caller = await resolveCaller(db, request);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
-    const body = await readJsonObject(request, 8192);
+    const body = await readJsonObject(request, 40_000);
     const bountyId = body?.bounty;
     if (!body || typeof bountyId !== 'string' || !isUuid(bountyId)) return json({ error: 'invalid_body' }, 400, cors);
     const bounty = await loadBounty(db, { id: bountyId });

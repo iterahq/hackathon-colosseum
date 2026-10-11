@@ -1,8 +1,11 @@
 import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
 import { CLUSTER, explorerUrl } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
-import { DROP_LAMPORTS, MAX_CLAIMS, claimStep, faucetMemo, unconfirmedStep, withinDailyBudget, type ClaimRow } from '../_shared/faucet.ts';
-import { corsHeaders, json } from '../_shared/http.ts';
+import { FAUCETS, MAX_CLAIMS, claimStep, faucetMemo, faucetPurpose, unconfirmedStep, withinDailyBudget, type ClaimRow, type FaucetPurpose } from '../_shared/faucet.ts';
+import { WALLET_MIN_REWARD_LAMPORTS } from '../_shared/bounty.ts';
+import { escrowRentLamports } from '../_shared/bounty-chain.ts';
+import { gatedEscrows } from '../_shared/bounty-store.ts';
+import { corsHeaders, json, readJsonObject } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 import { RENT_EXEMPT_MIN_LAMPORTS, fundsCheck } from '../_shared/purchase-verify.ts';
 import { RpcError, balanceOf, rpcUrl } from '../_shared/rpc.ts';
@@ -13,10 +16,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const CLAIM_COLUMNS = 'wallet,user_id,tx_signature,created_at,confirmed_at';
 
 /** What the faucet gave (or locked to give) in the last 24 hours, and how many claims exist in all. */
-async function faucetLoad(db: IteraClient, now: Date): Promise<{ givenToday: bigint; total: number }> {
+async function faucetLoad(db: IteraClient, table: string, now: Date): Promise<{ givenToday: bigint; total: number }> {
   const [recent, total] = await Promise.all([
-    db.from('devnet_airdrops').select('lamports').gte('created_at', new Date(now.getTime() - DAY_MS).toISOString()).limit(1000),
-    db.from('devnet_airdrops').select('wallet', { count: 'exact', head: true }),
+    db.from(table).select('lamports').gte('created_at', new Date(now.getTime() - DAY_MS).toISOString()).limit(1000),
+    db.from(table).select('wallet', { count: 'exact', head: true }),
   ]);
   if (recent.error || total.error) throw new Error('faucet lookups failed');
   return { givenToday: (recent.data ?? []).reduce((sum, row) => sum + BigInt(row.lamports), 0n), total: total.count ?? 0 };
@@ -28,22 +31,23 @@ async function faucetLoad(db: IteraClient, now: Date): Promise<{ givenToday: big
  * after that: a transfer that timed out is never paid a second time blindly.
  * The row is only released when nothing was handed to the node.
  */
-async function send(db: IteraClient, wallet: string): Promise<{ signature: string } | { error: 'faucet_unavailable' | 'rpc_unavailable'; signature?: string }> {
+async function send(db: IteraClient, purpose: FaucetPurpose, wallet: string): Promise<{ signature: string } | { error: 'faucet_unavailable' | 'rpc_unavailable'; signature?: string }> {
+  const table = FAUCETS[purpose].table;
   try {
     const signature = await sendFromTreasury({
       recipient: wallet,
-      lamports: DROP_LAMPORTS,
-      memo: faucetMemo(wallet),
+      lamports: FAUCETS[purpose].dropLamports,
+      memo: faucetMemo(wallet, purpose),
       onBroadcast: async (sent) => {
-        await db.from('devnet_airdrops').update({ tx_signature: sent }).eq('wallet', wallet);
+        await db.from(table).update({ tx_signature: sent }).eq('wallet', wallet);
       },
     });
-    await db.from('devnet_airdrops').update({ tx_signature: signature, confirmed_at: new Date().toISOString() }).eq('wallet', wallet);
+    await db.from(table).update({ tx_signature: signature, confirmed_at: new Date().toISOString() }).eq('wallet', wallet);
     return { signature };
   } catch (error) {
     console.error('faucet transfer failed', error instanceof Error ? error.message : error);
     if (error instanceof TransferBroadcastError) return { error: 'rpc_unavailable', signature: error.signature };
-    await db.from('devnet_airdrops').delete().eq('wallet', wallet).is('tx_signature', null).is('confirmed_at', null);
+    await db.from(table).delete().eq('wallet', wallet).is('tx_signature', null).is('confirmed_at', null);
     return { error: error instanceof TreasuryNotConfiguredError ? 'faucet_unavailable' : 'rpc_unavailable' };
   }
 }
@@ -68,11 +72,14 @@ Deno.serve(async (request) => {
     const wallet = caller.wallet;
     const userId = caller.iteraUserId;
     const now = new Date();
-    const paid = (signature: string) => json({ signature, lamports: Number(DROP_LAMPORTS), explorer_url: explorerUrl('tx', signature) }, 200, cors);
+    const purpose = faucetPurpose((await readJsonObject(request, 256).catch(() => null))?.purpose);
+    const faucet = FAUCETS[purpose];
+    const table = faucet.table;
+    const paid = (signature: string) => json({ signature, lamports: Number(faucet.dropLamports), explorer_url: explorerUrl('tx', signature) }, 200, cors);
     const failed = (outcome: { error: string; signature?: string }) => json(outcome, 503, cors);
 
     // One claim per learner AND per wallet: any row that names either one counts.
-    const claims = await db.from('devnet_airdrops').select(CLAIM_COLUMNS).or(`wallet.eq.${wallet},user_id.eq.${userId}`);
+    const claims = await db.from(table).select(CLAIM_COLUMNS).or(`wallet.eq.${wallet},user_id.eq.${userId}`);
     if (claims.error) throw new Error(`devnet_airdrops: ${claims.error.message}`);
     const rows = (claims.data ?? []) as ClaimRow[];
     const step = claimStep(rows, { wallet, userId }, now);
@@ -89,7 +96,7 @@ Deno.serve(async (request) => {
         return json({ error: 'rpc_unavailable' }, 503, cors);
       }
       if (next === 'confirm') {
-        await db.from('devnet_airdrops').update({ confirmed_at: now.toISOString() }).eq('wallet', wallet);
+        await db.from(table).update({ confirmed_at: now.toISOString() }).eq('wallet', wallet);
         return blocked('already_claimed');
       }
       if (next === 'wait') return blocked('already_claimed');
@@ -103,12 +110,12 @@ Deno.serve(async (request) => {
         .select('wallet');
       if (takeError) throw new Error(`devnet_airdrops retake: ${takeError.message}`);
       if ((taken ?? []).length === 0) return blocked('already_claimed');
-      const outcome = await send(db, wallet);
+      const outcome = await send(db, purpose, wallet);
       return 'error' in outcome ? failed(outcome) : paid(outcome.signature);
     }
 
     const [load, cheapest, config] = await Promise.all([
-      faucetLoad(db, now),
+      faucetLoad(db, table, now),
       // The cheapest item that is FOR SALE: a free avatar has no price and is not what a drop is for.
       db.from('shop_items').select('price_lamports').eq('active', true).not('price_lamports', 'is', null).order('price_lamports').limit(1).maybeSingle(),
       loadConfig(db),
@@ -116,23 +123,25 @@ Deno.serve(async (request) => {
     if (cheapest.error) throw new Error('faucet lookups failed');
     if (!cheapest.data || !config.treasury || load.total >= MAX_CLAIMS) return json({ error: 'faucet_unavailable' }, 503, cors);
     // The global budget: what the treasury gives away in any 24 hours.
-    if (!withinDailyBudget(load.givenToday)) return json({ error: 'faucet_unavailable' }, 503, cors);
+    if (!withinDailyBudget(load.givenToday, faucet.dropLamports, faucet.dailyBudgetLamports)) return json({ error: 'faucet_unavailable' }, 503, cors);
 
     try {
       const [balance, treasuryBalance] = await Promise.all([balanceOf(wallet), balanceOf(config.treasury)]);
-      if (fundsCheck(balance, BigInt(cheapest.data.price_lamports)).ok) return blocked('not_needed');
-      if (treasuryBalance < DROP_LAMPORTS + RENT_EXEMPT_MIN_LAMPORTS * 2n) return json({ error: 'faucet_unavailable' }, 503, cors);
+      // What the drop is for: the cheapest item of the shop, or locking the smallest bounty a wallet may post.
+      const need = purpose === 'sponsor' ? WALLET_MIN_REWARD_LAMPORTS + (await escrowRentLamports(gatedEscrows(config))) : BigInt(cheapest.data.price_lamports);
+      if (fundsCheck(balance, need).ok) return blocked('not_needed');
+      if (treasuryBalance < faucet.dropLamports + RENT_EXEMPT_MIN_LAMPORTS * 2n) return json({ error: 'faucet_unavailable' }, 503, cors);
     } catch (error) {
       if (!(error instanceof RpcError)) throw error;
       return json({ error: 'rpc_unavailable' }, 503, cors);
     }
 
     // The row is the lock, unique per wallet and per learner. It is released only when nothing was sent.
-    const { error: lockError } = await db.from('devnet_airdrops').insert({ wallet, user_id: userId, lamports: Number(DROP_LAMPORTS) });
+    const { error: lockError } = await db.from(table).insert({ wallet, user_id: userId, lamports: Number(faucet.dropLamports) });
     if (lockError?.code === UNIQUE_VIOLATION) return blocked('already_claimed');
     if (lockError) throw new Error(`devnet_airdrops: ${lockError.message}`);
 
-    const outcome = await send(db, wallet);
+    const outcome = await send(db, purpose, wallet);
     return 'error' in outcome ? failed(outcome) : paid(outcome.signature);
   } catch (error) {
     console.error('wallet-faucet failed', error);

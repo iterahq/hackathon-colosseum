@@ -1,5 +1,5 @@
 import { EscrowProgramError, readEscrow, readEscrows, refundPlan, releasePlan, acceptPlan, matchesTerms, sendAsApprover, type EscrowTerms } from './bounty-chain.ts';
-import { unclaimInstruction, type EscrowState } from './bounty-program.ts';
+import { trailHash, unclaimInstruction, type EscrowGate, type EscrowState } from './bounty-program.ts';
 import { memoInstruction, type Instruction } from './solana-message.ts';
 import { escrowBalance, sendFromEscrow } from './bounty-escrow.ts';
 import {
@@ -13,6 +13,7 @@ import {
   type ClaimRow,
   type Eligibility,
   type EventRow,
+  type Requirement,
 } from './bounty.ts';
 import { readAssets } from './chain-read.ts';
 import { loadConfig, type IteraClient } from './db.ts';
@@ -22,14 +23,15 @@ import { rpc } from './rpc.ts';
 import { TransferBroadcastError, signatureFate, treasuryAddress } from './treasury.ts';
 
 export const BOUNTY_COLUMNS =
-  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by';
+  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by,escrow_gated,auto_check,template_key';
 export const CLAIM_COLUMNS =
-  'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note';
+  'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note,submission_code,check_report';
 const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,signer,created_at';
 const BOARD_LIMIT = 60;
 const EVENT_LIMIT = 60;
 const ESCROW_HISTORY = 20;
 const CERTIFICATION_LIMIT = 20;
+const FRESH_CLAIM_MS = 90_000;
 
 export const PROGRAM_SLUG = 'itera-v2';
 
@@ -57,7 +59,7 @@ export async function listBounties(db: IteraClient, tenantIds?: string[]): Promi
   // The public board: no test row, nothing moderation hid, and a wallet's bounty only once its money is locked.
   const { data, error } = await (tenantIds
     ? query.in('tenant_id', tenantIds).or('is_test.eq.false,status.not.in.(paid,refunded)')
-    : query.eq('is_test', false).is('hidden_at', null).or('origin.eq.team,status.neq.awaiting_funding'));
+    : query.eq('is_test', false).is('hidden_at', null).or('origin.eq.team,status.neq.awaiting_funding').or('template_key.is.null,status.in.(open,claimed,submitted,paying)'));
   if (error) throw new Error(`bounties: ${error.message}`);
   return (data ?? []) as unknown as BountyRow[];
 }
@@ -134,7 +136,18 @@ export async function escrowTerms(bounty: BountyRow, config: Record<string, stri
     bountyId: bounty.id,
     amount: BigInt(bounty.reward_lamports),
     expiresAt: Math.floor(Date.parse(bounty.expires_at) / 1000),
+    gate: bounty.escrow_gated ? await gateOf(bounty.requirement) : null,
   };
+}
+
+/** The gate a requirement becomes in an escrow account's terms. */
+export async function gateOf(requirement: Pick<Requirement, 'program' | 'trail' | 'min_days'>): Promise<EscrowGate> {
+  return { minDays: requirement.min_days, trail: await trailHash(requirement.program, requirement.trail) };
+}
+
+/** Whether the deployed program has gated escrows (`bounty_escrow_version` 3): every bounty posted from then on is one. */
+export function gatedEscrows(config: Record<string, string>): boolean {
+  return Number(config.bounty_escrow_version) >= 3;
 }
 
 /** What the chain holds for a bounty that is waiting for money: the lamports locked, or `null` when it is not funded yet. */
@@ -206,7 +219,7 @@ export async function withdrawInstructions(db: IteraClient, bounty: BountyRow, w
   if (!terms) return null;
   const state = await readEscrow(terms.programId, bounty.escrow_address);
   if (state?.status !== 'claimed' || state.claimant !== wallet) return null;
-  return [unclaimInstruction({ programId: terms.programId, authority: wallet, escrow: bounty.escrow_address }), memoInstruction(transferMemo(bounty.id, 'withdraw'))];
+  return [unclaimInstruction({ programId: terms.programId, authority: wallet, escrow: bounty.escrow_address }), memoInstruction(transferMemo(bounty.id, 'give-up'))];
 }
 
 /** The escrow account of a program-held bounty as the chain has it now. `null` when there is none. */
@@ -462,7 +475,7 @@ async function walletRefundable(db: IteraClient, bounty: BountyRow): Promise<boo
   if (!terms) return false;
   const state = await readEscrow(terms.programId, bounty.escrow_address);
   if (!state || state.status === 'refunded') return true;
-  return config.bounty_escrow_version === '2' && state.status !== 'paid' && state.expiresAt * 1000 <= Date.now();
+  return Number(config.bounty_escrow_version) >= 2 && state.status !== 'paid' && state.expiresAt * 1000 <= Date.now();
 }
 
 /** Starts the refund of a bounty nobody is working on, and tries to finish it. */
@@ -494,10 +507,14 @@ export async function syncWithEscrow(db: IteraClient, bountyId: string): Promise
   }
   const claim = bounty.claim_id ? (await loadClaims(db, [bounty.claim_id])).get(bounty.claim_id) : undefined;
   if (!claim || state?.status !== 'open') return;
+  // A node a few slots behind still shows the account open right after an accept landed: a fresh claim is never let go on that word.
+  if (Date.now() - Date.parse(claim.accepted_at) < FRESH_CLAIM_MS) return;
   const { data, error } = await db.rpc('bounty_release_claim', { p_bounty: bounty.id, p_reason: 'withdrawn', p_user_id: claim.user_id });
   if (error) throw new Error(`bounty_release_claim: ${error.message}`);
   if (data !== 'ok') return;
-  const signature = findPayment(await escrowHistory(bounty.escrow_address).catch(() => [] as SignatureInfo[]), transferMemo(bounty.id, 'withdraw'));
+  const history = await escrowHistory(bounty.escrow_address).catch(() => [] as SignatureInfo[]);
+  // Give-ups signed before 12 Oct 2026 carry the memo `…:withdraw`.
+  const signature = findPayment(history, transferMemo(bounty.id, 'give-up')) ?? findPayment(history, `itera-bounty:${bounty.id}:withdraw`);
   if (signature) await recordStepSignature(db, { bountyId: bounty.id, claimId: claim.id, kind: 'withdrawn', signature, signer: claim.wallet });
 }
 

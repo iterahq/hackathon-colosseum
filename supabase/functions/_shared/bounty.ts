@@ -1,6 +1,7 @@
 import { isEd25519Address } from './address.ts';
 import { APP_URL, CLUSTER, explorerUrl, pickText } from './credential.ts';
 import { ACTION_VERSION, dialToUrl, shortWallet, solAmount, type Lang } from './gift.ts';
+import { staticCheckResults, type HtmlParser } from './grading.ts';
 import { isVerified, type OnchainAsset } from './profile.ts';
 import { BASE_FEE_LAMPORTS } from './purchase-verify.ts';
 import type { SignatureFate } from './treasury.ts';
@@ -81,6 +82,50 @@ export interface BountyRow {
   hidden_reason: string | null;
   delivery_mirror_url: string | null;
   created_by: string | null;
+  /** The escrow account names the trail and the days in its terms and the program reads them at `accept` (no attester). */
+  escrow_gated: boolean;
+  /** A bounty judged by a mechanical check: a delivery that passes is approved and paid with nobody reviewing it. */
+  auto_check: AutoCheck | null;
+  /** The template this bounty was refilled from (`itera.bounty_templates`). */
+  template_key: string | null;
+}
+
+/** The lesson engine's static HTML asserts, run on the code a learner pastes as their delivery. */
+export interface AutoCheck {
+  version: number;
+  language: 'html';
+  checks: Array<{ id: string; label: I18n; selector?: string; assert: Record<string, unknown> }>;
+}
+
+export const DELIVERY_CODE_MAX = 8000;
+
+/** What a refilled bounty is made from. */
+export interface BountyTemplate {
+  key: string;
+  active: boolean;
+  /** How many bounties of this template stay available at once. */
+  keep_open: number;
+  /** How many may be created in any 24 hours. */
+  daily_cap: number;
+  payload: {
+    sponsor_name: string;
+    title_i18n: I18n;
+    summary_i18n: I18n;
+    brief_i18n: I18n;
+    deliverable_i18n: I18n;
+    unit_id: string;
+    min_days: number;
+    reward_lamports: number;
+    claim_hours: number;
+    expires_days: number;
+    auto_check: AutoCheck;
+  };
+}
+
+/** How many bounties a refill creates now: up to `keep_open` available, never past what is left of the day's cap. */
+export function refillCount(template: Pick<BountyTemplate, 'active' | 'keep_open' | 'daily_cap'>, available: number, createdLast24h: number): number {
+  if (!template.active) return 0;
+  return Math.max(0, Math.min(template.keep_open - available, template.daily_cap - createdLast24h));
 }
 
 export interface ClaimRow {
@@ -98,6 +143,15 @@ export interface ClaimRow {
   submitted_at: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  submission_code: string | null;
+  check_report: CheckReport | null;
+}
+
+export interface CheckReport {
+  version: number;
+  passed: boolean;
+  checks: Array<{ id: string; passed: boolean }>;
+  checked_at: string;
 }
 
 export interface EventRow {
@@ -140,7 +194,7 @@ export function drainLamports(balance: bigint): bigint | null {
   return lamports > 0n ? lamports : null;
 }
 
-export function transferMemo(bountyId: string, kind: 'fund' | 'accept' | 'withdraw' | 'expired' | 'rejected' | 'payout' | 'refund'): string {
+export function transferMemo(bountyId: string, kind: 'fund' | 'accept' | 'give-up' | 'expired' | 'rejected' | 'payout' | 'refund'): string {
   return `itera-bounty:${bountyId}:${kind}`;
 }
 
@@ -370,6 +424,20 @@ export function parseSubmission(body: Record<string, unknown>): { url: string; n
   return { url: url.toString(), note };
 }
 
+/** The verdict of a bounty's mechanical check on the code a learner delivered. `null`: the bounty has no check, a person reviews it. */
+export function judgeCode(bounty: Pick<BountyRow, 'auto_check'>, code: string, parseHtml: HtmlParser, now: Date): CheckReport | null {
+  const check = bounty.auto_check;
+  if (!check || check.checks.length === 0) return null;
+  const results = staticCheckResults(check.checks, code, parseHtml);
+  return { version: check.version, passed: results.every(Boolean), checks: check.checks.map((entry, index) => ({ id: entry.id, passed: results[index] })), checked_at: now.toISOString() };
+}
+
+/** The code a learner pastes as the delivery of a bounty judged by a check. */
+export function parseCodeSubmission(body: Record<string, unknown>): string | null {
+  const code = typeof body.code === 'string' ? body.code : '';
+  return code.trim().length > 0 && code.length <= DELIVERY_CODE_MAX ? code : null;
+}
+
 function transferView(signature: string | null, lamports: number | null, at: string | null, wallet: string | null) {
   if (!signature && lamports === null) return null;
   return { signature, lamports, sol: lamports === null ? null : solAmount(lamports), at, wallet, explorer_url: explorerUrl('tx', signature) };
@@ -419,6 +487,10 @@ export function bountyView(input: {
     /** Who signs the approval on chain: the sponsor's own wallet, or the Itera treasury key for the team's bounties. */
     approver: byWallet ? 'sponsor_wallet' : 'itera',
     rehearsal: input.rehearsal === true,
+    /** Judged by a mechanical check and funded by the team: a delivery that passes is paid at once, with nobody reviewing it. */
+    judge: bounty.auto_check
+      ? { funded_by: 'team', approval: 'automatic_check', checks: bounty.auto_check.checks.map((check) => ({ id: check.id, label: pickText(check.label, lang) })), code_max: DELIVERY_CODE_MAX }
+      : null,
     hidden: bounty.hidden_at !== null,
     written_in: bounty.source_lang,
     title: pickText(bounty.title_i18n, lang),
@@ -445,6 +517,8 @@ export function bountyView(input: {
       refund_address: bounty.refund_address,
       program_id: program,
       program_explorer_url: explorerUrl('address', program),
+      /** Who checks the stamped days at accept: the program, reading the certification account, or Itera's attester co-signing. */
+      days_checked_by: bounty.escrow_kind === 'program' && bounty.escrow_gated ? 'program' : 'attester',
     },
     claim_hours: bounty.claim_hours,
     expires_at: bounty.expires_at,
@@ -462,6 +536,8 @@ export function bountyView(input: {
           proof_url: `${APP_URL}/c/${claim.proof_asset}`,
           submission_url: paid ? (bounty.delivery_mirror_url ?? claim.submission_url) : null,
           submission_mirrored: paid && bounty.delivery_mirror_url !== null,
+          submission_code: paid && bounty.auto_check ? claim.submission_code : null,
+          check_report: paid && bounty.auto_check ? claim.check_report : null,
         }
       : null,
     funding: transferView(bounty.funding_signature, bounty.funded_lamports, bounty.funded_at, null),
@@ -497,7 +573,14 @@ export type BountyView = ReturnType<typeof bountyView>;
  * payout went to one of the team's own test accounts. They are on chain and
  * counted, and the split says how many of the paid ones they are.
  */
-export function boardStats(bounties: readonly BountyRow[], now: Date, rehearsals: ReadonlySet<string> = new Set(), teamTestSponsored: ReadonlySet<string> = new Set()) {
+export function boardStats(
+  bounties: readonly BountyRow[],
+  now: Date,
+  rehearsals: ReadonlySet<string> = new Set(),
+  teamTestSponsored: ReadonlySet<string> = new Set(),
+  /** Judge bounties paid by the automatic check to wallets that are not the team's, counted apart from the rows above. */
+  judged: { count: number; lamports: bigint } = { count: 0, lamports: 0n },
+) {
   let paid = 0n;
   let rehearsed = 0n;
   let locked = 0n;
@@ -524,13 +607,17 @@ export function boardStats(bounties: readonly BountyRow[], now: Date, rehearsals
     }
   }
   return {
-    paid_lamports: Number(paid),
-    paid_sol: solAmount(paid),
-    paid_count: paidCount,
+    paid_lamports: Number(paid + judged.lamports),
+    paid_sol: solAmount(paid + judged.lamports),
+    paid_count: paidCount + judged.count,
     rehearsal_paid_count: rehearsalCount,
     rehearsal_paid_sol: solAmount(rehearsed),
+    /** Approved by a person (the sponsor) and paid to a wallet that is not the team's. */
     outside_paid_count: paidCount - rehearsalCount,
     outside_paid_sol: solAmount(paid - rehearsed),
+    /** Paid by the automatic check of a judge bounty to a wallet that is not the team's. */
+    judge_paid_count: judged.count,
+    judge_paid_sol: solAmount(judged.lamports),
     locked_lamports: Number(locked),
     locked_sol: solAmount(locked),
     open_count: openCount,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAILY_BUDGET_LAMPORTS, DROP_LAMPORTS, RETRY_AFTER_MS, claimStep, faucetMemo, unconfirmedStep, withinDailyBudget, type ClaimRow } from './faucet';
+import { DAILY_BUDGET_LAMPORTS, DROP_LAMPORTS, FAUCETS, RETRY_AFTER_MS, claimStep, faucetMemo, faucetPurpose, unconfirmedStep, withinDailyBudget, type ClaimRow } from './faucet';
 
 const now = new Date('2026-10-10T12:00:00.000Z');
 const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
@@ -54,5 +54,21 @@ describe('faucet: daily budget', () => {
 describe('faucet memo', () => {
   it('names the wallet it pays, never a learner id', () => {
     expect(faucetMemo('CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B')).toBe('faucet:CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B');
+  });
+});
+
+describe('faucet: the drop for trying the sponsor side', () => {
+  it('is its own table, budget and memo, and is asked for by name', () => {
+    expect(faucetPurpose('sponsor')).toBe('sponsor');
+    expect(faucetPurpose(undefined)).toBe('shop');
+    expect(faucetPurpose('anything')).toBe('shop');
+    expect(FAUCETS.sponsor.table).not.toBe(FAUCETS.shop.table);
+    expect(faucetMemo('W', 'sponsor')).toBe('faucet-sponsor:W');
+    expect(faucetMemo('W')).toBe('faucet:W');
+  });
+  it('covers the smallest bounty a wallet may post, the rent of its escrow account and the fee', () => {
+    expect(FAUCETS.sponsor.dropLamports).toBeGreaterThanOrEqual(10_000_000n + 2_477_760n + 5_000n + 890_880n);
+    expect(withinDailyBudget(285_000_000n, FAUCETS.sponsor.dropLamports, FAUCETS.sponsor.dailyBudgetLamports)).toBe(true);
+    expect(withinDailyBudget(290_000_000n, FAUCETS.sponsor.dropLamports, FAUCETS.sponsor.dailyBudgetLamports)).toBe(false);
   });
 });

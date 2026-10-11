@@ -3,13 +3,24 @@ import { SYSTEM_PROGRAM, base58Decode, base58Encode } from './solana-tx.ts';
 
 /** The escrow program's instructions and account layout (`programs/bounty-escrow/src/lib.rs`). */
 export const ESCROW_STATE_BYTES = 195;
+/** A gated bounty: the same 195 bytes, then the days and the trail its terms ask for. */
+export const GATED_ESCROW_STATE_BYTES = 228;
 const SEED = new TextEncoder().encode('bounty');
 const STATUSES = ['open', 'claimed', 'paid', 'refunded'] as const;
 const NO_KEY = '11111111111111111111111111111111';
 
 export type EscrowStatus = (typeof STATUSES)[number];
 
+/** What a gated bounty's terms ask of a certification: the program reads both from the asset account. */
+export interface EscrowGate {
+  minDays: number;
+  /** `trailHash` of the certification's `program` and `trail` attributes, hex. */
+  trail: string;
+}
+
 export interface EscrowState {
+  /** `null`: a bounty created before gated escrows. Its accept is co-signed by an attester, who vouches for the days. */
+  gate: EscrowGate | null;
   status: EscrowStatus;
   id: string;
   sponsor: string;
@@ -38,7 +49,26 @@ export const ESCROW_ERRORS: Record<number, string> = {
   6012: 'wrong_sponsor',
   6013: 'not_authorized',
   6014: 'claimant_must_sign',
+  6015: 'certification_not_frozen',
+  6016: 'certification_without_stamps',
+  6017: 'certification_of_another_trail',
+  6018: 'not_enough_stamped_days',
+  6019: 'invalid_requirement',
 };
+
+const hexOf = (bytes: Uint8Array) => [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+const bytesOfHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (byte) => Number.parseInt(byte, 16));
+
+/** The trail a gated bounty names: sha256 of the certification's `program` attribute, a line feed, its `trail` attribute. */
+export async function trailHash(program: string, trail: string): Promise<string> {
+  return hexOf(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${program}\n${trail}`))));
+}
+
+function gateBytes(gate: EscrowGate): Uint8Array {
+  const trail = bytesOfHex(gate.trail);
+  if (!Number.isInteger(gate.minDays) || gate.minDays < 1 || gate.minDays > 255 || trail.length !== 32) throw new Error('not a gate');
+  return Uint8Array.of(gate.minDays, ...trail);
+}
 
 /** The 16 bytes of a uuid: the seed of its escrow account. */
 export function bountyIdBytes(bountyId: string): Uint8Array {
@@ -59,6 +89,7 @@ export interface EscrowSeedTerms {
   collection: string;
   amount: bigint;
   expiresAt: number;
+  gate?: EscrowGate | null;
 }
 
 function u64le(value: bigint): Uint8Array {
@@ -79,6 +110,10 @@ export async function escrowPda(programId: string, terms: EscrowSeedTerms): Prom
     return bytes;
   };
   const seeds = [SEED, bountyIdBytes(terms.bountyId), key(terms.sponsor), key(terms.approver), key(terms.collection), u64le(terms.amount), u64le(BigInt(terms.expiresAt))];
+  if (terms.gate) {
+    const gate = gateBytes(terms.gate);
+    seeds.push(gate.slice(0, 1), gate.slice(1));
+  }
   return (await findProgramAddress(seeds, programId)).address;
 }
 
@@ -92,9 +127,12 @@ export function createInstruction(input: {
   bountyId: string;
   amount: bigint;
   expiresAt: number;
+  gate?: EscrowGate | null;
 }): Instruction {
-  const data = new Uint8Array(33);
-  data[0] = 0;
+  const gate = input.gate ? gateBytes(input.gate) : null;
+  const data = new Uint8Array(gate ? 66 : 33);
+  data[0] = gate ? 5 : 0;
+  if (gate) data.set(gate, 33);
   data.set(bountyIdBytes(input.bountyId), 1);
   const view = new DataView(data.buffer);
   view.setBigUint64(17, input.amount, true);
@@ -114,13 +152,15 @@ export function createInstruction(input: {
 }
 
 /**
- * `attester` co-signs: the bounty's approver, or Itera's attester key. The
- * claimant signs too: the program records nobody who did not ask for it.
+ * The claimant signs: the program records nobody who did not ask for it.
+ * On a bounty with no gate `attester` co-signs (the bounty's approver, or
+ * Itera's attester key). On a `gated` one the program reads the days itself
+ * and the first account is not read: nobody co-signs.
  */
-export function acceptInstruction(input: { programId: string; attester: string; escrow: string; claimant: string; certification: string }): Instruction {
+export function acceptInstruction(input: { programId: string; attester: string; escrow: string; claimant: string; certification: string; gated?: boolean }): Instruction {
   return {
     programId: input.programId,
-    accounts: [{ address: input.attester, signer: true }, { address: input.escrow, writable: true }, { address: input.claimant, signer: true }, { address: input.certification }],
+    accounts: [{ address: input.attester, signer: !input.gated }, { address: input.escrow, writable: true }, { address: input.claimant, signer: true }, { address: input.certification }],
     data: Uint8Array.of(1),
   };
 }
@@ -149,11 +189,13 @@ export function refundInstruction(input: { programId: string; authority: string;
 
 /** The escrow account as the program wrote it. `null` when the bytes are not one. */
 export function parseEscrowState(data: Uint8Array): EscrowState | null {
-  if (data.length !== ESCROW_STATE_BYTES || data[0] !== 1 || data[2] >= STATUSES.length) return null;
+  const gated = data.length === GATED_ESCROW_STATE_BYTES && data[0] === 2;
+  if (!(gated || (data.length === ESCROW_STATE_BYTES && data[0] === 1)) || data[2] >= STATUSES.length) return null;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const keyAt = (offset: number) => base58Encode(data.slice(offset, offset + 32));
   const optional = (offset: number) => (keyAt(offset) === NO_KEY ? null : keyAt(offset));
   return {
+    gate: gated ? { minDays: data[195], trail: hexOf(data.slice(196, 228)) } : null,
     status: STATUSES[data[2]],
     id: uuidOf(data.slice(3, 19)),
     sponsor: keyAt(19),
