@@ -35,6 +35,21 @@ async function boughtRecently(db: IteraClient, userId: string, itemKey: string):
   return (data ?? []).length > 0;
 }
 
+/**
+ * The certification is the first thing Itera writes to a learner's wallet. A read that says
+ * `mint: 'after_credential'` (the app's own background reads) mints the companion only once the learner
+ * holds a certification on chain, or has paid for something the companion wears or carries.
+ */
+async function companionIsDue(db: IteraClient, userId: string): Promise<boolean> {
+  const [certified, bought] = await Promise.all([
+    db.from('user_achievements').select('id').eq('user_id', userId).eq('achievement_key', 'trail_pass').eq('mint_status', 'minted').limit(1),
+    db.from('purchases').select('id').eq('user_id', userId).eq('status', 'paid').limit(1),
+  ]);
+  if (certified.error) throw new Error(`user_achievements minted: ${certified.error.message}`);
+  if (bought.error) throw new Error(`purchases paid: ${bought.error.message}`);
+  return (certified.data ?? []).length > 0 || (bought.data ?? []).length > 0;
+}
+
 /** `undefined`: no equip requested. `false`: malformed. Otherwise the outfit to wear (`null` takes it off). */
 function equipOf(body: Record<string, unknown>): string | null | undefined | false {
   if (body.equip === undefined) return undefined;
@@ -68,6 +83,8 @@ Deno.serve(async (request) => {
     const equipAvatar = body ? equipAvatarOf(body) : false;
     if (!body || equip === false || equipAvatar === false) return json({ error: 'invalid_body' }, 400, cors);
     const lang = body.lang === 'en' ? 'en' : 'pt';
+    if (body.mint !== undefined && body.mint !== 'after_credential') return json({ error: 'invalid_body' }, 400, cors);
+    const deferMint = body.mint === 'after_credential' && equip === undefined && equipAvatar === undefined;
 
     const userId = caller.iteraUserId;
     // A gift whose confirm never arrived lands here, before the lives are read. The row is read in the
@@ -101,7 +118,8 @@ Deno.serve(async (request) => {
     }
 
     // The mint outlives the response: the caller sees `pending` now and polls.
-    if (caller.wallet && row.mint_status !== 'minted' && (await claimMint(db, userId, caller.wallet))) {
+    const mintNow = caller.wallet !== null && row.mint_status !== 'minted' && (!deferMint || row.mint_status === 'pending' || (await companionIsDue(db, userId)));
+    if (caller.wallet && mintNow && (await claimMint(db, userId, caller.wallet))) {
       row = { ...row, mint_status: 'pending' };
       inBackground(mintCompanion(db, userId, caller.wallet));
     } else if (mirrorWanted && row.mint_status === 'minted') {
