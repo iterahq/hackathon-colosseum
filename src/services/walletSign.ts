@@ -104,11 +104,21 @@ function attemptsFor(provider: SolanaProvider, intent: PurchaseIntent): Attempt[
   return attempts;
 }
 
+const CONNECT_TIMEOUT_MS = 20_000;
+
+/** A wallet that never answers `connect` (a closed popup, a locked extension) is a failure after 20 s, not a spinner forever. */
+function withConnectTimeout<T>(work: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new WalletSignError('failed', `The wallet did not answer in ${CONNECT_TIMEOUT_MS / 1000} s.`)), CONNECT_TIMEOUT_MS);
+    work.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+}
+
 export async function connectWallet(): Promise<string | null> {
   const provider = getWalletProvider();
   if (!provider) throw new WalletSignError('no_wallet', 'No Solana wallet found in this browser.');
   try {
-    await provider.connect({ onlyIfTrusted: true }).catch(() => provider.connect());
+    await withConnectTimeout(provider.connect({ onlyIfTrusted: true }).catch(() => provider.connect()));
   } catch (e) {
     console.warn('[wallet]', 'connect', codeOf(e), messageOf(e));
     throw classifyWalletError(e);

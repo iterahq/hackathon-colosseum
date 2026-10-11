@@ -67,7 +67,7 @@ export default function InstructorReportPage() {
         <p className="text-sm text-muted-foreground mb-8">
           {tText(lesson?.title)}
           {startedAt
-            ? ` · ${startedAt.toLocaleDateString()} ${startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+            ? ` · ${startedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} ${startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
             : ''}
         </p>
 

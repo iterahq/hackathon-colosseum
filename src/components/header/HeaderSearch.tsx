@@ -44,11 +44,11 @@ export function HeaderSearch({ className = '' }: { className?: string }) {
         aria-haspopup="dialog"
         title={`${t('header.search.open')} (${isMac() ? '⌘K' : 'Ctrl K'})`}
         data-testid="header-search"
-        className={`hd-press hd-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] text-[#A0978A] hover:text-[#F4EDE2] min-[1280px]:h-10 min-[1280px]:w-[240px] min-[1280px]:justify-start min-[1280px]:gap-2.5 min-[1280px]:px-3.5 ${className}`}
+        className={`hd-press hd-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] text-[#A0978A] hover:text-[#F4EDE2] min-[1536px]:h-10 min-[1536px]:w-[240px] min-[1536px]:justify-start min-[1536px]:gap-2.5 min-[1536px]:px-3.5 ${className}`}
       >
         <Search className="h-[18px] w-[18px] shrink-0" aria-hidden />
-        <span className="hidden min-w-0 flex-1 truncate text-left [font:500_13px_JetBrains_Mono] min-[1280px]:block">{t('header.search.trigger.wide')}</span>
-        <kbd className="hidden shrink-0 whitespace-nowrap rounded border border-[#2E2A25] px-1 py-0.5 [font:600_10px_JetBrains_Mono] min-[1280px]:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>
+        <span className="hidden min-w-0 flex-1 truncate text-left [font:500_13px_JetBrains_Mono] min-[1536px]:block">{t('header.search.trigger.wide')}</span>
+        <kbd className="hidden shrink-0 whitespace-nowrap rounded border border-[#2E2A25] px-1 py-0.5 [font:600_10px_JetBrains_Mono] min-[1536px]:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>
       </button>
       <HeaderSearchDialog open={open} onOpenChange={setOpen} index={index} />
     </>

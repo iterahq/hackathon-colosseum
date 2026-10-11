@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD } from '@/components/shop/shopStyles';
 import { DeliverForm } from '@/components/bounty/DeliverForm';
+import { TeraLoader } from '@/components/tera/TeraLoader';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useAcceptBounty, useBountySession, useMyBountyStatus, useWithdrawBounty } from '@/hooks/useBounties';
@@ -141,7 +142,7 @@ export function BountyActionPanel({ bounty }: { bounty: BountyDetail }) {
   if (mine.isPending) {
     return (
       <Panel>
-        <Skeleton className="h-12" />
+        <TeraLoader size="sm" label={t('bounty.action.reading')} data-testid="bounty-action-reading" />
       </Panel>
     );
   }

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
@@ -35,6 +35,7 @@ const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set([...SHOP_ERROR_CODES, 
 /** The test faucet pays 0.01 SOL: it only helps when the whole purchase is about that small. */
 const FAUCET_MAX_LAMPORTS = 20_000_000;
 
+const SLOW_AFTER_MS = 6_000;
 const BUSY_LABEL = { connecting: 'purchase.connecting', signing: 'purchase.signing', confirming: 'purchase.confirming', funding: 'purchase.funding' } as const;
 
 function Detail({ text }: { text: string | null }) {
@@ -100,6 +101,13 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
   const reduced = useReducedMotion();
   const busy = isPurchaseBusy(state);
   const open = state.phase !== 'idle';
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (!busy) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [busy, state.phase]);
 
   useEffect(() => {
     if (!open || busy) return;
@@ -133,6 +141,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
           <>
             <TeraLoader size="md" label={t(BUSY_LABEL[phase as keyof typeof BUSY_LABEL])} />
             {phase === 'signing' && <p className="[font:400_14px/1.5_Inter] text-[#A0978A]">{t('purchase.signingHint')}</p>}
+            {slow && phase !== 'signing' && <p className="[font:400_14px/1.5_Inter] text-[#A0978A]" data-testid="purchase-slow">{t('purchase.slowHint')}</p>}
           </>
         )}
         {phase === 'paid' && (

@@ -73,9 +73,12 @@ export default function BountiesPage() {
         </p>
       )}
       {board.isPending && (
-        <div className="grid gap-4 sm:grid-cols-2" aria-busy="true" data-testid="bounty-loading">
-          <Skeleton className="h-56" />
-          <Skeleton className="h-56" />
+        <div className="flex flex-col gap-3" aria-busy="true" data-testid="bounty-loading">
+          <p role="status" className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('bounty.board.reading')}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-56" />
+            <Skeleton className="h-56" />
+          </div>
         </div>
       )}
       {board.isError && <LoadError onRetry={() => void board.refetch()} testId="bounty-failed" />}

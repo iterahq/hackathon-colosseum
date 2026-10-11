@@ -5,7 +5,7 @@ import { CourseThumb } from '@/components/videoCourses/CourseThumb';
 import { useI18n } from '@/i18n';
 import type { VideoCourse } from '@/types/videoCourses';
 import { courseColor } from '@/utils/courses';
-import { formatTotal, sortCourses, uniqueCourses, courseThumbnail } from '@/utils/videoCourses';
+import { formatTotal, sortCourses, uniqueCourses, thumbnailsOf } from '@/utils/videoCourses';
 
 interface Props {
   courses: readonly VideoCourse[];
@@ -21,6 +21,8 @@ export function CourseCarousel({ courses }: Props) {
   const track = useRef<HTMLDivElement>(null);
   const scroll = (left: number) => track.current?.scrollBy({ left, behavior: 'smooth' });
   if (courses.length === 0) return null;
+  const ordered = sortCourses(uniqueCourses(courses));
+  const thumbnails = thumbnailsOf(ordered);
 
   return (
     <section className="flex min-w-0 flex-col gap-4" data-testid="course-carousel">
@@ -39,7 +41,7 @@ export function CourseCarousel({ courses }: Props) {
         </span>
       </div>
       <div ref={track} className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2">
-        {sortCourses(uniqueCourses(courses)).map((course) => {
+        {ordered.map((course, index) => {
           const seconds = course.lessons.reduce((n, l) => n + l.durationSeconds, 0);
           return (
             <Link
@@ -49,7 +51,7 @@ export function CourseCarousel({ courses }: Props) {
               className={`flex w-[300px] flex-none snap-start flex-col overflow-hidden rounded-[14px] border border-[#262320] border-b-[5px] bg-[#141210] text-left text-[#F4EDE2] transition-transform duration-100 hover:-translate-y-1 active:translate-y-[3px] max-sm:w-[260px] ${FOCUS}`}
               style={{ borderBottomColor: courseColor(course.slug).c }}
             >
-              <CourseThumb note={locale === 'en' ? t('video.language.pt') : undefined} title={course.title} slug={course.slug} src={courseThumbnail(course)} />
+              <CourseThumb note={locale === 'en' ? t('video.language.pt') : undefined} title={course.title} slug={course.slug} src={thumbnails.get(course.id) ?? null} eager={index < 4} />
               <span className="flex flex-col gap-1.5 px-[18px] pb-[18px] pt-4">
                 <span className="line-clamp-2 min-h-[48px] [font:700_24px/1_'Barlow_Condensed']">{course.title}</span>
                 <span className="truncate [font:400_13px_Inter] text-[#C9BFB0]">{course.teacherName}</span>
