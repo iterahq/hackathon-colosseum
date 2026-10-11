@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/AuthContext';
@@ -38,6 +38,14 @@ export function NicknameGate() {
       profile: profile.data,
       skipped: readNicknameSkipped(user?.id),
     });
+  useEffect(() => {
+    if (!show) return;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [show]);
   if (!show || !user) return null;
 
   function handleSkip() {
