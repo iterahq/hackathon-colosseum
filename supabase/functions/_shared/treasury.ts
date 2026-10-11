@@ -74,11 +74,20 @@ export async function sendMessage(
 ): Promise<string> {
   const { blockhash } = await latestBlockhash();
   const message = messageOf(blockhash);
-  const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', signer.key, message as Uint8Array<ArrayBuffer>));
-  const sent = await rpc<string>('sendTransaction', [
-    base64Encode(serializeTransaction(message, signature)),
-    { encoding: 'base64', preflightCommitment: 'confirmed' },
-  ]);
+  return broadcast(serializeTransaction(message, await signMessage(signer, message)), onBroadcast);
+}
+
+export async function signMessage(signer: TransferSigner, message: Uint8Array): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.sign('Ed25519', signer.key, message as Uint8Array<ArrayBuffer>));
+}
+
+/**
+ * Hands a fully signed transaction to the node and waits for confirmation.
+ * Same contract as `sendMessage`: `TransferBroadcastError` for any failure
+ * after the node accepted it; any other error means nothing was sent.
+ */
+export async function broadcast(transaction: Uint8Array, onBroadcast?: (signature: string) => Promise<void>): Promise<string> {
+  const sent = await rpc<string>('sendTransaction', [base64Encode(transaction), { encoding: 'base64', preflightCommitment: 'confirmed' }]);
   try {
     await onBroadcast?.(sent);
     const deadline = Date.now() + CONFIRM_TIMEOUT_MS;

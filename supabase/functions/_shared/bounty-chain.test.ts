@@ -11,7 +11,7 @@ const CERT_A = 'Aqhq7VqZTmEGqGNtFSG3ywVELZx8T3DmoeTenrTAoNQj';
 const D = 'EANhMJvJo2dKjEosCmExDvrzxn5LhT8R51nanJpcaXu5';
 const CERT_D = '4FkL85hUkteCR8oiAEm6Y6pUKKnamMw4iwvZcYfNeEpQ';
 const ID = '87279dd4-a560-4e43-a020-372f2a8cd87e';
-const party = { programId: PROGRAM, approver: TREASURY, escrow: ESCROW };
+const party = { programId: PROGRAM, approver: TREASURY, attester: TREASURY, escrow: ESCROW };
 const terms: EscrowTerms = { ...party, sponsor: TREASURY, collection: COLLECTION, bountyId: ID, amount: 50_000_000n, expiresAt: 1_800_000_000 };
 
 function state(overrides: Partial<EscrowState> = {}): EscrowState {
@@ -47,22 +47,27 @@ describe('plans', () => {
     expect(tags(acceptPlan(state({ status: 'claimed', claimant: D, certification: CERT_D }), party, A, CERT_A))).toEqual([3, 1]);
   });
 
-  it('does nothing when the wallet already holds it, or the account is closed', () => {
-    expect(acceptPlan(state({ status: 'claimed', claimant: A, certification: CERT_A }), party, A, CERT_A)).toBe('held');
+  it('asks for a fresh signature even when the account already names the wallet, and refuses a closed account', () => {
+    expect(tags(acceptPlan(state({ status: 'claimed', claimant: A, certification: CERT_A }), party, A, CERT_A))).toEqual([3, 1]);
     expect(acceptPlan(state({ status: 'paid', claimant: A }), party, A, CERT_A)).toBe('closed');
     expect(acceptPlan(state({ status: 'refunded' }), party, A, CERT_A)).toBe('closed');
   });
 
-  it('releases to the holder, repairing the claim on chain when needed', () => {
-    expect(tags(releasePlan(state({ status: 'claimed', claimant: A, certification: CERT_A }), party, A, CERT_A))).toEqual([2]);
-    expect(tags(releasePlan(state(), party, A, CERT_A))).toEqual([1, 2]);
-    expect(tags(releasePlan(state({ status: 'claimed', claimant: D, certification: CERT_D }), party, A, CERT_A))).toEqual([3, 1, 2]);
+  it('makes the claimant a signer of accept, beside the attester', () => {
+    const [accept] = acceptPlan(state(), { ...party, attester: D }, A, CERT_A) as Array<{ accounts: Array<{ address: string; signer?: boolean }> }>;
+    expect(accept.accounts.filter((account) => account.signer).map((account) => account.address)).toEqual([D, A]);
   });
 
-  it('never plans a second payout', () => {
-    expect(releasePlan(state({ status: 'paid', claimant: A }), party, A, CERT_A)).toBe('done');
-    expect(releasePlan(state({ status: 'paid', claimant: D }), party, A, CERT_A)).toBe('closed');
-    expect(releasePlan(state({ status: 'refunded' }), party, A, CERT_A)).toBe('closed');
+  it('pays only a claimant the account already names: nobody is accepted on their behalf', () => {
+    expect(tags(releasePlan(state({ status: 'claimed', claimant: A, certification: CERT_A }), party, A))).toEqual([2]);
+    expect(releasePlan(state(), party, A)).toBe('closed');
+    expect(releasePlan(state({ status: 'claimed', claimant: D, certification: CERT_D }), party, A)).toBe('closed');
+  });
+
+  it('never pays twice, never pays after a refund', () => {
+    expect(releasePlan(state({ status: 'paid', claimant: A }), party, A)).toBe('done');
+    expect(releasePlan(state({ status: 'paid', claimant: D }), party, A)).toBe('closed');
+    expect(releasePlan(state({ status: 'refunded' }), party, A)).toBe('closed');
   });
 
   it('refunds to the sponsor the account names', () => {

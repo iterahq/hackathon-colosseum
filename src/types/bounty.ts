@@ -72,6 +72,8 @@ export interface LedgerEvent {
   lamports: number | null;
   sol: string | null;
   signature: string | null;
+  /** The wallet that signed this step's instruction on chain. Null: not recorded, or the step has no transaction. */
+  signedBy: string | null;
   explorerUrl: string | null;
   at: string | null;
 }

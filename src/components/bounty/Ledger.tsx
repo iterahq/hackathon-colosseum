@@ -1,11 +1,19 @@
 import { ExplorerAnchor, SECTION_TITLE, ShortWallet } from '@/components/bounty/bountyUi';
 import { CARD } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
+import { shortAddress } from '@/lib/explorer';
 import { formatWhen } from '@/utils/bounty';
 import type { LedgerEvent } from '@/types/bounty';
 
 const MONEY_KINDS: readonly string[] = ['funded', 'paid', 'refunded'];
 const KNOWN_KINDS: readonly string[] = ['created', 'funded', 'accepted', 'submitted', 'approved', 'rejected', 'withdrawn', 'expired', 'paid', 'refund_started', 'refunded'];
+
+/** Who stands behind a step: the wallet that signed it on chain, or Itera's own record when it has no transaction. */
+function signedLine(event: LedgerEvent): { key: string; wallet?: string } | null {
+  if (!event.signature) return MONEY_KINDS.includes(event.kind) ? null : { key: 'bounty.ledger.offchain' };
+  if (event.signedBy) return event.signedBy === event.wallet ? { key: 'bounty.ledger.signedLearner', wallet: event.signedBy } : { key: 'bounty.ledger.signedItera', wallet: event.signedBy };
+  return event.kind === 'accepted' ? { key: 'bounty.ledger.signedIteraOld' } : null;
+}
 
 export function Ledger({ events }: { events: LedgerEvent[] }) {
   const { t, locale } = useI18n();
@@ -22,6 +30,7 @@ export function Ledger({ events }: { events: LedgerEvent[] }) {
           {events.map((event, index) => {
             const money = MONEY_KINDS.includes(event.kind);
             const label = KNOWN_KINDS.includes(event.kind) ? t(`bounty.event.${event.kind}`) : event.kind;
+            const signed = signedLine(event);
             return (
               <li key={`${event.kind}-${event.at ?? index}-${index}`} className="relative flex gap-3 pb-4 last:pb-0" data-testid="bounty-event" data-kind={event.kind}>
                 <span aria-hidden className="relative flex w-4 shrink-0 justify-center">
@@ -42,6 +51,11 @@ export function Ledger({ events }: { events: LedgerEvent[] }) {
                     )}
                     <ExplorerAnchor href={event.explorerUrl} label={t('bounty.ledger.explorer')} />
                   </div>
+                  {signed && (
+                    <p className="[font:400_12px/1.4_Inter] text-[#A0978A]" data-testid="bounty-event-signer" data-signer={signed.key.split('.').pop()}>
+                      {t(signed.key, signed.wallet ? { wallet: shortAddress(signed.wallet) } : undefined)}
+                    </p>
+                  )}
                 </div>
               </li>
             );

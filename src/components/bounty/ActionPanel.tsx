@@ -11,13 +11,17 @@ import { bountyErrorCode } from '@/services/bounty.service';
 import { formatRemaining, safeHttpsUrl } from '@/utils/bounty';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
-const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible'] as const;
+const ACCEPT_ERRORS = ['already_claiming', 'not_open', 'not_eligible', 'own_bounty'] as const;
 const SUBMIT_ERRORS = ['invalid_submission', 'not_active'] as const;
 const WITHDRAW_ERRORS = ['not_active'] as const;
 
+/** What can go wrong in a step the learner's wallet signs, whatever the step. */
+const SIGN_ERRORS = ['wallet_cancelled', 'no_wallet', 'wrong_wallet', 'wallet_failed', 'expired', 'refused_by_program', 'client_outdated', 'rate_limited', 'invalid_transaction', 'invalid_signature'] as const;
+
 function errorText(t: (k: string) => string, scope: string, known: readonly string[], error: unknown): string {
   const code = bountyErrorCode(error);
-  return code && known.includes(code) ? t(`bounty.err.${scope}.${code}`) : t('bounty.err.generic');
+  if (code && known.includes(code)) return t(`bounty.err.${scope}.${code}`);
+  return code && (SIGN_ERRORS as readonly string[]).includes(code) ? t(`bounty.err.sign.${code}`) : t('bounty.err.generic');
 }
 
 function Panel({ children, tone = 'plain' }: { children: ReactNode; tone?: 'plain' | 'good' }) {
@@ -91,11 +95,14 @@ function ActiveClaim({ bounty, status }: { bounty: BountyDetail; status: NonNull
           </button>
         ) : (
           <>
-            <Notice>{t('bounty.withdraw.confirm')}</Notice>
+            <Notice>
+              {t('bounty.withdraw.confirm')}
+              {bounty.escrow?.custody === 'program' && <span className="mt-1 block">{t('bounty.withdraw.signs')}</span>}
+            </Notice>
             {withdraw.isError && <Notice tone="error">{errorText(t, 'withdraw', WITHDRAW_ERRORS, withdraw.error)}</Notice>}
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={withdraw.isPending} onClick={() => withdraw.mutate(bounty.id)} className={`${BTN_PRIMARY} ${BTN_SMALL}`} data-testid="bounty-withdraw-confirm">
-                {withdraw.isPending ? t('bounty.working') : t('bounty.withdraw.yes')}
+                {withdraw.isPending ? t('bounty.signing') : t('bounty.withdraw.yes')}
               </button>
               <button type="button" onClick={() => setConfirming(false)} className={`${BTN_SECONDARY} ${BTN_SMALL}`}>
                 {t('bounty.withdraw.no')}
@@ -119,9 +126,14 @@ function Accept({ bounty, status }: { bounty: BountyDetail; status: MyBountyStat
         </p>
       )}
       <p className="[font:400_14px/1.5_Inter] text-[#A0978A]">{t('bounty.accept.hint', { hours: bounty.claimHours })}</p>
+      {bounty.escrow?.custody === 'program' && (
+        <p className="[font:400_13px/1.5_Inter] text-[#A0978A]" data-testid="bounty-accept-signs">
+          {t('bounty.accept.signs')}
+        </p>
+      )}
       {accept.isError && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
       <button type="button" disabled={accept.isPending} onClick={() => accept.mutate(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
-        {accept.isPending ? t('bounty.working') : t('bounty.accept.cta')}
+        {accept.isPending ? t('bounty.signing') : t('bounty.accept.cta')}
       </button>
     </>
   );

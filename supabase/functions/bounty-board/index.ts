@@ -61,8 +61,8 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
     claims = new Map();
   }
-  // An open bounty is only shown as open after its escrow account was read.
-  if (bounty.status === 'open' && bounty.escrow_kind === 'program') {
+  // An open bounty is only shown as open, and a held one as held, after its escrow account was read.
+  if ((bounty.status === 'open' || bounty.status === 'claimed') && bounty.escrow_kind === 'program') {
     await syncWithEscrow(db, bounty.id).catch((error) => console.error('bounty-board: escrow account not read', error instanceof Error ? error.message : error));
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }

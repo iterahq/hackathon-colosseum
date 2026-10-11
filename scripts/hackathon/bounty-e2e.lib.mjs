@@ -133,6 +133,19 @@ export async function confirmed(signature, timeoutMs = 40_000) {
 export function signed(signer, message) {
   return Buffer.concat([Buffer.from([1]), sign(null, Buffer.from(message), signer.privateKey), Buffer.from(message)]).toString('base64');
 }
+/** The wire transaction of a message several keys sign, base64: one signature per required signer, in the message's own order. */
+export function signedBy(signers, message) {
+  const required = message[0];
+  const keys = Array.from({ length: required }, (_, index) => base58Encode(message.subarray(4 + 32 * index, 36 + 32 * index)));
+  const signatures = keys.map((address) => {
+    const signer = signers.find((candidate) => candidate.address === address);
+    return signer ? sign(null, Buffer.from(message), signer.privateKey) : Buffer.alloc(64);
+  });
+  return Buffer.concat([Buffer.from([required]), ...signatures, Buffer.from(message)]).toString('base64');
+}
+export const sendBy = async (signers, message) => confirmed(await rpc('sendTransaction', [signedBy(signers, message), { encoding: 'base64', preflightCommitment: 'confirmed' }]));
+/** The 64-byte signature of `signer` over a message, base64: what a wallet hands back when it only signs. */
+export const signatureOf = (signer, message) => sign(null, Buffer.from(message), signer.privateKey).toString('base64');
 export const send = async (signer, message) => confirmed(await rpc('sendTransaction', [signed(signer, message), { encoding: 'base64', preflightCommitment: 'confirmed' }]));
 /** Signs the unsigned transaction a Solana Action answered (base64, one zeroed signature slot) and sends it. */
 export const sendUnsigned = (signer, transactionBase64) => send(signer, Buffer.from(transactionBase64, 'base64').subarray(65));
@@ -157,3 +170,18 @@ export async function passport(learner) {
   }
   return answer;
 }
+
+/**
+ * A step the learner's wallet signs (`accept` or `withdraw`), the way the app does it: the server
+ * answers the transaction, the wallet signs the message, the server adds the fee payer and sends.
+ * Answers the last call made. `tamper` may change what is sent back.
+ */
+export async function signedStep(learner, step, bounty, tamper = (signedBody) => signedBody) {
+  const prepared = await call('bounty-claim', learner, { action: `${step}_prepare`, bounty });
+  if (prepared.http !== 200) return prepared;
+  const offer = prepared.j.sign;
+  const body = offer ? { message: offer.message_base64, signature: signatureOf(learner, Buffer.from(offer.message_base64, 'base64')) } : {};
+  return call('bounty-claim', learner, { action: `${step}_submit`, bounty, ...tamper(body, offer) });
+}
+export const acceptBounty = (learner, bounty) => signedStep(learner, 'accept', bounty);
+export const withdrawBounty = (learner, bounty) => signedStep(learner, 'withdraw', bounty);

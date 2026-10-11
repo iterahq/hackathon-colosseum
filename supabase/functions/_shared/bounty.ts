@@ -106,6 +106,8 @@ export interface EventRow {
   wallet: string | null;
   lamports: number | null;
   signature: string | null;
+  /** The wallet that signed the program's instruction of this step. `null`: not recorded (a step from before learners signed, or one with no transaction). */
+  signer?: string | null;
   created_at: string;
 }
 
@@ -137,7 +139,7 @@ export function drainLamports(balance: bigint): bigint | null {
   return lamports > 0n ? lamports : null;
 }
 
-export function transferMemo(bountyId: string, kind: 'fund' | 'accept' | 'payout' | 'refund'): string {
+export function transferMemo(bountyId: string, kind: 'fund' | 'accept' | 'withdraw' | 'expired' | 'rejected' | 'payout' | 'refund'): string {
   return `itera-bounty:${bountyId}:${kind}`;
 }
 
@@ -474,6 +476,7 @@ export function bountyView(input: {
             lamports: event.lamports,
             sol: event.lamports === null ? null : solAmount(event.lamports),
             signature: event.signature,
+            signed_by: event.signature ? (event.signer ?? null) : null,
             explorer_url: explorerUrl('tx', event.signature),
             at: event.created_at,
           })),
