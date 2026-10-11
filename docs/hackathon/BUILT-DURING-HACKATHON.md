@@ -9,9 +9,11 @@ done during the competition is judged).
 - Last inherited commit: `1f5b925b` (2026-10-09 16:49 -0300), "feat: funnel events (DFL-00D3F) (#699)".
 - First hackathon commit: `34336b3` (2026-10-09 17:44 -0300), "chore: bootstrap hackathon copy (drop CI, isolation
   banner, API base build arg) (#1)". Its parent is the copy point.
-- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `cc178d0`, 2026-10-10 08:00 -0300): 55 commits,
+- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `65f9256`, 2026-10-11 00:48 -0300): 76 commits,
   one per merged PR (squash merges), all by one git author account.
-- Diff against the copy point: 618 files changed, 514 added, 84 modified, 20 deleted; 46,364 lines added and 5,004 removed.
+- Diff against the copy point: 784 files changed, 662 added, 102 modified, 20 deleted; 63,860 lines added and 5,256 removed.
+- To refresh these numbers: `git rev-list --count 1f5b925b..origin/main`, `git diff --shortstat 1f5b925b origin/main`,
+  `gh pr list --state merged --limit 200`.
 - Before the copy point the repository history has 721 commits. The history of the original product is included in
   this repository.
 
@@ -24,7 +26,7 @@ done during the competition is judged).
 - Subscription billing code (Stripe) and the original documentation, including the original `CLAUDE.md`.
 - Brand assets: the Tera mascot images, fonts and sound effects under `public/`.
 - `supabase/functions/` did not exist at the copy point: the original backend runs elsewhere and is not in this
-  repository. All 19 edge functions below were written during the competition.
+  repository. All 26 edge functions below were written during the competition.
 
 ## What was built during the competition
 
@@ -87,10 +89,31 @@ Merged pull requests (`gh pr list --state merged`, titles as merged; times are i
 | #55 | fix: certification art no longer flashes another design on language change | Art swap fix. |
 | #56 | Crystals in the header: balance chip and sheet on every learner page | Front-end balance chip and sheet for the Phoenix Crystals currency. The currency backend (PR #43) is not on `main`. |
 | #57 | fix(header): balanced top bar | Header layout. |
+| #58 | docs: judge-facing README, hackathon disclosure and submission checklist | This file, the README, the checklist. |
+| #43 | Phoenix Crystals and Shop v3 | Earned currency with a Token-2022 mirror, tiers, seasons, borders, life packs, currency switch (migrations 0160 to 0171). |
+| #59 | Compact shop: section chips, rarity carousels, dual pay actions | Shop layout. |
+| #60 | Avatars batch 2: 18 new rows, lore, sharper free faces | Second avatar batch (migration 0144). |
+| #61 | Try-on fidelity, profile borders, app theme, wardrobe groups, crystal purchases | Shop and profile. |
+| #62 | Crystals: recoverable refund order, filtered paged reconcile reads | Crystals robustness. |
+| #63 | Capability graph (1/2): claims proven by a stamped day, written on the certification asset | Claim model and `claim:*` attributes (migration 0180). |
+| #64 | UX core: first-60-seconds path (locale, login, auth card, welcome) | Login and onboarding path. |
+| #65 | Purchase rail: real-wallet failure recovery; shop/companion/crystals reads in fewer round trips | Every purchase failure recoverable; faster reads. |
+| #66 | Capability graph (2/2): the graph on /u/<wallet> and on the certifications page | Public graph page, lit from chain data. |
+| #67 | UX core: auth copy, nickname gate scroll lock, 404 page title | Polish. |
+| #68 | Shop as a game armoury: rail, slot grid, inspector, phone strips | Shop redesign. |
+| #69 | Capability graph: edges no longer cross medallions | Graph layout. |
+| #70 | Route error boundary: reload once on a stale chunk after a deploy | Stale-chunk recovery. |
+| #71 | Share surfaces: link previews for /c, /u, /gift; OG card, manifest, icons, page titles, offline line | `share-meta`, nginx crawler proxy, OG image, manifest, offline line. |
+| #72 | Order activity: arrows per row, compact rows on phones | Activity polish. |
+| #73 | Bounties: a certification opens a paid door (escrow per bounty, chain-gated accept, payout on devnet) | `bounty-*` functions, bounty tables (migration 0200), `/bounties` pages. |
+| #74 | Lesson not found: Tera note with retry and a way back | Error state. |
+| #75 | Public endpoints: per-address rate limit; manifest served as JSON | `itera.rate_take` (migration 0210), limits on five public functions. |
+| #76 | Public profile polish: graph in the first screen, 1180px page, invalid-wallet CTA | `/u/<wallet>` polish. |
+| #77 | Server-side grading: a completion comes only from an answer the server graded | `grade` function, `graded_attempts` (migration 0190), proof fields on the asset. |
 
-Open and not on `main`: #43 "Phoenix Crystals: earned currency, backgrounds and icon colours, names for wallet learners".
+Merged after this table was written: see `gh pr list --state merged`. Nothing is open at the time of writing.
 
-## Hackathon migrations (`db/migrations/`, 34 files)
+## Hackathon migrations (`db/migrations/`, 50 files)
 
 - `0110_identity_provider_solana.sql`
 - `0111_wallet_user_provisioning.sql`
@@ -126,17 +149,39 @@ Open and not on `main`: #43 "Phoenix Crystals: earned currency, backgrounds and 
 - `0141_linked_wallet_same_learner.sql`
 - `0142_nft_avatars.sql`
 - `0143_avatar_lore.sql`
+- `0144_avatars_batch_2.sql`
+- `0160_wallet_learner_names.sql`
+- `0161_crystal_ledger.sql`
+- `0162_theme_items.sql`
+- `0163_avatar_retier.sql`
+- `0164_avatar_seasons.sql`
+- `0165_profile_borders.sql`
+- `0166_avatar_includes.sql`
+- `0167_lives_v3.sql`
+- `0168_shop_currencies.sql`
+- `0169_companion_lives_default.sql`
+- `0171_crystal_daily_cap.sql`
+- `0180_claim_proofs.sql`
+- `0190_graded_attempts.sql`
+- `0200_bounties.sql`
+- `0210_rate_hits.sql`
 
-## Hackathon edge functions (`supabase/functions/`, 19 functions plus `_shared/`)
+## Hackathon edge functions (`supabase/functions/`, 26 functions plus `_shared/`)
 
 - `action-gift`
+- `bounty-action`
+- `bounty-board`
+- `bounty-claim`
+- `bounty-sponsor`
 - `circuit`
 - `class-podium`
 - `companion`
 - `credential-meta`
 - `credential-verify`
+- `crystals`
 - `endorse`
 - `gifts`
+- `grade`
 - `learner-profile`
 - `link-wallet`
 - `lives`
@@ -145,6 +190,7 @@ Open and not on `main`: #43 "Phoenix Crystals: earned currency, backgrounds and 
 - `purchase-intent`
 - `purchase-submit`
 - `referral`
+- `share-meta`
 - `shop-claim`
 - `shop-items`
 - `wallet-faucet`
@@ -155,7 +201,7 @@ avatars, social features and the redesigned dashboard, header and profile under 
 
 ## Modified inherited code
 
-84 inherited files were modified. `git diff --diff-filter=M --name-only 1f5b925b origin/main` lists them.
+102 inherited files were modified. `git diff --diff-filter=M --name-only 1f5b925b origin/main` lists them.
 
 ## Not covered by this repository
 

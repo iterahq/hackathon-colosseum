@@ -107,7 +107,7 @@ keys still say `passport`; only user-facing text says "Certification".
  Supabase (project nyzcbnnbffsizshiolbh)        Solana devnet
    Auth (email, Sign in with Solana)              Metaplex Core: 4 collections,
    Postgres schema `itera` (RLS on)  <--- reads -- certifications, medals, companions, avatars
-   Edge functions (Deno, 19) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
+   Edge functions (Deno, 26) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
         ^         authority key + treasury key are function secrets
         |
  public readers: /c/<asset>, /u/<wallet>, Solana Action (Blink)
@@ -136,6 +136,13 @@ Edge functions in `supabase/functions/` (all have `verify_jwt = false` and check
 | `referral` | user token | Invite code and invite reward |
 | `class-podium` | user token, staff only | Records a live class podium and mints medals |
 | `endorse` | user token, staff only | Teacher endorsement written on a certification |
+| `crystals` | user token | Phoenix Crystals: earned currency, spend, backgrounds, icon colours, borders, token mirror |
+| `grade` | user token | Server-side grading: the answer is checked against the stored spec, an attempt row is written |
+| `bounty-board` | public | Bounties a certification opens: list and detail, read without a login |
+| `bounty-claim` | user token | Accept (gated by the certification read from chain) and submit work |
+| `bounty-sponsor` | user token, staff only | Post, fund (escrow on devnet), approve or reject, refund |
+| `bounty-action` | public (Solana Action) | Blink: fund a bounty from any wallet |
+| `share-meta` | public | Link-preview HTML (Open Graph) for `/c`, `/u` and `/gift`, served to crawlers by nginx |
 
 Migrations are in `db/migrations/` (see the next section for the hackathon ones). Shared pure logic with tests lives
 in `supabase/functions/_shared/`.
@@ -148,9 +155,9 @@ feature, the instructor and admin screens, subscription billing code (Stripe), t
 tooling. Of the 2,493 tracked files at `main` when this was written, roughly 2,000 are TypeScript; the copy point already
 contained about 2,000 files. The inherited product is large and is not claimed.
 
-**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-10, 55 commits after the copy point, merged PRs #1 to
-#57; +46.4k / -5.0k lines in 618 files against the copy point; 100 new files under `supabase/functions/` and 34 new
-migrations 0110 to 0143):
+**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-11, 76 commits after the copy point, merged PRs #1 to
+#77; +63.9k / -5.3k lines in 784 files against the copy point; everything under `supabase/functions/` and 50 new
+migrations 0110 to 0210; counts as of main `65f9256`, see the disclosure file for the exact list):
 
 - Wallet auth: Sign in with Solana (Phantom), provisioning trigger, nickname step, link a wallet to an e-mail account.
 - Credentials: Certifications (stamp per day, gold, server-paid, server-generated SVG art), medals, stamp ceremony,
@@ -166,9 +173,15 @@ migrations 0110 to 0143):
   sounds and "try again", English copy and HTML trail content in English.
 - Tests: unit tests for the pure on-chain modules, devnet end-to-end scripts, a browser end-to-end run with a fake Phantom.
 - Security: hardening pass against a written review (pay-once-get-two, forgeable XP, client-written progress, unbounded
-  authority-paid writes, referral farming, public Action cost, faucet limits, internal ids in public data).
-
-In progress and **not on `main`**: "Phoenix Crystals", an earned non-purchasable currency (open PR #43). Only its header balance chip (PR #56) is on `main`, and it has no backend behind it there.
+  authority-paid writes, referral farming, public Action cost, faucet limits, internal ids in public data), then a
+  per-address rate limit counted in the database on the public endpoints.
+- Phoenix Crystals: an earned, non-purchasable currency with a Token-2022 mirror, backgrounds, icon colours and borders.
+- Proof of learning: server-side grading (`grade`), attempt rows with answer hashes, the share of server-verified
+  activities written on the certification asset.
+- Capability graph: named claims proven by a stamped day, written on the certification, lit on `/u/<wallet>` from chain data.
+- Earn: bounties a certification opens, escrow per bounty on devnet, chain-gated accept, payout to the learner's wallet.
+- Share and ship: link previews for the public pages, offline state, a manual test plan for a real Phantom
+  (`docs/hackathon/PHANTOM-TEST.md`).
 
 The full list of PRs, migrations and functions is in
 [`docs/hackathon/BUILT-DURING-HACKATHON.md`](docs/hackathon/BUILT-DURING-HACKATHON.md).
@@ -185,7 +198,7 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
   Nothing secret goes in a `VITE_*` variable.
 - Edge function secrets: `SOLANA_AUTHORITY_SECRET`, `SOLANA_TREASURY_SECRET`, `SOLANA_RPC_URL`
   (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase).
-- Migrations: `db/migrations/` (hackathon ones are 0110 to 0143). Functions: `supabase/functions/`, deployed with
+- Migrations: `db/migrations/` (hackathon ones are 0110 to 0210). Functions: `supabase/functions/`, deployed with
   `supabase functions deploy <name> --project-ref <ref> --use-api`.
 - Unit tests of the on-chain modules (no network, no secrets): `npx vitest run --config vitest.supabase.config.ts`.
 - `scripts/hackathon/*.mjs` are end-to-end scripts against the deployed devnet backend (passport, purchase, gift,
@@ -196,7 +209,9 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
 
 - Devnet only. No real money moves. Prices are fixed in lamports with no live quote; mainnet would use USDC.
 - The server authority pays for and signs every mint and stamp; key custody is a function secret, not a multisig.
-- Grading is client-side (see the trust model). A determined attacker can still fabricate a day slowly.
+- Grading of choice, fill, order, match and code checks is server-side (`grade`); the answer keys of the simple kinds
+  still reach the browser for instant feedback, so server grading stops forged completions, not copied answers. Kinds the
+  server cannot grade are recorded as self-reported and excluded from what a stamp attests.
 - Avatar transfers are not tracked for equip, and the new holder gets no row. Avatar refunds are manual.
 - Some public functions have no per-IP rate limit (`credential-verify`, `credential-meta`, `learner-profile`; the
   Blink endpoint caps unpaid intents but has no per-IP limit). The public devnet RPC is rate limited.
