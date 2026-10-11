@@ -131,7 +131,7 @@ export const REPLAY_PAGE_SIZE = 50;
  * only needs the status, not the text) rather than narrowing the detail read.
  */
 const TRACE_COLUMNS =
-  'id, user_id, activity_id, schema_version, started_at, actions, actions_truncated, outcome, spec_snapshot, spec_locale, pedagogical_context, created_at, activities(kind, spec), users(display_name)';
+  'id, user_id, activity_id, schema_version, started_at, actions, actions_truncated, outcome, spec_snapshot, spec_locale, pedagogical_context, created_at, activities(kind), users(display_name)';
 
 export interface ReplayIndexEntry {
   traceId: string;

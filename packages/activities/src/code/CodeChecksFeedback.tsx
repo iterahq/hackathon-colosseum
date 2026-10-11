@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeCheck } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
+import { useHostMissNote } from '../components/hostLessonRules.js';
 import { TeraVerdict, VerdictMark } from '../components/TeraVerdict.js';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '../components/tactile.js';
 import type { CodeCheckResult } from './types.js';
@@ -43,6 +44,7 @@ export function CodeChecksFeedback({
   onContinue: () => void;
 }) {
   const { t } = useActivityI18n();
+  const missNote = useHostMissNote();
   const passedCount = results.filter((r) => r.passed).length;
   const reduced = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,11 @@ export function CodeChecksFeedback({
           </button>
         )}
       </div>
+      {!allPassed && missNote && (
+        <p className="mt-3 text-sm text-muted-foreground" data-testid="miss-note">
+          {missNote}
+        </p>
+      )}
     </motion.div>
   );
 }

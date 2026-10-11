@@ -63,6 +63,13 @@ interface CodeEditorProps {
  */
 let modelSeq = 0;
 
+/**
+ * How long Monaco may take to mount before a plain text area takes its place.
+ * On a slow or low-memory device the bundle can take long or never arrive, and
+ * a blank dark panel gives a learner nothing to type in.
+ */
+export const MONACO_FALLBACK_AFTER_MS = 8000;
+
 export function CodeEditor({
   value,
   onChange,
@@ -101,6 +108,12 @@ export function CodeEditor({
   // flip the paint waited for the learner's FIRST keystroke — the file opened
   // with no band at all, which is the exact moment they need to see it.
   const [editorReady, setEditorReady] = useState(false);
+  const [monacoLate, setMonacoLate] = useState(false);
+  useEffect(() => {
+    if (editorReady) return;
+    const timer = setTimeout(() => setMonacoLate(true), MONACO_FALLBACK_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [editorReady]);
 
   // Paint the region so "you may type here" is visible, not folklore. Kept in
   // an effect rather than in `onMount` because the regions move with every
@@ -162,7 +175,20 @@ export function CodeEditor({
   };
 
   return (
-    <div className="editor-container h-full" style={{ minHeight: '300px' }}>
+    <div className="editor-container relative h-full" style={{ minHeight: '300px' }}>
+      {monacoLate && !editorReady && (
+        <textarea
+          data-testid="code-editor-fallback"
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}
+          readOnly={readOnly}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          className="absolute inset-0 z-10 h-full w-full resize-none bg-[#0a0a0a] p-4 font-mono text-[#fafafa] outline-none"
+          style={{ fontSize, lineHeight: 1.6, tabSize: 2 }}
+        />
+      )}
       <Editor
         height="100%"
         loading={<div className="h-full w-full ds-shimmer" aria-busy="true" />}

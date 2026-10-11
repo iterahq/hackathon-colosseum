@@ -17,13 +17,13 @@ import {
 
 export const COACH_SEEN_AFTER_MS = 1500;
 
-export function useMediaHoverCoach(finePointer: boolean, enabled: boolean) {
+export function useMediaHoverCoach(finePointer: boolean, enabled: boolean, inView = true) {
   const storage = useActivityStorage();
   const owner = useRef(Symbol('media-hover-coach'));
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!finePointer || enabled || readMediaHoverCoachSeen(storage)) return;
+    if (!finePointer || enabled || !inView || readMediaHoverCoachSeen(storage)) return;
     const id = owner.current;
     if (!claimMediaHoverCoach(id)) return;
     setVisible(true);
@@ -33,7 +33,7 @@ export function useMediaHoverCoach(finePointer: boolean, enabled: boolean) {
       releaseMediaHoverCoach(id);
       setVisible(false);
     };
-  }, [finePointer, enabled, storage]);
+  }, [finePointer, enabled, inView, storage]);
 
   const dismiss = useCallback(() => {
     writeMediaHoverCoachSeen(storage);

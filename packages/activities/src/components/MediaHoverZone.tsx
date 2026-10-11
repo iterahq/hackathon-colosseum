@@ -5,8 +5,8 @@
  * and the first image of a fresh browser carries a one-time balloon about it.
  * On a touch screen nothing is added.
  */
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import type { Size } from '../internal/mediaPreviewFit.js';
 import { MediaHoverPreview } from './MediaHoverPreview.js';
 import { MediaHoverCoach } from './MediaHoverCoach.js';
@@ -15,6 +15,24 @@ import { useMediaHoverCoach } from './useMediaHoverCoach.js';
 import { useMediaHoverPreview } from './useMediaHoverPreview.js';
 
 const THUMB_SWITCH = 'absolute right-2 top-2 z-10 h-7 w-7';
+/** Room a host's fixed bottom bar (the lesson's Continue) takes: the tip never shows under it. */
+const BOTTOM_BAR_RESERVE_PX = 112;
+
+/** True once most of the zone is on screen above the bottom bar. Without an observer (tests, old browsers): true. */
+function useClearOfBottomBar(ref: RefObject<HTMLElement | null>): boolean {
+  const [clear, setClear] = useState(typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => setClear(entry.intersectionRatio >= 0.6), {
+      rootMargin: `0px 0px -${BOTTOM_BAR_RESERVE_PX}px 0px`,
+      threshold: [0, 0.6, 1],
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref]);
+  return clear;
+}
 
 export function MediaHoverZone({
   src,
@@ -31,10 +49,13 @@ export function MediaHoverZone({
   const { enabled, setEnabled, disable, finePointer, open, handlers, thumbRef, switchRef } =
     useMediaHoverPreview();
   const [rendered, setRendered] = useState<Size | null>(null);
-  const coach = useMediaHoverCoach(finePointer, enabled);
+  const zoneRef = useRef<HTMLDivElement>(null);
+  const inView = useClearOfBottomBar(zoneRef);
+  const coach = useMediaHoverCoach(finePointer, enabled, inView);
 
   return (
     <div
+      ref={zoneRef}
       className={`group relative ${className}`}
       data-testid="media-hover-zone"
       data-hover-preview={open ? 'open' : 'closed'}

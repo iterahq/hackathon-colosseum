@@ -117,3 +117,8 @@ verify_jwt = false
 # Permanent copies of a credential on Arweave, signed by the mint authority. Public: GET lists, POST uploads what is new.
 [functions.credential-archive]
 verify_jwt = false
+
+# The lesson a learner plays, with every answer field removed. Same rule as `grade`: the gateway
+# check is off and row level security on the caller's own key decides what exists for them.
+[functions.lesson]
+verify_jwt = false

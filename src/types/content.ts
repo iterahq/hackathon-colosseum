@@ -85,6 +85,13 @@ export interface Activity {
   /** Derived from itera.progress for the current user. */
   status?: ProgressStatus;
   /**
+   * The spec was served without its answer key (the `lesson` function seals what
+   * a learner reads): every verdict comes from the server's `grade`.
+   */
+  sealed?: boolean;
+  /** Who decides a pass, as the server reported it with the lesson. */
+  gradedBy?: 'server' | 'browser' | 'none';
+  /**
    * Content lifecycle (`itera.activities.status`): 'draft' | 'published'.
    * Only populated on the author review canvas (getUnitCanvas); the student
    * read paths leave it undefined. Students only ever read 'published' rows.

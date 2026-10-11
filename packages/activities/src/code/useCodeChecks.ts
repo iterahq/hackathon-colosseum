@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CodeCheck } from '@iterahq/activity-spec';
+import type { SealedAnswer } from '../components/hostLessonRules.js';
 import type { CodeCheckResult, CodeChecksRequest, CodeSnackPhase } from './types.js';
 
 /**
@@ -18,7 +19,10 @@ const CHECKS_TIMEOUT_MS = 8000;
  * asks for a run (`checksRequest`, consumed by the preview component), receives
  * the verdicts, and derives the phase.
  */
-export function useCodeChecks(code: string, checks: CodeCheck[]) {
+export function useCodeChecks(code: string, checks: CodeCheck[], sealed: SealedAnswer | null = null) {
+  const sealedRef = useRef(sealed);
+  sealedRef.current = sealed;
+  const isSealed = sealed !== null;
   const [phase, setPhase] = useState<CodeSnackPhase>('editing');
   const [results, setResults] = useState<CodeCheckResult[] | null>(null);
   const [checksRequest, setChecksRequest] = useState<CodeChecksRequest | null>(null);
@@ -67,24 +71,40 @@ export function useCodeChecks(code: string, checks: CodeCheck[]) {
   // Safety net for a preview that never answers: fall back to "nothing passed"
   // so the learner still gets feedback + a retry instead of a dead button.
   useEffect(() => {
-    if (phase !== 'submitting') return;
+    // A sealed activity waits for its judge, which always answers or gives up by itself.
+    if (phase !== 'submitting' || isSealed) return;
     const id = setTimeout(() => {
       setResults(checks.map((c) => ({ id: c.id, passed: false })));
       setTimedOut(true);
       setPhase('submitted');
     }, CHECKS_TIMEOUT_MS);
     return () => clearTimeout(id);
-  }, [phase, checks]);
+  }, [phase, checks, isSealed]);
 
-  /** Ask the preview to render the submitted source and grade it. */
+  /** Ask the preview to render the submitted source and grade it. A sealed activity asks the host's judge instead. */
   const submit = useCallback(() => {
     if (phase !== 'editing' || checks.length === 0) return;
     tokenRef.current += 1;
+    const token = tokenRef.current;
     setResults(null);
     setGradedCode(code);
     setTimedOut(false);
     setPhase('submitting');
-    setChecksRequest({ token: tokenRef.current, code, checks });
+    const judge = sealedRef.current;
+    if (!judge) {
+      setChecksRequest({ token, code, checks });
+      return;
+    }
+    void judge.ask({ response: code }).then((verdict) => {
+      if (token !== tokenRef.current) return;
+      if (!verdict) {
+        setGradedCode(null);
+        setPhase('editing');
+        return;
+      }
+      setPhase('submitted');
+      setResults(checks.map((check) => ({ id: check.id, passed: verdict.checks ? verdict.checks.some((result) => result.id === check.id && result.passed) : verdict.passed })));
+    });
   }, [phase, code, checks]);
 
   /** The preview answered — settle the feedback screen. */

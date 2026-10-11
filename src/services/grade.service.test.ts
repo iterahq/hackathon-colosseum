@@ -16,7 +16,7 @@ vi.mock('@/lib/supabase/client', () => ({
 vi.mock('@/services/iteraUser', () => ({ getIteraUserId: async () => 'user-1' }));
 vi.mock('@/services/gamification.service', () => ({ awardActivityXp: vi.fn(async () => undefined) }));
 
-import { MAX_GRADED_RESPONSE_CHARS, submitForGrading, submittedAnswer } from '@/services/grade.service';
+import { MAX_GRADED_RESPONSE_CHARS, judgeAnswer, submitForGrading, submittedAnswer } from '@/services/grade.service';
 import { persistActivityProgress } from '@/services/progress.service';
 
 const verdict = (value: 'pass' | 'fail') => ({ data: { verdict: value, mode: 'server', attempt_id: 'a', answer_hash: 'h', graded_at: 't' }, error: null });
@@ -50,8 +50,46 @@ describe('submitForGrading', () => {
     await expect(submitForGrading({ activityId: 'act-1', passed: true, response: '1. x', actions })).resolves.toMatchObject({ verdict: 'pass' });
     expect(invoke).toHaveBeenCalledWith('grade', {
       method: 'POST',
-      body: { activity_id: 'act-1', passed: true, response: '1. x', answer: { order: ['x', 'y'] } },
+      body: {
+        activity_id: 'act-1',
+        passed: true,
+        response: '1. x',
+        answer: { order: ['x', 'y'] },
+        trace: null,
+        results: 'server',
+        elapsed_ms: null,
+        visible_ms: null,
+      },
     });
+  });
+
+  it('asks the server to write the results', async () => {
+    invoke.mockResolvedValue(verdict('pass'));
+    await submitForGrading({ activityId: 'act-r', passed: true, response: 'r' });
+    expect(invoke.mock.calls[0][1].body.results).toBe('server');
+  });
+
+  it('sends the trace only when the actions end with gate_opened', async () => {
+    invoke.mockResolvedValue(verdict('pass'));
+    const gate = [
+      { type: 'dial_set', at: 1 },
+      { type: 'gate_opened', at: 2 },
+    ] as never;
+    await submitForGrading({ activityId: 'act-t1', passed: true, response: 'a', actions: gate });
+    expect(invoke.mock.calls[0][1].body.trace).toEqual(gate);
+
+    const noGate = [
+      { type: 'gate_opened', at: 1 },
+      { type: 'answer_submitted', at: 2, payload: { x: 1 } },
+    ] as never;
+    await submitForGrading({ activityId: 'act-t2', passed: true, response: 'b', actions: noGate });
+    expect(invoke.mock.calls[1][1].body.trace).toBeNull();
+  });
+
+  it('sends the whole seconds of the duration', async () => {
+    invoke.mockResolvedValue(verdict('pass'));
+    await submitForGrading({ activityId: 'act-d', passed: true, response: 'd', duration: { elapsedMs: 1200.4, visibleMs: -1 } });
+    expect(invoke.mock.calls[0][1].body).toMatchObject({ elapsed_ms: 1200, visible_ms: null });
   });
 
   it('cuts a text longer than the server accepts', async () => {
@@ -67,6 +105,40 @@ describe('submitForGrading', () => {
     await expect(submitForGrading({ activityId: 'a', passed: true })).resolves.toBeNull();
     invoke.mockResolvedValueOnce({ data: { ok: true }, error: null });
     await expect(submitForGrading({ activityId: 'a', passed: true })).resolves.toBeNull();
+  });
+});
+
+describe('judgeAnswer', () => {
+  it('hands its verdict to the submit of the same answer without a second call', async () => {
+    invoke.mockResolvedValue(verdict('pass'));
+    const judged = await judgeAnswer('act-j', { answer: { option_ids: ['a'] }, response: 'A' });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    const submitted = await submitForGrading({ activityId: 'act-j', passed: true, response: 'A' });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(submitted).toBe(judged);
+  });
+
+  it('is single use', async () => {
+    invoke.mockResolvedValue(verdict('pass'));
+    await judgeAnswer('act-s', { response: 'A' });
+    await submitForGrading({ activityId: 'act-s', passed: true, response: 'A' });
+    await submitForGrading({ activityId: 'act-s', passed: true, response: 'A' });
+    expect(invoke).toHaveBeenCalledTimes(2);
+  });
+
+  it('calls the function again for a different response', async () => {
+    invoke.mockResolvedValue(verdict('pass'));
+    await judgeAnswer('act-k', { response: 'A' });
+    await submitForGrading({ activityId: 'act-k', passed: true, response: 'B' });
+    expect(invoke).toHaveBeenCalledTimes(2);
+  });
+
+  it('is null and keeps nothing when the function fails', async () => {
+    invoke.mockResolvedValueOnce({ data: null, error: new Error('500') });
+    await expect(judgeAnswer('act-n', { response: 'A' })).resolves.toBeNull();
+    invoke.mockResolvedValueOnce(verdict('pass'));
+    await submitForGrading({ activityId: 'act-n', passed: true, response: 'A' });
+    expect(invoke).toHaveBeenCalledTimes(2);
   });
 });
 

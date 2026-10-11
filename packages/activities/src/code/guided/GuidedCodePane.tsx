@@ -7,6 +7,7 @@ import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 import { RichText } from '../../components/RichText.js';
 import { TACTILE_CTA } from '../../components/tactile.js';
 import { useHostOwnsSettledAction } from '../../components/settledAction.js';
+import { useSealedAnswer } from '../../components/hostLessonRules.js';
 import { guidedVariant } from './guidedCode.js';
 import { useGuidedCode } from './useGuidedCode.js';
 import { GuidedCodeFeedback } from './GuidedCodeFeedback.js';
@@ -49,7 +50,8 @@ export function GuidedCodePane({
   const { t } = useActivityI18n();
   const blanks = spec.blanks ?? [];
   const variant = guidedVariant(blanks);
-  const guided = useGuidedCode(activity.id, spec, { onComplete, reveal });
+  const sealed = useSealedAnswer(activity);
+  const guided = useGuidedCode(activity.id, spec, { onComplete, reveal, sealed });
   const isDone = activity.status === 'done';
   const hostOwnsSettled = useHostOwnsSettledAction();
   // O veredito do ALUNO sai da tela enquanto o gabarito está nela: verde de
@@ -141,15 +143,22 @@ export function GuidedCodePane({
         <GuidedCodePreview source={guided.source} language={spec.language} ready={guided.filled} />
       </div>
 
+      {sealed?.unreachable && !showFeedback && (
+        <p role="alert" className="mt-4 text-sm text-destructive" data-testid="judge-unreachable">
+          {t('activity.judgeUnreachable')}
+        </p>
+      )}
+
       {!showFeedback && !guided.showsAnswer && !(hostOwnsSettled && isDone) && (
         <button
           type="button"
           onClick={guided.submit}
-          disabled={isDone || guided.outOfLives}
+          disabled={isDone || guided.outOfLives || (sealed?.judging ?? false)}
+          aria-busy={sealed?.judging || undefined}
           data-testid="guided-submit"
           className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
         >
-          {t('activity.submit')}
+          {sealed?.judging ? t('activity.checking') : t('activity.submit')}
         </button>
       )}
 

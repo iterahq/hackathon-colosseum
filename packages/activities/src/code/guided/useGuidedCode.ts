@@ -3,7 +3,9 @@ import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivitySound, useActivityStorage } from '../../context.js';
 import type { ActivityStoragePort } from '../../ports.js';
 import { codeBlanksDraftKey, codeDraftKey } from '../draftKey.js';
-import type { GuidedPhase, GuidedValues, UseGuidedCodeOptions } from './types.js';
+import type { CodeBlank } from '@iterahq/activity-spec';
+import type { JudgeOutcome } from '../../components/hostLessonRules.js';
+import type { GuidedGrade, GuidedPhase, GuidedValues, UseGuidedCodeOptions } from './types.js';
 import {
   allBlanksFilled,
   gradeGuided,
@@ -49,6 +51,12 @@ function seedValues(
   return restoreGuidedValues(spec, parsed as GuidedValues);
 }
 
+/** The grade of a sealed template: what the host's judge said of each hole, nothing before it spoke. */
+function judgedGrade(blanks: readonly CodeBlank[], outcome: JudgeOutcome | null): GuidedGrade {
+  const byBlank = Object.fromEntries(blanks.map((blank) => [blank.id, outcome ? (outcome.blanks?.[blank.id] ?? outcome.passed) : false]));
+  return { byBlank, correctCount: Object.values(byBlank).filter(Boolean).length, allCorrect: outcome?.passed === true };
+}
+
 /**
  * Owns the guided variants' answers, their persistence, and the one-step
  * verdict.
@@ -64,7 +72,7 @@ function seedValues(
 export function useGuidedCode(
   activityId: string,
   spec: CodeSpec,
-  { onComplete, reveal = false }: UseGuidedCodeOptions,
+  { onComplete, reveal = false, sealed = null }: UseGuidedCodeOptions,
 ) {
   const storage = useActivityStorage();
   const blanks = spec.blanks ?? [];
@@ -130,7 +138,7 @@ export function useGuidedCode(
   const source = substituteBlanks(starter, blanks, values);
   const shownSource = showsAnswer ? substituteBlanks(starter, blanks, shownValues) : source;
   const filled = allBlanksFilled(blanks, values);
-  const grade = gradeGuided(blanks, values);
+  const grade = sealed ? judgedGrade(blanks, sealed.outcome) : gradeGuided(blanks, values);
   const spentChips = spentBankCounts(blanks, shownValues);
 
   const setValue = useCallback((blankId: string, value: string) => {
@@ -194,15 +202,24 @@ export function useGuidedCode(
   const recordVerdict = useHostVerdictRecorder();
   const submit = useCallback(() => {
     if (revealed || outOfLives) return;
-    cue(grade.allCorrect ? 'correct' : 'wrong');
-    // The verdict exists now: a host that records it does so before any "continue".
-    recordVerdict?.(grade.allCorrect, { response: source });
-    // A vida sai AQUI, no mesmo tick do veredito, e não num efeito que observe a
-    // fase: o guiado corrige localmente e sem round trip, então um efeito só
-    // acrescentaria uma janela em que a tela já diz "errou" e o saldo ainda não.
-    if (!grade.allCorrect) attempts.spend();
-    setPhase('submitted');
-  }, [revealed, outOfLives, grade.allCorrect, attempts, cue, recordVerdict, source]);
+    const settle = (allCorrect: boolean) => {
+      cue(allCorrect ? 'correct' : 'wrong');
+      // The verdict exists now: a host that records it does so before any "continue".
+      recordVerdict?.(allCorrect, { response: source });
+      // A vida sai AQUI, no mesmo tick do veredito, e não num efeito que observe a
+      // fase: o guiado corrige localmente e sem round trip, então um efeito só
+      // acrescentaria uma janela em que a tela já diz "errou" e o saldo ainda não.
+      if (!allCorrect) attempts.spend();
+      setPhase('submitted');
+    };
+    if (!sealed) {
+      settle(grade.allCorrect);
+      return;
+    }
+    void sealed.ask({ answer: { blanks: values }, response: source }).then((verdict) => {
+      if (verdict) settle(verdict.passed);
+    });
+  }, [revealed, outOfLives, grade.allCorrect, attempts, cue, recordVerdict, source, sealed, values]);
 
   const retry = useCallback(() => {
     if (outOfLives) return;

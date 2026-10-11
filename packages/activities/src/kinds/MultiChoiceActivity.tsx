@@ -12,7 +12,8 @@
 import { useRef, useState } from 'react';
 import { CheckSquare } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
-import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
+import { useHostHidesAnswerOnMiss, useSealedAnswer } from '../components/hostLessonRules.js';
+import { restoredVerdict, sealedKey } from '../internal/sealedAnswer.js';
 import type { ChoiceOption, MultiChoiceSpec } from '../specs.js';
 import { learnerOptionOrder } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -72,7 +73,8 @@ export function MultiChoiceActivity({
   // different between learners (../internal/shuffle.ts). Reference-only labels
   // (`A`, `B`, `C` for the instruction's blocks) keep the authored order.
   const [options] = useState(() => learnerOptionOrder(spec?.options ?? [], scope, activity.id, spec?.instruction?.text ?? ''));
-  const correctIds = spec?.correct_option_ids ?? [];
+  const sealed = useSealedAnswer(activity);
+  const authoredIds = spec?.correct_option_ids ?? [];
   // The learner's own earlier set, replayed — in the order they clicked it,
   // which is the order `answer_submitted` recorded and the order the artifact
   // is built from. Validated against the AUTHORED ids
@@ -84,7 +86,9 @@ export function MultiChoiceActivity({
   const [submitted, setSubmitted] = useState(false);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (../internal/answerMachine.ts — one definition, six call sites).
-  const isCorrect = sameSet(selected, correctIds);
+  const isCorrect = sealed ? (sealed.outcome?.passed ?? restoredVerdict(activity, priorAnswer)) : sameSet(selected, authoredIds);
+  // Sealed: the key comes with a pass, and a pass means the picks ARE the key.
+  const correctIds = sealed ? (sealedKey<string[]>(sealed.outcome, 'correct_option_ids') ?? (isCorrect ? selected : [])) : authoredIds;
   const m = answerMachine({
     done: activity.status === 'done',
     submitted,
@@ -94,7 +98,7 @@ export function MultiChoiceActivity({
     hasAnswer: selected.length > 0,
   });
   // A miss in a host that keeps the key: mark the pick, not the answer. The instructor's reveal still shows it.
-  const hidesKey = hidesAnswerOnMiss && !reveal && m.gradeResult === false;
+  const hidesKey = (hidesAnswerOnMiss || sealed !== null) && !reveal && m.gradeResult === false;
 
   // The `selection` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<SelectionAction>(activity.id);
@@ -115,9 +119,8 @@ export function MultiChoiceActivity({
 
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
   // CURRENT selection (the machine's `gradeResult` isn't set yet at click time).
-  function handleSubmit() {
-    if (!m.acceptsSubmit) return;
-    setSubmitted(true);
+  async function handleSubmit() {
+    if (!m.acceptsSubmit || sealed?.judging) return;
     // Hand the chosen options up as text (see SingleChoiceActivity for why this
     // does not, on its own, cause a write).
     // Iterate `selected` (click order), NOT `options` — `options` is per-learner
@@ -127,11 +130,16 @@ export function MultiChoiceActivity({
     const chosen = selected
       .map((id) => `- ${options.find((o) => o.id === id)?.label ?? id}`)
       .join('\n');
-    trace.record('answer_submitted', { option_ids: [...selected] });
-    onComplete(isCorrect, {
+    const answer = { option_ids: [...selected] };
+    const verdict = sealed ? await sealed.ask({ answer, response: chosen }) : null;
+    if (sealed && !verdict) return;
+    const correct = verdict ? verdict.passed : isCorrect;
+    setSubmitted(true);
+    trace.record('answer_submitted', answer);
+    onComplete(correct, {
       response: chosen,
       actions: trace.drain(),
-      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isCorrect),
+      explanation: verdict ? (correct ? undefined : verdict.explanation) : hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isCorrect),
     });
   }
 
@@ -139,10 +147,10 @@ export function MultiChoiceActivity({
   useChoiceHotkeys({
     scope: optionsRef,
     count: options.length,
-    enabled: !m.locked,
+    enabled: !m.locked && !sealed?.judging,
     onPick: (i) => toggle(options[i].id),
     onSubmit: () => {
-      if (!m.submitDisabled) handleSubmit();
+      if (!m.submitDisabled) void handleSubmit();
     },
   });
 
@@ -173,7 +181,7 @@ export function MultiChoiceActivity({
               chosen={chosen}
               shown={m.shown}
               multi
-              disabled={m.locked}
+              disabled={m.locked || (sealed?.judging ?? false)}
               onClick={() => toggle(o.id)}
               testId="multi-choice-option"
               // The AUTHORED id — see SingleChoiceActivity for why the index is
@@ -189,14 +197,16 @@ export function MultiChoiceActivity({
         )}
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} judged={sealed?.outcome?.explanation} />
 
       <SubmitButton
         submitted={m.submitLocked}
         correct={m.gradeResult}
         disabled={m.submitDisabled}
-        onSubmit={handleSubmit}
+        onSubmit={() => void handleSubmit()}
         testId="multi-choice-submit"
+        judging={sealed?.judging}
+        unreachable={sealed?.unreachable}
       />
     </ActivityShell>
   );

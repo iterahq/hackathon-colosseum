@@ -63,6 +63,11 @@ export interface PortableActivity {
   rubric?: Record<string, unknown> | null;
   /** Derived from the host's progress store, when the host tracks progress. */
   status?: PortableActivityStatus;
+  /**
+   * The spec was served without its answer key (the placeholders in its place
+   * mean nothing): the kind asks the host's judge for every verdict.
+   */
+  sealed?: boolean;
 }
 
 /* ──────────────────────────── the completion ─────────────────────────────── */

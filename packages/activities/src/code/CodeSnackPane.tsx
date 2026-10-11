@@ -16,6 +16,7 @@ import { CodeLivePreview } from './CodeLivePreview.js';
 import { CodeChecksFeedback } from './CodeChecksFeedback.js';
 import { CodeResetControl } from './CodeResetControl.js';
 import { useHostOwnsSettledAction } from '../components/settledAction.js';
+import { useSealedAnswer } from '../components/hostLessonRules.js';
 import { useResultBadge } from './useResultBadge.js';
 import { useShrinkToFit } from './useShrinkToFit.js';
 
@@ -51,6 +52,7 @@ export function CodeSnackPane({
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
 }) {
   const { t } = useActivityI18n();
+  const sealed = useSealedAnswer(activity);
   const {
     code,
     setCode,
@@ -67,7 +69,7 @@ export function CodeSnackPane({
     retry,
     resetToStarter,
     complete,
-  } = useCodeSnack(activity.id, spec, { onComplete });
+  } = useCodeSnack(activity.id, spec, { onComplete, sealed });
   const isDone = activity.status === 'done';
   const hostOwnsSettled = useHostOwnsSettledAction();
   // A phone shows one pane at a time: stacked, the pair pushed the button a
@@ -211,6 +213,12 @@ export function CodeSnackPane({
       </div>
 
       {!hasChecks && <DoneButton done={isDone} onClick={complete} />}
+
+      {sealed?.unreachable && !showFeedback && (
+        <p role="alert" className="mt-4 text-sm text-destructive" data-testid="judge-unreachable">
+          {t('activity.judgeUnreachable')}
+        </p>
+      )}
 
       {hasChecks && !showFeedback && !(hostOwnsSettled && isDone) && (
         <button

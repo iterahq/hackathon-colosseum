@@ -11,11 +11,11 @@ export function MediaHoverCoach({ onDismiss, className = '' }: { onDismiss: () =
     <div
       role="note"
       data-testid="media-hover-coach"
-      className={`absolute right-2 top-11 z-20 w-52 rounded-xl border border-menta/50 bg-obsidiana p-3 text-sm text-foreground shadow-lg ${className}`}
+      className={`absolute right-11 top-1 z-20 w-52 rounded-xl border border-menta/50 bg-obsidiana p-3 text-sm text-foreground shadow-lg ${className}`}
     >
       <span
         aria-hidden="true"
-        className="absolute -top-1.5 right-[14px] h-3 w-3 rotate-45 border-l border-t border-menta/50 bg-obsidiana"
+        className="absolute -right-1.5 top-[14px] h-3 w-3 rotate-45 border-r border-t border-menta/50 bg-obsidiana"
       />
       <p className="leading-snug">{t('activity.mediaHoverCoach')}</p>
       <button

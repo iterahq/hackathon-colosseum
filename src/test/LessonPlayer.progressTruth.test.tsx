@@ -40,6 +40,14 @@ const useNextLesson = vi.fn();
 const inserts: Record<string, unknown[]> = {};
 /** Every payload handed to `.upsert()`, with its options. */
 const upserts: Array<{ table: string; payload: Record<string, unknown>; opts?: unknown }> = [];
+/** Every answer the player sent to the server to be graded and recorded. */
+interface GradedCall {
+  activityId: string;
+  passed: boolean;
+  response?: string | null;
+  duration?: { elapsedMs?: number | null; visibleMs?: number | null } | null;
+}
+const graded: GradedCall[] = [];
 /** What `progress` rows the fake DB hands back to the resume read. */
 let progressRows: Array<{ activity_id: string; status: string }> | null = [];
 /**
@@ -56,9 +64,6 @@ function orderedRead(table: string) {
   return { data: table === 'activity_traces' ? traceRows : [], error: null };
 }
 let progressWriteDown = false;
-let insertErrorFor:
-  | ((table: string, payload: Record<string, unknown>) => { message: string } | null)
-  | null = null;
 
 vi.mock('@/api/iteraApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/iteraApi')>()),
@@ -164,8 +169,7 @@ vi.mock('@/lib/supabase/client', () => ({
         },
         insert: (payload: Record<string, unknown>) => {
           (inserts[table] ??= []).push(payload);
-          const err = insertErrorFor?.(table, payload) ?? null;
-          return Promise.resolve({ error: err });
+          return Promise.resolve({ error: null });
         },
         select: () => builder,
         eq: () => builder,
@@ -189,7 +193,9 @@ vi.mock('@/lib/supabase/client', () => ({
 // for it and logs the row it would write, so the assertions below still read
 // one `progress` write per settled answer.
 vi.mock('@/services/grade.service', () => ({
-  submitForGrading: vi.fn(async ({ activityId, passed }: { activityId: string; passed: boolean }) => {
+  submitForGrading: vi.fn(async (call: GradedCall) => {
+    const { activityId, passed } = call;
+    graded.push(call);
     upserts.push({
       table: 'progress',
       payload: { user_id: 'itera-user-1', activity_id: activityId, status: passed ? 'completed' : 'in_progress' },
@@ -247,10 +253,10 @@ beforeEach(async () => {
   localStorage.clear();
   for (const k of Object.keys(inserts)) delete inserts[k];
   upserts.length = 0;
+  graded.length = 0;
   progressRows = [];
   attemptRows = [];
   traceRows = [];
-  insertErrorFor = null;
   progressWriteDown = false;
   // Module-level mock: without clearing, call counts accumulate across cases in
   // this file and the "no XP for a miss" assertion sees an earlier test's award.
@@ -269,59 +275,43 @@ beforeEach(async () => {
 });
 
 describe('D2 — a WRONG answer is recorded, with passed=false', () => {
-  it('inserts an activity_results row for a miss', async () => {
+  it('sends a miss to the server with passed=false and what was answered', async () => {
     renderPlayer();
     await waitForPlayerReady();
 
-    // Settle the graded activity as WRONG, then commit via the footer.
     fireEvent.click(screen.getByTestId('stub-wrong'));
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
 
-    // The whole point of the fix: the row EXISTS and it tells the truth.
-    // Pre-fix this array is empty and the row below is `undefined`.
-    const row = inserts['activity_results'][0] as {
-      activity_id: string;
-      passed: boolean;
-      feedback: { response?: string };
-    };
-    expect(row.activity_id).toBe('a1');
-    expect(row.passed).toBe(false);
-    // …and it records WHAT was answered, not merely that it was wrong. A bare
-    // boolean counts errors; this is what lets an instructor SEE the error.
-    expect(row.feedback.response).toBe('O distrator errado');
+    expect(graded[0].activityId).toBe('a1');
+    expect(graded[0].passed).toBe(false);
+    expect(graded[0].response).toBe('O distrator errado');
+    expect(inserts['activity_results']).toBeUndefined();
   });
 
-  it('truncates a long free-text answer and says that it did', async () => {
+  it('hands the whole free-text answer to the grade call, which cuts it', async () => {
     renderPlayer();
     await waitForPlayerReady();
 
     fireEvent.click(screen.getByTestId('stub-wrong-long'));
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-    const fb = (inserts['activity_results'][0] as { feedback: Record<string, unknown> }).feedback;
-    expect((fb.response as string).length).toBe(2000);
-    expect(fb.response_truncated).toBe(true);
-    // The original length survives, so the loss is measurable rather than silent.
-    expect(fb.response_length).toBe(5000);
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
+    expect(graded[0].response).toHaveLength(5000);
   });
 
-  it('still records passed=true for a correct answer', async () => {
+  it('still sends passed=true for a correct answer', async () => {
     renderPlayer();
     await waitForPlayerReady();
 
     fireEvent.click(screen.getByTestId('stub-correct'));
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-    const row = inserts['activity_results'][0] as {
-      passed: boolean;
-      feedback: { response?: string };
-    };
-    expect(row.passed).toBe(true);
-    expect(row.feedback.response).toBe('A opção certa');
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
+    expect(graded[0].passed).toBe(true);
+    expect(graded[0].response).toBe('A opção certa');
+    expect(inserts['activity_results']).toBeUndefined();
   });
 
   it('never demotes a completed activity: a miss writes in_progress with ignoreDuplicates', async () => {
@@ -349,7 +339,7 @@ describe('D2 — a WRONG answer is recorded, with passed=false', () => {
     fireEvent.click(screen.getByTestId('stub-wrong'));
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
     expect(awardActivityXp).not.toHaveBeenCalled();
   });
 });
@@ -435,7 +425,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
     expect(completedUpserts()).toHaveLength(1);
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(graded).toHaveLength(1);
   });
 
   it('records a miss the instant it settles, before "Continuar", and only once', async () => {
@@ -443,11 +433,11 @@ describe('the result stands — it is recorded at the answer and survives a relo
     await waitForPlayerReady();
 
     fireEvent.click(screen.getByTestId('stub-wrong'));
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
 
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(graded).toHaveLength(1);
   });
 
   it('does not write a second pass when the activity settles again during the review beat', async () => {
@@ -466,7 +456,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
     await waitForPlayerReady();
     fireEvent.click(screen.getByTestId('stub-wrong'));
     await screen.findByTestId('feedback-footer');
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
     first.unmount();
 
     // The server only knows `in_progress` for a miss — the device knows it was answered.
@@ -475,7 +465,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
     await waitForPlayerReady();
     expect(shownId()).toBe('a2');
     // Resuming must not write the attempt a second time.
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(graded).toHaveLength(1);
   });
 
   it('re-opens a missed exercise on its answer, locked, and retries only on demand', async () => {
@@ -507,7 +497,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
     fireEvent.click(screen.getByTestId('stub-correct'));
     await waitFor(() => expect(completedUpserts()).toHaveLength(1), { timeout: 5000 });
     // Both attempts are in the log: the retry adds to the miss, never replaces it.
-    expect((inserts['activity_results'] as Array<{ passed: boolean }>).map((r) => r.passed)).toEqual([
+    expect(graded.map((r) => r.passed)).toEqual([
       false,
       true,
     ]);
@@ -526,7 +516,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
       saveCodeAttempts('a1', '5');
       fireEvent.click(screen.getByTestId('stub-wrong'));
       await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
-      expect(inserts['activity_results']).toHaveLength(1);
+      expect(graded).toHaveLength(1);
 
       fireEvent.click(screen.getByTestId('lesson-prev'));
       await waitFor(() => expect(shownId()).toBe('a1'));
@@ -539,7 +529,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
         expect(screen.getByTestId('stub-state').getAttribute('data-status')).not.toBe('done')
       );
       // The retry itself is not an attempt.
-      expect(inserts['activity_results']).toHaveLength(1);
+      expect(graded).toHaveLength(1);
     });
 
     it('has no attempt budget: a spent one from an older build neither locks the exercise nor records a miss', async () => {
@@ -550,7 +540,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
       expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
       expect(screen.getByTestId('stub-state').getAttribute('data-status')).not.toBe('done');
       await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(inserts['activity_results']).toBeUndefined();
+      expect(graded).toHaveLength(0);
     });
 
     it("records a pass at the verdict: leaving without the exercise's own Continue keeps it", async () => {
@@ -565,10 +555,8 @@ describe('the result stands — it is recorded at the answer and survives a relo
 
       fireEvent.click(screen.getByTestId('stub-verdict-pass'));
       // On the server before anything else is pressed.
-      await waitFor(() => expect(inserts['activity_results']?.length).toBe(2), { timeout: 5000 });
-      const row = inserts['activity_results'][1] as { activity_id: string; passed: boolean; feedback: { response?: string } };
-      expect(row).toMatchObject({ activity_id: 'a2', passed: true });
-      expect(row.feedback.response).toBe('Tudo preenchido');
+      await waitFor(() => expect(graded.length).toBe(2), { timeout: 5000 });
+      expect(graded[1]).toMatchObject({ activityId: 'a2', passed: true, response: 'Tudo preenchido' });
       expect(shownId()).toBe('a2');
 
       // The judge's route: away by the header, never pressing Continue.
@@ -577,7 +565,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
       fireEvent.click(screen.getByTestId('lesson-next'));
       await waitFor(() => expect(shownId()).toBe('a2'));
       await waitFor(() => expect(screen.getByTestId('stub-state').getAttribute('data-status')).toBe('done'));
-      expect(inserts['activity_results']).toHaveLength(2);
+      expect(graded).toHaveLength(2);
     });
 
     it('moves on from a recorded pass without writing it twice', async () => {
@@ -587,34 +575,34 @@ describe('the result stands — it is recorded at the answer and survives a relo
       renderPlayer();
       await waitForPlayerReady();
       fireEvent.click(screen.getByTestId('stub-verdict-pass'));
-      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
       fireEvent.click(screen.getByTestId('stub-correct'));
       await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
-      expect(inserts['activity_results']).toHaveLength(1);
+      expect(graded).toHaveLength(1);
     });
 
     it('sends a miss to the server at its verdict, once, and a later pass still counts', async () => {
       renderPlayer();
       await waitForPlayerReady();
       fireEvent.click(screen.getByTestId('stub-verdict-miss'));
-      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-      expect((inserts['activity_results'][0] as { passed: boolean }).passed).toBe(false);
+      await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
+      expect(graded[0].passed).toBe(false);
       expect(shownId()).toBe('a1');
       expect(screen.getByTestId('stub-state').getAttribute('data-status')).not.toBe('done');
 
       fireEvent.click(screen.getByTestId('stub-correct'));
       await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
-      expect((inserts['activity_results'] as Array<{ passed: boolean }>).map((r) => r.passed)).toEqual([false, true]);
+      expect(graded.map((r) => r.passed)).toEqual([false, true]);
     });
 
     it('does not write a miss twice when the learner continues anyway', async () => {
       renderPlayer();
       await waitForPlayerReady();
       fireEvent.click(screen.getByTestId('stub-verdict-miss'));
-      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
       fireEvent.click(screen.getByTestId('stub-wrong'));
       await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
-      expect(inserts['activity_results']).toHaveLength(1);
+      expect(graded).toHaveLength(1);
     });
 
     it('leaves an exercise with lives to spare alone', async () => {
@@ -623,7 +611,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
       await waitForPlayerReady();
       expect(shownId()).toBe('a1');
       expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
-      expect(inserts['activity_results']).toBeUndefined();
+      expect(graded).toHaveLength(0);
     });
   });
 
@@ -635,7 +623,7 @@ describe('the result stands — it is recorded at the answer and survives a relo
     await waitForPlayerReady();
     fireEvent.click(screen.getByTestId('stub-correct'));
     await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
-    expect(inserts['activity_results']).toHaveLength(1);
+    expect(graded).toHaveLength(1);
 
     fireEvent.click(screen.getByTestId('lesson-prev'));
     await waitFor(() => expect(shownId()).toBe('a1'));
@@ -737,7 +725,7 @@ describe('the result follows the learner to another device', () => {
     expect(state().getAttribute('data-prior')).toBe('O distrator errado');
     expect(screen.getByTestId('lesson-retry-missed')).toBeTruthy();
     // Reading the log back writes nothing.
-    expect(inserts['activity_results']).toBeUndefined();
+    expect(graded).toHaveLength(0);
   });
 
   it('re-opens a pass made elsewhere on the answer that passed', async () => {
@@ -784,7 +772,7 @@ describe('the result follows the learner to another device', () => {
     await waitForPlayerReady();
     expect(shownId()).toBe('a2');
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(inserts['activity_results']).toBeUndefined();
+    expect(graded).toHaveLength(0);
   });
 
   it('keeps the frontier past later answers when an earlier exercise is open again', async () => {
@@ -983,8 +971,13 @@ describe('duration — the attempt row carries how long the learner took', () =>
   });
 
   async function settledRow(): Promise<Record<string, unknown>> {
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-    return inserts['activity_results'][0] as Record<string, unknown>;
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
+    const [call] = graded;
+    return {
+      passed: call.passed,
+      elapsed_ms: call.duration?.elapsedMs ?? null,
+      visible_ms: call.duration?.visibleMs ?? null,
+    };
   }
 
   it('measures from the activity appearing to the answer settling', async () => {
@@ -1050,54 +1043,18 @@ describe('duration — the attempt row carries how long the learner took', () =>
   });
 });
 
-/**
- * The deploy-order seatbelt.
- *
- * This app auto-deploys on merge to `main`; no CI applies Itera migrations —
- * they are run by hand. So a window exists where the build knows about
- * `elapsed_ms`/`visible_ms` and the database does not, and PostgREST rejects the
- * WHOLE insert for an unknown column. Untreated, that window silently stops
- * recording attempts entirely — the D2 failure of 2026-07-28 re-created by the
- * telemetry meant to enrich it, and just as unrecoverable afterwards.
- *
- * The rule: telemetry must never be able to destroy the record it decorates.
- */
-describe('duration — a schema that lacks the columns must not cost the attempt', () => {
-  it('re-inserts the attempt without the timing when the timed insert is rejected', async () => {
-    // Exactly what PostgREST answers when the deployed schema predates 0033.
-    insertErrorFor = (table, payload) =>
-      table === 'activity_results' && 'elapsed_ms' in payload
-        ? { message: "column activity_results.elapsed_ms does not exist" }
-        : null;
-
+describe('duration — the attempt is sent once', () => {
+  it('sends the attempt to the grade call exactly once and inserts no result row', async () => {
     renderPlayer();
     await waitForPlayerReady();
 
     fireEvent.click(screen.getByTestId('stub-correct'));
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(2), { timeout: 5000 });
-
-    const [timed, fallback] = inserts['activity_results'] as Array<Record<string, unknown>>;
-    expect('elapsed_ms' in timed).toBe(true); // the attempt WITH timing was tried first…
-    expect('elapsed_ms' in fallback).toBe(false); // …and the retry drops only the timing.
-    // The part that actually matters survives intact: the attempt, its real
-    // outcome, and what the learner answered.
-    expect(fallback.passed).toBe(true);
-    expect((fallback.feedback as { response?: string }).response).toBe('A opção certa');
-  });
-
-  it('does not double-insert when the timed insert succeeds', async () => {
-    renderPlayer();
-    await waitForPlayerReady();
-
-    fireEvent.click(screen.getByTestId('stub-correct'));
-    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
-
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-    // Give a stray second insert a chance to land before asserting its absence.
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
     await new Promise((r) => setTimeout(r, 50));
-    expect(inserts['activity_results'].length).toBe(1);
+    expect(graded.length).toBe(1);
+    expect(inserts['activity_results']).toBeUndefined();
   });
 });
 
@@ -1147,8 +1104,9 @@ describe('the duration origin is armed BEFORE the activity can settle', () => {
     await waitForPlayerReady();
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
-    const row = inserts['activity_results'][0] as Record<string, unknown>;
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
+    expect(graded[0].duration?.elapsedMs).toBe(0);
+    const row = { elapsed_ms: graded[0].duration?.elapsedMs };
     // Zero is the honest reading of "settled the instant it opened". NULL is
     // "we never armed the clock", and that is the bug.
     expect(row.elapsed_ms).toBe(0);
@@ -1162,7 +1120,7 @@ describe('the duration origin is armed BEFORE the activity can settle', () => {
     await waitForPlayerReady();
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
-    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    await waitFor(() => expect(graded.length).toBe(1), { timeout: 5000 });
     const trace = upserts.find((u) => u.table === 'activity_traces');
     expect(trace, 'an attempt with no origin writes no trace at all').toBeDefined();
     expect(trace?.payload.started_at).toBe(new Date(T0).toISOString());

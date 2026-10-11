@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
-import { HostExplainsMisses, HostHidesAnswerOnMiss, HostOwnsSettledAction, HostRecordsVerdict, HostUnlimitedAttempts } from '@iterahq/activities';
+import { HostExplainsMisses, HostHidesAnswerOnMiss, HostNotesMisses, HostOwnsSettledAction, HostRecordsVerdict, HostUnlimitedAttempts } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
@@ -961,6 +961,7 @@ export default function LessonPlayer() {
                   <HostExplainsMisses>
                     <HostOwnsSettledAction>
                      <HostUnlimitedAttempts>
+                      <HostNotesMisses note={t('lesson.miss.redoForStamp')}>
                       <HostRecordsVerdict onVerdict={handleVerdict}>
                        <HostHidesAnswerOnMiss hide={hidesAnswer}>
                       <ActivityRenderer
@@ -974,6 +975,7 @@ export default function LessonPlayer() {
                       />
                        </HostHidesAnswerOnMiss>
                       </HostRecordsVerdict>
+                      </HostNotesMisses>
                      </HostUnlimitedAttempts>
                     </HostOwnsSettledAction>
                   </HostExplainsMisses>
@@ -1014,6 +1016,7 @@ export default function LessonPlayer() {
           onContinue={handleContinue}
           onRetry={canRetryPending ? retryPending : undefined}
           busy={saving}
+          missNote={t('lesson.miss.redoForStamp')}
         />
       )}
 

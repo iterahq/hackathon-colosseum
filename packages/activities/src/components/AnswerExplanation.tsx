@@ -63,6 +63,7 @@ export function AnswerExplanation({
   shown,
   correct,
   handedUp = false,
+  judged,
 }: {
   spec: Record<string, unknown> | undefined;
   /** `shown` do answerMachine: o gabarito já está na tela. */
@@ -80,15 +81,17 @@ export function AnswerExplanation({
    * (re-opened activity, no footer) it is `false` and the box shows.
    */
   handedUp?: boolean;
+  /** The explanation a host's verdict brought, for a spec served without one. */
+  judged?: string;
 }) {
   const { t, locale } = useActivityI18n();
   const explainsMisses = useHostExplainsMisses();
   const hidesAnswerOnMiss = useHostHidesAnswerOnMiss();
   const playSound = useActivitySound();
-  const text = (resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
+  const text = (judged ?? resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
   if (!shown || correct === true || text === '' || (handedUp && explainsMisses)) return null;
-  // The authored explanation names the answer.
-  if (hidesAnswerOnMiss && correct === false) return null;
+  // The authored explanation names the answer. One a verdict brought is meant to be read.
+  if (hidesAnswerOnMiss && correct === false && judged === undefined) return null;
 
   return (
     <div className="mt-4 rounded-2xl border border-border bg-card px-4 py-1" data-testid="answer-explanation">

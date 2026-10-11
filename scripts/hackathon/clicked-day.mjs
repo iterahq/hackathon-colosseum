@@ -13,6 +13,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { chromium } from 'playwright';
 import { resolveSpec } from '../../supabase/functions/_shared/grading.ts';
 import { base58Encode } from '../../supabase/functions/_shared/solana-tx.ts';
+import { servedIds, servedLesson } from './day-solver.lib.mjs';
 import { FUNCTIONS, PROJECT_REF, SUPABASE_URL, anonKey, psql, rpc, sleep } from './social-e2e.lib.mjs';
 
 const args = process.argv.slice(2);
@@ -91,7 +92,21 @@ async function loadWallet(apikey) {
 const readActivities = () =>
   JSON.parse(
     psql(`select json_agg(json_build_object('id', id, 'kind', kind, 'spec', spec) order by ordinal, id) from itera.activities where lesson_id = :'lesson'::uuid and status = 'published';`, { lesson: LESSON_ID }),
-  ).map((activity) => ({ ...activity, spec: resolveSpec(activity.spec, LANG) }));
+  ).map((activity) => ({ ...activity, authored: activity.spec, spec: resolveSpec(activity.spec, LANG), domId: (id) => id }));
+
+/**
+ * The page shows each option under an id of its own (the lesson is served without the answer key and
+ * with its ids replaced): the robot finds the option it wants by its content, as a person would.
+ */
+async function learnServedIds(activities, apikey, accessToken) {
+  const served = await servedLesson(FUNCTIONS, { apikey, Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, LESSON_ID);
+  const byId = new Map(served.map((activity) => [activity.id, activity]));
+  for (const activity of activities) {
+    const ids = servedIds({ spec: activity.authored }, byId.get(activity.id));
+    activity.domId = (id) => ids.get(id) ?? id;
+  }
+  return served.filter((activity) => activity.sealed).length;
+}
 
 const NAME = 'Robo QA';
 /** The text a check of the activity expects, as the lesson words it in the robot's language. */
@@ -188,22 +203,22 @@ async function handle(page, activity, ordinal, ctx) {
       return `paired ${count} page elements with their code lines, then footer Continue`;
     }
     case 'single_choice': {
-      await root.locator(`[data-testid="single-choice-option"][data-option-id="${spec.correct_option_id}"]`).click();
+      await root.locator(`[data-testid="single-choice-option"][data-option-id="${activity.domId(spec.correct_option_id)}"]`).click();
       await root.getByTestId('single-choice-submit').click();
       await settle('single_choice');
       return `clicked option "${spec.correct_option_id}", pressed Submit, then footer Continue`;
     }
     case 'match': {
       for (const pair of spec.pairs) {
-        await root.locator(`[data-testid="match-left-card"][data-option-id="${pair.left_id}"]`).click();
-        await root.locator(`[data-testid="match-right-card"][data-option-id="${pair.right_id}"]`).click();
+        await root.locator(`[data-testid="match-left-card"][data-option-id="${activity.domId(pair.left_id)}"]`).click();
+        await root.locator(`[data-testid="match-right-card"][data-option-id="${activity.domId(pair.right_id)}"]`).click();
       }
       await root.getByTestId('match-submit').click();
       await settle('match');
       return `tapped ${spec.pairs.length} left+right card pairs, Submit, footer Continue`;
     }
     case 'order': {
-      const target = spec.correct_order ?? spec.items.map((item) => item.id);
+      const target = (spec.correct_order ?? spec.items.map((item) => item.id)).map(activity.domId);
       const rows = root.getByTestId('order-item');
       const currentIds = async () => rows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-option-id')));
       let moves = 0;
@@ -224,10 +239,12 @@ async function handle(page, activity, ordinal, ctx) {
     case 'code_editor_checks': {
       const code = codeSolution(activity, ordinal);
       const monaco = root.locator('.monaco-editor').first();
-      const fallback = root.getByTestId('code-editor');
+      const fallback = root.getByTestId('code-editor-fallback');
       await root.getByTestId('code-pane-switch').getByRole('button').first().click({ timeout: 1500 }).catch(() => {});
       const modelValue = () => page.evaluate(() => window.monaco?.editor.getModels().at(-1)?.getValue() ?? null);
-      const useMonaco = await monaco.waitFor({ state: 'visible', timeout: 25_000 }).then(() => true, () => false);
+      const useMonaco = await monaco.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true, () => false);
+      // Monaco never came: the player shows a plain text area in its place after a few seconds.
+      if (!useMonaco) await fallback.waitFor({ state: 'visible', timeout: 5_000 });
       const focus = () => (useMonaco ? monaco.locator('.view-lines').click() : fallback.click());
       // Strategy 1: paste-like insert of the whole text. Strategy 2: line by line with the Enter key.
       for (const strategy of ['whole', 'lines']) {
@@ -473,6 +490,8 @@ async function main() {
   const apikey = await anonKey();
   const wallet = await loadWallet(apikey);
   const activities = readActivities();
+  log(`the lesson function served ${await learnServedIds(activities, apikey, wallet.session.access_token)} activities sealed (no answer key in the page)`);
+  psql(`insert into itera.test_accounts (user_id, reason) values (:'u'::uuid, 'clicked-day') on conflict do nothing;`, { u: wallet.userId });
   log(`lesson ${LESSON_ID}: ${activities.length} published activities: ${activities.map((a) => a.kind).join(', ')}`);
   proof('fresh wallet signed in (Supabase web3 auth)', Boolean(wallet.session?.access_token), `${wallet.address} user ${wallet.userId}`);
 

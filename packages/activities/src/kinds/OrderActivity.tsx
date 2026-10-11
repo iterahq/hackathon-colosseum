@@ -23,7 +23,8 @@ import { useState } from 'react';
 import { Reorder } from 'framer-motion';
 import { ListOrdered } from 'lucide-react';
 import { useActivityI18n, useActivitySound } from '../context.js';
-import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
+import { useHostHidesAnswerOnMiss, useSealedAnswer } from '../components/hostLessonRules.js';
+import { restoredVerdict, sealedKey } from '../internal/sealedAnswer.js';
 import type { ChoiceOption, OrderSpec } from '../specs.js';
 import { learnerShuffleAvoidingSolution } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -59,7 +60,8 @@ export function OrderActivity({
   const scope = useLearnerScope();
   const spec = activity.spec as unknown as OrderSpec;
   const items = spec?.items ?? [];
-  const correctOrder = spec?.correct_order ?? [];
+  const sealed = useSealedAnswer(activity);
+  const correctOrder = (sealed ? sealedKey<string[]>(sealed.outcome, 'correct_order') : spec?.correct_order) ?? [];
   const byId = (id: string): ChoiceOption | undefined => items.find((i) => i.id === id);
 
   // Per-LEARNER, per-ACTIVITY arrangement (stable across remounts, different
@@ -89,7 +91,9 @@ export function OrderActivity({
 
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (../internal/answerMachine.ts — one definition, six call sites).
-  const isOrderCorrect = order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
+  const isOrderCorrect = sealed
+    ? (sealed.outcome?.passed ?? restoredVerdict(activity, priorAnswer))
+    : order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
   const m = answerMachine({
     done: activity.status === 'done',
     submitted,
@@ -98,10 +102,11 @@ export function OrderActivity({
     correct: isOrderCorrect,
     hasAnswer: touched,
   });
-  const { locked, shown } = m;
+  const { shown } = m;
+  const locked = m.locked || (sealed?.judging ?? false);
   // Reveal without a submission shows the ANSWER KEY (the correct sequence),
   // not the learner's untouched shuffle graded red.
-  const displayOrder = m.showKey ? correctOrder : order;
+  const displayOrder = m.showKey && correctOrder.length > 0 ? correctOrder : order;
 
   // The `arrangement` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<ArrangementAction>(activity.id);
@@ -138,16 +143,20 @@ export function OrderActivity({
 
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
   // CURRENT order (the machine's `gradeResult` isn't set yet at click time).
-  function handleSubmit() {
-    if (!m.acceptsSubmit) return;
-    setSubmitted(true);
+  async function handleSubmit() {
+    if (!m.acceptsSubmit || sealed?.judging) return;
     // Hand the settled sequence up as text (dropped unless the author opted in).
     const sequence = order.map((id, i) => `${i + 1}. ${byId(id)?.label ?? id}`).join('\n');
-    trace.record('answer_submitted', { order: [...order] });
-    onComplete(isOrderCorrect, {
+    const answer = { order: [...order] };
+    const verdict = sealed ? await sealed.ask({ answer, response: sequence }) : null;
+    if (sealed && !verdict) return;
+    const correct = verdict ? verdict.passed : isOrderCorrect;
+    setSubmitted(true);
+    trace.record('answer_submitted', answer);
+    onComplete(correct, {
       response: sequence,
       actions: trace.drain(),
-      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isOrderCorrect),
+      explanation: verdict ? (correct ? undefined : verdict.explanation) : hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isOrderCorrect),
     });
   }
 
@@ -167,7 +176,7 @@ export function OrderActivity({
         data-testid="order-list"
       >
         {displayOrder.map((id, idx) => {
-          const verdict = !shown ? null : correctOrder[idx] === id ? 'right' : 'miss';
+          const verdict = !shown ? null : (sealed ? isOrderCorrect : correctOrder[idx] === id) ? 'right' : 'miss';
           return (
             <OrderRow
               key={id}
@@ -191,14 +200,16 @@ export function OrderActivity({
       </Reorder.Group>
       {order.length === 0 && <p className="mt-3 text-sm text-muted-foreground">{t('activity.noItems')}</p>}
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} judged={sealed?.outcome?.explanation} />
 
       <SubmitButton
         submitted={m.submitLocked}
         correct={m.gradeResult}
         disabled={m.submitDisabled}
-        onSubmit={handleSubmit}
+        onSubmit={() => void handleSubmit()}
         testId="order-submit"
+        judging={sealed?.judging}
+        unreachable={sealed?.unreachable}
       />
     </ActivityShell>
   );

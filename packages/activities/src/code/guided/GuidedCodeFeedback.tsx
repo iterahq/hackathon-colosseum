@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeBlank } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
+import { useHostMissNote } from '../../components/hostLessonRules.js';
 import { TeraVerdict, VerdictMark } from '../../components/TeraVerdict.js';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '../../components/tactile.js';
 import { CodeAttemptsNotice } from '../CodeAttemptsNotice.js';
@@ -37,6 +38,7 @@ export function GuidedCodeFeedback({
   onContinue: () => void;
 }) {
   const { t } = useActivityI18n();
+  const missNote = useHostMissNote();
   // The POSITION travels with the blank, because the list is filtered: the third
   // hole must still read "Lacuna 3" when it is the only wrong one.
   const wrong = blanks
@@ -140,6 +142,11 @@ export function GuidedCodeFeedback({
             : t('code.checks.continueAnyway')}
         </button>
       </div>
+      {!grade.allCorrect && missNote && (
+        <p className="mt-3 text-sm text-muted-foreground" data-testid="miss-note">
+          {missNote}
+        </p>
+      )}
     </motion.div>
   );
 }

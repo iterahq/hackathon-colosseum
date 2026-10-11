@@ -299,11 +299,19 @@ export { HostOwnsSettledAction, useHostOwnsSettledAction } from './components/se
 export { HostExplainsMisses, useHostExplainsMisses } from './components/explainedMiss.js';
 export {
   HostHidesAnswerOnMiss,
+  HostJudgesAnswers,
+  HostNotesMisses,
   HostRecordsVerdict,
   HostUnlimitedAttempts,
   useHostHidesAnswerOnMiss,
   useHostUnlimitedAttempts,
+  useHostMissNote,
   useHostVerdictRecorder,
+  useSealedAnswer,
+  type ActivityJudge,
+  type JudgeOutcome,
+  type JudgeSubmission,
+  type SealedAnswer,
   type VerdictRecorder,
 } from './components/hostLessonRules.js';
 // Tera, the mascot: the one component that draws him, and the mention rule a

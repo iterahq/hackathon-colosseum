@@ -91,7 +91,7 @@ export async function getUnitCanvas(unitId: string): Promise<UnitCanvas> {
        program:programs ( id, tenant_id, slug, title_i18n ),
        lessons:lessons (
          id, unit_id, ordinal, title_i18n,
-         activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, status, artifact_policy )
+         activities:activities ( id, lesson_id, ordinal, kind, status, artifact_policy )
        )`
     )
     .eq('id', unitId)
@@ -100,6 +100,16 @@ export async function getUnitCanvas(unitId: string): Promise<UnitCanvas> {
   if (error) throw new Error(error.message);
   if (!data) throw new Error(`Unit not found: ${unitId}`);
   const row = data as Row;
+
+  // `spec` and `rubric` are not readable with a browser's key: each lesson's
+  // content comes whole from the `lesson` function, which knows an author.
+  const content = new Map<string, Row>();
+  await Promise.all(
+    asRows(row.lessons).map(async (lesson) => {
+      const { data: served } = await sb.functions.invoke('lesson', { method: 'POST', body: { lesson_id: str(lesson.id) } });
+      for (const activity of asRows((served as { activities?: unknown } | null)?.activities)) content.set(str(activity.id), activity);
+    }),
+  );
 
   // The embedded program may arrive as an object or a single-element array
   // depending on PostgREST's cardinality inference (same guard as membership).
@@ -114,7 +124,7 @@ export async function getUnitCanvas(unitId: string): Promise<UnitCanvas> {
       ordinal: num(l.ordinal),
       title: bag(l.title_i18n),
       activities: asRows(l.activities)
-        .map(mapActivity)
+        .map((activity) => mapActivity({ ...activity, ...content.get(str(activity.id)), status: activity.status }))
         .sort((x, y) => x.ordinal - y.ordinal),
     }))
     .sort((x, y) => x.ordinal - y.ordinal);
@@ -164,15 +174,16 @@ export function isActivityNotFoundError(e: unknown): e is ActivityNotFoundError 
  * specifically when the id resolved to no row.
  */
 export async function getActivityById(activityId: string): Promise<Activity> {
-  const sb = client();
-  const { data, error } = await sb
-    .from('activities')
-    .select('id, lesson_id, ordinal, kind, spec, rubric, status, artifact_policy')
-    .eq('id', activityId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new ActivityNotFoundError(activityId);
-  return mapActivity(data as Row);
+  // `spec` is not readable with a browser's key: the `lesson` function hands it whole to an author.
+  const { data, error } = await client().functions.invoke('lesson', { method: 'POST', body: { activity_id: activityId } });
+  const row = ((data ?? {}) as { activities?: Row[] }).activities?.[0];
+  if (error && !row) {
+    const status = (error as { context?: { status?: number } }).context?.status;
+    if (status === 404) throw new ActivityNotFoundError(activityId);
+    throw new Error(error.message);
+  }
+  if (!row) throw new ActivityNotFoundError(activityId);
+  return mapActivity(row);
 }
 
 /** A program + its units, for the author home drill-down into per-unit canvases. */

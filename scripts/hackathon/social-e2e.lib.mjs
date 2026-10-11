@@ -86,6 +86,16 @@ export async function anonKey() {
   return (await response.json()).find((entry) => entry.name === 'anon').api_key;
 }
 
+const createdLearners = [];
+
+/** Marks the learners THIS run created as test accounts, by id: the public counters leave them out. Never the blanket tagger. */
+export function tagOwnLearners(reason) {
+  for (const userId of createdLearners) {
+    psql(`insert into itera.test_accounts (user_id, reason) values (:'u'::uuid, :'reason') on conflict do nothing;`, { u: userId, reason });
+  }
+  return createdLearners.length;
+}
+
 /** A throwaway wallet learner: signed in with Solana, with a client for the edge functions and one for PostgREST. */
 export async function newLearner(apikey, label) {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -107,6 +117,7 @@ export async function newLearner(apikey, label) {
     return { status: answer.status, body: await answer.json() };
   };
   const rest = async (query) => (await fetch(`${SUPABASE_URL}/rest/v1/${query}`, { headers: { ...headers, 'Accept-Profile': 'itera' } })).json();
+  createdLearners.push(userId);
   console.log(`${label}: wallet ${address} · itera user ${userId}`);
   return { privateKey, address, userId, call, get, rest, label, headers };
 }

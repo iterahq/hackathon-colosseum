@@ -8,12 +8,13 @@ import { ProgramSection } from '@/components/verify/ProgramSection';
 import { RpcSection } from '@/components/verify/RpcSection';
 import { SoulboundSection } from '@/components/verify/SoulboundSection';
 import { SourceSection } from '@/components/verify/SourceSection';
+import { StampSection } from '@/components/verify/StampSection';
 import { TrustSection } from '@/components/verify/TrustSection';
 import { FOCUS } from '@/components/shop/shopStyles';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 
-const SECTIONS = ['program', 'source', 'evidence', 'soulbound', 'gate', 'rpc', 'durable', 'trust'] as const;
+const SECTIONS = ['program', 'source', 'evidence', 'stamp', 'soulbound', 'gate', 'rpc', 'durable', 'trust'] as const;
 
 /** /verify: every on-chain claim Itera makes, with the steps to check it without trusting Itera. Public. */
 export default function VerifyPage() {
@@ -42,6 +43,7 @@ export default function VerifyPage() {
       <ProgramSection />
       <SourceSection />
       <EvidenceSection />
+      <StampSection />
       <SoulboundSection />
       <GateSection />
       <RpcSection />

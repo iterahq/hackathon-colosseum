@@ -25,7 +25,7 @@ export function useCodeSnack(
   spec: CodeSpec,
   callbacks: UseCodeSnackCallbacks,
 ) {
-  const { onComplete } = callbacks;
+  const { onComplete, sealed = null } = callbacks;
   // ⚠️ Read, write and clear all come from ONE port, and that is the point:
   // `UseCodeSnackCallbacks` used to expose a write-only `onAutosave` whose own
   // comment said overriding it alone hands the learner back the wrong source.
@@ -65,7 +65,7 @@ export function useCodeSnack(
     receiveResults,
     reset,
     settle,
-  } = useCodeChecks(code, checks);
+  } = useCodeChecks(code, checks, sealed);
   /**
    * O orçamento de envios errados. Vale SÓ para o snack corrigido: sem `checks`
    * não existe "errar" — a atividade se encerra num "marcar como concluída" — e

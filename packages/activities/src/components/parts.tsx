@@ -152,12 +152,18 @@ export function SubmitButton({
   disabled = false,
   onSubmit,
   testId,
+  judging = false,
+  unreachable = false,
 }: {
   submitted: boolean;
   correct?: boolean;
   disabled?: boolean;
   onSubmit: () => void;
   testId?: string;
+  /** A host is grading the answer just sent. */
+  judging?: boolean;
+  /** The last answer got no verdict; the learner may send again. */
+  unreachable?: boolean;
 }) {
   const { t } = useActivityI18n();
   const hostOwns = useHostOwnsSettledAction();
@@ -165,10 +171,18 @@ export function SubmitButton({
   const graded = submitted && correct !== undefined;
   const incorrect = graded && correct === false;
   return (
+    <>
+    {unreachable && !submitted && !judging && (
+      <p role="alert" className="mt-4 text-sm text-destructive" data-testid="judge-unreachable">
+        {t('activity.judgeUnreachable')}
+      </p>
+    )}
     <button
       type="button"
-      onClick={submitted ? undefined : onSubmit}
-      disabled={submitted || disabled}
+      onClick={submitted || judging ? undefined : onSubmit}
+      disabled={submitted || disabled || judging}
+      aria-busy={judging || undefined}
+      data-judging={judging ? 'true' : undefined}
       data-submitted={submitted ? 'true' : undefined}
       data-correct={graded ? String(correct) : undefined}
       data-testid={testId}
@@ -177,7 +191,8 @@ export function SubmitButton({
       }`}
     >
       {submitted && (incorrect ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />)}
-      {submitted ? t('activity.sent') : t('activity.submit')}
+      {submitted ? t('activity.sent') : judging ? t('activity.checking') : t('activity.submit')}
     </button>
+    </>
   );
 }

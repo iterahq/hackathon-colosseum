@@ -18,7 +18,8 @@
 import { useRef, useState } from 'react';
 import { ListChecks } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
-import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
+import { useHostHidesAnswerOnMiss, useSealedAnswer } from '../components/hostLessonRules.js';
+import { restoredVerdict, sealedKey } from '../internal/sealedAnswer.js';
 import type { ChoiceOption, SingleChoiceSpec } from '../specs.js';
 import { learnerOptionOrder } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -95,7 +96,10 @@ export function SingleChoiceActivity({
   const trace = useActivityActionRecorder<SelectionAction>(activity.id);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (../internal/answerMachine.ts — one definition, six call sites).
-  const isCorrect = selected === spec?.correct_option_id;
+  const sealed = useSealedAnswer(activity);
+  const isCorrect = sealed ? (sealed.outcome?.passed ?? restoredVerdict(activity, priorAnswer)) : selected === spec?.correct_option_id;
+  // Sealed: the key comes with a pass, and a pass means the pick IS the key.
+  const correctOptionId = sealed ? (sealedKey<string>(sealed.outcome, 'correct_option_id') ?? (isCorrect ? selected : undefined)) : spec?.correct_option_id;
   const m = answerMachine({
     done: activity.status === 'done',
     submitted,
@@ -108,26 +112,31 @@ export function SingleChoiceActivity({
     hasAnswer: selected !== null,
   });
   // A miss in a host that keeps the key: mark the pick, not the answer. The instructor's reveal still shows it.
-  const hidesKey = hidesAnswerOnMiss && !reveal && m.gradeResult === false;
+  const hidesKey = (hidesAnswerOnMiss || sealed !== null) && !reveal && m.gradeResult === false;
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída" step). Grade off the CURRENT selection — the
   // machine's `gradeResult` is gated on `submitted`, which isn't set yet here.
-  function handleSubmit() {
-    if (!m.acceptsSubmit) return;
-    setSubmitted(true);
+  async function handleSubmit() {
+    if (!m.acceptsSubmit || sealed?.judging) return;
     // Hand the chosen option up as text. It is DROPPED unless the author set
     // this activity to persist (artifact_policy.mode = 'always') — see
     // src/services/artifactPolicy.ts.
     const chosen = options.find((o) => o.id === selected);
-    trace.record('answer_submitted', { option_ids: selected ? [selected] : [] });
-    onComplete(isCorrect, {
-      response: chosen?.label ?? chosen?.id ?? '',
+    const response = chosen?.label ?? chosen?.id ?? '';
+    const answer = { option_ids: selected ? [selected] : [] };
+    const verdict = sealed ? await sealed.ask({ answer, response }) : null;
+    if (sealed && !verdict) return;
+    const correct = verdict ? verdict.passed : isCorrect;
+    setSubmitted(true);
+    trace.record('answer_submitted', answer);
+    onComplete(correct, {
+      response,
       // The HOW rides beside the WHAT. Every re-pick before this click is in
       // here, which is the difference between "got it right" and "got it right
       // after changing their mind twice".
       actions: trace.drain(),
-      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isCorrect),
+      explanation: verdict ? (correct ? undefined : verdict.explanation) : hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isCorrect),
     });
   }
 
@@ -143,10 +152,10 @@ export function SingleChoiceActivity({
   useChoiceHotkeys({
     scope: optionsRef,
     count: options.length,
-    enabled: !m.locked,
+    enabled: !m.locked && !sealed?.judging,
     onPick: (i) => pick(options[i].id),
     onSubmit: () => {
-      if (!m.submitDisabled) handleSubmit();
+      if (!m.submitDisabled) void handleSubmit();
     },
   });
 
@@ -162,7 +171,7 @@ export function SingleChoiceActivity({
           const state = choiceOptionState({
             shown: m.shown,
             chosen,
-            isCorrectOption: o.id === spec?.correct_option_id,
+            isCorrectOption: o.id === correctOptionId,
             hideKey: hidesKey,
           });
           return (
@@ -173,7 +182,7 @@ export function SingleChoiceActivity({
               state={state}
               chosen={chosen}
               shown={m.shown}
-              disabled={m.locked}
+              disabled={m.locked || (sealed?.judging ?? false)}
               onClick={() => pick(o.id)}
               testId="single-choice-option"
               // The AUTHORED id — what grading keys on, and what a learning
@@ -190,14 +199,16 @@ export function SingleChoiceActivity({
         )}
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} judged={sealed?.outcome?.explanation} />
 
       <SubmitButton
         submitted={m.submitLocked}
         correct={m.gradeResult}
         disabled={m.submitDisabled}
-        onSubmit={handleSubmit}
+        onSubmit={() => void handleSubmit()}
         testId="single-choice-submit"
+        judging={sealed?.judging}
+        unreachable={sealed?.unreachable}
       />
     </ActivityShell>
   );
