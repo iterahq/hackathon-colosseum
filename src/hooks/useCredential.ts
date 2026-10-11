@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { verifyCredential } from '@/services/credential.service';
 import { looksLikeAddress } from '@/utils/credential';
@@ -14,5 +14,14 @@ export function useCredential(asset: string, lang: string) {
     enabled: Boolean(asset),
     retry: false,
     staleTime: 30_000,
+  });
+}
+
+/** Reads the chain again, past the function's cache, and puts the fresh answer where the page reads it. */
+export function useRecheckCredential(asset: string, lang: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => verifyCredential(asset, lang, { fresh: true }),
+    onSuccess: (lookup) => queryClient.setQueryData(queryKeys.achievements.credential(asset, lang), lookup),
   });
 }

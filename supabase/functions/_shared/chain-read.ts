@@ -55,6 +55,8 @@ export async function readAssets(assets: string[], collections: string[]): Promi
       const collection = asset.updateAuthority.type === 'Collection' ? (asset.updateAuthority.address ?? null) : null;
       found.set(address, {
         address,
+        name: asset.name,
+        uri: asset.uri,
         owner: asset.owner,
         frozen: asset.permanentFreezeDelegate?.frozen === true || asset.freezeDelegate?.frozen === true,
         attributes: (asset.attributes?.attributeList ?? []).map(({ key, value: text }) => ({ key, value: text })),

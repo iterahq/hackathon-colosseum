@@ -1,3 +1,4 @@
+import type { ChainRead } from '@/types/chainRead';
 import type { LearnerAvatar } from '@/types/avatar';
 import type { CircuitShare } from '@/types/circuit';
 /** Public learner profile (`learner-profile` edge function), normalised to camelCase. */
@@ -119,4 +120,4 @@ export interface LearnerProfile {
   capabilities: Capabilities | null;
 }
 
-export type ProfileLookup = { status: 'ok'; profile: LearnerProfile } | { status: 'invalid' };
+export type ProfileLookup = { status: 'ok'; profile: LearnerProfile; read?: ChainRead } | { status: 'invalid' };

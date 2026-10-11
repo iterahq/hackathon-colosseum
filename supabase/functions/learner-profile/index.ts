@@ -15,6 +15,7 @@ import { regenerate } from '../_shared/lives.ts';
 import { PROFILE_ASSET_LIMIT, buildProfile, isVerified, profileAvatars, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
+import { cachedRead, chainVersion, loadCacheRow, wantsFresh } from '../_shared/read-cache.ts';
 
 const COMPANION_COLUMNS = 'id,user_id,asset_address,lives,max_lives,last_regen_at,outfit,avatar,version,mirrored_at';
 const AVATAR_LIMIT = 30;
@@ -36,12 +37,99 @@ async function loadWalletAvatars(db: ReturnType<typeof serviceClient>, wallet: s
 
 const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
 
+/** Everything a wallet earned, with its assets read from the chain now. Throws `RpcError` when the node did not answer. */
+async function build(db: ReturnType<typeof serviceClient>, wallet: string, lang: 'pt' | 'en') {
+  const [walletAvatars, config, achievements, companions, catalogRows] = await Promise.all([
+    loadWalletAvatars(db, wallet),
+    loadConfig(db),
+    // Stamps and completions live inside their certification's asset: they own none.
+    db
+      .from('user_achievements')
+      .select(ROW_COLUMNS)
+      .eq('wallet_address', wallet)
+      .eq('mint_status', 'minted')
+      .not('asset_address', 'is', null)
+      .not('achievement_key', 'in', '(day_stamp,trail_complete)')
+      .order('earned_at')
+      .order('id')
+      .limit(PROFILE_ASSET_LIMIT),
+    db
+      .from('companions')
+      .select(COMPANION_COLUMNS)
+      .eq('wallet_address', wallet)
+      .eq('mint_status', 'minted')
+      .not('asset_address', 'is', null)
+      .order('minted_at')
+      .limit(1),
+    db.from('achievements').select(CATALOG_COLUMNS),
+  ]);
+  if (achievements.error) throw new Error(`user_achievements: ${achievements.error.message}`);
+  if (companions.error) throw new Error(`companions: ${companions.error.message}`);
+  if (catalogRows.error) throw new Error(`achievements: ${catalogRows.error.message}`);
+
+  const companionRow = companions.data?.[0] ?? null;
+  const assets = [
+    ...(achievements.data ?? []).map((row) => row.asset_address as string),
+    ...(companionRow ? [companionRow.asset_address as string] : []),
+    ...(walletAvatars?.rows ?? []).map((row) => row.asset_address as string),
+  ];
+  const collections = [config.collection_passports, config.collection_medals, config.collection_companions, config.collection_avatars].filter(Boolean);
+  const now = new Date();
+  const trailRowIds = ((achievements.data ?? []) as AchievementRow[]).filter((row) => row.achievement_key === 'trail_pass').map((row) => row.id);
+
+  // The chain, the cosmetics, the stats, the circuit, the worn picture and the recorded claims: one wave, nothing waits on the node but the node.
+  const [onchain, rows, stats, avatar, circuit, graphData] = await Promise.all([
+    readAssets(assets, collections),
+    restoreCosmetics(db, (achievements.data ?? []) as AchievementRow[]),
+    companionRow ? loadStats(db, companionRow.user_id, now) : null,
+    companionRow ? avatarBlock(db, companionRow.user_id, companionRow.avatar, lang) : avatarBlock(db, '00000000-0000-0000-0000-000000000000', null, lang).catch(() => fallbackAvatarView(supabaseUrl())),
+    walletCircuit(db, wallet),
+    loadGraphData(db, ITERA_V2_GRAPH.program, trailRowIds),
+  ]);
+  let companion: ProfileCompanion | null = null;
+  if (companionRow && stats) {
+    const lives = regenerate({ lives: companionRow.lives, maxLives: companionRow.max_lives, lastRegenAt: companionRow.last_regen_at }, now);
+    companion = {
+      id: companionRow.id,
+      asset_address: companionRow.asset_address,
+      version: companionRow.version,
+      mirrored_at: companionRow.mirrored_at,
+      stored: { lives: lives.lives, max_lives: companionRow.max_lives, outfit: companionRow.outfit, ...stats },
+    };
+  }
+
+  const profile = buildProfile({
+    wallet,
+    lang,
+    functionsBase: functionsBase(),
+    config,
+    rows,
+    catalog: new Map((catalogRows.data as CatalogEntry[]).map((entry) => [entry.key, entry])),
+    companion,
+    onchain,
+  });
+  // What the wallet can do: lit only by claims read from its own verified assets in this request.
+  const capabilities = buildGraph({
+    graph: ITERA_V2_GRAPH,
+    lang,
+    trails: graphData.trails.map(({ trail, title }) => ({ trail, title: pickText(title, lang) })),
+    proofs: graphProofs({
+      rows,
+      proofs: graphData.proofs,
+      attributesOf: (asset) => onchain.get(asset)?.attributes ?? null,
+      isVerified: (asset) => isVerified(onchain.get(asset), { wallet, collection: config.collection_passports, authority: config.authority }),
+    }),
+    explorer: explorerUrl,
+  });
+  const avatars = walletAvatars ? profileAvatars({ wallet, lang, supabaseUrl: supabaseUrl(), config, catalog: walletAvatars.catalog, rows: walletAvatars.rows, onchain }) : [];
+  return { ...profile, capabilities, avatar, avatars, circuit };
+}
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  const verdict = await takeRate(serviceClient(), 'learner-profile', callerAddress(request), RATE);
-  if (!verdict.allowed) return tooMany(verdict, cors);
   if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
+  const started = Date.now();
 
   try {
     const [wallet, ...rest] = pathAfter(request, 'learner-profile');
@@ -49,109 +137,30 @@ Deno.serve(async (request) => {
     if (!isSolanaAddress(wallet) || (rest.length > 0 && !evidenceOf)) return json({ error: 'invalid_address' }, 400, cors);
 
     const db = serviceClient();
+    const verdict = await takeRate(db, 'learner-profile', callerAddress(request), RATE);
+    if (!verdict.allowed) return tooMany(verdict, cors);
     // The document whose SHA-256 is on the asset: public, so anyone can hash it and compare.
     if (evidenceOf) {
       const evidence = await loadEvidence(db, wallet, evidenceOf);
       if (!evidence) return json({ error: 'not_found' }, 404, cors);
       return json({ wallet, ...evidence, tx_explorer_url: explorerUrl('tx', evidence.tx_signature) }, 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
     }
-    const [walletAvatars, config, achievements, companions, catalogRows] = await Promise.all([
-      loadWalletAvatars(db, wallet),
-      loadConfig(db),
-      // Stamps and completions live inside their certification's asset: they own none.
-      db
-        .from('user_achievements')
-        .select(ROW_COLUMNS)
-        .eq('wallet_address', wallet)
-        .eq('mint_status', 'minted')
-        .not('asset_address', 'is', null)
-        .not('achievement_key', 'in', '(day_stamp,trail_complete)')
-        .order('earned_at')
-        .order('id')
-        .limit(PROFILE_ASSET_LIMIT),
-      db
-        .from('companions')
-        .select(COMPANION_COLUMNS)
-        .eq('wallet_address', wallet)
-        .eq('mint_status', 'minted')
-        .not('asset_address', 'is', null)
-        .order('minted_at')
-        .limit(1),
-      db.from('achievements').select(CATALOG_COLUMNS),
-    ]);
-    if (achievements.error) throw new Error(`user_achievements: ${achievements.error.message}`);
-    if (companions.error) throw new Error(`companions: ${companions.error.message}`);
-    if (catalogRows.error) throw new Error(`achievements: ${catalogRows.error.message}`);
-
-    const companionRow = companions.data?.[0] ?? null;
-    const assets = [
-      ...(achievements.data ?? []).map((row) => row.asset_address as string),
-      ...(companionRow ? [companionRow.asset_address as string] : []),
-      ...(walletAvatars?.rows ?? []).map((row) => row.asset_address as string),
-    ];
-    const collections = [config.collection_passports, config.collection_medals, config.collection_companions, config.collection_avatars].filter(Boolean);
-    const now = new Date();
-
-    let onchain: Map<string, OnchainAsset>;
-    let rows: AchievementRow[];
-    let companion: ProfileCompanion | null = null;
+    const lang = langOf(request, 'pt');
+    const fresh = wantsFresh(request);
+    const key = `learner-profile:${wallet}:${lang}`;
+    const [version, row] = await Promise.all([chainVersion(db, wallet), loadCacheRow(db, key)]);
     try {
-      const [read, restored, stats] = await Promise.all([
-        readAssets(assets, collections),
-        restoreCosmetics(db, (achievements.data ?? []) as AchievementRow[]),
-        companionRow ? loadStats(db, companionRow.user_id, now) : null,
-      ]);
-      onchain = read;
-      rows = restored;
-      if (companionRow && stats) {
-        const lives = regenerate({ lives: companionRow.lives, maxLives: companionRow.max_lives, lastRegenAt: companionRow.last_regen_at }, now);
-        companion = {
-          id: companionRow.id,
-          asset_address: companionRow.asset_address,
-          version: companionRow.version,
-          mirrored_at: companionRow.mirrored_at,
-          stored: { lives: lives.lives, max_lives: companionRow.max_lives, outfit: companionRow.outfit, ...stats },
-        };
-      }
+      const { body, read } = await cachedRead(db, { key, version, fresh, row }, () => build(db, wallet, lang));
+      return json({ ...body, read }, 200, {
+        ...cors,
+        'Cache-Control': fresh ? 'no-store' : 'public, max-age=20',
+        'Server-Timing': `${read.source};dur=${read.ms}, edge;dur=${Date.now() - started}`,
+      });
     } catch (error) {
       if (!(error instanceof RpcError)) throw error;
       console.error('learner-profile rpc failed', error.message);
       return json({ error: 'upstream_unavailable' }, 502, cors);
     }
-
-    const profile = buildProfile({
-      wallet,
-      lang: langOf(request, 'pt'),
-      functionsBase: functionsBase(),
-      config,
-      rows,
-      catalog: new Map((catalogRows.data as CatalogEntry[]).map((entry) => [entry.key, entry])),
-      companion,
-      onchain,
-    });
-    // What this wallet's own purchases sent to the key that pays for stamps (the Circuito).
-    // The picture this learner wears (the default for a wallet with no companion) and the collectibles minted to the wallet.
-    const lang = langOf(request, 'pt');
-    const [avatar, circuit, graphData] = await Promise.all([
-      companionRow ? avatarBlock(db, companionRow.user_id, companionRow.avatar, lang) : avatarBlock(db, '00000000-0000-0000-0000-000000000000', null, lang).catch(() => fallbackAvatarView(supabaseUrl())),
-      walletCircuit(db, wallet),
-      loadGraphData(db, ITERA_V2_GRAPH.program, rows.filter((row) => row.achievement_key === 'trail_pass').map((row) => row.id)),
-    ]);
-    // What the wallet can do: lit only by claims read from its own verified assets in this request.
-    const capabilities = buildGraph({
-      graph: ITERA_V2_GRAPH,
-      lang,
-      trails: graphData.trails.map(({ trail, title }) => ({ trail, title: pickText(title, lang) })),
-      proofs: graphProofs({
-        rows,
-        proofs: graphData.proofs,
-        attributesOf: (asset) => onchain.get(asset)?.attributes ?? null,
-        isVerified: (asset) => isVerified(onchain.get(asset), { wallet, collection: config.collection_passports, authority: config.authority }),
-      }),
-      explorer: explorerUrl,
-    });
-    const avatars = walletAvatars ? profileAvatars({ wallet, lang, supabaseUrl: supabaseUrl(), config, catalog: walletAvatars.catalog, rows: walletAvatars.rows, onchain }) : [];
-    return json({ ...profile, capabilities, avatar, avatars, circuit }, 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
   } catch (error) {
     console.error('learner-profile failed', error);
     return json({ error: 'internal_error' }, 500, cors);

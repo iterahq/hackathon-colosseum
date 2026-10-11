@@ -6,7 +6,8 @@ import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
-import { useLearnerProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
+import { useLearnerProfile, useRecheckProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
+import { ChainReadLine } from '@/components/passport/ChainReadLine';
 import { staticCapabilities } from '@/services/learnerProfile.service';
 import { useI18n } from '@/i18n';
 import { loreOf } from '@/lib/teraLoreSafe';
@@ -29,6 +30,7 @@ export default function LearnerProfilePage() {
   const query = useLearnerProfile(valid ? wallet : '', locale);
   const lookup = query.data;
   const profile = lookup?.status === 'ok' ? lookup.profile : null;
+  const recheck = useRecheckProfile(valid ? wallet : '', locale);
   const graph = useWalletGraph(valid ? wallet : '', locale);
   const loading = valid && query.isPending;
   const capabilities = profile?.capabilities ?? graph.data ?? (valid && lookup?.status !== 'invalid' ? staticCapabilities(locale) : null);
@@ -80,6 +82,7 @@ export default function LearnerProfilePage() {
                     <p className="mt-1 [font:500_13px_Inter] text-[#C9BFB0]" data-testid="profile-avatar-name">{loreOf(profile.avatar.key, locale)?.name} · {loreOf(profile.avatar.key, locale)?.epithet}</p>
                   )}
                   <p className="mt-1 [font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
+                  <ChainReadLine read={lookup?.status === 'ok' ? lookup.read : undefined} ms={0} onRecheck={() => recheck.mutate()} rechecking={recheck.isPending} className="mt-1" />
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">

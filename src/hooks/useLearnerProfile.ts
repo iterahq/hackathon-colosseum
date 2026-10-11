@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { getClaimEvidence, getLearnerProfile, getWalletGraph } from '@/services/learnerProfile.service';
 
@@ -32,5 +32,14 @@ export function useWalletGraph(wallet: string, lang: 'pt' | 'en') {
     enabled: Boolean(wallet),
     retry: false,
     staleTime: 30_000,
+  });
+}
+
+/** Reads the chain again, past the function's cache, and puts the fresh profile where the page reads it. */
+export function useRecheckProfile(wallet: string, lang: 'pt' | 'en') {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => getLearnerProfile(wallet, lang, { fresh: true }),
+    onSuccess: (lookup) => queryClient.setQueryData(queryKeys.achievements.profile(wallet, lang), lookup),
   });
 }
