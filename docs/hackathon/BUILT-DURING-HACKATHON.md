@@ -172,6 +172,7 @@ Merged after this table was written: see `gh pr list --state merged`. Nothing is
 - `0191_progress_completion_server_only.sql`
 - `0192_record_graded_attempt.sql`
 - `0200_bounties.sql`
+- `0201_bounty_escrow_program.sql`
 - `0210_rate_hits.sql`
 
 ## Hackathon edge functions (`supabase/functions/`, 26 functions plus `_shared/`)
