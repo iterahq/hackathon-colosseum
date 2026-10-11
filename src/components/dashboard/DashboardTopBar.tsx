@@ -4,6 +4,7 @@ import { CrystalChip } from '@/components/crystals/CrystalChip';
 import { HeaderHud } from '@/components/header/HeaderHud';
 import { HeaderIdentity } from '@/components/header/HeaderIdentity';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
+import { HeaderLocaleCompact } from '@/components/header/HeaderLocaleCompact';
 import { HeaderNav } from '@/components/header/HeaderNav';
 import { HeaderSearch } from '@/components/header/HeaderSearch';
 import { HeaderTabBar } from '@/components/header/HeaderTabBar';
@@ -48,12 +49,11 @@ export function DashboardTopBar(_props: Props) {
           </div>
           <div className="flex min-w-0 flex-1 justify-end">
             {/* From 1440 px the field sits on the middle of the page, not of the free space between the two groups. */}
-            <HeaderSearch className="min-[1440px]:absolute min-[1440px]:left-[calc(50%-120px)] min-[1440px]:top-3 min-[1440px]:w-[240px]" />
+            <HeaderSearch className="max-sm:hidden min-[1440px]:absolute min-[1440px]:left-[calc(50%-120px)] min-[1440px]:top-3 min-[1440px]:w-[240px]" />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <div className="hidden sm:block">
-              <HeaderLocale />
-            </div>
+            <HeaderLocale className="max-sm:hidden" />
+            <HeaderLocaleCompact className="sm:hidden" />
             <HeaderHud />
             <CrystalChip />
             <HeaderIdentity />

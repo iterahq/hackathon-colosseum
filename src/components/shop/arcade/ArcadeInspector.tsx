@@ -12,6 +12,7 @@ import { ShopUnlockLine } from '../ShopUnlockLine';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_TEXT, CARD, FOCUS, MONO_LABEL, RARITY_EDGE } from '../shopStyles';
 import { TryOnStage } from '../TryOnStage';
 import { ArcadeArt } from './ArcadeTile';
+import { localizePriceLabel } from '@/utils/shopPrice';
 
 const TRYABLE: readonly ShopItem['kind'][] = ['avatar', 'outfit', 'ink', 'frame'];
 const TOGGLE = `min-h-9 flex-1 rounded-[8px] px-3 [font:700_12px_JetBrains_Mono] uppercase tracking-[.06em] ${FOCUS}`;
@@ -28,8 +29,8 @@ interface Props {
   claimFailed: boolean;
 }
 
-function Action({ item, action, testId, labels, className = '' }: { item: ShopItem; action: ItemAction; testId: string; labels: 'full' | 'short'; className?: string }) {
-  if (action.id === 'buy') return <PayButtons item={item} action={action} testId={testId} labels={labels} walletLabel={labels === 'full' ? action.label : shortPrice(item.priceLabel)} stack className={className} keyClass={labels === 'full' ? '!min-h-12 !px-3 ![font:700_14px_Inter]' : '!min-h-9 !px-2 ![font:700_12px_Inter]'} />;
+function Action({ item, action, testId, labels, locale, className = '' }: { item: ShopItem; action: ItemAction; testId: string; labels: 'full' | 'short'; locale: string; className?: string }) {
+  if (action.id === 'buy') return <PayButtons item={item} action={action} testId={testId} labels={labels} walletLabel={labels === 'full' ? action.label : localizePriceLabel(shortPrice(item.priceLabel), locale)} stack className={className} keyClass={labels === 'full' ? '!min-h-12 !px-3 ![font:700_14px_Inter]' : '!min-h-11 !px-2 ![font:700_12px_Inter]'} />;
   return (
     <button type="button" disabled={action.disabled} onClick={action.run} data-testid={testId} data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${labels === 'full' ? 'w-full' : '!min-h-11 !px-4 ![font:700_13px_Inter]'} ${className}`}>
       {action.label}
@@ -117,7 +118,7 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
           {full && <p className="[font:600_13px/1.3_Inter] text-[#3FD17F]" data-testid="shop-lives-full-reason">{t('shop.lives.fullReason')}</p>}
         </div>
         <div className="flex flex-none flex-col gap-1 border-t border-[#262320] p-4">
-          <Action item={item} action={action} testId="inspector-action" labels="full" />
+          <Action item={item} action={action} testId="inspector-action" labels="full" locale={locale} />
           {tryable && (
             <button type="button" onClick={() => actions.tryOn(item)} className={`${BTN_TEXT} self-center`} data-testid="inspector-details">
               {t('arcade.details')}
@@ -137,11 +138,11 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
             <span className="flex min-w-0 flex-col">
               <span className="truncate [font:700_18px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{title}</span>
               <span className={`${MONO_LABEL} truncate !text-[10px]`} style={{ color: offer && !offer.free ? edge : '#A0978A' }}>
-                {offer && !offer.free ? `${offer.tierName} · ${offer.supply.max == null ? t('shop.avatar.unlimited') : `${offer.supply.minted}/${offer.supply.max}`}` : tryable ? t('arcade.details') : full ? t('shop.lives.fullReason') : shortPrice(item.priceLabel)}
+                {offer && !offer.free ? `${offer.tierName} · ${offer.supply.max == null ? t('shop.avatar.unlimited') : `${offer.supply.minted}/${offer.supply.max}`}` : tryable ? t('arcade.details') : full ? t('shop.lives.fullReason') : localizePriceLabel(shortPrice(item.priceLabel), locale)}
               </span>
             </span>
           </button>
-          <Action item={item} action={itemAction(item, actions, t, { buyDisabled })} testId="dock-action" labels="short" className="!w-[148px] flex-none !flex-col" />
+          <Action item={item} action={itemAction(item, actions, t, { buyDisabled })} testId="dock-action" labels="short" locale={locale} className="!w-[148px] flex-none !flex-col" />
         </div>
       </div>
     </>

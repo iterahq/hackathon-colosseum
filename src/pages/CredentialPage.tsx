@@ -6,6 +6,7 @@ import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CredentialCard } from '@/components/passport/CredentialCard';
 import { PassportArt } from '@/components/passport/PassportArt';
 import { useCredential } from '@/hooks/useCredential';
+import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useI18n } from '@/i18n';
 import { companionFacts, credentialFacts, isCompanion, looksLikeAddress } from '@/utils/credential';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
@@ -60,7 +61,7 @@ function CompanionImage({ src, lang, title, asset }: { src: string | null; lang:
 /** Public, shell-less page: anyone can check a passport asset against the chain. */
 export default function CredentialPage() {
   const { asset = '' } = useParams();
-  const { t, tText, locale, toggleLocale } = useI18n();
+  const { t, tText, locale } = useI18n();
   const query = useCredential(asset, locale);
   const lookup = query.data;
   const found = lookup && lookup.status !== 'not_found' ? lookup : null;
@@ -73,9 +74,7 @@ export default function CredentialPage() {
         <Link to="/" className="[font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
           ITERA<span className="text-[#3FD17F]">/</span>
         </Link>
-        <button type="button" onClick={toggleLocale} className="inline-flex h-11 items-center rounded-full border border-[#262320] px-3.5 [font:500_13px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
-          {t('dash.nav.language')}
-        </button>
+        <HeaderLocale size="lg" />
       </header>
       <main className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-6 px-4 pb-14 pt-4 sm:pt-8">
         {query.isPending && <TeraLoader size="md" label={t('passport.credential.loading')} data-testid="credential-loading" />}

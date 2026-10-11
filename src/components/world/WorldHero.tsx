@@ -1,18 +1,17 @@
 import { Link } from 'react-router-dom';
+import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useI18n } from '@/i18n';
 import { WORLD_LORE } from '@/content/teraLore';
 import { FOCUS, LABEL } from './worldStyles';
 
 export function WorldHero() {
-  const { t, locale, toggleLocale } = useI18n();
+  const { t, locale } = useI18n();
   const world = WORLD_LORE(locale);
   return (
     <header className="flex flex-col gap-8" data-testid="world-hero">
       <div className="flex items-center justify-between gap-3">
         <Link to="/" className={`${LABEL} rounded text-[#A0978A] hover:text-[#F4EDE2] ${FOCUS}`}>{t('world.back')}</Link>
-        <button type="button" onClick={toggleLocale} className={`${LABEL} min-h-11 rounded-full border border-[#2E2A25] px-4 text-[#C9BFB0] hover:border-[#5E574E] ${FOCUS}`}>
-          {t('locale.switch')}
-        </button>
+        <HeaderLocale size="lg" />
       </div>
       <div className="flex flex-col-reverse items-start gap-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-col gap-4">

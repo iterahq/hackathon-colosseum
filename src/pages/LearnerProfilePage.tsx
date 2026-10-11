@@ -5,6 +5,7 @@ import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, N
 import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
+import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useLearnerProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
 import { staticCapabilities } from '@/services/learnerProfile.service';
 import { useI18n } from '@/i18n';
@@ -23,7 +24,7 @@ const H2 = "[font:700_28px_'Barlow_Condensed']";
 /** Public, shell-less page: everything a wallet earned on Itera, each item linking to its own /c/:asset. */
 export default function LearnerProfilePage() {
   const { wallet = '' } = useParams();
-  const { t, locale, toggleLocale } = useI18n();
+  const { t, locale } = useI18n();
   const valid = looksLikeAddress(wallet);
   const query = useLearnerProfile(valid ? wallet : '', locale);
   const lookup = query.data;
@@ -39,9 +40,7 @@ export default function LearnerProfilePage() {
         <Link to="/" className={`[font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2] ${FOCUS}`}>
           ITERA<span className="text-[#3FD17F]">/</span>
         </Link>
-        <button type="button" onClick={toggleLocale} className={`inline-flex h-11 items-center rounded-full border border-[#262320] px-3.5 [font:500_13px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] ${FOCUS}`}>
-          {t('dash.nav.language')}
-        </button>
+        <HeaderLocale size="lg" />
       </header>
       <main className="mx-auto flex w-full max-w-[1180px] flex-col gap-8 px-4 pb-14 pt-4 sm:pt-8">
         {loading && (

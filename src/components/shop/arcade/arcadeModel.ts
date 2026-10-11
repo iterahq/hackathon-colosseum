@@ -1,3 +1,4 @@
+import { localizePriceLabel } from '@/utils/shopPrice';
 import type { ShopItem } from '@/types/shop';
 import { avatarState } from '@/utils/avatarShop';
 import { featuredOf, isOffSeason, rowsOf, shortPrice } from '../avatarRows';
@@ -78,7 +79,7 @@ export function compactCount(n: number): string {
 export type TileTone = 'price' | 'mine' | 'equipped' | 'free' | 'muted';
 
 /** The one short line under a tile: what it costs or what it already is. */
-export function tileLine(item: ShopItem, t: Translate): { text: string; tone: TileTone; crystal: boolean } {
+export function tileLine(item: ShopItem, t: Translate, locale = 'en'): { text: string; tone: TileTone; crystal: boolean } {
   const plain = (text: string, tone: TileTone) => ({ text, tone, crystal: false });
   if (item.kind === 'avatar') {
     const state = avatarState(item);
@@ -94,7 +95,7 @@ export function tileLine(item: ShopItem, t: Translate): { text: string; tone: Ti
     if (item.unlock?.unlocked) return plain(t('shop.claim'), 'free');
   }
   if (crystalsEnabled(item)) return { text: compactCount(item.priceCrystals ?? 0), tone: 'price', crystal: true };
-  return plain(shortPrice(item.priceLabel).replace(/\.00$/, ''), 'price');
+  return plain(localizePriceLabel(shortPrice(item.priceLabel).replace(/\.00$/, ''), locale), 'price');
 }
 
 /** What a shelf opens on: the rarest avatar still on sale, else the first thing that can be bought, else the first. */

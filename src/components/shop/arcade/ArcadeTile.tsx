@@ -53,7 +53,7 @@ interface Props {
 export function ArcadeTile({ item, selected, avatar, lives, onSelect, className = '' }: Props) {
   const { t, locale } = useI18n();
   const from = item.forSale === false && !item.owned && item.includedWith ? loreOf(item.includedWith, locale)?.name : null;
-  const line = from ? { text: from, tone: 'muted' as const, crystal: false } : tileLine(item, t);
+  const line = from ? { text: from, tone: 'muted' as const, crystal: false } : tileLine(item, t, locale);
   const name = (item.avatar ? loreOf(item.key, locale)?.name : null) ?? item.title;
   const edge = item.avatar && !item.avatar.free ? RARITY_EDGE[item.avatar.rarity] : '#2E2A25';
   const dim = item.kind === 'avatar' && (avatarState(item) === 'soldout' || isOffSeason(item));
