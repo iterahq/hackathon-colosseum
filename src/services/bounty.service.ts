@@ -1,4 +1,5 @@
 /** Bounties: the public board (`bounty-board`), the learner's side (`bounty-claim`) and the sponsor console (`bounty-sponsor`). */
+import { parseSignOffer, signOffer } from '@/services/bountySign';
 import { callShop } from '@/services/shopTransport';
 import type {
   ApproveResult,
@@ -119,6 +120,7 @@ function toEvent(r: Row): LedgerEvent {
     lamports: int(r.lamports),
     sol: text(r.sol),
     signature: text(r.signature),
+    signedBy: text(r.signed_by),
     explorerUrl: text(r.explorer_url),
     at: text(r.at),
   };
@@ -232,8 +234,20 @@ export async function getMyBountyStatus(bounty: string): Promise<MyBountyStatus>
   return parseMyStatus((await claimCall('status', bounty)).data);
 }
 
+/**
+ * One step the learner's own wallet signs: the backend answers the transaction (`*_prepare`), the wallet
+ * signs it (it pays nothing: the fee payer is Itera's treasury), and the backend sends it (`*_submit`).
+ * A bounty with nothing on chain to sign (`sign: null`) goes straight to the second call.
+ */
+async function signedStep(step: 'accept' | 'withdraw', bounty: string): Promise<void> {
+  const prepared = (await claimCall(`${step}_prepare`, bounty)).data as { sign?: unknown } | null;
+  const offer = parseSignOffer(prepared?.sign);
+  if (prepared?.sign && !offer) throw new Error('bounty-claim: unreadable transaction');
+  await claimCall(`${step}_submit`, bounty, offer ? { ...(await signOffer(offer)) } : {});
+}
+
 export async function acceptBounty(bounty: string): Promise<void> {
-  await claimCall('accept', bounty);
+  await signedStep('accept', bounty);
 }
 
 export async function submitBounty(bounty: string, submissionUrl: string, note: string): Promise<void> {
@@ -241,7 +255,7 @@ export async function submitBounty(bounty: string, submissionUrl: string, note: 
 }
 
 export async function withdrawBounty(bounty: string): Promise<void> {
-  await claimCall('withdraw', bounty);
+  await signedStep('withdraw', bounty);
 }
 
 const sponsorCall = (body: Record<string, unknown>) => callShop('bounty-sponsor', { body });
