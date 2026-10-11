@@ -334,8 +334,8 @@ never taken back. Operator rows (service role, psql seeding) are trusted as befo
 **Proof on the live project:** `node scripts/hackathon/proof-attacks.mjs` (forged writes and forged
 claims stamp nothing; one real day is stamped and minted with its share on chain) and
 `node scripts/hackathon/proof-browser.mjs` (the player on the live site sends answers to `grade` and
-writes no completion). Section C of `security-attacks.mjs` describes the build before this change: its
-"honest day" writes progress from the client and is now refused.
+writes no completion). `node scripts/hackathon/security-attacks.mjs c`
+runs the attacks of the original review (finding 1) and shows each one refused.
 
 **What mainnet would still require:** answer keys that never reach the browser (the verdict would wait
 for the server); server-side execution for the exercises that need a browser; proctoring or an oral
