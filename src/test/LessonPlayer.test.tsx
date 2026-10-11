@@ -81,6 +81,18 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
   isSupabaseConfigured: true,
 }));
+// The server records the completion (`grade` edge function); here it agrees with the player.
+vi.mock('@/services/grade.service', () => ({
+  submitForGrading: vi.fn(async ({ passed }: { passed: boolean }) => ({
+    verdict: passed ? 'pass' : 'fail',
+    mode: 'server',
+    attempt_id: 'attempt-1',
+    answer_hash: 'hash',
+    graded_at: '2026-10-11T00:00:00Z',
+  })),
+}));
+// The completion card shows the learner's own Tera, which reads the session. No AuthProvider is mounted here.
+vi.mock('@/components/avatar/LearnerMascot', () => ({ LearnerMascot: () => null }));
 vi.mock('@/services/iteraUser', () => ({ getIteraUserId: vi.fn().mockResolvedValue('itera-user-1') }));
 vi.mock('@/services/gamification.service', () => ({ awardActivityXp: vi.fn().mockResolvedValue(undefined) }));
 

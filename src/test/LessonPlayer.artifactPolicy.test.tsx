@@ -79,6 +79,8 @@ vi.mock('@/services/progress.service', () => ({
   resumeIndexFor: () => 0,
 }));
 
+// The completion card shows the learner's own Tera, which reads the session. No AuthProvider is mounted here.
+vi.mock('@/components/avatar/LearnerMascot', () => ({ LearnerMascot: () => null }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
 
 function activity(over: Partial<Activity> = {}): Activity {
