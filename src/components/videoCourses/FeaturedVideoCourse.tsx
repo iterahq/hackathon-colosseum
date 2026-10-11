@@ -11,7 +11,7 @@ const CTA = `mt-2 inline-flex h-[60px] w-full items-center justify-center rounde
 
 /** Hero of the Courses page: the course in progress, else the first one. */
 export function FeaturedVideoCourse({ course, progress }: { course: VideoCourse; progress: ReadonlyMap<string, number> }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const color = courseColor(course.slug);
   const stats = courseStats(course, progress);
   const style = { background: '#3FD17F', color: '#0A0908', borderBottomColor: '#1F8A4F' };
@@ -36,7 +36,7 @@ export function FeaturedVideoCourse({ course, progress }: { course: VideoCourse;
           </Link>
         </div>
         <Link to={`/course/${course.slug}`} tabIndex={-1} aria-hidden className="block overflow-hidden rounded-xl border-2 border-b-[6px]" style={{ borderColor: color.cd }}>
-          <CourseThumb title={course.title} slug={course.slug} src={courseThumbnail(course)} play />
+          <CourseThumb note={locale === 'en' ? t('video.language.pt') : undefined} title={course.title} slug={course.slug} src={courseThumbnail(course)} play />
         </Link>
       </div>
     </section>

@@ -1,43 +1,92 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
 import { useI18n } from '@/i18n';
+import { getSupabase } from '@/lib/supabase/client';
 import {
+  NICKNAME_ASKED_FLAG,
+  generatedNameIn,
+  isWalletUser,
   readNicknameSkipped,
   rememberNicknameSkipped,
   shouldShowNicknameGate,
+  wasNicknameAsked,
 } from '@/utils/nicknameGate';
 import { NicknameForm } from './NicknameForm';
 
-const EXCLUDED_PREFIXES = ['/c/', '/login', '/signup', '/auth/', '/g/', '/lesson/', '/live/'];
+const EXCLUDED_PREFIXES = ['/c/', '/login', '/signup', '/auth/', '/g/', '/lesson/', '/live/', '/try'];
 const HAPPY_HOLD_MS = 700;
+const OTHER_DIALOG = '[role="dialog"]:not([data-nickname-gate]), [role="alertdialog"]';
+const FOCUSABLE = 'input, button, [href], [tabindex]:not([tabindex="-1"])';
+
+/** Whether some other dialog is on screen: the question waits for it instead of covering it. */
+function useOtherDialogOpen(watch: boolean): boolean {
+  const [, recheck] = useState(0);
+  useEffect(() => {
+    if (!watch) return;
+    const observer = new MutationObserver(() => recheck((n) => n + 1));
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [watch]);
+  // Read at render, not from state: the first render that is due must already see a dialog that is up.
+  return watch && document.querySelector(OTHER_DIALOG) !== null;
+}
 
 /**
- * One-time "what should we call you?" step for wallet users whose display name is
- * still a shortened address. Never blocks: a failed profile read renders nothing,
- * a failed save keeps the form and toasts.
+ * "What should we call you?" for a wallet learner whose name was generated. Asked
+ * ONCE per account: the moment it shows, the account is marked as asked, so a
+ * reload, another browser or "Skip for now" never bring it back. A modal dialog
+ * that waits for any other dialog and never blocks: a failed profile read renders
+ * nothing, a failed save keeps the form and toasts.
  */
 export function NicknameGate() {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const profile = useProfile();
   const update = useUpdateProfile();
+  const [opened, setOpened] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [happy, setHappy] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
 
   const excluded = EXCLUDED_PREFIXES.some((p) => pathname === p.replace(/\/$/, '') || pathname.startsWith(p));
-  const show =
-    !dismissed &&
+  const due =
     !excluded &&
     shouldShowNicknameGate({
       user,
       profile: profile.data,
-      skipped: readNicknameSkipped(user?.id),
+      skipped: readNicknameSkipped(user?.id) || wasNicknameAsked(user),
     });
+  const otherDialog = useOtherDialogOpen(due && !opened);
+  const userId = user?.id;
+
+  // Asked once: marked on the account when the question goes up, not when it is answered.
+  useEffect(() => {
+    if (!due || otherDialog || opened || !userId) return;
+    setOpened(true);
+    rememberNicknameSkipped(userId);
+    void getSupabase()
+      .auth.updateUser({ data: { [NICKNAME_ASKED_FLAG]: true } })
+      .catch(() => undefined);
+  }, [due, otherDialog, opened, userId]);
+
+  // A generated name follows the language of the account ("Tera Ousado 477" / "Tera Bold 477").
+  const displayName = profile.data?.displayName;
+  const renamed = useRef<string | null>(null);
+  const mutate = update.mutate;
+  useEffect(() => {
+    if (!isWalletUser(user)) return;
+    const localized = generatedNameIn(displayName, locale === 'en' ? 'en' : 'pt');
+    if (!localized || renamed.current === localized) return;
+    renamed.current = localized;
+    mutate({ displayName: localized });
+  }, [user, displayName, locale, mutate]);
+
+  const show = opened && !dismissed && !excluded && Boolean(user);
   useEffect(() => {
     if (!show) return;
     const overflow = document.body.style.overflow;
@@ -46,10 +95,9 @@ export function NicknameGate() {
       document.body.style.overflow = overflow;
     };
   }, [show]);
-  if (!show || !user) return null;
+  if (!show) return null;
 
   function handleSkip() {
-    rememberNicknameSkipped(user!.id);
     setDismissed(true);
   }
 
@@ -67,12 +115,39 @@ export function NicknameGate() {
     );
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      handleSkip();
+      return;
+    }
+    if (event.key !== 'Tab' || !panel.current) return;
+    const stops = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.hasAttribute('disabled'));
+    if (stops.length === 0) return;
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const inside = panel.current.contains(document.activeElement);
+    if (event.shiftKey && (!inside || document.activeElement === first)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (!inside || document.activeElement === last)) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
-    <div
-      data-testid="nickname-gate"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0A0908] bg-[linear-gradient(#15130F_1px,transparent_1px),linear-gradient(90deg,#15130F_1px,transparent_1px)] bg-[length:26px_26px]"
-    >
-      <NicknameForm saving={update.isPending} happy={happy} onSubmit={handleSubmit} onSkip={handleSkip} />
+    <div data-testid="nickname-gate" className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-[#0A0908]/85 p-4 backdrop-blur-sm" onKeyDown={handleKeyDown}>
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nickname-gate-title"
+        data-nickname-gate
+        className="w-full max-w-[460px] rounded-3xl border border-[#262320] bg-[#0F0D0B] py-8 shadow-2xl"
+      >
+        <NicknameForm saving={update.isPending} happy={happy} onSubmit={handleSubmit} onSkip={handleSkip} />
+      </div>
     </div>
   );
 }

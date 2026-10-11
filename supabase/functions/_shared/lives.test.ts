@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  LESSON_MISS_CAP,
   MAX_LIVES,
   REGEN_INTERVAL_SECONDS,
   applyLifePack,
@@ -12,6 +13,8 @@ import {
   lifePackOf,
   livesView,
   loseLife,
+  missAttemptId,
+  missCharge,
   refillLives,
   regenerate,
   type LivesState,
@@ -209,5 +212,26 @@ describe('life packs', () => {
     const once = applyLifePack(state(4), { unlimitedDays: 30 }, T0);
     const twice = applyLifePack(once, { unlimitedDays: 30 }, after(3600));
     expect(twice.unlimitedUntil).toBe('2026-12-08T15:00:00.000Z');
+  });
+});
+
+describe('missCharge', () => {
+  it('charges the first miss of an activity in a day', () => {
+    expect(missCharge({ chargedForActivityToday: false, lessonLossesToday: 0 })).toBe('charged');
+    expect(missCharge({ chargedForActivityToday: false, lessonLossesToday: LESSON_MISS_CAP - 1 })).toBe('charged');
+  });
+
+  it('charges an activity once a day, however many misses', () => {
+    expect(missCharge({ chargedForActivityToday: true, lessonLossesToday: 1 })).toBe('already_charged');
+  });
+
+  it('stops at the cap of the lesson', () => {
+    expect(missCharge({ chargedForActivityToday: false, lessonLossesToday: LESSON_MISS_CAP })).toBe('lesson_cap');
+  });
+
+  it('keys the charge by activity and local day', () => {
+    const late = new Date('2026-10-10T02:30:00.000Z');
+    expect(missAttemptId('ABC', late, ZONE)).toBe('miss:abc:2026-10-09');
+    expect(missAttemptId('abc', new Date('2026-10-10T03:30:00.000Z'), ZONE)).toBe('miss:abc:2026-10-10');
   });
 });

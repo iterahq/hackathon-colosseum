@@ -5,6 +5,7 @@ import { seedCodeSource } from './codeSource.js';
 import { codeDraftKey } from './draftKey.js';
 import type { UseCodeSnackCallbacks } from './types.js';
 import { useCodeAttempts } from './useCodeAttempts.js';
+import { useHostVerdictRecorder } from '../components/hostLessonRules.js';
 import { useCodeChecks } from './useCodeChecks.js';
 import { useCodeLiveBuffer } from './useCodeLiveBuffer.js';
 import { usePagehideFlush } from '../internal/usePagehideFlush.js';
@@ -164,6 +165,7 @@ export function useCodeSnack(
    */
   const chargedRef = useRef(false);
   const cue = useActivitySound();
+  const recordVerdict = useHostVerdictRecorder();
   useEffect(() => {
     if (phase === 'editing' || phase === 'submitting') {
       chargedRef.current = false;
@@ -174,7 +176,8 @@ export function useCodeSnack(
     chargedRef.current = true;
     cue('wrong');
     attempts.spend();
-  }, [phase, results, allPassed, timedOut, attempts, cue]);
+    recordVerdict?.(false, { response: code });
+  }, [phase, results, allPassed, timedOut, attempts, cue, recordVerdict, code]);
 
   /** Envio bloqueado no orçamento zerado, e não só escondido no componente. */
   const submit = useCallback(() => {

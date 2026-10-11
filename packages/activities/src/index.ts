@@ -297,6 +297,15 @@ export { ActivityShell, DoneButton, KindBadge, SubmitButton } from './components
 export { TACTILE_CTA, TACTILE_SECONDARY } from './components/tactile.js';
 export { HostOwnsSettledAction, useHostOwnsSettledAction } from './components/settledAction.js';
 export { HostExplainsMisses, useHostExplainsMisses } from './components/explainedMiss.js';
+export {
+  HostHidesAnswerOnMiss,
+  HostRecordsVerdict,
+  HostUnlimitedAttempts,
+  useHostHidesAnswerOnMiss,
+  useHostUnlimitedAttempts,
+  useHostVerdictRecorder,
+  type VerdictRecorder,
+} from './components/hostLessonRules.js';
 // Tera, the mascot: the one component that draws him, and the mention rule a
 // host's own dispatcher wraps its kinds in so the shell knows to show him.
 export { TeraAvatar } from './components/TeraAvatar.js';

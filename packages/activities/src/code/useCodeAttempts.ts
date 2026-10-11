@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useActivityStorage } from '../context.js';
+import { useHostUnlimitedAttempts } from '../components/hostLessonRules.js';
 import {
   attemptBudget,
   codeAttemptsKey,
@@ -30,6 +31,7 @@ export interface CodeAttempts extends AttemptBudget {
 
 export function useCodeAttempts(activityId: string): CodeAttempts {
   const storage = useActivityStorage();
+  const unlimited = useHostUnlimitedAttempts();
   // Pelo ref, e não pelas deps, pelo mesmo motivo de `useCodeSnack`: um host que
   // reconstrói o adapter a cada render re-leria o disco no meio do exercício.
   const storageRef = useRef(storage);
@@ -54,11 +56,14 @@ export function useCodeAttempts(activityId: string): CodeAttempts {
   }, [activityId]);
 
   const spend = useCallback(() => {
+    if (unlimited) return;
     const next = spendAttempt(spentRef.current);
     spentRef.current = next;
     storageRef.current.write(codeAttemptsKey(activityId), serializeSpentAttempts(next));
     setSpent(next);
-  }, [activityId]);
+  }, [activityId, unlimited]);
 
+  // No budget in this host: nothing is counted and nothing is ever exhausted.
+  if (unlimited) return { ...attemptBudget(0), spend };
   return { ...attemptBudget(spent), spend };
 }

@@ -31,7 +31,7 @@ describe('inspect — keyboard path', () => {
     }
   });
 
-  it('Enter and Space discover a piece; Space does not scroll the page', () => {
+  it('Enter and Space pair a piece with its line; Space does not scroll the page', () => {
     const onComplete = vi.fn();
     render(
       <I18nProvider>
@@ -39,16 +39,45 @@ describe('inspect — keyboard path', () => {
       </I18nProvider>,
     );
     const pageTargets = screen.getAllByTestId('inspect-page-target');
+    const codeTargets = screen.getAllByTestId('inspect-code-target');
+    const found = () => screen.getByTestId('inspect-chips').getAttribute('data-found');
     expect(fireEvent.keyDown(pageTargets[0], { key: ' ' })).toBe(false);
-    expect(screen.getByTestId('inspect-chips').getAttribute('data-found')).toBe('1');
+    expect(pageTargets[0].getAttribute('data-picked')).toBe('true');
+    expect(found()).toBe('0');
+    fireEvent.keyDown(codeTargets[0], { key: 'Enter' });
+    expect(found()).toBe('1');
+    fireEvent.keyDown(pageTargets[1], { key: 'a' });
+    expect(found()).toBe('1');
     expect(onComplete).not.toHaveBeenCalled();
-    fireEvent.keyDown(screen.getAllByTestId('inspect-code-target')[1], { key: 'Enter' });
-    expect(screen.getByTestId('inspect-chips').getAttribute('data-found')).toBe('2');
-    fireEvent.keyDown(pageTargets[0], { key: 'a' });
-    expect(screen.getByTestId('inspect-chips').getAttribute('data-found')).toBe('2');
-    for (const target of pageTargets) fireEvent.keyDown(target, { key: 'Enter' });
+    pageTargets.forEach((target, index) => {
+      fireEvent.keyDown(target, { key: 'Enter' });
+      fireEvent.keyDown(codeTargets[index], { key: 'Enter' });
+    });
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0][0]).toBe(true);
+  });
+
+  it('does not discover a piece through the line of another one, nor by hovering', () => {
+    const onComplete = vi.fn();
+    render(
+      <I18nProvider>
+        <InspectActivity activity={makeActivity('inspect', INSPECT_SPEC)} onComplete={onComplete} />
+      </I18nProvider>,
+    );
+    const pageTargets = screen.getAllByTestId('inspect-page-target');
+    const codeTargets = screen.getAllByTestId('inspect-code-target');
+    const found = () => screen.getByTestId('inspect-chips').getAttribute('data-found');
+    for (const target of [...pageTargets, ...codeTargets]) fireEvent.pointerEnter(target);
+    expect(found()).toBe('0');
+    fireEvent.pointerDown(codeTargets[0]);
+    expect(screen.getByTestId('inspect-status').getAttribute('data-state')).toBe('needs-piece');
+    fireEvent.pointerDown(pageTargets[1]);
+    fireEvent.pointerDown(codeTargets[0]);
+    expect(found()).toBe('0');
+    expect(codeTargets[0].getAttribute('data-wrong')).toBe('true');
+    fireEvent.pointerDown(codeTargets[1]);
+    expect(found()).toBe('1');
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });
 

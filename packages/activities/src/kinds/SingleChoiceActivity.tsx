@@ -18,6 +18,7 @@
 import { useRef, useState } from 'react';
 import { ListChecks } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
 import type { ChoiceOption, SingleChoiceSpec } from '../specs.js';
 import { learnerOptionOrder } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -67,6 +68,7 @@ export function SingleChoiceActivity({
   priorAnswer?: ActivityCompletion;
 }) {
   const { t, locale } = useActivityI18n();
+  const hidesAnswerOnMiss = useHostHidesAnswerOnMiss();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -105,6 +107,8 @@ export function SingleChoiceActivity({
     correct: isCorrect,
     hasAnswer: selected !== null,
   });
+  // A miss in a host that keeps the key: mark the pick, not the answer. The instructor's reveal still shows it.
+  const hidesKey = hidesAnswerOnMiss && !reveal && m.gradeResult === false;
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída" step). Grade off the CURRENT selection — the
@@ -123,7 +127,7 @@ export function SingleChoiceActivity({
       // here, which is the difference between "got it right" and "got it right
       // after changing their mind twice".
       actions: trace.drain(),
-      explanation: answerExplanationText(activity.spec, locale, isCorrect),
+      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isCorrect),
     });
   }
 
@@ -159,6 +163,7 @@ export function SingleChoiceActivity({
             shown: m.shown,
             chosen,
             isCorrectOption: o.id === spec?.correct_option_id,
+            hideKey: hidesKey,
           });
           return (
             <ChoiceOptionCard

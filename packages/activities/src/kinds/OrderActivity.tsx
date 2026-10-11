@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { Reorder } from 'framer-motion';
 import { ListOrdered } from 'lucide-react';
 import { useActivityI18n, useActivitySound } from '../context.js';
+import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
 import type { ChoiceOption, OrderSpec } from '../specs.js';
 import { learnerShuffleAvoidingSolution } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -52,6 +53,7 @@ export function OrderActivity({
   priorAnswer?: ActivityCompletion;
 }) {
   const { t, locale } = useActivityI18n();
+  const hidesAnswerOnMiss = useHostHidesAnswerOnMiss();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -145,7 +147,7 @@ export function OrderActivity({
     onComplete(isOrderCorrect, {
       response: sequence,
       actions: trace.drain(),
-      explanation: answerExplanationText(activity.spec, locale, isOrderCorrect),
+      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isOrderCorrect),
     });
   }
 

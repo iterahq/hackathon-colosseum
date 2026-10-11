@@ -13,6 +13,7 @@ import {
 } from './guidedCode.js';
 import { buildWordBank, restoreGuidedValues, spentBankCounts } from './wordBank.js';
 import { useCodeAttempts } from '../useCodeAttempts.js';
+import { useHostVerdictRecorder } from '../../components/hostLessonRules.js';
 import { usePagehideFlush } from '../../internal/usePagehideFlush.js';
 
 /**
@@ -190,15 +191,18 @@ export function useGuidedCode(
    * unclicked. Whoever wires a new affordance later inherits the rule for free.
    */
   const cue = useActivitySound();
+  const recordVerdict = useHostVerdictRecorder();
   const submit = useCallback(() => {
     if (revealed || outOfLives) return;
     cue(grade.allCorrect ? 'correct' : 'wrong');
+    // The verdict exists now: a host that records it does so before any "continue".
+    recordVerdict?.(grade.allCorrect, { response: source });
     // A vida sai AQUI, no mesmo tick do veredito, e não num efeito que observe a
     // fase: o guiado corrige localmente e sem round trip, então um efeito só
     // acrescentaria uma janela em que a tela já diz "errou" e o saldo ainda não.
     if (!grade.allCorrect) attempts.spend();
     setPhase('submitted');
-  }, [revealed, outOfLives, grade.allCorrect, attempts, cue]);
+  }, [revealed, outOfLives, grade.allCorrect, attempts, cue, recordVerdict, source]);
 
   const retry = useCallback(() => {
     if (outOfLives) return;

@@ -8,6 +8,8 @@ interface Props {
   src: string | null;
   /** Big centered play glyph (hero) instead of none. */
   play?: boolean;
+  /** A chip over the corner, e.g. the language of a course that exists in one language only. */
+  note?: string;
   className?: string;
 }
 
@@ -15,7 +17,7 @@ interface Props {
  * 16:9 course thumbnail. The designed cover (title, green edge, play glyph) is always drawn first and the
  * image fades in over it once it has loaded, so a slow or missing picture never shows as a black box.
  */
-export function CourseThumb({ title, slug, src, play = false, className = '' }: Props) {
+export function CourseThumb({ title, slug, src, play = false, note, className = '' }: Props) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const showImage = Boolean(src) && !failed;
@@ -48,6 +50,11 @@ export function CourseThumb({ title, slug, src, play = false, className = '' }: 
           data-loaded={loaded ? 'true' : 'false'}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         />
+      )}
+      {note && (
+        <span data-testid="thumb-note" className="absolute left-2 top-2 rounded-md bg-[#0A0908]/85 px-2 py-1 [font:700_10px_JetBrains_Mono] uppercase tracking-[.08em] text-[#E8B339]">
+          {note}
+        </span>
       )}
       {play && (
         <span aria-hidden className="absolute inset-0 flex items-center justify-center">

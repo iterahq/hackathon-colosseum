@@ -6,7 +6,7 @@
  * twin and draws a live wire between them; each first find fills a chip with
  * `<tag> = name`. Finding every element opens the gate. Ungraded; silent.
  */
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MousePointerClick } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
@@ -48,6 +48,43 @@ export function InspectActivity({ activity, onComplete }: { activity: PortableAc
     active ? codeRefs.current.get(active) ?? null : null,
   );
   const nameOf = (el: ScenePageElementSpec) => copy.text(el.name);
+  // A pairing, not a sweep: a piece of the page is chosen first, and only its own line discovers it.
+  const [picked, setPicked] = useState<string | null>(null);
+  const [wrongLine, setWrongLine] = useState<string | null>(null);
+  const [needsPiece, setNeedsPiece] = useState(false);
+  const known = (id: string) => gate.solved || found.has(id);
+  const look = (id: string) => {
+    if (known(id)) discover(id);
+  };
+  const pressPage = (id: string) => {
+    setWrongLine(null);
+    setNeedsPiece(false);
+    if (known(id)) {
+      setPicked(null);
+      discover(id);
+      return;
+    }
+    release();
+    setPicked(id);
+  };
+  const pressCode = (id: string) => {
+    if (known(id)) {
+      discover(id);
+      return;
+    }
+    if (!picked) {
+      setNeedsPiece(true);
+      return;
+    }
+    if (picked !== id) {
+      setWrongLine(id);
+      return;
+    }
+    setPicked(null);
+    setWrongLine(null);
+    discover(id);
+  };
+  const pickedElement = elements.find((el) => el.id === picked);
   const activeElement = elements.find((el) => el.id === active);
 
   const target = (el: ScenePageElementSpec, side: 'page' | 'code') => (
@@ -57,7 +94,10 @@ export function InspectActivity({ activity, onComplete }: { activity: PortableAc
       label={t(side === 'page' ? 'activity.inspect.pageTarget' : 'activity.inspect.codeTarget', { name: nameOf(el) })}
       active={active === el.id}
       dimmed={side === 'code' && !!active && active !== el.id}
-      onEnter={() => discover(el.id)}
+      picked={side === 'page' && picked === el.id}
+      wrong={side === 'code' && wrongLine === el.id}
+      onEnter={() => look(el.id)}
+      onPress={() => (side === 'page' ? pressPage(el.id) : pressCode(el.id))}
       onLeave={release}
       bindRef={(node) => {
         if (node) (side === 'page' ? pageRefs : codeRefs).current.set(el.id, node);
@@ -89,7 +129,23 @@ export function InspectActivity({ activity, onComplete }: { activity: PortableAc
       <div className="flex flex-wrap items-center justify-between gap-3 min-h-[34px]" aria-live="polite">
         <DiscoveryChips elements={elements} found={found} nameOf={nameOf} />
         <AnimatePresence mode="wait">
-          {activeElement && activeElement.job && (
+          {wrongLine || needsPiece || pickedElement ? (
+            <motion.span
+              key={wrongLine ? `wrong:${wrongLine}` : needsPiece ? 'needs-piece' : `picked:${picked}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className={`text-sm ${wrongLine ? 'text-clay' : 'text-muted-foreground'}`}
+              data-testid="inspect-status"
+              data-state={wrongLine ? 'wrong' : needsPiece ? 'needs-piece' : 'picked'}
+            >
+              {wrongLine
+                ? t('activity.inspect.wrongLine')
+                : needsPiece
+                  ? t('activity.inspect.pickFirst')
+                  : t('activity.inspect.nowLine', { name: pickedElement ? nameOf(pickedElement) : '' })}
+            </motion.span>
+          ) : activeElement && activeElement.job && (
             <motion.span
               key={activeElement.id}
               initial={{ opacity: 0, y: 6 }}

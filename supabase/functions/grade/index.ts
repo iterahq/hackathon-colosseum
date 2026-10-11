@@ -2,7 +2,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { GRADER_VERSION, canonicalJson, gradeSubmission } from '../_shared/grading.ts';
 import { parseHtmlDocument } from '../_shared/html-document.ts';
+import { GUEST_LESSON_IDS, GUEST_RATE } from '../_shared/guest.ts';
 import { bearerToken, corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
+import { unverifiedSubject } from '../_shared/jwt-subject.ts';
+import { chargeMiss, type MissOutcome } from '../_shared/miss-charge.ts';
+import { callerAddress, takeRate } from '../_shared/ratelimit.ts';
 import { sha256Hex } from '../_shared/sha256.ts';
 
 const MAX_BODY_BYTES = 64_000;
@@ -33,6 +37,14 @@ async function loadActivityAs(token: string, activityId: string): Promise<Activi
   return data as ActivityRow | null;
 }
 
+/** The activity of a lesson open to visitors, read with the service role: a guest has no session for row level security to judge. */
+async function loadGuestActivity(db: IteraClient, activityId: string): Promise<ActivityRow | null> {
+  const { data, error } = await db.from('activities').select('id,lesson_id,kind,spec').eq('id', activityId).eq('status', 'published').maybeSingle();
+  if (error) throw new Error(`activities: ${error.message}`);
+  const activity = data as ActivityRow | null;
+  return activity && GUEST_LESSON_IDS.has(activity.lesson_id) ? activity : null;
+}
+
 /** The auth user behind the bearer token; `null` without a valid one. */
 async function authSubjectOf(db: IteraClient, token: string): Promise<string | null> {
   const { data, error } = await db.auth.getUser(token);
@@ -47,6 +59,9 @@ Deno.serve(async (request) => {
   try {
     const body = await readJsonObject(request, MAX_BODY_BYTES);
     if (!body) return json({ error: 'invalid_body' }, 400, cors);
+    const token = bearerToken(request);
+    const db = serviceClient();
+
     const { activity_id: activityId, passed: claimedPassed, response = null, answer = null } = body;
     if (typeof activityId !== 'string' || !isUuid(activityId) || typeof claimedPassed !== 'boolean') {
       return json({ error: 'invalid_body' }, 400, cors);
@@ -56,11 +71,33 @@ Deno.serve(async (request) => {
     }
     if (canonicalJson(answer).length > MAX_ANSWER_CHARS) return json({ error: 'invalid_body' }, 400, cors);
 
-    const token = bearerToken(request);
     if (!token) return json({ error: 'unauthorized' }, 401, cors);
-    const db = serviceClient();
-    const [subject, activity] = await Promise.all([authSubjectOf(db, token), loadActivityAs(token, activityId)]);
-    if (!subject) return json({ error: 'unauthorized' }, 401, cors);
+    const subject = await authSubjectOf(db, token);
+
+    // A visitor with no account (the bearer is the anon key): the first lesson is graded by the same
+    // rules and NOTHING is written: no attempt, no completion, no life. Signing in is what records.
+    if (!subject) {
+      // A learner's token that no longer verifies is not a visitor: it must sign in again, not be told "pass" with nothing recorded.
+      if (unverifiedSubject(token)) return json({ error: 'unauthorized' }, 401, cors);
+      const byAddress = await takeRate(db, 'guest-grade', callerAddress(request), GUEST_RATE);
+      if (!byAddress.allowed) return json({ error: 'too_many_attempts', retryable: true }, 429, cors);
+      const guestActivity = await loadGuestActivity(db, activityId);
+      if (!guestActivity) return json({ error: 'guest_lesson_only' }, 403, cors);
+      const guestGrade = gradeSubmission(guestActivity.kind, guestActivity.spec, { answer, response }, claimedPassed, parseHtmlDocument);
+      return json(
+        {
+          verdict: guestGrade.passed ? 'pass' : 'fail',
+          mode: guestGrade.mode,
+          ...(guestGrade.reason ? { reason: guestGrade.reason } : {}),
+          answer_hash: sha256Hex(`${guestActivity.id}\n${canonicalJson({ answer, response })}`),
+          guest: true,
+        },
+        200,
+        cors,
+      );
+    }
+
+    const activity = await loadActivityAs(token, activityId);
     if (!activity) return json({ error: 'activity_not_found' }, 404, cors);
 
     const grade = gradeSubmission(activity.kind, activity.spec, { answer, response }, claimedPassed, parseHtmlDocument);
@@ -81,15 +118,26 @@ Deno.serve(async (request) => {
       p_max_per_minute: MAX_ATTEMPTS_PER_MINUTE,
     });
     if (error) throw new Error(`record_graded_attempt: ${error.message}`);
-    const attempt = data as { error?: string; attempt_id?: string; graded_at?: string };
+    const attempt = data as { error?: string; attempt_id?: string; graded_at?: string; user_id?: string };
     if (attempt.error === 'no_itera_profile') return json({ error: 'no_itera_profile' }, 403, cors);
     if (attempt.error === 'too_many_attempts') return json({ error: 'too_many_attempts', retryable: true }, 429, cors);
+
+    // The server is the judge of a miss: the life goes here, never on the client's word alone.
+    let miss: MissOutcome | null = null;
+    if (!grade.passed && grade.mode !== 'participation' && attempt.user_id) {
+      try {
+        miss = await chargeMiss(db, attempt.user_id, activity);
+      } catch (failure) {
+        console.error('grade: miss not charged', failure);
+      }
+    }
 
     return json(
       {
         verdict: grade.passed ? 'pass' : 'fail',
         mode: grade.mode,
         ...(grade.reason ? { reason: grade.reason } : {}),
+        ...(miss ? { miss: { charge: miss.charge, life_lost: miss.life_lost, lesson_cap: miss.lesson_cap }, lives: miss.lives } : {}),
         attempt_id: attempt.attempt_id,
         answer_hash: answerHash,
         graded_at: attempt.graded_at,

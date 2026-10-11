@@ -7,6 +7,13 @@ import { NicknameGate } from './NicknameGate';
 
 const updateMyProfile = vi.fn();
 const getMyProfile = vi.fn();
+const updateUser = vi.fn();
+const authUser: { id: string; app_metadata: { provider: string }; identities: never[]; user_metadata: Record<string, unknown> } = {
+  id: 'uid-1',
+  app_metadata: { provider: 'web3' },
+  identities: [],
+  user_metadata: {},
+};
 
 vi.mock('@/services/profile.service', () => ({
   getMyProfile: () => getMyProfile(),
@@ -17,9 +24,10 @@ vi.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
     configured: true,
     session: { user: { id: 'uid-1' } },
-    user: { id: 'uid-1', app_metadata: { provider: 'web3' }, identities: [] },
+    user: authUser,
   }),
 }));
+vi.mock('@/lib/supabase/client', () => ({ getSupabase: () => ({ auth: { updateUser: (patch: unknown) => updateUser(patch) } }) }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 
 function renderGate(path = '/dashboard') {
@@ -37,6 +45,8 @@ function renderGate(path = '/dashboard') {
 
 beforeEach(() => {
   localStorage.clear();
+  authUser.user_metadata = {};
+  updateUser.mockReset().mockResolvedValue({ data: {}, error: null });
   updateMyProfile.mockReset().mockResolvedValue(true);
   getMyProfile.mockReset().mockResolvedValue({ displayName: '6YWT…p2Gg' });
 });
@@ -60,11 +70,64 @@ describe('NicknameGate', () => {
     await waitFor(() => expect(updateMyProfile).toHaveBeenCalledWith({ displayName: 'Ana Lu' }));
   });
 
-  it('remembers a skip per auth uid', async () => {
+  it('marks the account as asked the moment it shows, before any answer', async () => {
     renderGate();
+    await screen.findByTestId('nickname-gate');
+    expect(updateUser).toHaveBeenCalledWith({ data: { nickname_asked: true } });
+    expect(localStorage.getItem('itera.nickname.skipped:uid-1')).toBe('1');
+  });
+
+  it('closes on skip and on Escape', async () => {
+    const first = renderGate();
     fireEvent.click(await screen.findByTestId('nickname-skip'));
     expect(screen.queryByTestId('nickname-gate')).toBeNull();
-    expect(localStorage.getItem('itera.nickname.skipped:uid-1')).toBe('1');
+    first.unmount();
+    localStorage.clear();
+    renderGate();
+    fireEvent.keyDown(await screen.findByTestId('nickname-gate'), { key: 'Escape' });
+    expect(screen.queryByTestId('nickname-gate')).toBeNull();
+  });
+
+  it('does not come back for an account that was already asked, on a browser that never saw it', async () => {
+    authUser.user_metadata = { nickname_asked: true };
+    renderGate();
+    await waitFor(() => expect(getMyProfile).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByTestId('nickname-gate')).toBeNull();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it('is a modal dialog with a name, and keeps Tab inside', async () => {
+    renderGate();
+    const gate = await screen.findByTestId('nickname-gate');
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(document.getElementById(dialog.getAttribute('aria-labelledby') ?? '')?.textContent).toBeTruthy();
+    expect(document.body.style.overflow).toBe('hidden');
+    screen.getByTestId('nickname-skip').focus();
+    fireEvent.keyDown(gate, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByTestId('nickname-input'));
+    fireEvent.keyDown(gate, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByTestId('nickname-skip'));
+  });
+
+  it('waits while another dialog is open', async () => {
+    const other = document.createElement('div');
+    other.setAttribute('role', 'dialog');
+    document.body.appendChild(other);
+    renderGate();
+    await waitFor(() => expect(getMyProfile).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByTestId('nickname-gate')).toBeNull();
+    other.remove();
+    expect(await screen.findByTestId('nickname-gate')).toBeTruthy();
+  });
+
+  it('puts a generated name in the language of the account', async () => {
+    localStorage.setItem('itera.locale', 'en');
+    getMyProfile.mockResolvedValue({ displayName: 'Tera Ousado 477' });
+    renderGate();
+    await waitFor(() => expect(updateMyProfile).toHaveBeenCalledWith({ displayName: 'Tera Bold 477' }));
   });
 
   it('never interrupts a lesson or a live class', async () => {

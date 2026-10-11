@@ -12,6 +12,7 @@
 import { useRef, useState } from 'react';
 import { CheckSquare } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { useHostHidesAnswerOnMiss } from '../components/hostLessonRules.js';
 import type { ChoiceOption, MultiChoiceSpec } from '../specs.js';
 import { learnerOptionOrder } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -62,6 +63,7 @@ export function MultiChoiceActivity({
   priorAnswer?: ActivityCompletion;
 }) {
   const { t, locale } = useActivityI18n();
+  const hidesAnswerOnMiss = useHostHidesAnswerOnMiss();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -91,6 +93,8 @@ export function MultiChoiceActivity({
     correct: isCorrect,
     hasAnswer: selected.length > 0,
   });
+  // A miss in a host that keeps the key: mark the pick, not the answer. The instructor's reveal still shows it.
+  const hidesKey = hidesAnswerOnMiss && !reveal && m.gradeResult === false;
 
   // The `selection` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<SelectionAction>(activity.id);
@@ -127,7 +131,7 @@ export function MultiChoiceActivity({
     onComplete(isCorrect, {
       response: chosen,
       actions: trace.drain(),
-      explanation: answerExplanationText(activity.spec, locale, isCorrect),
+      explanation: hidesAnswerOnMiss ? undefined : answerExplanationText(activity.spec, locale, isCorrect),
     });
   }
 
@@ -158,6 +162,7 @@ export function MultiChoiceActivity({
             shown: m.shown,
             chosen,
             isCorrectOption: correctIds.includes(o.id),
+            hideKey: hidesKey,
           });
           return (
             <ChoiceOptionCard

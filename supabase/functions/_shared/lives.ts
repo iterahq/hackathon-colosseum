@@ -107,6 +107,25 @@ export function livesView(state: LivesState, now: Date): LivesView {
   };
 }
 
+/** Lives one lesson may take from a learner in one local day: a hard day cannot empty the bar. */
+export const LESSON_MISS_CAP = 3;
+
+export type MissCharge = 'charged' | 'already_charged' | 'lesson_cap';
+
+/**
+ * Whether a miss graded by the server costs a life: one per activity per local
+ * day, and at most `LESSON_MISS_CAP` per lesson per local day.
+ */
+export function missCharge(facts: { chargedForActivityToday: boolean; lessonLossesToday: number }): MissCharge {
+  if (facts.chargedForActivityToday) return 'already_charged';
+  return facts.lessonLossesToday >= LESSON_MISS_CAP ? 'lesson_cap' : 'charged';
+}
+
+/** The idempotency key of that charge. */
+export function missAttemptId(activityId: string, now: Date, timeZone: string): string {
+  return `miss:${activityId.toLowerCase()}:${localParts(now.toISOString(), timeZone).date}`;
+}
+
 export type LessonBonus = 'granted' | 'already_granted' | 'mistakes' | 'lesson_incomplete' | 'full';
 
 /** Why a finished lesson does or does not give a life back. */

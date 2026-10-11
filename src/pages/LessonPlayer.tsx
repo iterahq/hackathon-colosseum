@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
-import { HostExplainsMisses, HostOwnsSettledAction } from '@iterahq/activities';
+import { HostExplainsMisses, HostHidesAnswerOnMiss, HostOwnsSettledAction, HostRecordsVerdict, HostUnlimitedAttempts } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
@@ -51,7 +51,8 @@ import { persistActivityProgress } from '@/services/progress.service';
 import { resumeLesson } from '@/services/lessonResume.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { confirmLessonAnswer, type StoredLessonAnswer } from '@/utils/lessonAnswerStorage';
-import { clearCodeAttempts, codeBudgetSpentAt } from '@/services/codeAttempts.service';
+import { clearCodeAttempts } from '@/services/codeAttempts.service';
+import { LivesFirstLossNote } from '@/components/lives/LivesFirstLossNote';
 import { useLessonAnswers } from '@/hooks/useLessonAnswers';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { useAbandonmentBeacon } from '@/hooks/useAbandonmentBeacon';
@@ -111,8 +112,6 @@ export default function LessonPlayer() {
   const activities = useMemo<Activity[]>(() => data?.activities ?? [], [data]);
   // Where this lesson sits in the hierarchy, for the artifact's git-shaped path.
   const placement = useMemo(() => data?.placement ?? {}, [data]);
-  // The first day of a program is for learning the ropes: a miss there costs no life.
-  const firstDayOfProgram = placement.unitOrdinal === 0 && placement.lessonOrdinal === 0;
   const [index, setIndex] = useState(0);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [completed, setCompleted] = useState(false);
@@ -143,6 +142,9 @@ export default function LessonPlayer() {
   // attempt row, no second XP award — and the first answer is what review keeps.
   const [redoing, setRedoing] = useState<string | null>(null);
   const [redoCount, setRedoCount] = useState(0);
+  // Exercises opened again after a miss in this visit: from the second try on, a miss shows the answer and its why.
+  const [retriedIds, setRetriedIds] = useState<ReadonlySet<string>>(new Set());
+  const markRetried = (id: string) => setRetriedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   // Content the current activity produced, held between `handleComplete` and the
   // commit in `advance`. A ref (not state) on purpose — it must not trigger a
   // re-render, and it must survive the footer's review beat unchanged.
@@ -281,6 +283,8 @@ export default function LessonPlayer() {
   // Anything the learner DID can be done again; a screen that was only read cannot.
   const canRedo =
     reviewing && !missedBefore && !!current && (isExerciseActivity(current) || isSceneKind(current.kind));
+  // The first miss does not hand the answer over; after a retry, the next one does.
+  const hidesAnswer = !!current && !retriedIds.has(current.id);
 
   // Sandbox activities own a fixed-height window and read best flush to the
   // chrome — the site's default vertical breathing room just pushes the window
@@ -404,36 +408,6 @@ export default function LessonPlayer() {
   );
   const beacon = useAbandonmentBeacon(beaconTarget);
 
-  // OUT OF LIVES IS A MISS, even when the learner left before pressing the
-  // exercise's own "Continuar". A `code` exercise mounted with its budget spent
-  // has no submit and no way on — a reload there used to strand the lesson for
-  // good. Recorded once, it re-opens locked like any other miss, with the retry
-  // that returns the lives.
-  const currentId = current?.id;
-  useEffect(() => {
-    if (!current || resuming || reviewing || pending !== null) return;
-    const spentAt = codeBudgetSpentAt(current.id);
-    if (spentAt === null) return;
-    const activityId = current.id;
-    const answer: StoredLessonAnswer = { correct: false, settledAt: spentAt, saved: false };
-    // The learner answered — five times. Leaving now is not abandoning.
-    beacon.markSettled(activityId);
-    recordAnswer(activityId, answer);
-    void writeOrQueue({
-      kind: 'progress',
-      activityId,
-      passed: false,
-      response: null,
-      duration: null,
-      settledAt: spentAt,
-      specSnapshot: buildSpecSnapshot(current.spec, locale) ?? undefined,
-      pedagogicalContext: buildPedagogicalContext(current),
-    }).then(() => confirmLessonAnswer(activityId, spentAt));
-    // Checked when an exercise comes on screen, not on every render: the budget
-    // lives in localStorage, and the exercise shows its own verdict while mounted.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, resuming, retryCount]);
-
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
   const { data: nextLesson } = useNextLesson(lessonId);
@@ -471,9 +445,13 @@ export default function LessonPlayer() {
     // A pass already settled during this review beat stands; a kind that fires
     // again must not write a second pass (and a second XP award).
     const settled = settleWriteRef.current;
-    if (settled?.activityId === current.id && settled.correct) return;
-    // The ONE place a wrong answer settles: it costs a life, once per activity, however many retries.
-    if (!correct && !firstDayOfProgram) livesRef.current?.lose(current.id, current.id);
+    const holdsOnFooter = isFooterGradedKind(current.kind) || isByocActivity(current) || isSceneKind(current.kind);
+    if (settled?.activityId === current.id && settled.correct) {
+      // Recorded when the answer passed (`handleVerdict`): this is the kind's own "continue".
+      if (correct && !holdsOnFooter && pending === null) void advance(true);
+      return;
+    }
+    // A miss costs a life on the server, when it grades the answer: nothing is charged from here.
     // CLOSE the duration window here — this instant is when the learner settled
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
@@ -527,7 +505,9 @@ export default function LessonPlayer() {
         actions: detail?.actions ? [...detail.actions] : undefined,
       };
       recordAnswer(activityId, answer);
-      const promise = writeSettled(current, correct).then((ok) => {
+      // A miss the server already has (written at its verdict) is not written twice.
+      const early = !correct && settled?.activityId === activityId && !settled.correct ? settled.promise : null;
+      const promise = (early ?? writeSettled(current, correct)).then((ok) => {
         // A miss is always durable (server or outbox); a pass only once it landed.
         if (ok) confirmLessonAnswer(activityId, answer.settledAt);
         return ok;
@@ -538,10 +518,33 @@ export default function LessonPlayer() {
       // O veredito é AQUI, não no "Continuar": é neste instante que o aluno
       // descobre se passou, e era exatamente o som que faltava no self-paced.
       if (!isSceneKind(current.kind)) onSettle(correct);
-      setPending({ correct, message: detail?.message, explanation: detail?.explanation });
+      setPending({
+        correct,
+        message: detail?.message,
+        explanation: detail?.explanation ?? (!correct && hidesAnswer && isFooterGradedKind(current.kind) ? t('lesson.miss.noAnswerYet') : undefined),
+      });
       return;
     }
     void advance(correct);
+  }
+
+  /**
+   * The verdict of a kind that shows it itself and waits for its own "continue"
+   * (the `code` family). Recorded HERE: a pass is on the server before the
+   * learner presses anything, so leaving by any route keeps it; a miss reaches
+   * the server too, which is what charges the life.
+   */
+  function handleVerdict(correct: boolean, detail?: ActivityCompleteDetail) {
+    if (!current || reviewing || practising) return;
+    const settled = settleWriteRef.current;
+    if (settled?.activityId === current.id && settled.correct) return;
+    beacon.markSettled(current.id);
+    pendingDurationRef.current = duration.read();
+    pendingSettledAtRef.current = Date.now();
+    pendingArtifactRef.current = detail?.artifact ?? null;
+    pendingResponseRef.current = detail?.response ?? null;
+    pendingActionsRef.current = detail?.actions ?? null;
+    settleWriteRef.current = { activityId: current.id, correct, promise: writeSettled(current, correct) };
   }
 
   // Write one settled attempt. Runs at the SETTLE for the kinds that hold on the
@@ -687,7 +690,8 @@ export default function LessonPlayer() {
   async function advance(correct: boolean) {
     if (!current || saving) return;
     const isLast = index >= activities.length - 1;
-    const held = settleWriteRef.current?.activityId === current.id ? settleWriteRef.current : null;
+    const settledNow = settleWriteRef.current;
+    const held = settledNow?.activityId === current.id && settledNow.correct === correct ? settledNow : null;
     settleWriteRef.current = null;
 
     if (!correct) {
@@ -760,6 +764,15 @@ export default function LessonPlayer() {
    * the learner with no way out.
    */
   function applyPosition({ index: nextIndex, completed: nextCompleted }: LessonPosition) {
+    // A pass recorded at its verdict and left without the exercise's own "continue" is done all the same.
+    const leaving = settleWriteRef.current;
+    if (current && leaving?.activityId === current.id && leaving.correct) {
+      const passedId = current.id;
+      settleWriteRef.current = null;
+      void leaving.promise.then((ok) => {
+        if (ok) setDoneIds((prev) => new Set(prev).add(passedId));
+      });
+    }
     setFreshFinish(false);
     redoingMissingRef.current = false;
     setIndex(nextIndex);
@@ -777,12 +790,16 @@ export default function LessonPlayer() {
     applyPosition({ index: at, completed: false });
     redoingMissingRef.current = true;
     const target = activities[at];
-    if (target && !doneIds.has(target.id) && answers[target.id]?.correct === false) retryAnswer(target.id);
+    if (target && !doneIds.has(target.id) && answers[target.id]?.correct === false) {
+      markRetried(target.id);
+      retryAnswer(target.id);
+    }
   }
 
   /** A miss stands until the learner chooses to try again — never by reload. */
   function retryMissed() {
     if (!current || !missedBefore) return;
+    markRetried(current.id);
     retryAnswer(current.id);
   }
 
@@ -796,6 +813,7 @@ export default function LessonPlayer() {
     settleWriteRef.current = null;
     setPending(null);
     onRetry();
+    markRetried(current.id);
     retryAnswer(current.id);
   }
   const canRetryPending =
@@ -942,6 +960,9 @@ export default function LessonPlayer() {
                       exercise does not keep a dead button of its own above them. */}
                   <HostExplainsMisses>
                     <HostOwnsSettledAction>
+                     <HostUnlimitedAttempts>
+                      <HostRecordsVerdict onVerdict={handleVerdict}>
+                       <HostHidesAnswerOnMiss hide={hidesAnswer}>
                       <ActivityRenderer
                         key={`${current.id}:${retryCount}:${redoCount}`}
                         activity={{
@@ -951,6 +972,9 @@ export default function LessonPlayer() {
                         onComplete={handleComplete}
                         priorAnswer={reviewing ? answers[current.id] : undefined}
                       />
+                       </HostHidesAnswerOnMiss>
+                      </HostRecordsVerdict>
+                     </HostUnlimitedAttempts>
                     </HostOwnsSettledAction>
                   </HostExplainsMisses>
                 </div>
@@ -993,6 +1017,7 @@ export default function LessonPlayer() {
         />
       )}
 
+      <LivesFirstLossNote lives={livesView?.current ?? null} />
       <PassportPrefetch />
       <LessonLives
         ref={livesRef}
