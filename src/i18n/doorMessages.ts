@@ -51,7 +51,7 @@ export const DOOR_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'try.claim.open': 'Abrir a lição',
     'try.error': 'Não deu para carregar a lição.',
     'try.retry': 'Tentar de novo',
-    'door.signUp.model': 'Fora do hackathon, a Itera vende assentos por assinatura para escolas e alunos. Aqui, tudo é gratuito.',
+    'door.signUp.model': 'Aqui tudo é gratuito: sem cartão, sem assinatura, sem SOL. A Itera paga a taxa de rede de cada carimbo.',
   },
   en: {
     'door.title': 'Enter Itera',
@@ -104,6 +104,6 @@ export const DOOR_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'try.claim.open': 'Open the lesson',
     'try.error': 'Could not load the lesson.',
     'try.retry': 'Try again',
-    'door.signUp.model': 'Outside the hackathon, Itera sells seats by subscription to schools and learners. Here, everything is free.',
+    'door.signUp.model': 'Everything here is free: no card, no subscription, no SOL. Itera pays the network fee of every stamp.',
   },
 };

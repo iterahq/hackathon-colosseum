@@ -138,7 +138,7 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'explain.how': 'How it works',
     'explain.pay': 'You pay from your wallet, in devnet SOL (test money).',
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
-    'explain.circuit': "Half of every purchase pays other learners' stamps (Circuito).",
+    'explain.circuit': "Half of every purchase pays other learners' stamps (the Circuit).",
     'explain.avatar.changes': 'It becomes your profile picture: at the top of the app, on your Tera companion and on your public page.',
     'explain.avatar.chain': 'It becomes a collectible NFT in your wallet, with limited supply. It can be transferred.',
     'explain.avatar.soulbound': 'Certifications and the Tera companion stay bound to you: they cannot be sold or transferred.',
