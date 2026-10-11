@@ -7,7 +7,7 @@ import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
 import { useProfile } from '@/hooks/useProfile';
 import { useWalletLink } from '@/hooks/useWalletLink';
 import { useI18n } from '@/i18n';
-import { isGenericName } from '@/utils/isGenericName';
+import { shouldAskForName } from '@/utils/isGenericName';
 import { shortAddress, walletOf } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
 import { HeaderMenu } from './HeaderMenu';
@@ -28,7 +28,8 @@ export function HeaderIdentity() {
 
   const link = useWalletLink();
   const wallet = walletOf(user) ?? (link.wallet ? { address: link.wallet, chain: 'solana', network: 'devnet' } : null);
-  const chosen = profile?.displayName && !isGenericName(profile.displayName, user?.email) ? profile.displayName : '';
+  // A name provisioning generated ("Tera Kind 350") is not one the learner chose: the wallet speaks for them until they pick one.
+  const chosen = profile?.displayName && !shouldAskForName(profile.displayName, user?.email) ? profile.displayName : '';
   // An e-mail account with no chosen name shows the address's local part, never the whole address; the pill truncates whatever it holds.
   const name = chosen || (wallet ? '' : (user?.email ?? '').split('@')[0]);
   const avatar = useLearnerAvatar();
@@ -83,14 +84,11 @@ export function HeaderIdentity() {
             </>
           )}
         </span>
-        <span
-          data-testid="header-role"
-          className={`hidden rounded-full border px-1.5 py-0.5 [font:600_9px_JetBrains_Mono] uppercase leading-none tracking-[.1em] min-[1440px]:inline-block ${
-            roles.privileged ? 'border-[#3FD17F]/40 text-[#3FD17F]' : 'border-[#2E2A25] text-[#A0978A]'
-          }`}
-        >
-          {t(roles.roleKey)}
-        </span>
+        {roles.privileged && (
+          <span data-testid="header-role" className="hidden rounded-full border border-[#3FD17F]/40 px-1.5 py-0.5 [font:600_9px_JetBrains_Mono] uppercase leading-none tracking-[.1em] text-[#3FD17F] min-[1440px]:inline-block">
+            {t(roles.roleKey)}
+          </span>
+        )}
         <HeaderIcon name="chevron" size={14} className={`hidden text-[#A0978A] transition-transform min-[1440px]:block ${open ? 'rotate-180' : ''}`} />
       </button>
       <AnimatePresence>

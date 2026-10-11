@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useProgressStory } from '@/hooks/useProgressStory';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
 import { useI18n } from '@/i18n';
 import { getSupabase } from '@/lib/supabase/client';
@@ -44,7 +45,8 @@ function useOtherDialogOpen(watch: boolean): boolean {
 /**
  * "What should we call you?" for a wallet learner whose name was generated, or an
  * e-mail learner still named after the local part of the address. Asked ONCE per
- * account, on the dashboard only: the moment it shows, the account is marked as
+ * account, on the dashboard only and only after the first day is done (never over
+ * the first screen of a new account): the moment it shows, the account is marked as
  * asked, so a reload, another browser or "Skip for now" never bring it back. A
  * modal dialog that waits for any other dialog and never blocks: a failed profile
  * read renders nothing, a failed save keeps the form and toasts.
@@ -61,8 +63,11 @@ export function NicknameGate() {
   const panel = useRef<HTMLDivElement>(null);
 
   const excluded = !ASKED_ON.includes(pathname.replace(/\/+$/, '') || '/');
+  const story = useProgressStory();
+  const earned = !story.pending && story.daysDone + story.daysStamped + story.daysPending > 0;
   const due =
     !excluded &&
+    earned &&
     shouldShowNicknameGate({
       user,
       profile: profile.data,

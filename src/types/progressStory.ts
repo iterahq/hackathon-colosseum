@@ -13,4 +13,6 @@ export interface ProgressStory {
   capabilitiesTotal: number | null;
   wallet: string | null;
   pending: boolean;
+  /** The trail the learner is on: the one with most days done (the first one until any day is done). Null with no trails. */
+  lead: { title: string; daysDone: number; daysStamped: number; totalDays: number } | null;
 }

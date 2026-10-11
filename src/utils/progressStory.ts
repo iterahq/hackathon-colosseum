@@ -4,8 +4,10 @@ import type { ProgressStory } from '@/types/progressStory';
 import { pendingOf } from '@/utils/passport';
 
 /** Pure join of the passport pages and the wallet's capability graph into the numbers the header and the dashboard lead with. */
-export function progressStory(facts: { pages: readonly Pick<PassportPageData, 'daysDone' | 'daysStamped' | 'totalDays'>[]; pending: boolean; wallet: string | null; capabilities: Pick<Capabilities, 'verifiedCount' | 'total'> | null }): ProgressStory {
+export function progressStory(facts: { pages: readonly Pick<PassportPageData, 'daysDone' | 'daysStamped' | 'totalDays' | 'trailTitle'>[]; pending: boolean; wallet: string | null; capabilities: Pick<Capabilities, 'verifiedCount' | 'total'> | null }): ProgressStory {
+  const lead = facts.pages.reduce<ProgressStory['lead']>((best, p) => (best && best.daysDone >= p.daysDone ? best : { title: p.trailTitle, daysDone: p.daysDone, daysStamped: p.daysStamped, totalDays: p.totalDays }), null);
   return {
+    lead,
     daysDone: facts.pages.reduce((n, p) => n + p.daysDone, 0),
     daysStamped: facts.pages.reduce((n, p) => n + p.daysStamped, 0),
     daysPending: facts.pages.reduce((n, p) => n + pendingOf(p), 0),

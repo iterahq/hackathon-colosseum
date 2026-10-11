@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
+import { FOCUS_LIVES_OFF } from '@/config/focus';
 import { useCompanion } from '@/hooks/useCompanion';
 import { reportLessonEnd, reportLifeLost, reviveLives } from '@/services/companion.service';
 import { SERVER_LIVES_EVENT, type ServerLivesDetail } from '@/services/grade.service';
@@ -41,7 +42,7 @@ export function useLives({ harness = false, enabled = true }: { harness?: boolea
   const [now, setNow] = useState(() => Date.now());
   const charged = useRef(new Set<string>());
 
-  const active = livesActive({
+  const active = !FOCUS_LIVES_OFF && livesActive({
     signedIn: Boolean(session),
     guest: isGuestAccessToken(session?.access_token),
     harness,

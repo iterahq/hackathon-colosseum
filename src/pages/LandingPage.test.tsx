@@ -70,7 +70,8 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-cta-email')).toHaveAttribute('href', '/signup');
     expect(screen.getByTestId('landing-cta-try')).toHaveAttribute('href', '/try');
     expect(screen.getByTestId('landing-example')).toHaveTextContent('Week 1 · HTML · 5/5 days · gold');
-    expect(screen.getByTestId('landing-example')).toHaveTextContent('4 of 28 capabilities verified on chain · 2 medals');
+    expect(screen.getByTestId('landing-example')).toHaveTextContent('4 of 28 capabilities verified on chain');
+    expect(screen.getByTestId('landing-example')).not.toHaveTextContent(/medal/);
     expect(screen.getByTestId('landing-example')).toHaveTextContent('Verified on chain');
     localStorage.clear();
   });

@@ -29,6 +29,8 @@ vi.mock('@/auth/AuthContext', () => ({
 }));
 vi.mock('@/lib/supabase/client', () => ({ getSupabase: () => ({ auth: { updateUser: (patch: unknown) => updateUser(patch), getUser: () => Promise.resolve({ data: { user: { user_metadata: {} } } }) } }) }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
+const story = vi.hoisted(() => ({ daysDone: 1, daysStamped: 1, daysPending: 0, pending: false }));
+vi.mock('@/hooks/useProgressStory', () => ({ useProgressStory: () => story }));
 
 function renderGate(path = '/dashboard') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -45,6 +47,7 @@ function renderGate(path = '/dashboard') {
 
 beforeEach(() => {
   localStorage.clear();
+  Object.assign(story, { daysDone: 1, daysStamped: 1, daysPending: 0, pending: false });
   authUser.user_metadata = {};
   authUser.app_metadata = { provider: 'web3' };
   delete authUser.email;
@@ -87,6 +90,13 @@ describe('NicknameGate', () => {
     localStorage.setItem('itera.locale', 'en');
     renderGate('/');
     expect(await screen.findByTestId('nickname-gate')).toHaveTextContent('in place of your e-mail address');
+  });
+
+  it('waits for the first day to be done before asking', async () => {
+    Object.assign(story, { daysDone: 0, daysStamped: 0, daysPending: 0, pending: false });
+    renderGate('/');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByTestId('nickname-gate')).toBeNull();
   });
 
   it('leaves an e-mail learner with a chosen name alone', async () => {
