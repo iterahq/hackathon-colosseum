@@ -104,7 +104,7 @@ function Photo({ t, form, icon, onUploadPhoto, onUseLearnPhoto }: Pick<IdentityF
   );
 }
 
-/** The identity card: who the learner is in classes and rankings. */
+/** The identity card: who the learner is to other learners. */
 export function IdentityForm(props: IdentityFormProps) {
   const { t, form, icon, onEditName, onRevert, onSave, onUploadPhoto, onUseLearnPhoto } = props;
   return (
