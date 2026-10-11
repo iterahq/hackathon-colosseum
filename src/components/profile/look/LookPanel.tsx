@@ -18,7 +18,7 @@ interface Props {
   onOutfit: (key: string | null) => void;
 }
 
-const GRID = 'grid grid-cols-4 gap-1 sm:grid-cols-[repeat(auto-fill,minmax(72px,1fr))]';
+const GRID = 'grid grid-cols-4 gap-1 sm:grid-cols-[repeat(auto-fill,minmax(88px,1fr))]';
 
 function Row({ label, children }: { label?: string; children: ReactNode }) {
   return (
@@ -49,7 +49,7 @@ export function LookPanel({ tab, look, currentKey, busy, onAvatar, onOutfit }: P
       {empty ? (
         <p className="rounded-xl border border-[#262320] px-3 py-6 text-center font-sans text-sm text-[#A0978A]">{t(`avatar.look.empty.${tab}`)}</p>
       ) : (
-        <div className="max-h-[236px] overflow-y-auto pr-1">
+        <div className="max-h-[348px] overflow-y-auto pr-1 [scrollbar-width:thin]">
           {tab === 'faces' && <Row>{avatarChips(look.faces)}</Row>}
           {tab === 'looks' && <Row>{avatarChips(look.looks)}</Row>}
           {tab === 'gear' && look.gearAvatars.length > 0 && <Row label={hasOutfitRow ? t('avatar.look.row.avatars') : undefined}>{avatarChips(look.gearAvatars)}</Row>}
