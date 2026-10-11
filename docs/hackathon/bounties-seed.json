@@ -1,0 +1,90 @@
+[
+  {
+    "slug": "acessibilidade-formulario-inscricao",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 1 · HTML",
+    "min_days": 1,
+    "reward_lamports": 30000000,
+    "expires_in_days": 21,
+    "claim_hours": 48,
+    "title": { "pt": "Deixe o formulário de inscrição da DevFellowship acessível", "en": "Make the DevFellowship signup form accessible" },
+    "summary": {
+      "pt": "O formulário de inscrição das turmas tem campos sem rótulo e não funciona com leitor de tela. Reescreva o HTML para qualquer pessoa conseguir se inscrever.",
+      "en": "The cohort signup form has unlabelled fields and does not work with a screen reader. Rewrite the HTML so anyone can sign up."
+    },
+    "brief": {
+      "pt": "Contexto: a DevFellowship recebe inscrições de pessoas que navegam só pelo teclado ou com leitor de tela, e o formulário atual trava essas pessoas.\n\nO que fazer: escreva, só com HTML, um formulário de inscrição com nome, e-mail, telefone, cidade, como conheceu a DevFellowship (lista de opções) e uma pergunta aberta.\n\nCritérios de aceite:\n1. Todo campo tem um <label> ligado a ele (for + id).\n2. Os tipos de campo estão certos (email, tel) e os obrigatórios usam required.\n3. Campos relacionados ficam em <fieldset> com <legend>.\n4. Dá para preencher e enviar usando só o teclado, na ordem em que os campos aparecem.\n5. O HTML passa no validador da W3C sem erros.\n\nNão precisa de CSS nem de JavaScript.",
+      "en": "Context: DevFellowship gets applications from people who browse with the keyboard only or with a screen reader, and the current form blocks them.\n\nWhat to do: write, in HTML only, a signup form with name, e-mail, phone, city, how they heard about DevFellowship (a list of options) and one open question.\n\nAcceptance criteria:\n1. Every field has a <label> bound to it (for + id).\n2. Field types are right (email, tel) and mandatory fields use required.\n3. Related fields sit in a <fieldset> with a <legend>.\n4. The form can be filled in and sent with the keyboard alone, in the order the fields appear.\n5. The HTML passes the W3C validator with no errors.\n\nNo CSS or JavaScript needed."
+    },
+    "deliverable": {
+      "pt": "Um link público (CodePen, GitHub Pages ou repositório no GitHub) com o HTML do formulário.",
+      "en": "A public link (CodePen, GitHub Pages or a GitHub repository) with the form's HTML."
+    }
+  },
+  {
+    "slug": "pagina-semantica-grupo-de-estudos",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 1 · HTML",
+    "min_days": 3,
+    "reward_lamports": 50000000,
+    "expires_in_days": 21,
+    "claim_hours": 72,
+    "title": { "pt": "Página semântica para um grupo de estudos da DevFellowship", "en": "Semantic page for a DevFellowship study group" },
+    "summary": {
+      "pt": "Monte a página de apresentação de um grupo de estudos usando HTML semântico: quem lê o código precisa entender a página sem abrir o navegador.",
+      "en": "Build the landing page of a study group in semantic HTML: someone reading the code should understand the page without opening a browser."
+    },
+    "brief": {
+      "pt": "Contexto: cada grupo de estudos da DevFellowship precisa de uma página simples que apareça bem em buscadores e funcione em leitor de tela.\n\nO que fazer: uma página única com cabeçalho e navegação por âncoras, a apresentação do grupo, a agenda dos encontros em tabela, a lista de quem facilita (com foto) e o rodapé com contato.\n\nCritérios de aceite:\n1. Usa header, nav, main, section, article e footer no lugar certo, com um único h1 e os títulos em ordem.\n2. A agenda é uma <table> com <caption> e <th scope>.\n3. Toda imagem tem um alt que descreve o que ela mostra.\n4. Os links da navegação levam às seções da própria página.\n5. O HTML passa no validador da W3C sem erros.\n\nCSS é opcional e não conta para a aprovação.",
+      "en": "Context: every DevFellowship study group needs a simple page that shows up well in search engines and works with a screen reader.\n\nWhat to do: one page with a header and anchor navigation, the group's introduction, the meeting schedule as a table, the list of facilitators (with a photo) and a footer with contact details.\n\nAcceptance criteria:\n1. Uses header, nav, main, section, article and footer where they belong, with a single h1 and headings in order.\n2. The schedule is a <table> with a <caption> and <th scope>.\n3. Every image has an alt that describes what it shows.\n4. The navigation links lead to sections of the same page.\n5. The HTML passes the W3C validator with no errors.\n\nCSS is optional and does not count for approval."
+    },
+    "deliverable": {
+      "pt": "Um link público (GitHub Pages, CodePen ou repositório no GitHub) com a página.",
+      "en": "A public link (GitHub Pages, CodePen or a GitHub repository) with the page."
+    }
+  },
+  {
+    "slug": "card-de-evento-responsivo",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 2 · CSS",
+    "min_days": 3,
+    "reward_lamports": 80000000,
+    "expires_in_days": 21,
+    "claim_hours": 72,
+    "title": { "pt": "Card de evento responsivo para o site da DevFellowship", "en": "Responsive event card for the DevFellowship website" },
+    "summary": {
+      "pt": "Estilize o card que anuncia os eventos da comunidade para ele ficar bom no celular e no computador, só com CSS.",
+      "en": "Style the card that announces community events so it looks right on a phone and on a desktop, with CSS only."
+    },
+    "brief": {
+      "pt": "Contexto: os eventos da DevFellowship são divulgados num card com imagem, data, título, descrição curta e botão de inscrição. Hoje ele quebra em telas pequenas.\n\nO que fazer: escreva o HTML e o CSS de um card de evento e de uma grade com três cards.\n\nCritérios de aceite:\n1. CSS puro, sem framework nem biblioteca.\n2. Começa pelo celular: em 360px de largura os cards ficam um embaixo do outro, sem rolagem horizontal.\n3. A partir de 768px a grade mostra dois cards por linha; a partir de 1280px, três. Use Grid ou Flexbox.\n4. O botão tem estado de hover e de foco visíveis, e o contraste do texto é legível.\n5. Cores e espaçamentos ficam em variáveis CSS no :root.",
+      "en": "Context: DevFellowship events are announced in a card with an image, date, title, short description and a signup button. Today it breaks on small screens.\n\nWhat to do: write the HTML and CSS of one event card and of a grid with three cards.\n\nAcceptance criteria:\n1. Plain CSS, no framework or library.\n2. Mobile first: at 360px wide the cards stack, with no horizontal scroll.\n3. From 768px the grid shows two cards per row; from 1280px, three. Use Grid or Flexbox.\n4. The button has visible hover and focus states, and the text contrast is readable.\n5. Colours and spacing live in CSS variables on :root."
+    },
+    "deliverable": {
+      "pt": "Um link público (CodePen, GitHub Pages ou repositório no GitHub) com o HTML e o CSS.",
+      "en": "A public link (CodePen, GitHub Pages or a GitHub repository) with the HTML and CSS."
+    }
+  },
+  {
+    "slug": "faq-acessivel-em-javascript",
+    "sponsor_name": "DevFellowship",
+    "unit": "Week 3 · JavaScript",
+    "min_days": 3,
+    "reward_lamports": 120000000,
+    "expires_in_days": 21,
+    "claim_hours": 72,
+    "title": { "pt": "FAQ que abre e fecha, acessível, em JavaScript puro", "en": "Accessible open-and-close FAQ in plain JavaScript" },
+    "summary": {
+      "pt": "A página de perguntas frequentes da DevFellowship precisa de um acordeão que funcione com mouse, teclado e leitor de tela, sem biblioteca.",
+      "en": "DevFellowship's FAQ page needs an accordion that works with mouse, keyboard and screen reader, with no library."
+    },
+    "brief": {
+      "pt": "Contexto: a página de dúvidas tem dezenas de perguntas e fica longa demais. Cada pergunta deve abrir e fechar a própria resposta.\n\nO que fazer: um componente de FAQ com pelo menos cinco perguntas, em HTML, CSS e JavaScript puro.\n\nCritérios de aceite:\n1. Cada pergunta é um <button>; clicar ou apertar Enter/Espaço abre e fecha a resposta.\n2. O botão informa o estado com aria-expanded e aponta para a resposta com aria-controls.\n3. Abrir uma pergunta fecha a que estava aberta.\n4. Sem biblioteca e sem framework; o JavaScript não usa onclick dentro do HTML.\n5. Com o JavaScript desligado, todas as respostas continuam legíveis.",
+      "en": "Context: the FAQ page has dozens of questions and gets too long. Each question should open and close its own answer.\n\nWhat to do: an FAQ component with at least five questions, in HTML, CSS and plain JavaScript.\n\nAcceptance criteria:\n1. Each question is a <button>; a click or Enter/Space opens and closes the answer.\n2. The button reports its state with aria-expanded and points to the answer with aria-controls.\n3. Opening one question closes the one that was open.\n4. No library and no framework; the JavaScript uses no onclick inside the HTML.\n5. With JavaScript turned off, every answer is still readable."
+    },
+    "deliverable": {
+      "pt": "Um link público (CodePen, GitHub Pages ou repositório no GitHub) com o componente funcionando.",
+      "en": "A public link (CodePen, GitHub Pages or a GitHub repository) with the working component."
+    }
+  }
+]

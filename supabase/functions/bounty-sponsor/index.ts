@@ -45,11 +45,11 @@ async function loadTrails(db: IteraClient): Promise<Trail[]> {
 }
 
 /** A bounty as its sponsor sees it: the public view plus the delivery under review. */
-function sponsorView(bounty: BountyRow, claim: ClaimRow | null, now: Date, treasuryTenant: string | null) {
+function sponsorView(bounty: BountyRow, claim: ClaimRow | null, now: Date, treasuryTenant: string | null, treasury: string | null) {
   return {
     ...bountyView({ bounty, claim, lang: 'en', now, functionsBase: functionsBase() }),
     title_i18n: bounty.title_i18n,
-    treasury_fundable: bounty.tenant_id === treasuryTenant,
+    treasury_fundable: bounty.tenant_id === treasuryTenant && bounty.refund_address === treasury,
     review: claim
       ? { status: claim.status, wallet: claim.wallet, submission_url: claim.submission_url, submission_note: claim.submission_note, submitted_at: claim.submitted_at, proof: claim.proof }
       : null,
@@ -64,12 +64,13 @@ async function list(db: IteraClient, sponsor: Sponsor, cors: Cors): Promise<Resp
     bounties = await listBounties(db, sponsor.tenantIds);
     claims = await loadClaims(db, bounties.flatMap((bounty) => (bounty.claim_id ? [bounty.claim_id] : [])));
   }
+  const treasury = sponsor.treasuryTenant ? await treasuryAddress() : null;
   return json(
     {
       tenant_ids: sponsor.tenantIds,
       treasury_tenant: sponsor.treasuryTenant,
       trails: await loadTrails(db),
-      bounties: bounties.map((bounty) => sponsorView(bounty, bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, now, sponsor.treasuryTenant)),
+      bounties: bounties.map((bounty) => sponsorView(bounty, bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, now, sponsor.treasuryTenant, treasury)),
     },
     200,
     cors,
@@ -123,6 +124,8 @@ async function create(db: IteraClient, sponsor: Sponsor, body: Record<string, un
 /** DevFellowship's own bounties: the treasury sends what the escrow account still lacks. */
 async function fund(db: IteraClient, sponsor: Sponsor, bounty: BountyRow, cors: Cors): Promise<Response> {
   if (bounty.tenant_id !== sponsor.treasuryTenant) return json({ error: 'treasury_not_allowed' }, 403, cors);
+  // Treasury money only enters an escrow whose refund returns to the treasury: otherwise fund + refund would move it to any address.
+  if (bounty.refund_address !== (await treasuryAddress())) return json({ error: 'treasury_not_allowed' }, 403, cors);
   if (bounty.status !== 'awaiting_funding' || Date.parse(bounty.expires_at) <= Date.now()) return json({ error: 'not_fundable' }, 409, cors);
   const missing = fundingTarget(bounty.reward_lamports) - (await escrowBalance(bounty.escrow_address));
   if (missing <= 0n) return json({ funded: true, status: (await refreshFunding(db, bounty)).status }, 200, cors);
