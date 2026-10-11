@@ -213,7 +213,11 @@ async function fundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: 
   }
   const cost = BigInt(bounty.reward_lamports) + rent;
   const funds = fundsCheck(balance, cost);
-  if (!funds.ok) return json({ error: 'insufficient_funds', balance_lamports: Number(balance), required_lamports: Number(funds.required) }, 402, cors);
+  // `cost_lamports` is the total the form shows; `keep_lamports` is what Solana makes a wallet keep unless it ends at exactly zero.
+  if (!funds.ok) {
+    const spend = cost + BASE_FEE_LAMPORTS;
+    return json({ error: 'insufficient_funds', balance_lamports: Number(balance), required_lamports: Number(funds.required), cost_lamports: Number(spend), keep_lamports: Number(funds.required - spend) }, 402, cors);
+  }
   return unsigned(wallet, [createFor(terms, wallet)], transferMemo(bounty.id, 'fund'), { kind: 'fund', cost_lamports: Number(cost), rent_lamports: Number(rent), escrow: bounty.escrow_address }, cors);
 }
 

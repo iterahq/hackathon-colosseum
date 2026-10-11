@@ -64,6 +64,9 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.ledger.plain': 'Cada passo aparece aqui. Os que estão na Solana têm link para a transação e dizem quem assinou. Os demais são registro do servidor da Itera, e isso está escrito.',
     'bounty.ledger.signedLearner': 'Assinado pela carteira do aluno ({wallet}). A Itera só pagou a taxa de rede.',
     'bounty.ledger.signedItera': 'Assinado pela chave da Itera ({wallet}). O programa só deixa essa chave reabrir a missão, nunca mover o dinheiro dela.',
+    'bounty.ledger.signedTreasury': 'Assinado pela chave da tesouraria da Itera ({wallet}). Esta missão é da própria Itera: o SOL travado saiu dessa carteira. Nenhum aluno assinou este passo.',
+    'bounty.ledger.signedSponsor': 'Assinado pela carteira de quem publicou a missão ({wallet}).',
+    'bounty.ledger.signedIteraPlain': 'Assinado por uma chave da Itera ({wallet}), não por um aluno.',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.ledger.signedIteraOld': 'Assinado só pela chave da Itera: este aceite é anterior a 11/10/2026, quando o programa passou a exigir a assinatura do aluno.',
     'bounty.ledger.offchain': 'Registro do servidor da Itera. Este passo não tem transação.',
@@ -183,6 +186,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.action.reading': 'Lendo sua certificação na chain…',
     'bounty.board.reading': 'Lendo o quadro e as contas de escrow na chain…',
     'bounty.detail.reading': 'Lendo a missão e a conta de escrow na chain…',
+    'bounty.detail.confirming': 'Isto é o registro da Itera. Lendo a conta de escrow na Solana para dizer se a missão está livre…',
     'bounty.signIn.hint': 'Entre com sua conta para ver se você pode aceitar esta missão.',
     'bounty.signIn.cta': 'Entrar para aceitar',
     'bounty.missing.noWallet': 'Para aceitar, a Itera precisa ler a certificação da sua carteira Solana. Vincule uma carteira à sua conta.',
@@ -411,6 +415,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.tx.err.wallet.failed': 'A carteira não conseguiu assinar ou enviar. {detail}',
     'bounty.tx.err.insufficient_funds': 'Saldo insuficiente: a transação precisa de {need} SOL e a carteira tem {have} SOL (devnet).',
+    'bounty.tx.err.insufficient_funds.split': 'Saldo insuficiente: a carteira tem {have} SOL (devnet). Saem {cost} SOL (o total acima), e a Solana exige que a carteira fique com pelo menos {keep} SOL depois, ou zere exatamente.',
     'bounty.tx.err.not_fundable': 'Esta missão não pode ser financiada agora.',
     'bounty.tx.err.already_funded': 'Esta missão já está financiada.',
     'bounty.tx.err.funded': 'Esta missão já tem o valor travado na Solana, então não pode ser excluída. Peça o valor de volta se quiser encerrá-la.',
@@ -554,6 +559,9 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.ledger.plain': "Every step is listed here. The ones on Solana link to their transaction and say who signed. The others are a record kept by Itera's server, and say so.",
     'bounty.ledger.signedLearner': "Signed by the learner's wallet ({wallet}). Itera only paid the network fee.",
     'bounty.ledger.signedItera': "Signed by Itera's key ({wallet}). The program lets that key reopen the bounty, never move its money.",
+    'bounty.ledger.signedTreasury': "Signed by Itera's treasury key ({wallet}). This bounty is Itera's own: the SOL locked came from that wallet. No learner signed this step.",
+    'bounty.ledger.signedSponsor': "Signed by the wallet that posted the bounty ({wallet}).",
+    'bounty.ledger.signedIteraPlain': "Signed by a key of Itera ({wallet}), not by a learner.",
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.ledger.signedIteraOld': "Signed by Itera's key alone: this acceptance is from before 11 Oct 2026, when the program started requiring the learner's signature.",
     'bounty.ledger.offchain': "A record kept by Itera's server. This step has no transaction.",
@@ -673,6 +681,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.action.reading': 'Reading your certification on the chain…',
     'bounty.board.reading': 'Reading the board and the escrow accounts on the chain…',
     'bounty.detail.reading': 'Reading the bounty and its escrow account on the chain…',
+    'bounty.detail.confirming': "This is Itera's record. Reading the escrow account on Solana to say whether the bounty is free…",
     'bounty.signIn.hint': 'Sign in to see whether you can take this bounty.',
     'bounty.signIn.cta': 'Sign in to accept',
     'bounty.missing.noWallet': 'To accept, Itera needs to read the certification of your Solana wallet. Link a wallet to your account.',
@@ -901,6 +910,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
     'bounty.tx.err.wallet.failed': 'The wallet could not sign or send. {detail}',
     'bounty.tx.err.insufficient_funds': 'Not enough balance: the transaction needs {need} SOL and the wallet has {have} SOL (devnet).',
+    'bounty.tx.err.insufficient_funds.split': 'Not enough balance: the wallet has {have} SOL (devnet). {cost} SOL leave it (the total above), and Solana requires the wallet to keep at least {keep} SOL afterwards, or to end at exactly zero.',
     'bounty.tx.err.not_fundable': 'This bounty cannot be funded right now.',
     'bounty.tx.err.already_funded': 'This bounty is already funded.',
     'bounty.tx.err.funded': 'This bounty already has its reward locked on Solana, so it cannot be deleted. Ask for the money back if you want to close it.',

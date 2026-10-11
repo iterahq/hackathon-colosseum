@@ -1,5 +1,5 @@
 import { plural } from '@/utils/bounty';
-import type { BountyStats, CheckReport, JudgeInfo } from '@/types/bounty';
+import type { BountyStats, CheckReport, JudgeInfo, LedgerEvent } from '@/types/bounty';
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -53,6 +53,23 @@ export function eventLabel(kind: string, judge: JudgeInfo | null, report: CheckR
       : { key: 'bounty.event.approvedByCheckNoCount', vars: {}, serverRecord: true };
   }
   return { key: `bounty.event.${kind}`, vars: {}, serverRecord: false };
+}
+
+const SIGNER_CAPTION = {
+  learner: 'bounty.ledger.signedLearner',
+  sponsor: 'bounty.ledger.signedSponsor',
+  itera_treasury: 'bounty.ledger.signedTreasury',
+  itera_key: 'bounty.ledger.signedItera',
+} as const;
+
+/**
+ * The caption under a signed step, by whose key signed it. Without the server's word, only a step a learner
+ * takes (accept, withdraw) signed by the wallet it names is called the learner's.
+ */
+export function signerCaptionKey(event: Pick<LedgerEvent, 'kind' | 'wallet' | 'signedBy' | 'signedRole'>): string {
+  if (event.signedRole) return SIGNER_CAPTION[event.signedRole];
+  const learnerStep = event.kind === 'accepted' || event.kind === 'withdrawn';
+  return learnerStep && event.signedBy === event.wallet ? SIGNER_CAPTION.learner : 'bounty.ledger.signedIteraPlain';
 }
 
 /** The sentence that says who checks the stamped days at accept. */

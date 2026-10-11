@@ -116,6 +116,8 @@ export interface LedgerEvent {
   signature: string | null;
   /** The wallet that signed this step's instruction on chain. Null: not recorded, or the step has no transaction. */
   signedBy: string | null;
+  /** Whose key that is, as the server resolved it. Null: an answer from before the server said it. */
+  signedRole: 'learner' | 'sponsor' | 'itera_treasury' | 'itera_key' | null;
   explorerUrl: string | null;
   at: string | null;
 }
@@ -212,6 +214,8 @@ export interface SponsorTrail {
 }
 
 export interface SponsorList {
+  /** False: the caller manages no bounty as staff; a wallet's own bounties live on /bounties/mine. */
+  staff: boolean;
   trails: SponsorTrail[];
   bounties: SponsorBounty[];
 }

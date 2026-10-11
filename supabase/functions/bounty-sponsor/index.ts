@@ -238,12 +238,16 @@ Deno.serve(async (request) => {
     const caller = await resolveCaller(db, request);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
     const tenantIds = staffTenantIds(await loadMemberships(db, caller.iteraUserId));
-    if (tenantIds.length === 0) return json({ error: 'forbidden' }, 403, cors);
+    const body = await readJsonObject(request, 16_384);
+    if (tenantIds.length === 0) {
+      // Asking what one manages is not an offence: a wallet that posts its own bounties is told this console is not its page.
+      if (body?.action === 'list') return json({ staff: false, trails: [], bounties: [] }, 200, cors);
+      return json({ error: 'forbidden' }, 403, cors);
+    }
+    if (!body) return json({ error: 'invalid_body' }, 400, cors);
     const config = await loadConfig(db);
     const sponsor: Sponsor = { caller, config, tenantIds, treasuryTenant: tenantIds.includes(config.bounty_treasury_tenant) ? config.bounty_treasury_tenant : null };
 
-    const body = await readJsonObject(request, 16_384);
-    if (!body) return json({ error: 'invalid_body' }, 400, cors);
     if (body.action === 'list') return await list(db, sponsor, cors);
     if (body.action === 'create') return await create(db, sponsor, body, cors);
     if (body.action === 'moderation') return await moderation(db, sponsor, cors);

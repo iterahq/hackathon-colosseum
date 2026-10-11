@@ -18,6 +18,7 @@ import {
   parseNewBounty,
   parseSubmission,
   parseWalletBounty,
+  signerRole,
   slugify,
   publicStatus,
   trailAttribute,
@@ -554,5 +555,30 @@ describe('judge bounty: the refill', () => {
     expect(refillCount(template, 0, 40)).toBe(0);
     expect(refillCount(template, 0, 55)).toBe(0);
     expect(refillCount({ ...template, active: false }, 0, 0)).toBe(0);
+  });
+});
+
+describe('signerRole', () => {
+  const TREASURY = 'AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA';
+  const LEARNER = 'CreJgdt1nhqgqqxNkFXgLFokCucdTwKQWProuhcH7X4W';
+  const SPONSOR = 'HWAGk3qYQ6m3Vd8m5oH9o9bM1c8r1cFz2G9w3z9tFHBP';
+  const team = { origin: 'team' as const, sponsor_wallet: null, refund_address: TREASURY };
+  const byWallet = { origin: 'wallet' as const, sponsor_wallet: SPONSOR, refund_address: SPONSOR };
+
+  it('calls the treasury the treasury, even on a step that names the wallet that signed it', () => {
+    expect(signerRole({ kind: 'funded', wallet: TREASURY, signature: 'S', signer: TREASURY }, team)).toBe('itera_treasury');
+    expect(signerRole({ kind: 'escrow_moved', wallet: TREASURY, signature: 'S', signer: TREASURY }, team)).toBe('itera_treasury');
+  });
+
+  it('calls a learner only the wallet that signed its own accept or give-up', () => {
+    expect(signerRole({ kind: 'accepted', wallet: LEARNER, signature: 'S', signer: LEARNER }, team)).toBe('learner');
+    expect(signerRole({ kind: 'withdrawn', wallet: LEARNER, signature: 'S', signer: LEARNER }, byWallet)).toBe('learner');
+    expect(signerRole({ kind: 'rejected', wallet: LEARNER, signature: 'S', signer: 'CPq4SPcqattester' }, team)).toBe('itera_key');
+  });
+
+  it('knows the sponsor`s wallet and says nothing without a signer', () => {
+    expect(signerRole({ kind: 'funded', wallet: SPONSOR, signature: 'S', signer: SPONSOR }, byWallet)).toBe('sponsor');
+    expect(signerRole({ kind: 'paid', wallet: LEARNER, signature: 'S', signer: null }, team)).toBeNull();
+    expect(signerRole({ kind: 'created', wallet: null, signature: null, signer: TREASURY }, team)).toBeNull();
   });
 });

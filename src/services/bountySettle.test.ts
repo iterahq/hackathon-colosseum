@@ -1,7 +1,7 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '@/lib/queryKeys';
-import { settleBountyStep, stepReflected } from './bountySettle';
+import { settleBountyStep, showJudgePass, stepReflected, withJudgePass, withJudgePassMine } from './bountySettle';
 import type { BountyDetail, MyBountyStatus } from '@/types/bounty';
 
 const detail = (status: BountyDetail['status']) => ({ id: 'b1', status }) as BountyDetail;
@@ -43,5 +43,42 @@ describe('settleBountyStep', () => {
     watch(client, { detail: () => detail('open'), mine: () => mine(false) });
     await client.refetchQueries();
     await expect(settleBountyStep(client, 'accept', 'b1', { tries: 3, sleep: async () => undefined })).resolves.toBe(false);
+  });
+});
+
+describe('a delivery the automatic check passed', () => {
+  const held = { id: 'b1', status: 'claimed', rewardLamports: 10_000_000, payout: null, claim: { wallet: 'W', walletShort: 'W…W', status: 'active', submittedAt: null, submissionCode: null, checkReport: null } } as unknown as BountyDetail;
+  const report = { version: 1, passed: true, checks: [{ id: 'a', passed: true }], checkedAt: 'now' };
+  const paid = { report, payout: { status: 'paid', signature: 'SIG', explorerUrl: 'https://explorer/tx/SIG', lamports: 10_000_000 } };
+  const active = { wallet: 'W', eligible: true, reason: null, proof: null, judgedBefore: false, busyElsewhere: false, claim: { bountyId: 'b1', status: 'active', checkReport: null } } as unknown as MyBountyStatus;
+
+  it('is shown paid, with the code and the verdict, from the answer alone', () => {
+    const next = withJudgePass(held, paid, '<p>hi</p>', '2026-10-11T19:14:15Z');
+    expect(next.status).toBe('paid');
+    expect(next.payout).toEqual({ signature: 'SIG', lamports: 10_000_000, sol: '0.01 SOL', at: '2026-10-11T19:14:15Z', wallet: 'W', explorerUrl: 'https://explorer/tx/SIG' });
+    expect(next.claim).toMatchObject({ status: 'approved', submissionCode: '<p>hi</p>', checkReport: report });
+  });
+
+  it('is shown as paying, never as still to deliver, while the payout is not confirmed', () => {
+    const next = withJudgePass(held, { report, payout: { status: 'paying', signature: null, explorerUrl: null, lamports: null } }, '<p>hi</p>', 'now');
+    expect(next.status).toBe('paying');
+    expect(next.payout).toBeNull();
+    expect(next.claim?.status).toBe('submitted');
+  });
+
+  it('ends the learner`s active claim on that bounty and on no other', () => {
+    expect(withJudgePassMine(active, 'b1', paid).claim?.status).toBe('approved');
+    expect(withJudgePassMine(active, 'b2', paid)).toBe(active);
+  });
+
+  it('reaches every read of the bounty the page holds', async () => {
+    const client = new QueryClient();
+    client.setQueryData(queryKeys.bounty.detail('faq', 'en'), held);
+    client.setQueryData(queryKeys.bounty.detail('other', 'en'), { ...held, id: 'b2' });
+    client.setQueryData(queryKeys.bounty.mine('u1', 'b1'), active);
+    await showJudgePass(client, 'b1', paid, '<p>hi</p>');
+    expect(client.getQueryData<BountyDetail>(queryKeys.bounty.detail('faq', 'en'))?.status).toBe('paid');
+    expect(client.getQueryData<BountyDetail>(queryKeys.bounty.detail('other', 'en'))?.status).toBe('claimed');
+    expect(client.getQueryData<MyBountyStatus>(queryKeys.bounty.mine('u1', 'b1'))?.claim?.status).toBe('approved');
   });
 });

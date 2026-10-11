@@ -163,6 +163,7 @@ export const queryKeys = {
     all: ['bounty'] as const,
     board: (locale: string) => ['bounty', 'board', { locale }] as const,
     detail: (slug: string, locale: string) => ['bounty', 'detail', slug, { locale }] as const,
+    record: (slug: string, locale: string) => ['bounty', 'record', slug, { locale }] as const,
     mine: (userId: string, bountyId: string) => ['bounty', 'mine', userId, bountyId] as const,
     sponsor: (userId: string) => ['bounty', 'sponsor', userId] as const,
     postOptions: ['bounty', 'post-options'] as const,

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { BountyShell, LINK, LoadError, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { CreateBountyForm } from '@/components/bounty/CreateBountyForm';
 import { ModerationSection } from '@/components/bounty/ModerationSection';
@@ -35,6 +35,8 @@ export default function BountyManagePage() {
   const list = useSponsorBounties();
   const forbidden = list.isError && bountyErrorCode(list.error) === 'forbidden';
   const data = list.data;
+  // A wallet that posts its own bounties manages them on its own page; this console is the staff's.
+  if (data && !data.staff) return <Navigate to="/bounties/mine" replace />;
   const bounties = data?.bounties ?? [];
   const review = bounties.filter((b) => b.status === 'submitted' && b.review);
   const funding = bounties.filter((b) => b.status === 'awaiting_funding');

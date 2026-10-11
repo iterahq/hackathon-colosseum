@@ -23,7 +23,10 @@ describe('index.html preload', () => {
   });
 
   it('asks for a bounty by its slug', () => {
-    expect(requestsFor('/bounties/write-the-faq')).toEqual(['https://x.supabase.co/functions/v1/bounty-board/write-the-faq?lang=en']);
+    expect(requestsFor('/bounties/write-the-faq')).toEqual([
+      'https://x.supabase.co/functions/v1/bounty-board/write-the-faq?lang=en',
+      'https://x.supabase.co/functions/v1/bounty-board/write-the-faq?lang=en&read=record',
+    ]);
   });
 
   it('asks for the board on /bounties', () => {

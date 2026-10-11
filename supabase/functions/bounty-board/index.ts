@@ -102,11 +102,14 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
   let bounty: BountyRow | null = await loadBounty(db, isUuid(key) ? { id: key } : { slug: key });
   if (!bounty) return json({ error: 'bounty_not_found' }, 404, cors);
   let claims = await loadClaims(db, bounty.claim_id ? [bounty.claim_id] : []);
-  let chainRead = true;
+  // `read=record`: what the tables hold, at once and without asking the Solana node. The page paints it and asks again for the chain's word.
+  const recordOnly = new URL(request.url).searchParams.get('read') === 'record';
+  let chainRead = !recordOnly;
   if (await expireStaleClaims(db, [bounty], claims, now)) {
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
     claims = new Map();
   }
+  if (recordOnly) return await detailAnswer(db, request, bounty, claims, false, cors);
   // An open bounty is only shown as open, and a held one as held, after its escrow account was read.
   if ((bounty.status === 'open' || bounty.status === 'claimed') && bounty.escrow_kind === 'program') {
     chainRead = await chainStep(syncWithEscrow(db, bounty.id), 'escrow account not read');
@@ -127,6 +130,11 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
     await chainStep(recordWalletPayout(db, bounty.id), 'payout not recorded');
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }
+  return await detailAnswer(db, request, bounty, claims, chainRead, cors);
+}
+
+async function detailAnswer(db: IteraClient, request: Request, bounty: BountyRow, claims: Map<string, ClaimRow>, chainRead: boolean, cors: Record<string, string>): Promise<Response> {
+  const now = new Date();
   const [events, config, tests, freeSlug] = await Promise.all([
     loadEvents(db, bounty.id),
     loadConfig(db),

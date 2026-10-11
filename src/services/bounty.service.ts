@@ -205,6 +205,12 @@ export function parseBoard(body: unknown): BountyBoard {
   };
 }
 
+const SIGNED_ROLES = ['learner', 'sponsor', 'itera_treasury', 'itera_key'] as const;
+
+function toSignedRole(value: unknown): LedgerEvent['signedRole'] {
+  return (SIGNED_ROLES as readonly unknown[]).includes(value) ? (value as LedgerEvent['signedRole']) : null;
+}
+
 function toEvent(r: Row): LedgerEvent {
   return {
     kind: text(r.kind) ?? '',
@@ -213,6 +219,7 @@ function toEvent(r: Row): LedgerEvent {
     sol: text(r.sol),
     signature: text(r.signature),
     signedBy: text(r.signed_by),
+    signedRole: toSignedRole(r.signed_role),
     explorerUrl: text(r.explorer_url),
     at: text(r.at),
   };
@@ -280,6 +287,7 @@ export function parseSponsorList(body: unknown): SponsorList {
     });
   }
   return {
+    staff: b.staff !== false,
     trails: toTrails(b.trails),
     bounties,
   };
@@ -420,6 +428,16 @@ export async function getBounty(slug: string, lang: string): Promise<BountyDetai
   const detail = parseDetail(await res.json());
   if (!detail) throw new Error('bounty-board: unreadable bounty');
   return detail;
+}
+
+/** The bounty as Itera's tables hold it, asked without waiting on the Solana node: painted first, replaced by `getBounty`. */
+export async function getBountyRecord(slug: string, lang: string): Promise<BountyDetail | null> {
+  if (!url || !anonKey) throw new Error('Supabase not configured.');
+  const live = () => fetch(`${url}/functions/v1/bounty-board/${encodeURIComponent(slug)}?lang=${lang}&read=record`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
+  const res = await (takePreload('__iteraBounty', slug, lang) ?? live()).catch(live);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`bounty-board failed (${res.status})`);
+  return parseDetail(await res.json());
 }
 
 const claimCall = (action: string, bounty: string, extra: Record<string, unknown> = {}) => callShop('bounty-claim', { body: { action, bounty, ...extra } });
@@ -677,6 +695,10 @@ export function describeTxError(error: unknown): TxErrorInfo {
   if (code === 'insufficient_funds' && error instanceof ShopCallError) {
     const need = int(error.body?.required_lamports);
     const have = int(error.body?.balance_lamports);
+    const cost = int(error.body?.cost_lamports);
+    const keep = int(error.body?.keep_lamports);
+    // One total: the cost is the number the form shows; what the wallet must keep on top of it is named apart.
+    if (cost !== null && keep !== null && have !== null) return { key: 'bounty.tx.err.insufficient_funds.split', vars: { cost: solText(cost), keep: solText(keep), have: solText(have) }, faucet: true };
     return { key: 'bounty.tx.err.insufficient_funds', vars: { need: need === null ? '?' : solText(need), have: have === null ? '?' : solText(have) }, faucet: true };
   }
   if (code && TX_CODES.includes(code)) return { key: `bounty.tx.err.${code}`, vars: { detail: error instanceof ShopCallError ? (error.detail ?? '') : '' }, faucet: false };

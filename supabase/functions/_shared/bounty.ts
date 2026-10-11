@@ -166,6 +166,22 @@ export interface EventRow {
   created_at: string;
 }
 
+export type SignerRole = 'learner' | 'sponsor' | 'itera_treasury' | 'itera_key';
+
+/**
+ * Whose key signed a step, by the key itself and never by the kind of step: the learner named by the step, the
+ * sponsor's wallet, Itera's treasury (it funds the team's own bounties) or Itera's attester key. `null`: no signer recorded.
+ */
+export function signerRole(event: Pick<EventRow, 'kind' | 'wallet' | 'signature' | 'signer'>, bounty: Pick<BountyRow, 'origin' | 'sponsor_wallet' | 'refund_address'>): SignerRole | null {
+  const signer = event.signature ? (event.signer ?? null) : null;
+  if (!signer) return null;
+  if (bounty.origin === 'wallet') {
+    if (signer === bounty.sponsor_wallet) return 'sponsor';
+  } else if (signer === bounty.refund_address) return 'itera_treasury';
+  if ((event.kind === 'accepted' || event.kind === 'withdrawn') && signer === event.wallet) return 'learner';
+  return 'itera_key';
+}
+
 /** The value `credential.ts` writes in a certification's `trail` attribute. */
 export function trailAttribute(titleEn: string): string {
   return titleEn.length <= TRAIL_ATTRIBUTE_MAX ? titleEn : `${titleEn.slice(0, TRAIL_ATTRIBUTE_MAX - 1).trimEnd()}…`;
@@ -569,6 +585,7 @@ export function bountyView(input: {
             sol: event.lamports === null ? null : solAmount(event.lamports),
             signature: event.signature,
             signed_by: event.signature ? (event.signer ?? null) : null,
+            signed_role: signerRole(event, bounty),
             explorer_url: explorerUrl('tx', event.signature),
             at: event.created_at,
           })),
