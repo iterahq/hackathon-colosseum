@@ -227,61 +227,57 @@ async function forgeXp(context) {
 const progressRow = (userId, activityId) =>
   psql(`select status::text || '|' || coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') || '|' || written_by_client from itera.progress where user_id = :'user_id'::uuid and activity_id = :'activity'::uuid;`, { user_id: userId, activity: activityId }).split('|');
 const achievementCount = (userId) => Number(psql(`select count(*) from itera.user_achievements where user_id = :'user_id'::uuid;`, { user_id: userId }));
-const isRecent = (iso) => Math.abs(Date.now() - new Date(iso).getTime()) < 120_000;
 const upsertProgress = (learner, rows) => restAs(learner, 'POST', 'progress?on_conflict=user_id,activity_id', rows, 'resolution=merge-duplicates');
 
-// --- C. Finding 1: client-written progress (mitigations only) -------------------------------------
-// Spends: the two mints of ONE honest first day (certification + first medal), about 0.007 SOL of
-// the authority. The fabricated day mints nothing.
+// --- C. Finding 1: client-written progress ---------------------------------------------------------
+// The finding is closed: a completion is written by the server only, after it graded the answer
+// (`grade` edge function, migrations 0190-0192). Every way a client used to fabricate a day must fail.
+// Spends nothing on chain: nothing here is ever awarded. The honest day (stamped, minted, with the
+// share the server verified on chain) is `node scripts/hackathon/proof-attacks.mjs honest`.
 async function fakeProgress(context) {
   const { lesson, activities } = lessonActivities(1);
   const faker = await newLearner(context.apikey, 'C fabricates a day');
-  const honest = await newLearner(context.apikey, 'C plays a day');
-  context.honestLearner = honest;
   const last = activities.at(-1);
+  const completedCount = () => Number(psql(`select count(*) from itera.progress where user_id = :'user_id'::uuid and status = 'completed';`, { user_id: faker.userId }));
 
   // 1. The attack of the review: every activity of a day "completed" in one request, with invented dates.
   const invented = activities.map((activity, index) => ({ user_id: faker.userId, activity_id: activity.id, status: 'completed', completed_at: new Date(Date.parse('2026-09-20T08:00:00Z') + index * 240_000).toISOString() }));
   const bulk = await upsertProgress(faker, invented);
-  const [status, completedAt, byClient] = progressRow(faker.userId, last.id);
-  check('C a completion written by the client carries the SERVER time, not the date it sent', bulk.status < 300 && status === 'completed' && isRecent(completedAt) && byClient === 'true', `${bulk.status} ${completedAt} client=${byClient}`);
-  const rewrite = await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}&activity_id=eq.${last.id}`, { completed_at: '2026-09-20T05:00:00Z', written_by_client: false });
-  const afterRewrite = progressRow(faker.userId, last.id);
-  check('C changing completed_at (or the origin flag) of a completed row afterwards: ignored', rewrite.status < 300 && afterRewrite[1] === completedAt && afterRewrite[2] === 'true', afterRewrite.join(' '));
+  check('C a whole day written as completed by the client: refused (42501), nothing stored', bulk.status === 403 && bulk.body?.code === '42501' && completedCount() === 0, `${bulk.status} ${JSON.stringify(bulk.body).slice(0, 120)} rows ${completedCount()}`);
+  const single = await upsertProgress(faker, [{ user_id: faker.userId, activity_id: last.id, status: 'completed', completed_at: new Date().toISOString() }]);
+  check('C one activity at a time, with an honest date: refused the same way', single.status === 403 && completedCount() === 0, single.status);
 
+  // 2. The side door: a row the client may write (in_progress), promoted afterwards.
+  const started = await restAs(faker, 'POST', 'progress?on_conflict=user_id,activity_id', activities.map((activity) => ({ user_id: faker.userId, activity_id: activity.id, status: 'in_progress', completed_at: null })), 'resolution=ignore-duplicates');
+  const promoted = await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}`, { status: 'completed', completed_at: new Date().toISOString() });
+  check('C in_progress rows are allowed; promoting them to completed is refused', started.status < 300 && promoted.status === 403 && completedCount() === 0 && progressRow(faker.userId, last.id)[0] === 'in_progress', `${started.status} ${promoted.status} ${progressRow(faker.userId, last.id).join(' ')}`);
+
+  // 3. The residual of the old build: fake attempts beside the progress. The attempt log the stamp reads is not writable.
+  const results = await restAs(faker, 'POST', 'activity_results', activities.map((activity) => ({ user_id: faker.userId, activity_id: activity.id, passed: true, score_internal: null, feedback: {} })));
+  const attempts = await restAs(faker, 'POST', 'graded_attempts', activities.map((activity) => ({ user_id: faker.userId, activity_id: activity.id, lesson_id: lesson, kind: activity.kind, mode: 'server', passed: true, claimed_passed: true, answer_hash: 'a'.repeat(64), spec_hash: 'b'.repeat(64), grader: 'v1' })));
+  const forgedAttempts = Number(psql(`select count(*) from itera.graded_attempts where user_id = :'user_id'::uuid;`, { user_id: faker.userId }));
+  check('C fake rows in the telemetry log change nothing; the graded attempt log refuses a client', results.status < 300 && attempts.status >= 400 && forgedAttempts === 0, `activity_results ${results.status}, graded_attempts ${attempts.status}, rows ${forgedAttempts}`);
+
+  // 4. Lying to the grader instead of to the database.
+  const choice = activities.find((activity) => activity.kind === 'single_choice');
+  const lied = await faker.call('grade', { activity_id: choice.id, passed: true, answer: { option_ids: ['not-an-option'] } });
+  const bare = await faker.call('grade', { activity_id: choice.id, passed: true });
+  check('C "I passed" sent to the grader with a wrong answer, or with none: the server says fail', lied.status === 200 && lied.body.verdict === 'fail' && lied.body.reason === 'answer_rejected' && bare.body.verdict === 'fail' && bare.body.reason === 'answer_required' && completedCount() === 0, `${JSON.stringify(lied.body).slice(0, 90)} ${JSON.stringify(bare.body).slice(0, 90)}`);
+
+  // 5. After all of it: nothing to stamp, nothing minted.
   const fabricated = await faker.call('passport', { lang: 'en', lesson_id: lesson });
-  check('C passport for the fabricated day: no award, no mint, neutral `day_pending_review` (too_fast)', fabricated.status === 200 && fabricated.body.awards.length === 0 && fabricated.body.mint.attempted === 0 && fabricated.body.day_pending_review?.lesson_id === lesson && fabricated.body.day_pending_review.reason === 'too_fast' && fabricated.body.day_incomplete === null && achievementCount(faker.userId) === 0, JSON.stringify(fabricated.body).slice(0, 200));
-  const fabricatedAt = Date.now();
+  check('C passport for the fabricated day: no award, no mint, the day is simply not done', fabricated.status === 200 && fabricated.body.awards.length === 0 && fabricated.body.mint.attempted === 0 && fabricated.body.day_incomplete?.done === 0 && fabricated.body.day_incomplete.total === activities.length && achievementCount(faker.userId) === 0, JSON.stringify(fabricated.body).slice(0, 200));
 
-  // 2. What the app itself does must keep working: reopen (live-class reset) and operator backdating.
-  const reopened = await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}&activity_id=eq.${activities[0].id}`, { status: 'in_progress', completed_at: null });
-  check('C the app\'s reopen (completed -> in_progress) still works', reopened.status < 300 && progressRow(faker.userId, activities[0].id).slice(0, 2).join('|') === 'in_progress|', progressRow(faker.userId, activities[0].id).join(' '));
-  await upsertProgress(faker, [{ user_id: faker.userId, activity_id: activities[0].id, status: 'completed', completed_at: '2026-09-20T05:00:00Z' }]);
-  check('C completing it again: server time again', isRecent(progressRow(faker.userId, activities[0].id)[1]));
-  psql(`update itera.progress set completed_at = '2026-09-20T05:00:00Z' where user_id = :'user_id'::uuid and activity_id = :'activity'::uuid;`, { user_id: faker.userId, activity: activities[1].id });
-  check('C an operator (psql / service role) can still backdate a row', progressRow(faker.userId, activities[1].id)[1] === '2026-09-20T05:00:00Z', progressRow(faker.userId, activities[1].id).join(' '));
-  psql(`update itera.progress set completed_at = now(), written_by_client = true where user_id = :'user_id'::uuid and activity_id = :'activity'::uuid;`, { user_id: faker.userId, activity: activities[1].id });
-
-  // 3. An honest day, written exactly as the player writes it: one activity at a time, progress then attempt.
-  const startedAt = Date.now();
-  for (const activity of activities) {
-    await upsertProgress(honest, { user_id: honest.userId, activity_id: activity.id, status: 'completed', completed_at: new Date().toISOString() });
-    await restAs(honest, 'POST', 'activity_results', { user_id: honest.userId, activity_id: activity.id, passed: true, score_internal: null, feedback: {} });
-    await sleep(1_300);
-  }
-  console.log(`C honest day: ${activities.length} activities in ${((Date.now() - startedAt) / 1000).toFixed(1)} s`);
-  const played = await honest.call('passport', { lang: 'en', lesson_id: lesson });
-  // Hour medals (`early_bird` before 08:00, `night_owl` from 23:00, São Paulo time) may come along.
-  const playedKeys = (played.body.awards ?? []).map((award) => award.key).sort();
-  check('C passport for the honest day: stamp + certification + first medal, no `day_pending_review`', played.status === 200 && ['day_stamp', 'first_stamp', 'trail_pass'].every((key) => playedKeys.includes(key)) && !('day_pending_review' in played.body) && played.body.day_incomplete === null, `${playedKeys.join(',')} ${JSON.stringify(played.body.mint)}`);
-
-  // 4. The faker waits and completes the last activity again: the span is fine now, the attempts are missing.
-  await sleep(Math.max(0, 21_000 - (Date.now() - fabricatedAt)));
-  await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}&activity_id=eq.${last.id}`, { status: 'in_progress', completed_at: null });
-  await upsertProgress(faker, [{ user_id: faker.userId, activity_id: last.id, status: 'completed', completed_at: new Date().toISOString() }]);
-  const slower = await faker.call('passport', { lang: 'en', lesson_id: lesson });
-  check('C the fabricated day stretched past the floor, without attempts: still nothing (missing_results)', slower.status === 200 && slower.body.awards.length === 0 && slower.body.day_pending_review?.reason === 'missing_results' && achievementCount(faker.userId) === 0, JSON.stringify(slower.body.day_pending_review ?? null));
-  console.log('C RESIDUAL (not fixed, by design of this build): a client that also writes fake attempts and waits 20 s IS stamped. Grading is client-side.');
+  // 6. What the app and an operator do must keep working.
+  psql(`insert into itera.progress (user_id, activity_id, status, completed_at) values (:'user_id'::uuid, :'activity'::uuid, 'completed', '2026-09-20T05:00:00Z') on conflict (user_id, activity_id) do update set status = 'completed', completed_at = excluded.completed_at, written_by_client = false;`, { user_id: faker.userId, activity: activities[1].id });
+  check('C an operator (psql / service role) can still write and backdate a completion', progressRow(faker.userId, activities[1].id).join('|') === 'completed|2026-09-20T05:00:00Z|false', progressRow(faker.userId, activities[1].id).join(' '));
+  const redated = await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}&activity_id=eq.${activities[1].id}`, { status: 'completed', completed_at: '2026-01-01T00:00:00Z', written_by_client: true });
+  check('C the client cannot re-date or re-label a completed row', redated.status < 300 && progressRow(faker.userId, activities[1].id).join('|') === 'completed|2026-09-20T05:00:00Z|false', `${redated.status} ${progressRow(faker.userId, activities[1].id).join(' ')}`);
+  const reopened = await restAs(faker, 'PATCH', `progress?user_id=eq.${faker.userId}&activity_id=eq.${activities[1].id}`, { status: 'in_progress', completed_at: null });
+  check('C the app\'s reopen (completed -> in_progress) still works', reopened.status < 300 && progressRow(faker.userId, activities[1].id).slice(0, 2).join('|') === 'in_progress|', progressRow(faker.userId, activities[1].id).join(' '));
+  const back = await upsertProgress(faker, [{ user_id: faker.userId, activity_id: activities[1].id, status: 'completed', completed_at: new Date().toISOString() }]);
+  check('C and a reopened row cannot be completed again by the client', back.status === 403 && progressRow(faker.userId, activities[1].id)[0] === 'in_progress', back.status);
+  console.log('C RESIDUAL (declared in the README): the answer keys of choice/fill/order/match reach the browser, so a learner can send copied answers through `grade`, slowly. Forged completions are closed; copied answers are not.');
 }
 
 const circuitRow = (id) => psql(`select coalesce(circuit_status, '') || '|' || coalesce(circuit_lamports, 0) || '|' || coalesce(circuit_signature, '') from itera.purchases where id = :'id'::uuid;`, { id }).split('|');
@@ -746,7 +742,7 @@ async function ownerDryCheck() {
 const SECTIONS = {
   a: ['A. pay once, get two (finding 2)', payOnceGetTwo],
   b: ['B. forgeable XP (finding 3)', forgeXp],
-  c: ['C. client-written progress (finding 1, mitigations)', fakeProgress],
+  c: ['C. client-written progress (finding 1, closed by server-side grading)', fakeProgress],
   j: ['J. Circuito off the response path + idempotent retry', circuitRobustness],
   d: ['D. unbounded authority-paid writes (finding 4)', mirrorBounds],
   e: ['E. referral farming (finding 5)', referralFarming],

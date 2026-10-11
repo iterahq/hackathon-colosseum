@@ -31,6 +31,15 @@ const ledgerCount = (learner, reason, refLike) =>
   Number(psql(`select count(*) from itera.crystal_ledger where user_id = :'user_id'::uuid and reason = :'reason' and ref_id like :'ref';`, { user_id: learner.userId, reason, ref: refLike }));
 const ledgerSum = (learner) => Number(psql(`select coalesce(sum(delta), 0) from itera.crystal_ledger where user_id = :'user_id'::uuid;`, { user_id: learner.userId }));
 const spend = (learner, body) => learner.call('crystals/spend', body);
+/** Ledger rows of the accounts no script may touch. The owner plays, so the count is compared, not expected to be zero. */
+const protectedLedgerRows = () =>
+  psql(
+    `select count(*) from itera.crystal_ledger l where l.user_id in (
+       select id from itera.users where email = :'demo'
+       union select user_id from itera.companions where wallet_address = :'owner'
+       union select user_id from itera.user_wallets where wallet = :'owner');`,
+    { demo: process.env.HACKATHON_DEMO_EMAIL ?? '', owner: PROTECTED_WALLET },
+  );
 const statuses = (answers) => answers.map((answer) => answer.status).sort().join(',');
 
 async function tokenAmount(account) {
@@ -40,6 +49,7 @@ async function tokenAmount(account) {
 
 async function main() {
   const apikey = await anonKey();
+  const protectedBefore = protectedLedgerRows();
   const authority = loadAuthority();
   const before = await balance(authority.address);
   console.log(`before: authority ${authority.address} ${sol(before)} SOL`);
@@ -231,18 +241,37 @@ async function main() {
   console.log('\n== refunded crystal purchase (M1) ==');
   const mia = await newLearner(apikey, 'mia');
   grant(mia, 150, `${RUN}-mia`);
-  // The state a refund leaves behind: the debit, the credit back, and a purchase row marked refunded and never applied.
+  // The state a refund leaves behind: a purchase row marked refunded and never applied, its debit, and the credit back
+  // keyed by the purchase id, as `refundCrystalPurchase` writes it. (A credit under any other key reads as "not paid
+  // yet" and `reconcileRefunds` pays it: that is its contract, and it is what this seed used to trip over.)
   psql(
-    `insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, -150, 'spend', 'base_criativo:00000000-0000-0000-0000-000000000000');
-     insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, 150, 'refund', gen_random_uuid()::text);
-     insert into itera.purchases (user_id, item_key, ref_id, lamports, price_usd_cents, status, source, wallet, memo, expires_at, paid_at, refunded_at, error)
-     values (:'u'::uuid, 'base_criativo', '00000000-0000-0000-0000-000000000000', 0, 0, 'refunded', 'crystals', :'w', 'base_criativo:00000000-0000-0000-0000-000000000000', now(), now(), now(), 'sold_out_after_payment');`,
+    `with refunded as (
+       insert into itera.purchases (user_id, item_key, ref_id, lamports, price_usd_cents, status, source, wallet, memo, expires_at, paid_at, refunded_at, error)
+       values (:'u'::uuid, 'base_criativo', '00000000-0000-0000-0000-000000000000', 0, 0, 'refunded', 'crystals', :'w', 'base_criativo:00000000-0000-0000-0000-000000000000', now(), now(), now(), 'sold_out_after_payment')
+       returning id)
+     insert into itera.crystal_ledger (user_id, delta, reason, ref_id)
+     select :'u'::uuid, -150, 'spend', 'base_criativo:00000000-0000-0000-0000-000000000000'
+     union all select :'u'::uuid, 150, 'refund', id::text from refunded;`,
     { u: mia.userId, w: mia.address },
   );
   const retry = await spend(mia, { item_key: 'base_criativo' });
   check('after a refund the same request is a NEW debit (150), not a free re-apply', retry.status === 200 && retry.body.avatar?.key === 'base_criativo' && retry.body.balance === 0, JSON.stringify(retry.body).slice(0, 200));
   check('…the refunded row stays refunded and unapplied, a second paid row exists, and 2 debits are in the ledger', psql(`select count(*) filter (where status = 'refunded' and applied_at is null) || '|' || count(*) filter (where status = 'paid' and applied_at is not null) from itera.purchases where user_id = :'u'::uuid and item_key = 'base_criativo';`, { u: mia.userId }) === '1|1' && ledgerCount(mia, 'spend', 'base_criativo:%') === 2);
-  check('…and the balance equals the ledger (0)', (await mia.get('crystals')).body.balance === ledgerSum(mia) && ledgerSum(mia) === 0);
+  const afterRead = (await mia.get('crystals')).body.balance;
+  check('…and reading the balance afterwards pays nothing back: balance = ledger = 0', afterRead === 0 && ledgerSum(mia) === 0 && ledgerCount(mia, 'refund', '%') === 1, `balance ${afterRead}, ledger ${ledgerSum(mia)}, refunds ${ledgerCount(mia, 'refund', '%')}`);
+  // The other half of the contract: a refunded purchase whose credit never landed is paid once, by the next read.
+  const zoe = await newLearner(apikey, 'zoe');
+  grant(zoe, 150, `${RUN}-zoe`);
+  psql(
+    `insert into itera.purchases (user_id, item_key, ref_id, lamports, price_usd_cents, status, source, wallet, memo, expires_at, paid_at, refunded_at, error)
+     values (:'u'::uuid, 'base_criativo', '00000000-0000-0000-0000-000000000000', 0, 0, 'refunded', 'crystals', :'w', 'base_criativo:00000000-0000-0000-0000-000000000000', now(), now(), now(), 'sold_out_after_payment');
+     insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, -150, 'spend', 'base_criativo:00000000-0000-0000-0000-000000000000');
+     update itera.crystal_accounts set balance = balance - 150 where user_id = :'u'::uuid;`,
+    { u: zoe.userId, w: zoe.address },
+  );
+  const repaid = (await zoe.get('crystals')).body.balance;
+  const rereadZoe = (await zoe.get('crystals')).body.balance;
+  check('a refund whose credit never landed is paid by the next read, once', repaid === 150 && rereadZoe === 150 && ledgerSum(zoe) === 150 && ledgerCount(zoe, 'refund', '%') === 1, `first read ${repaid}, second ${rereadZoe}, ledger ${ledgerSum(zoe)}, refunds ${ledgerCount(zoe, 'refund', '%')}`);
 
   console.log('\n== shop v3: seasons and the SOL rail ==');
   const natal = await spend(cy, { item_key: 'event_natal' });
@@ -284,14 +313,8 @@ async function main() {
   }
 
   console.log('\n== protected accounts ==');
-  const touched = psql(
-    `select count(*) from itera.crystal_ledger l where l.user_id in (
-       select id from itera.users where email = :'demo'
-       union select user_id from itera.companions where wallet_address = :'owner'
-       union select user_id from itera.user_wallets where wallet = :'owner');`,
-    { demo: process.env.HACKATHON_DEMO_EMAIL ?? '', owner: PROTECTED_WALLET },
-  );
-  check('the owner and the demo account have no crystal movement', touched === '0', touched);
+  const touched = protectedLedgerRows();
+  check('this run moved no crystal of the owner or of the demo account', touched === protectedBefore, `${protectedBefore} ledger rows before, ${touched} after`);
 
   const after = await balance(authority.address);
   console.log(`\nauthority: ${sol(before)} -> ${sol(after)} SOL (${sol(after - before)})`);
