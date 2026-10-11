@@ -77,7 +77,7 @@ async function loadRecipient(db: IteraClient, wallet: string, lang: Lang): Promi
   if (!user) return null;
   const [name, facts] = await Promise.all([publicNameOf(db, user), recipientFacts(db, user.userId, new Date())]);
   const icon = `${companionImageUrl(functionsBase(), facts.companionId)}?lang=${lang}&v=${facts.companionVersion}-${facts.outfit ?? 'none'}`;
-  return { wallet, userId: user.userId, who: publicLabel(name, wallet), facts, icon };
+  return { wallet, userId: user.userId, who: publicLabel(name, wallet, lang), facts, icon };
 }
 
 async function loadItem(db: IteraClient): Promise<ShopItem | null> {

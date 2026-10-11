@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
-import { checkDeliveryUrl, hiddenTestsLine, checkPostText, createErrorField, formatRemaining, isRewardInRange, isValidSlug, lamportsToSol, plural, safeHttpsUrl, slugify, solToLamports, sortBounties, statusTone, validatePostForm } from './bounty';
+import { checkDeliveryUrl, hiddenTestsLine, isDraft, checkPostText, createErrorField, formatRemaining, isRewardInRange, isValidSlug, lamportsToSol, plural, safeHttpsUrl, slugify, solToLamports, sortBounties, statusTone, validatePostForm } from './bounty';
 
 describe('solToLamports', () => {
   it('converts without float drift', () => {
