@@ -2,6 +2,7 @@ import type { ActivityNode, ProgressRow, UnitNode } from './awards.ts';
 import { graphOf } from './capability-graph.ts';
 import { claimsOf, evidenceDocument, expectedClaims, sha256Hex, type ProvenClaim } from './claims.ts';
 import type { IteraClient } from './db.ts';
+import { lessonProof, verifiedShare, type PassingAttempt } from './proof.ts';
 
 interface PassportRow {
   id: string;
@@ -34,8 +35,9 @@ export async function recordClaims(
   db: IteraClient,
   rows: PassportRow[],
   wallet: string,
-  learning: { units: UnitNode[]; activities: ActivityNode[]; progress: ProgressRow[] },
+  learning: { units: UnitNode[]; activities: ActivityNode[]; progress: ProgressRow[]; attempts?: ReadonlyMap<string, PassingAttempt> },
 ): Promise<number> {
+  const attempts = learning.attempts ?? new Map<string, PassingAttempt>();
   const trailOf = new Map(learning.units.map((unit) => [unit.id, unit.ordinal]));
   const completedAt = new Map(learning.progress.flatMap((row) => (row.completed_at ? [[row.activity_id, row.completed_at] as const] : [])));
   const inserts: Array<Record<string, unknown>> = [];
@@ -46,12 +48,15 @@ export async function recordClaims(
     const recorded = new Set(claimsOf(row.state).map((entry) => entry.id));
     for (const { claim, lessonId } of expectedClaims(row.state, trail)) {
       if (recorded.has(claim.id)) continue;
-      const activities = learning.activities
-        .filter((activity) => activity.lesson_id === lessonId)
-        .flatMap((activity) => (completedAt.has(activity.id) ? [{ id: activity.id, completed_at: new Date(completedAt.get(activity.id) as string).toISOString() }] : []));
+      const lessonActivities = learning.activities.filter((activity) => activity.lesson_id === lessonId);
+      const graded = (id: string) => (attempts.get(id)?.mode === 'server' ? (attempts.get(id) as PassingAttempt).answer_hash : null);
+      const activities = lessonActivities.flatMap((activity) =>
+        completedAt.has(activity.id) ? [{ id: activity.id, completed_at: new Date(completedAt.get(activity.id) as string).toISOString(), attempt: graded(activity.id) }] : [],
+      );
+      const proof = lessonProof(lessonActivities.map((activity) => activity.id), attempts);
       if (activities.length === 0) continue;
       const owner = row.wallet_address ?? wallet;
-      const evidence = evidenceDocument({ claim: claim.id, program: graph.program, wallet: owner, lessonId, activities });
+      const evidence = evidenceDocument({ claim: claim.id, program: graph.program, wallet: owner, lessonId, activities, verified: proof ? verifiedShare(proof) : null });
       inserts.push({ user_achievement_id: row.id, claim_id: claim.id, lesson_id: lessonId, wallet: owner, evidence, evidence_hash: await sha256Hex(evidence) });
     }
   }

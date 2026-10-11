@@ -4,6 +4,7 @@ import {
   enqueueWrite,
   flushOutbox,
   readOutbox,
+  MAX_QUEUED_TRACE_ACTIONS,
   MAX_QUEUED_WRITES,
 } from '@/utils/answerOutbox';
 import type { OutboxEntry } from '@/types/answerOutbox';
@@ -107,6 +108,26 @@ describe('the queue holds one slot per target', () => {
     enqueueWrite(classAnswer('a1', 's2'));
 
     expect(readOutbox()).toHaveLength(2);
+  });
+});
+
+describe('a trimmed sequence keeps what the server grades', () => {
+  const picks = (count: number) => Array.from({ length: count }, (_, index) => ({ type: 'option_selected' as const, at: index, payload: { option_id: `o${index}` } }));
+
+  it('keeps the submitted answer when the sequence is cut', () => {
+    const submitted = { type: 'answer_submitted' as const, at: 999, payload: { option_ids: ['o3'] } };
+    enqueueWrite({ ...progress('a1', true), actions: [...picks(MAX_QUEUED_TRACE_ACTIONS + 20), submitted] } as OutboxEntry);
+    const [queued] = readOutbox();
+    const entry = queued.entry as { actions: Array<{ type: string }>; actionsTruncated?: boolean };
+    expect(entry.actions).toHaveLength(MAX_QUEUED_TRACE_ACTIONS);
+    expect(entry.actions.at(-1)).toEqual(submitted);
+    expect(entry.actionsTruncated).toBe(true);
+  });
+
+  it('cuts from the end when the last action is not a submission', () => {
+    enqueueWrite({ ...progress('a1'), actions: picks(MAX_QUEUED_TRACE_ACTIONS + 5) } as OutboxEntry);
+    const entry = readOutbox()[0].entry as { actions: Array<{ at: number }> };
+    expect(entry.actions.at(-1)?.at).toBe(MAX_QUEUED_TRACE_ACTIONS - 1);
   });
 });
 

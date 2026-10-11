@@ -96,9 +96,12 @@ function trimForQueue(entry: OutboxEntry): OutboxEntry {
   let trimmed = entry;
 
   if (trimmed.actions && trimmed.actions.length > MAX_QUEUED_TRACE_ACTIONS) {
+    // The submitted answer is the last action and is what the server grades: it survives the cut.
+    const last = trimmed.actions[trimmed.actions.length - 1];
+    const head = trimmed.actions.slice(0, MAX_QUEUED_TRACE_ACTIONS);
     trimmed = {
       ...trimmed,
-      actions: trimmed.actions.slice(0, MAX_QUEUED_TRACE_ACTIONS),
+      actions: last.type === 'answer_submitted' ? [...head.slice(0, -1), last] : head,
       actionsTruncated: true,
     };
   }

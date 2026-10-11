@@ -101,3 +101,7 @@ verify_jwt = false
 # Sponsors: the token is checked in code, then the caller's staff memberships.
 [functions.bounty-sponsor]
 verify_jwt = false
+
+# Server-side grading: the only writer of a completion. Validates the bearer token itself.
+[functions.grade]
+verify_jwt = false

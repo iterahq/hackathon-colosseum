@@ -176,6 +176,20 @@ vi.mock('@/lib/supabase/client', () => ({
     },
   }),
 }));
+// The server records the completion now (`grade` edge function). This stands in
+// for it and logs the row it would write, so the assertions below still read
+// one `progress` write per settled answer.
+vi.mock('@/services/grade.service', () => ({
+  submitForGrading: vi.fn(async ({ activityId, passed }: { activityId: string; passed: boolean }) => {
+    upserts.push({
+      table: 'progress',
+      payload: { user_id: 'itera-user-1', activity_id: activityId, status: passed ? 'completed' : 'in_progress' },
+      opts: { onConflict: 'user_id,activity_id', ...(passed ? {} : { ignoreDuplicates: true }) },
+    });
+    if (progressWriteDown) return null;
+    return { verdict: passed ? 'pass' : 'fail', mode: 'server', attempt_id: 'attempt-1', answer_hash: 'hash', graded_at: '2026-10-11T00:00:00Z' };
+  }),
+}));
 vi.mock('@/services/iteraUser', () => ({
   getIteraUserId: vi.fn().mockResolvedValue('itera-user-1'),
 }));
