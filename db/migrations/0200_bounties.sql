@@ -4,6 +4,8 @@
 --
 -- * `itera.bounties`: one paid task. The reward sits in ONE on-chain escrow
 --   account per bounty (`escrow_address`); `status` follows the money.
+--   `is_test` keeps a row written by an automated end-to-end run off the public
+--   board; its page still answers by slug.
 -- * `itera.bounty_claims`: who took a bounty, with the proof read from chain
 --   at that moment. At most one live claim per bounty and one per learner.
 -- * `itera.bounty_events`: the public ledger, one row per step, with the
@@ -39,6 +41,7 @@ create table if not exists itera.bounties (
     check (status in ('awaiting_funding', 'open', 'claimed', 'submitted', 'paying', 'paid', 'refunding', 'refunded')),
   claim_id           uuid,
   claim_hours        integer not null default 72 check (claim_hours between 1 and 720),
+  is_test            boolean not null default false,
   expires_at         timestamptz not null,
   funded_at          timestamptz,
   funded_lamports    bigint,

@@ -28,10 +28,10 @@ const EVENT_LIMIT = 60;
 const ESCROW_HISTORY = 20;
 const CERTIFICATION_LIMIT = 20;
 
+/** The public board, or every bounty of the given tenants (a sponsor's own, test rows included). */
 export async function listBounties(db: IteraClient, tenantIds?: string[]): Promise<BountyRow[]> {
-  let query = db.from('bounties').select(BOUNTY_COLUMNS).order('created_at', { ascending: false }).limit(BOARD_LIMIT);
-  if (tenantIds) query = query.in('tenant_id', tenantIds);
-  const { data, error } = await query;
+  const query = db.from('bounties').select(BOUNTY_COLUMNS).order('created_at', { ascending: false }).limit(BOARD_LIMIT);
+  const { data, error } = await (tenantIds ? query.in('tenant_id', tenantIds) : query.eq('is_test', false));
   if (error) throw new Error(`bounties: ${error.message}`);
   return (data ?? []) as unknown as BountyRow[];
 }

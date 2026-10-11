@@ -144,8 +144,13 @@ async function review(db: IteraClient, sponsor: Sponsor, bounty: BountyRow, appr
     if (claim?.user_id === sponsor.caller.iteraUserId) return json({ error: 'self_review' }, 403, cors);
     const { data, error } = await db.rpc('bounty_review', { p_bounty: bounty.id, p_reviewer: sponsor.caller.iteraUserId, p_approve: approve, p_note: note });
     if (error) throw new Error(`bounty_review: ${error.message}`);
-    if (data !== 'ok') return json({ error: 'not_submitted' }, 409, cors);
-    if (!approve) return json({ rejected: true, status: 'open' }, 200, cors);
+    if (data !== 'ok') {
+      // Another approval of the same delivery got there first: this one only helps the payout through.
+      const moved = await loadBounty(db, { id: bounty.id });
+      if (!approve || (moved?.status !== 'paying' && moved?.status !== 'paid')) return json({ error: 'not_submitted' }, 409, cors);
+    } else if (!approve) {
+      return json({ rejected: true, status: 'open' }, 200, cors);
+    }
   } else if (!approve || (bounty.status !== 'paying' && bounty.status !== 'paid')) {
     return json({ error: 'not_submitted' }, 409, cors);
   }
