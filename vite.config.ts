@@ -7,6 +7,7 @@ import { monacoSelfHost } from "./scripts/vendor-monaco";
 import { sourceStamp } from "./scripts/source-stamp";
 import { universalScreens } from "./scripts/vite/universal-screens";
 import { stripHtmlCommentsPlugin } from "./scripts/vite/strip-html-comments";
+import { bundleReportPlugin } from "./scripts/vite/bundle-report";
 
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
@@ -48,6 +49,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     ...universalScreens(),
     stripHtmlCommentsPlugin(),
+    bundleReportPlugin(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {
@@ -73,6 +75,21 @@ export default defineConfig(({ mode }) => ({
         : {
             swapy: path.resolve(__dirname, "./src/shims/swapy.ts"),
           }),
+    },
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Stable vendor chunks: a deploy that touches app code leaves React, Supabase, Framer Motion and the dictionary cached.
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules\/(react|react-dom|scheduler)\//, priority: 30 },
+            { name: "supabase", test: /node_modules\/@supabase\//, priority: 20 },
+            { name: "motion", test: /node_modules\/(framer-motion|motion-dom|motion-utils)\//, priority: 20 },
+            { name: "i18n", test: /\/src\/i18n\//, priority: 10 },
+          ],
+        },
+      },
     },
   },
   define: {

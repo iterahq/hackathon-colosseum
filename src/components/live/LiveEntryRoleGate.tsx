@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { useLiveEntryRole } from '@/hooks/useLiveEntryRole';
-import { LiveEntryRoleModal } from '@/components/live/LiveEntryRoleModal';
+
+const LiveEntryRoleModal = lazy(() => import('@/components/live/LiveEntryRoleModal').then((m) => ({ default: m.LiveEntryRoleModal })));
 
 /**
  * Porta de entrada de `/live/:sessionId` para quem é admin do tenant.
@@ -24,7 +25,12 @@ export function LiveEntryRoleGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (asking) return <LiveEntryRoleModal onChoose={choose} />;
+  if (asking)
+    return (
+      <Suspense fallback={null}>
+        <LiveEntryRoleModal onChoose={choose} />
+      </Suspense>
+    );
 
   return <>{children}</>;
 }

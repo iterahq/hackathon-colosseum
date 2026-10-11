@@ -1,4 +1,3 @@
-import { Button } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
 import { ShellNeutralScreen } from './ShellNeutralScreen';
@@ -14,9 +13,9 @@ export function ShellNoAccessScreen() {
 
   return (
     <ShellNeutralScreen testId="shell-no-access" title={t('shell.noAccess.title')}>
-      <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => void signOut()} data-testid="shell-no-access-sign-out">
+      <button type="button" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[#2E2A25] bg-transparent px-4 py-2 text-sm font-medium text-[#F4EDE2] transition-colors hover:bg-[#141210] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]" onClick={() => void signOut()} data-testid="shell-no-access-sign-out">
         {t('auth.logout')}
-      </Button>
+      </button>
     </ShellNeutralScreen>
   );
 }
