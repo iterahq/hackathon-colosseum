@@ -217,6 +217,8 @@ async function storeAwards(db: IteraClient, userId: string, awards: Award[], exi
 /** Takes the rows of a job for this invocation. All or nothing: a partial claim is released. */
 async function claim(db: IteraClient, job: MintJob, wallet: string): Promise<boolean> {
   const ids = job.rows.map((row) => row.id);
+  // A minted certification that only gained claims settles no row: nothing to take.
+  if (ids.length === 0) return true;
   const staleBefore = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
   const { data, error } = await db
     .from('user_achievements')
