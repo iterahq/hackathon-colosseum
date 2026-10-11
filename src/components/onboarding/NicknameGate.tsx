@@ -22,6 +22,11 @@ const HAPPY_HOLD_MS = 700;
 const OTHER_DIALOG = '[role="dialog"]:not([data-nickname-gate]), [role="alertdialog"]';
 const FOCUSABLE = 'input, button, [href], [tabindex]:not([tabindex="-1"])';
 
+/** A dialog that is in the document but not drawn (a closed sheet kept mounted) does not count. */
+function otherDialogOnScreen(): boolean {
+  return [...document.querySelectorAll<HTMLElement>(OTHER_DIALOG)].some((el) => (typeof el.checkVisibility === 'function' ? el.checkVisibility({ visibilityProperty: true }) : true));
+}
+
 /** Whether some other dialog is on screen: the question waits for it instead of covering it. */
 function useOtherDialogOpen(watch: boolean): boolean {
   const [, recheck] = useState(0);
@@ -32,7 +37,7 @@ function useOtherDialogOpen(watch: boolean): boolean {
     return () => observer.disconnect();
   }, [watch]);
   // Read at render, not from state: the first render that is due must already see a dialog that is up.
-  return watch && document.querySelector(OTHER_DIALOG) !== null;
+  return watch && otherDialogOnScreen();
 }
 
 /**
