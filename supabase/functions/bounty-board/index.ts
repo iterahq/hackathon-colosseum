@@ -29,6 +29,11 @@ function rehearsalIds(bounties: BountyRow[], claims: Map<string, ClaimRow>, test
   return new Set(bounties.filter((bounty) => bounty.status === 'paid' && bounty.claim_id && tests.has(claims.get(bounty.claim_id)?.user_id ?? '')).map((bounty) => bounty.id));
 }
 
+/** Bounties posted by a wallet of one of the team's own test accounts: labelled as the team's, never as an outside sponsor. */
+function teamTestSponsored(bounties: BountyRow[], tests: Set<string>): Set<string> {
+  return new Set(bounties.filter((bounty) => bounty.origin === 'wallet' && tests.has(bounty.created_by ?? '')).map((bounty) => bounty.id));
+}
+
 async function board(db: IteraClient, request: Request, cors: Record<string, string>): Promise<Response> {
   const now = new Date();
   const lang = langOf(request, 'pt');
@@ -38,13 +43,14 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   await syncOpenEscrows(db).catch((error) => console.error('bounty-board: escrow accounts not read', error instanceof Error ? error.message : error));
   const [{ bounties, claims }, config, tests] = await Promise.all([currentBounties(db, now), loadConfig(db), loadTestAccountIds(db)]);
   const rehearsals = rehearsalIds(bounties, claims, tests);
+  const teamTests = teamTestSponsored(bounties, tests);
   return json(
     {
       cluster: 'devnet',
       read_at: now.toISOString(),
-      stats: boardStats(bounties, now, rehearsals),
+      stats: boardStats(bounties, now, rehearsals, teamTests),
       bounties: bounties.map((bounty) =>
-        bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id) }),
+        bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id), teamTestSponsor: teamTests.has(bounty.id) }),
       ),
     },
     200,
@@ -73,9 +79,9 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
     await recordWalletPayout(db, bounty.id).catch((error) => console.error('bounty-board: payout not recorded', error instanceof Error ? error.message : error));
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }
-  const [events, config, tests] = await Promise.all([loadEvents(db, bounty.id), loadConfig(db), bounty.status === 'paid' ? loadTestAccountIds(db) : new Set<string>()]);
+  const [events, config, tests] = await Promise.all([loadEvents(db, bounty.id), loadConfig(db), bounty.status === 'paid' || bounty.origin === 'wallet' ? loadTestAccountIds(db) : new Set<string>()]);
   return json(
-    bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, events, lang: langOf(request, 'pt'), now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsalIds([bounty], claims, tests).has(bounty.id) }),
+    bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, events, lang: langOf(request, 'pt'), now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsalIds([bounty], claims, tests).has(bounty.id), teamTestSponsor: teamTestSponsored([bounty], tests).has(bounty.id) }),
     200,
     { ...cors, 'Cache-Control': 'no-store' },
   );

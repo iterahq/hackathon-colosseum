@@ -80,6 +80,7 @@ export interface BountyRow {
   hidden_at: string | null;
   hidden_reason: string | null;
   delivery_mirror_url: string | null;
+  created_by: string | null;
 }
 
 export interface ClaimRow {
@@ -394,6 +395,8 @@ export function bountyView(input: {
   programId?: string;
   /** The payout went to one of the team's own test accounts: a rehearsal, shown as one. */
   rehearsal?: boolean;
+  /** The wallet that posted it belongs to one of the team's own test accounts: never shown as an outside sponsor. */
+  teamTestSponsor?: boolean;
 }) {
   const { bounty, claim, lang } = input;
   const byWallet = bounty.origin === 'wallet' && bounty.sponsor_wallet !== null;
@@ -407,6 +410,7 @@ export function bountyView(input: {
     sponsor: bounty.sponsor_name,
     posted_by: {
       kind: bounty.origin,
+      team_test: byWallet && input.teamTestSponsor === true,
       name: bounty.sponsor_name,
       wallet: byWallet ? bounty.sponsor_wallet : null,
       wallet_short: byWallet ? shortWallet(bounty.sponsor_wallet as string) : null,
@@ -493,7 +497,7 @@ export type BountyView = ReturnType<typeof bountyView>;
  * payout went to one of the team's own test accounts. They are on chain and
  * counted, and the split says how many of the paid ones they are.
  */
-export function boardStats(bounties: readonly BountyRow[], now: Date, rehearsals: ReadonlySet<string> = new Set()) {
+export function boardStats(bounties: readonly BountyRow[], now: Date, rehearsals: ReadonlySet<string> = new Set(), teamTestSponsored: ReadonlySet<string> = new Set()) {
   let paid = 0n;
   let rehearsed = 0n;
   let locked = 0n;
@@ -516,7 +520,7 @@ export function boardStats(bounties: readonly BountyRow[], now: Date, rehearsals
       locked += BigInt(bounty.funded_lamports ?? bounty.reward_lamports);
       if (status === 'open') openCount += 1;
       else heldCount += 1;
-      if (bounty.origin === 'wallet') outsideCount += 1;
+      if (bounty.origin === 'wallet' && !teamTestSponsored.has(bounty.id)) outsideCount += 1;
     }
   }
   return {

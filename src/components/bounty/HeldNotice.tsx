@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom';
 import { LINK, Notice } from '@/components/bounty/bountyUi';
 import { useCountdown } from '@/hooks/useCountdown';
-import { useMyBountyStatus } from '@/hooks/useBounties';
+import { useBountySession, useMyBountyStatus } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
+import { loginHref } from '@/lib/loginReturn';
 import { formatRemaining, formatWhen } from '@/utils/bounty';
 import type { BountyDetail } from '@/types/bounty';
 
 export function HeldNotice({ bounty }: { bounty: BountyDetail }) {
   const { t, locale } = useI18n();
+  const { signedIn } = useBountySession();
   const mine = useMyBountyStatus(bounty.id);
   const claim = bounty.claim;
   const deadline = claim?.deadlineAt ? Date.parse(claim.deadlineAt) : null;
@@ -28,6 +30,11 @@ export function HeldNotice({ bounty }: { bounty: BountyDetail }) {
       <Link to="/bounties" className={`${LINK} mt-1`} data-testid="bounty-held-others">
         {t('bounty.held.others')} →
       </Link>
+      {!signedIn && (
+        <Link to={loginHref(`/bounties/${bounty.slug}`)} className={`${LINK} ml-4 mt-1`} data-testid="bounty-held-sign-in">
+          {t('bounty.held.isYou')} →
+        </Link>
+      )}
     </Notice>
   );
 }

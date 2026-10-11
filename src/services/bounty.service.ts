@@ -78,6 +78,7 @@ function toPostedBy(v: unknown, sponsor: string): PostedBy {
   const wallet = text(r.wallet);
   return {
     kind: r.kind === 'wallet' ? 'wallet' : 'team',
+    teamTest: r.team_test === true,
     name: text(r.name) ?? sponsor,
     wallet,
     walletShort: text(r.wallet_short) ?? wallet,

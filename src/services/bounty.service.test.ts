@@ -45,7 +45,7 @@ describe('parseBounty', () => {
       claim: { wallet: 'W', submission_mirrored: true },
     });
     expect(b?.slugs).toEqual({ pt: 'faq-pt', en: 'faq-en' });
-    expect(b?.postedBy).toEqual({ kind: 'wallet', name: 'Acme Inc', wallet: 'WalletAddr1234', walletShort: 'Wall…234', profileUrl: 'https://x/u/W' });
+    expect(b?.postedBy).toEqual({ kind: 'wallet', teamTest: false, name: 'Acme Inc', wallet: 'WalletAddr1234', walletShort: 'Wall…234', profileUrl: 'https://x/u/W' });
     expect(b).toMatchObject({ approver: 'sponsor_wallet', rehearsal: true, hidden: true, writtenIn: 'pt' });
     expect(b?.claim?.submissionMirrored).toBe(true);
   });
