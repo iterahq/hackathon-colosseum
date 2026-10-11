@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
 import { actionTitle } from './bountyAction';
 import { plural } from './bounty';
-import type { MyBountyStatus } from '@/types/bounty';
+import type { JudgeInfo, MyBountyStatus } from '@/types/bounty';
 
-const bounty = { id: 'b1', status: 'open' as const, claim: null, requirement: { program: 'p', unitId: 'u', trail: 'JavaScript', minDays: 3, totalDays: 5 } };
-const status = (patch: Partial<MyBountyStatus> = {}): MyBountyStatus => ({ wallet: 'W', eligible: false, reason: null, proof: null, claim: null, busyElsewhere: false, ...patch });
+const bounty = { id: 'b1', status: 'open' as const, claim: null, judge: null as JudgeInfo | null, requirement: { program: 'p', unitId: 'u', trail: 'JavaScript', minDays: 3, totalDays: 5 } };
+const status = (patch: Partial<MyBountyStatus> = {}): MyBountyStatus => ({ wallet: 'W', eligible: false, reason: null, proof: null, claim: null, busyElsewhere: false, judgedBefore: false, ...patch });
 
 const render = (locale: 'pt' | 'en', title: ReturnType<typeof actionTitle>) => {
   const t = (key: string, vars: Record<string, string | number> = {}) => (resources[locale][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
@@ -21,7 +21,7 @@ describe('actionTitle', () => {
   });
   it('says "Your turn" for the holder of the claim', () => {
     const held = { ...bounty, status: 'claimed' as const };
-    const mine = status({ eligible: true, claim: { bountyId: 'b1', status: 'active', acceptedAt: null, deadlineAt: null, submissionUrl: null, submissionNote: null, submittedAt: null, reviewNote: null } });
+    const mine = status({ eligible: true, claim: { bountyId: 'b1', status: 'active', acceptedAt: null, deadlineAt: null, submissionUrl: null, submissionNote: null, submittedAt: null, reviewNote: null, checkReport: null } });
     expect(render('en', actionTitle(held, mine))).toBe('Your turn');
   });
   it('names the stamped days that are missing, with the days the wallet has', () => {
@@ -47,5 +47,10 @@ describe('actionTitle', () => {
   });
   it('does not claim the turn on a bounty that is not open and not held', () => {
     expect(render('en', actionTitle({ ...bounty, status: 'paid' }, status({ eligible: true })))).toBe('Your bounty');
+  });
+  it('says a judge bounty is not for a wallet that already got one', () => {
+    const judge = { ...bounty, judge: { checks: [], codeMax: 8000 } };
+    expect(render('en', actionTitle(judge, status({ eligible: true, judgedBefore: true })))).toBe('Not this one: you already got a judge bounty');
+    expect(render('en', actionTitle(bounty, status({ eligible: true, judgedBefore: true })))).toBe('Your turn');
   });
 });

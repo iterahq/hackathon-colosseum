@@ -10,6 +10,9 @@ import type {
   BountyBoard,
   BountyClaim,
   BountyDetail,
+  CheckReport,
+  JudgeInfo,
+  JudgeSummary,
   BountyLang,
   BountyMoney,
   BountyStatus,
@@ -55,6 +58,23 @@ function toMoney(v: unknown): BountyMoney | null {
   return { signature, lamports: int(r.lamports) ?? 0, sol: text(r.sol) ?? '', at: text(r.at), wallet: text(r.wallet), explorerUrl: text(r.explorer_url) };
 }
 
+export function toCheckReport(v: unknown): CheckReport | null {
+  const r = row(v);
+  if (!Array.isArray(r.checks)) return null;
+  return {
+    version: int(r.version) ?? 0,
+    passed: r.passed === true,
+    checks: rows(r.checks).filter((c) => text(c.id)).map((c) => ({ id: String(c.id), passed: c.passed === true })),
+    checkedAt: text(r.checked_at),
+  };
+}
+
+function toJudge(v: unknown): JudgeInfo | null {
+  const r = row(v);
+  if (r.approval !== 'automatic_check') return null;
+  return { checks: rows(r.checks).filter((c) => text(c.id)).map((c) => ({ id: String(c.id), label: text(c.label) ?? String(c.id) })), codeMax: int(r.code_max) ?? 8000 };
+}
+
 function toClaim(v: unknown): BountyClaim | null {
   const r = row(v);
   const wallet = text(r.wallet);
@@ -71,6 +91,8 @@ function toClaim(v: unknown): BountyClaim | null {
     proofUrl: text(r.proof_url),
     submissionUrl: text(r.submission_url),
     submissionMirrored: r.submission_mirrored === true,
+    submissionCode: text(r.submission_code),
+    checkReport: toCheckReport(r.check_report),
   };
 }
 
@@ -108,6 +130,7 @@ export function parseBounty(v: unknown): Bounty | null {
     postedBy: toPostedBy(r.posted_by, sponsor),
     approver: r.approver === 'sponsor_wallet' ? 'sponsor_wallet' : 'itera',
     rehearsal: r.rehearsal === true,
+    judge: toJudge(r.judge),
     hidden: r.hidden === true,
     writtenIn: lang(r.written_in),
     sponsor,
@@ -126,7 +149,7 @@ export function parseBounty(v: unknown): Bounty | null {
       totalDays: int(req.total_days) ?? 0,
     },
     escrow: text(escrow.address)
-      ? { address: String(escrow.address), explorerUrl: text(escrow.explorer_url), targetLamports: int(escrow.target_lamports) ?? 0, refundAddress: text(escrow.refund_address), custody: escrow.custody === 'program' ? 'program' : 'itera_server', programId: text(escrow.program_id), programExplorerUrl: text(escrow.program_explorer_url) }
+      ? { address: String(escrow.address), explorerUrl: text(escrow.explorer_url), targetLamports: int(escrow.target_lamports) ?? 0, refundAddress: text(escrow.refund_address), custody: escrow.custody === 'program' ? 'program' : 'itera_server', programId: text(escrow.program_id), programExplorerUrl: text(escrow.program_explorer_url), daysCheckedBy: escrow.days_checked_by === 'program' ? 'program' : 'attester' }
       : null,
     claimHours: int(r.claim_hours) ?? 72,
     expiresAt: text(r.expires_at),
@@ -140,6 +163,17 @@ export function parseBounty(v: unknown): Bounty | null {
 }
 
 const parseBounties = (v: unknown): Bounty[] => (Array.isArray(v) ? v.map(parseBounty).filter((b): b is Bounty => b !== null) : []);
+
+function toJudgeSummary(v: unknown): JudgeSummary {
+  const r = row(v);
+  return {
+    paidCount: int(r.paid_count) ?? 0,
+    teamTestPaidCount: int(r.team_test_paid_count) ?? 0,
+    latest: rows(r.latest)
+      .filter((p) => text(p.slug))
+      .map((p) => ({ slug: String(p.slug), paidAt: text(p.paid_at), wallet: text(p.wallet), walletShort: text(p.wallet_short) ?? text(p.wallet) ?? '', teamTest: p.team_test === true, explorerUrl: text(p.explorer_url) })),
+  };
+}
 
 export function parseBoard(body: unknown): BountyBoard {
   const b = row(body);
@@ -158,7 +192,13 @@ export function parseBoard(body: unknown): BountyBoard {
       outsideSponsorCount: int(s.outside_sponsor_count) ?? 0,
       hiddenTestCount: int(s.hidden_test_count),
       listedCount: int(s.listed_count),
+      judgePaidCount: int(s.judge_paid_count) ?? 0,
+      judgePaidSol: text(s.judge_paid_sol) ?? '0 SOL',
+      openOnChainCount: int(s.open_on_chain_count),
+      daysByProgramCount: int(s.days_by_program_count),
+      daysByAttesterCount: int(s.days_by_attester_count),
     },
+    judge: toJudgeSummary(b.judge),
     readAt: text(b.read_at),
     bounties: parseBounties(b.bounties),
   };
@@ -203,9 +243,11 @@ export function parseMyStatus(body: unknown): MyBountyStatus {
           submissionNote: text(claim.submission_note),
           submittedAt: text(claim.submitted_at),
           reviewNote: text(claim.review_note),
+          checkReport: toCheckReport(claim.check_report),
         }
       : null,
     busyElsewhere: b.busy_elsewhere === true,
+    judgedBefore: b.judged_before === true,
   };
 }
 
@@ -414,6 +456,43 @@ export const acceptBounty = (bounty: string, onPhase?: (phase: StepPhase) => voi
 
 export async function submitBounty(bounty: string, submissionUrl: string, note: string): Promise<void> {
   await claimCall('submit', bounty, note.trim() ? { url: submissionUrl, note: note.trim() } : { url: submissionUrl });
+}
+
+export type JudgeResult =
+  | { submitted: false; report: CheckReport | null }
+  | { submitted: true; report: CheckReport | null; payout: { status: string; signature: string | null; explorerUrl: string | null; lamports: number | null } };
+
+export function parseJudgeResult(body: unknown): JudgeResult {
+  const b = row(body);
+  const report = toCheckReport(b.report);
+  if (b.submitted !== true) return { submitted: false, report };
+  const payout = row(b.payout);
+  return { submitted: true, report, payout: { status: text(payout.status) ?? '', signature: text(payout.signature), explorerUrl: text(payout.explorer_url), lamports: int(payout.lamports) } };
+}
+
+export async function submitJudgeCode(bounty: string, code: string): Promise<JudgeResult> {
+  return parseJudgeResult((await claimCall('submit', bounty, { code })).data);
+}
+
+export type SponsorFaucetResult = { kind: 'sent'; signature: string; explorerUrl: string | null; lamports: number | null } | { kind: 'blocked'; reason: 'already_claimed' | 'not_needed' | 'no_wallet' | 'not_devnet' | 'other' } | { kind: 'unavailable' };
+
+const FAUCET_BLOCKS = ['already_claimed', 'not_needed', 'no_wallet', 'not_devnet'] as const;
+
+export function parseSponsorFaucet(body: unknown): SponsorFaucetResult {
+  const b = row(body);
+  const signature = text(b.signature);
+  if (signature) return { kind: 'sent', signature, explorerUrl: text(b.explorer_url), lamports: int(b.lamports) };
+  const reason = FAUCET_BLOCKS.find((x) => x === b.blocked);
+  return reason ? { kind: 'blocked', reason } : b.blocked ? { kind: 'blocked', reason: 'other' } : { kind: 'unavailable' };
+}
+
+export async function requestSponsorFaucet(): Promise<SponsorFaucetResult> {
+  try {
+    return parseSponsorFaucet((await callShop('wallet-faucet', { body: { purpose: 'sponsor' } })).data);
+  } catch (error) {
+    if (error instanceof ShopCallError && (error.code === 'faucet_unavailable' || error.code === 'rpc_unavailable')) return { kind: 'unavailable' };
+    throw error;
+  }
 }
 
 export const withdrawBounty = (bounty: string, onPhase?: (phase: StepPhase) => void): Promise<SignedStepResult> => signedStep('withdraw', bounty, onPhase);

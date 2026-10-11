@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resources } from '@/i18n';
-import { acceptFunctionSource, compareBinary, evidenceShellLine, evidenceVerdict, instructionRows, localizeRow, type EscrowIdl } from '@/lib/chain/verifyChecks';
+import { acceptFunctionSource, functionSource, compareBinary, evidenceShellLine, evidenceVerdict, instructionRows, localizeRow, type EscrowIdl } from '@/lib/chain/verifyChecks';
 import { sha256Hex } from '@/lib/chain/base58';
 
 describe('verify checks', () => {
@@ -63,6 +63,14 @@ describe('instruction table in each language', () => {
     const accept = rows.find((row) => row.name === 'accept')!;
     expect(localizeRow(unclaim, resources.en).name).toBe('Give up (unclaim in the program)');
     expect(localizeRow(unclaim, resources.pt).name).toBe('Desistir (unclaim no programa)');
-    expect(localizeRow(accept, resources.en).signers).toEqual(["claimant (your wallet) + attester (Itera's key AMoT…3cA, which also pays the fee)"]);
+    expect(localizeRow(accept, resources.en).signers).toEqual(["claimant (your wallet). On a 195-byte bounty also an attester: the approver or Itera's key AMoT…3cA. Itera's key pays the fee in the transactions Itera builds."]);
+  });
+});
+
+describe('functionSource', () => {
+  it('cuts any named function and answers null for one that is not there', () => {
+    const source = ['pub fn read_stamps(asset: &[u8]) -> u8 {', '    1', '}', 'fn accept() {', '}'].join('\n');
+    expect(functionSource(source, 'read_stamps')).toBe(['pub fn read_stamps(asset: &[u8]) -> u8 {', '    1', '}'].join('\n'));
+    expect(functionSource(source, 'missing')).toBeNull();
   });
 });

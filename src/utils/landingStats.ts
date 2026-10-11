@@ -1,12 +1,15 @@
 import type { BountyStats } from '@/types/bounty';
 import type { CircuitCounter } from '@/types/circuit';
 import { plural } from '@/utils/bounty';
+import { judgePaidHint } from '@/utils/bountyJudge';
 
 export type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 /** Who the paid bounties went to, inside the card: the team's rehearsal is never counted as a stranger's payout. */
 export function paidHint(stats: BountyStats, t: Translate): string {
   if (stats.paidCount === 0) return t('bounty.stats.paidHint.none');
+  const judged = judgePaidHint(t, stats);
+  if (judged) return judged;
   if (stats.rehearsalPaidCount === 0) return t('bounty.stats.paidHint.outside');
   return plural(t, 'bounty.stats.paidHint.mixed', stats.rehearsalPaidCount, { outside: stats.outsidePaidCount });
 }

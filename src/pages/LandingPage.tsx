@@ -8,6 +8,7 @@ import { LandingStep } from '@/components/landing/LandingStep';
 import { LandingStory } from '@/components/landing/LandingStory';
 import { LandingTeam } from '@/components/landing/LandingTeam';
 import { LABEL, WORLD_GRID } from '@/components/world/worldStyles';
+import { useBountyBoard } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 
@@ -15,6 +16,7 @@ import { useI18n } from '@/i18n';
 export default function LandingPage() {
   const { t } = useI18n();
   usePageTitle(t('landing.title'));
+  const older = (useBountyBoard().data?.stats.daysByAttesterCount ?? 0) > 0;
   return (
     <div className="min-h-screen text-[#F4EDE2]" style={WORLD_GRID} data-testid="landing">
       <LandingHeader />
@@ -24,7 +26,7 @@ export default function LandingPage() {
         <ol className="grid list-none gap-4 p-0 md:grid-cols-3" data-testid="landing-steps">
           <LandingStep label={t('landing.step.learn.label')} title={t('landing.step.learn.title')} body={t('landing.step.learn.body')} accent="#3FD17F" />
           <LandingStep label={t('landing.step.prove.label')} title={t('landing.step.prove.title')} body={t('landing.step.prove.body')} accent="#F2C94C" />
-          <LandingStep label={t('landing.step.earn.label')} title={t('landing.step.earn.title')} body={t('landing.step.earn.body')} accent="#9B8CFF" />
+          <LandingStep label={t('landing.step.earn.label')} title={t('landing.step.earn.title')} body={older ? `${t('landing.step.earn.body')} ${t('landing.step.earn.older')}` : t('landing.step.earn.body')} accent="#9B8CFF" />
         </ol>
         <section className="flex flex-col gap-4" data-testid="landing-live">
           <span className={`${LABEL} text-[#A0978A]`}>{t('landing.live.label')}</span>

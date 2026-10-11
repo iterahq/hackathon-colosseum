@@ -53,8 +53,9 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
       'A credencial fica na sua carteira e não pode ser vendida nem transferida. Cada habilidade provada entra nela com uma impressão digital do seu trabalho. Qualquer pessoa confere, sem login. Os nomes técnicos estão na página Verifique.',
     'landing.step.earn.label': '03 · Ganhar',
     'landing.step.earn.title': 'A credencial abre missões pagas',
+    'landing.step.earn.older': 'Missões antigas dependem da chave da Itera para os dias.',
     'landing.step.earn.body':
-      'Patrocinadores travam SOL por uma tarefa. O programa na chain confere que a carteira que aceita tem uma certificação da Itera; a Itera confere os dias carimbados. Aprovou, pagou.',
+      'Patrocinadores travam SOL por uma tarefa. A conta que guarda o dinheiro registra quantos dias carimbados pede, e o programa na chain lê esses dias direto da credencial na sua carteira antes de deixar você aceitar. O que é carimbado quem decide é o servidor da Itera, que corrige cada resposta. Aprovou, pagou.',
     'landing.live.label': 'Lido agora, do servidor e da chain · Solana devnet · inclui os testes do próprio time',
     'landing.live.bountiesOpen': 'missões abertas',
     'landing.live.lockedSol': 'em escrow',
@@ -134,8 +135,9 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
       'The credential lives in your wallet and cannot be sold or moved. Each skill you prove is written on it with a fingerprint of your work. Anyone can check it, no login. The technical names are on the Verify page.',
     'landing.step.earn.label': '03 · Earn',
     'landing.step.earn.title': 'The credential opens paid bounties',
+    'landing.step.earn.older': "Older bounties rely on Itera's key for the days.",
     'landing.step.earn.body':
-      'Sponsors lock SOL for a task. The program on chain checks that the accepting wallet holds an Itera certification; Itera checks the stamped days. Approved means paid.',
+      "Sponsors lock SOL for a task. The account that holds the money names the stamped days it asks for, and the program on chain reads them from the credential in your wallet before it lets you accept. What gets stamped is decided by Itera's server, which grades every answer. Approved means paid.",
     'landing.live.label': "Read right now, from the server and the chain · Solana devnet · the team's own test runs included",
     'landing.live.bountiesOpen': 'open bounties',
     'landing.live.lockedSol': 'in escrow',

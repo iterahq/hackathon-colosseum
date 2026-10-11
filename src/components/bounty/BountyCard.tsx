@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { JudgeCaption, JudgeChip } from '@/components/bounty/JudgeParts';
 import { RehearsalChip, Reward, RequirementChip, StatusChip } from '@/components/bounty/bountyUi';
 import { CARD, FOCUS, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
@@ -21,10 +22,12 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
             : t(bounty.postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: bounty.postedBy.name, wallet: bounty.postedBy.walletShort ?? '' })}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
+          {bounty.judge && <JudgeChip />}
           {bounty.rehearsal && <RehearsalChip />}
           <StatusChip status={bounty.status} />
         </span>
       </div>
+      {bounty.judge && <JudgeCaption />}
       <h3 className="[font:700_26px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <p className="line-clamp-3 [font:400_14px/1.5_Inter] text-[#C9BFB0]">{bounty.summary}</p>
       <div className="mt-auto flex flex-col gap-3 pt-1">

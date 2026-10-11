@@ -2,7 +2,7 @@ import { VerifySection, Labelled, P } from '@/components/verify/VerifyParts';
 import { LINK } from '@/components/bounty/bountyUi';
 import { usePublishedJson } from '@/hooks/useChainRead';
 import { resources, useI18n } from '@/i18n';
-import { ESCROW_LAYOUT, ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
+import { ESCROW_LAYOUT, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
 import { BINARY_PATH, IDL_PATH, instructionRows, localizeRow, SOURCE_PATH, type EscrowIdl } from '@/lib/chain/verifyChecks';
 
 const TH = '[font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A] text-left py-2 pr-3 align-bottom';
@@ -36,10 +36,10 @@ function Instructions({ idl }: { idl: EscrowIdl }) {
   );
 }
 
-function Layout() {
+function Layout({ rows, testId }: { rows: ReadonlyArray<{ field: string; offset: number; length: number }>; testId: string }) {
   const { t } = useI18n();
   return (
-    <div className="max-w-full overflow-x-auto" data-testid="escrow-layout">
+    <div className="max-w-full overflow-x-auto" data-testid={testId}>
       <table className="w-full min-w-[320px] border-collapse">
         <thead>
           <tr className="border-b border-[#262320]">
@@ -49,7 +49,7 @@ function Layout() {
           </tr>
         </thead>
         <tbody>
-          {ESCROW_LAYOUT.map((row) => (
+          {rows.map((row) => (
             <tr key={row.field} className="border-b border-[#1C1916]">
               <td className={TD}>{row.field}</td>
               <td className={TD}>{row.offset}</td>
@@ -91,8 +91,10 @@ export function SourceSection() {
           <Labelled label={t('verify.source.builtBy')}>{idl.data.metadata.built_by}</Labelled>
         </>
       )}
-      <p className={P}>{t('verify.source.layout', { n: ESCROW_STATE_BYTES })}</p>
-      <Layout />
+      <p className={P}>{t('verify.source.layout', { n: ESCROW_STATE_BYTES, gated: GATED_ESCROW_STATE_BYTES })}</p>
+      <Layout rows={ESCROW_LAYOUT} testId="escrow-layout" />
+      <p className={P}>{t('verify.source.layoutGated', { n: ESCROW_STATE_BYTES, gated: GATED_ESCROW_STATE_BYTES })}</p>
+      <Layout rows={GATED_ESCROW_LAYOUT.filter((row) => row.offset >= ESCROW_STATE_BYTES)} testId="gated-escrow-layout" />
     </VerifySection>
   );
 }

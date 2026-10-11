@@ -16,7 +16,7 @@ const treasury = loadTreasury();
 const config = Object.fromEntries((await sql("select key, value from itera.onchain_config where key in ('bounty_escrow_program','bounty_escrow_version','collection_passports')")).map((row) => [row.key, row.value]));
 if (Number(config.bounty_escrow_version) < 3) throw new Error('the gated program is not live (bounty_escrow_version < 3)');
 const program = config.bounty_escrow_program;
-const rows = await sql("select id, slug, escrow_address, reward_lamports, requirement, extract(epoch from expires_at)::bigint as expires from itera.bounties where status = 'open' and origin = 'team' and escrow_kind = 'program' and not escrow_gated and claim_id is null and is_test = false and expires_at > now() + interval '1 hour' order by created_at");
+const rows = await sql("select id, slug, escrow_address, reward_lamports, requirement, floor(extract(epoch from expires_at))::bigint as expires from itera.bounties where status = 'open' and origin = 'team' and escrow_kind = 'program' and not escrow_gated and claim_id is null and is_test = false and expires_at > now() + interval '1 hour' order by created_at");
 const state = async (address) => {
   const { value } = await rpc('getAccountInfo', [address, { encoding: 'base64', commitment: 'confirmed' }]);
   return value ? parseEscrowState(Uint8Array.from(Buffer.from(value.data[0], 'base64'))) : null;

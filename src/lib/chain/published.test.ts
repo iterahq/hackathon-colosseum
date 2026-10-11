@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ESCROW_LAYOUT, ESCROW_PROGRAM, ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
+import { ESCROW_LAYOUT, ESCROW_PROGRAM, ESCROW_STATE_BYTES, GATED_ESCROW_LAYOUT, GATED_ESCROW_STATE_BYTES } from '@/lib/chain/escrowAccount';
 
 const read = (path: string) => readFileSync(path);
 const idl = JSON.parse(read('public/verify/bounty-escrow.idl.json').toString('utf8'));
@@ -27,5 +27,9 @@ describe('what the site publishes about the escrow program', () => {
   it('describes the account layout the browser decoder reads', () => {
     expect(idl.accounts[0].size).toBe(ESCROW_STATE_BYTES);
     expect(idl.accounts[0].fields.map((field: { offset: number }) => field.offset)).toEqual(ESCROW_LAYOUT.map((entry) => entry.offset));
+    expect(idl.accounts[1].name).toBe('GatedBounty');
+    expect(idl.accounts[1].size).toBe(GATED_ESCROW_STATE_BYTES);
+    expect(idl.accounts[1].fields.map((field: { offset: number }) => field.offset)).toEqual(GATED_ESCROW_LAYOUT.map((entry) => entry.offset));
+    expect(idl.instructions.map((instruction: { name: string }) => instruction.name)).toContain('create_gated');
   });
 });
