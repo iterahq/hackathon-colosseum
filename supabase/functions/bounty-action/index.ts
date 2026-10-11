@@ -20,6 +20,7 @@ import { compileMessage, memoInstruction } from '../_shared/solana-message.ts';
 import { actionHeaders, type Lang } from '../_shared/gift.ts';
 import { functionsBase, isUuid, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
 import { fundsCheck } from '../_shared/purchase-verify.ts';
+import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { RpcError, balanceOf, latestBlockhash } from '../_shared/rpc.ts';
 import { base64Encode, buildTransferMessage, isSignature, serializeTransaction } from '../_shared/solana-tx.ts';
 
@@ -28,6 +29,8 @@ const SLUG = /^[a-z0-9][a-z0-9-]{2,62}$/;
 /** How long the callback waits for the escrow balance to show the payment. */
 const CONFIRM_WAIT_MS = 8_000;
 const CONFIRM_POLL_MS = 1_000;
+/** Every call here reads the chain, and the confirmation polls it: few per caller. */
+const RATE: RateLimit = { limit: 30, windowMs: 60_000 };
 
 function answer(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -109,6 +112,8 @@ Deno.serve(async (request) => {
   try {
     const [first, ...rest] = pathAfter(request, FUNCTION);
     const db = serviceClient();
+    const verdict = await takeRate(db, FUNCTION, callerAddress(request), RATE);
+    if (!verdict.allowed) return tooMany(verdict, actionHeaders());
     if (first === 'confirm' && rest.length === 0) {
       return request.method === 'POST' ? await confirm(db, request, lang) : refuse('invalid_body', lang, 405);
     }

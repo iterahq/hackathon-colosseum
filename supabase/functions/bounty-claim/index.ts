@@ -5,7 +5,6 @@ import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/call
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { RpcError } from '../_shared/rpc.ts';
-import { TransferBroadcastError } from '../_shared/treasury.ts';
 
 type Cors = Record<string, string>;
 
@@ -77,14 +76,12 @@ async function accept(db: IteraClient, caller: Caller, bounty: BountyRow, cors: 
     const signature = await acceptOnChain(db, bounty, { id: result.claim_id, wallet: caller.wallet, proofAsset: eligibility.proof.asset });
     return json({ accepted: true, proof: eligibility.proof, chain: { status: 'recorded', signature } }, 200, cors);
   } catch (error) {
-    // Sent but not seen confirmed: the claim stands, and the payout repairs the account if this never landed.
-    if (error instanceof TransferBroadcastError) return json({ accepted: true, proof: eligibility.proof, chain: { status: 'pending', signature: error.signature } }, 200, cors);
     const released = await db.rpc('bounty_release_claim', { p_bounty: bounty.id, p_reason: 'withdrawn', p_user_id: caller.iteraUserId });
     if (released.error) console.error('bounty claim not released after a chain refusal', bounty.id, released.error.message);
     if (error instanceof EscrowProgramError) {
       // The escrow may have been closed on chain without us (a sponsor refunding from their own wallet): the board follows.
       if (error.code === 'not_open') await syncWithEscrow(db, bounty.id).catch((reason) => console.error('bounty not synced with its escrow', bounty.id, reason));
-      return json({ error: 'refused_by_program', reason: error.code }, 403, cors);
+      return error.code === 'not_recorded' ? json({ error: 'upstream_unavailable' }, 502, cors) : json({ error: 'refused_by_program', reason: error.code }, 403, cors);
     }
     throw error;
   }

@@ -1,12 +1,14 @@
 import { isSolanaAddress } from '../_shared/address.ts';
-import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, sweepExpired, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
+import { BOUNTY_COLUMNS, expireStaleClaims, inBackground, sweepExpired, syncOpenEscrows, syncWithEscrow, landedSignatures, listBounties, loadBounty, loadClaims, loadEvents, refreshFunding } from '../_shared/bounty-store.ts';
 import { boardStats, bountyView, earningsView, type BountyRow } from '../_shared/bounty.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
+import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { RpcError } from '../_shared/rpc.ts';
 
 const FUNCTION = 'bounty-board';
 const SLUG = /^[a-z0-9][a-z0-9-]{2,62}$/;
+const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
 const SWEEP_ON_READ = 1;
 const SWEEP_ON_SCHEDULE = 4;
 
@@ -26,6 +28,8 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
   const lang = langOf(request, 'pt');
   // A bounty past its date goes back to its sponsor without anyone asking: this read sets it off, after answering.
   inBackground(sweepExpired(db, now, SWEEP_ON_READ));
+  // Before the board says "open" and counts money as locked, the escrow accounts are read: one call for all of them.
+  await syncOpenEscrows(db).catch((error) => console.error('bounty-board: escrow accounts not read', error instanceof Error ? error.message : error));
   const [{ bounties, claims }, config] = await Promise.all([currentBounties(db, now), loadConfig(db)]);
   return json(
     {
@@ -46,6 +50,11 @@ async function detail(db: IteraClient, request: Request, key: string, cors: Reco
   if (await expireStaleClaims(db, [bounty], claims, now)) {
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
     claims = new Map();
+  }
+  // An open bounty is only shown as open after its escrow account was read.
+  if (bounty.status === 'open' && bounty.escrow_kind === 'program') {
+    await syncWithEscrow(db, bounty.id).catch((error) => console.error('bounty-board: escrow account not read', error instanceof Error ? error.message : error));
+    bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }
   // A bounty someone just funded opens on the next read: the balance of its escrow account decides.
   if (bounty.status === 'awaiting_funding') bounty = await refreshFunding(db, bounty).catch(() => bounty as BountyRow);
@@ -73,6 +82,8 @@ Deno.serve(async (request) => {
   try {
     const [first, second, ...rest] = pathAfter(request, FUNCTION);
     const db = serviceClient();
+    const verdict = await takeRate(db, FUNCTION, callerAddress(request), RATE);
+    if (!verdict.allowed) return tooMany(verdict, cors);
     if (rest.length > 0) return json({ error: 'not_found' }, 404, cors);
     if (first === undefined) return await board(db, request, cors);
     // The scheduler's door (`0202_bounty_refund_schedule.sql`). Public on purpose: all it can do is return expired money to its sponsor.
