@@ -59,7 +59,8 @@ await markTest();
 let view = (await get(`bounty-board/${slug1}`)).j;
 const escrow1 = view.escrow.address;
 const PROGRAM = view.escrow.kind === 'program';
-const RENT = await rpc('getMinimumBalanceForRentExemption', [195]);
+// Bounties posted since the gated program hold their terms in a 228-byte account.
+const RENT = await rpc('getMinimumBalanceForRentExemption', [228]);
 const LOCKED = PROGRAM ? REWARD + RENT : REWARD + 5000;
 const EMPTY = PROGRAM ? RENT : 0;
 console.log('escrow kind', view.escrow.kind, view.escrow.program_id ?? '');
