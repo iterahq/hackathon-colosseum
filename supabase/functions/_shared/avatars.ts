@@ -60,6 +60,49 @@ export interface AvatarAssetRow {
   asset_address: string | null;
   tx_signature: string | null;
   minted_at: string | null;
+  /** How the learner got it. Absent on rows read before the column existed: bought. */
+  origin?: TeraOrigin;
+  /** The day chest that gave an earned Tera. */
+  chest_id?: string | null;
+}
+
+export type TeraOrigin = 'bought' | 'earned' | 'sponsor';
+
+export function originOf(row: Pick<AvatarAssetRow, 'origin'> | null | undefined): TeraOrigin {
+  return row?.origin === 'earned' || row?.origin === 'sponsor' ? row.origin : 'bought';
+}
+
+/** Only a bought Tera can change hands: an earned one and a sponsor's prize are frozen at mint. */
+export function isTransferable(origin: TeraOrigin): boolean {
+  return origin === 'bought';
+}
+
+/** Where anyone checks a Tera: its page here and the explorer. */
+export function teraProof(asset: string) {
+  return { asset, page_url: `${APP_URL}/c/${asset}`, explorer_url: `https://explorer.solana.com/address/${asset}?cluster=devnet` };
+}
+
+/** What an EARNED Tera says on chain beyond the catalog entry: who earned it, which stamped day opened the chest, and the roll inputs. */
+export interface EarnedOrigin {
+  wallet: string;
+  certification: string;
+  day: number;
+  /** The `chest:<day>` commitment as written on the certification. */
+  commit: string;
+  seedSlot: number;
+  seedBlockhash: string;
+}
+
+export function earnedAttributes(origin: EarnedOrigin): OnchainAttribute[] {
+  return [
+    { key: 'origin', value: 'earned' },
+    { key: 'learner', value: origin.wallet },
+    { key: 'certification', value: origin.certification },
+    { key: 'day', value: String(origin.day) },
+    { key: 'chest', value: origin.commit },
+    { key: 'seed_slot', value: String(origin.seedSlot) },
+    { key: 'seed_blockhash', value: origin.seedBlockhash },
+  ];
 }
 
 /** An item an avatar carries with it (`effect.includes`): enough to name it in a list. */
@@ -321,21 +364,34 @@ export function avatarMetadataUrl(functionsBase: string, assetRowId: string): st
   return `${functionsBase}/credential-meta/avatar/${assetRowId}`;
 }
 
+const EARNED_TEXT =
+  'A Tera EARNED at Itera: it came out of the chest a stamped day of a certification opened. Soulbound: it cannot be bought, sold or transferred. Its attributes name the wallet, the certification, the day and the public roll inputs, so anyone can recompute it.';
+
 const META_TEXT = {
   pt: 'Avatar colecionável do Tera, o mascote da Itera. Diferente das certificações, este NFT NÃO é intransferível: é seu para usar como foto de perfil, guardar ou transferir.',
   en: 'A collectible avatar of Tera, the Itera mascot. Unlike the certifications, this NFT is NOT soulbound: it is yours to wear as a profile picture, keep or transfer.',
 } as const;
 
 /** Metaplex-standard JSON of a minted avatar. Carries the catalog entry and the serial: no personal data. */
-export function avatarMetadata(catalog: AvatarCatalog, item: AvatarItem, row: Pick<AvatarAssetRow, 'serial' | 'asset_address'>, lang: Lang, supabaseUrl: string) {
+export function avatarMetadata(
+  catalog: AvatarCatalog,
+  item: AvatarItem,
+  row: Pick<AvatarAssetRow, 'serial' | 'asset_address' | 'origin'>,
+  lang: Lang,
+  supabaseUrl: string,
+  /** The day chest behind an earned Tera: public addresses and a day, nothing about the person. */
+  earned?: { certification: string; trail: string; day: number } | null,
+) {
   const image = avatarImageUrl(supabaseUrl, item);
   const lore = loreOf(item.key);
   // With lore the NFT speaks English: the story, then the transferability line.
   const story = lore ? loreText(lore.story, 'en') : '';
+  const origin = originOf(row);
+  const closing = origin === 'earned' ? EARNED_TEXT : lore && story ? META_TEXT.en : META_TEXT[lang];
   return {
     name: avatarDisplayName(catalog, item, row.serial, lang),
     symbol: 'ITERA',
-    description: lore && story ? `${story}\n\n${META_TEXT.en}` : META_TEXT[lang],
+    description: lore && story ? `${story}\n\n${closing}` : closing,
     image,
     external_url: row.asset_address ? `${APP_URL}/c/${row.asset_address}` : APP_URL,
     attributes: [
@@ -346,7 +402,9 @@ export function avatarMetadata(catalog: AvatarCatalog, item: AvatarItem, row: Pi
       { trait_type: 'Tier', value: tierName(catalog, item, lang) },
       { trait_type: 'Serial', value: row.serial },
       { trait_type: 'Supply', value: item.supply_cap === null ? 'open' : item.supply_cap },
-      { trait_type: 'Transferable', value: 'yes' },
+      { trait_type: 'Origin', value: origin },
+      { trait_type: 'Transferable', value: isTransferable(origin) ? 'yes' : 'no' },
+      ...(origin === 'earned' && earned ? [{ trait_type: 'Certification', value: earned.certification }, { trait_type: 'Trail', value: earned.trail }, { trait_type: 'Day', value: earned.day }] : []),
       ...(lore ? [{ trait_type: 'Epithet', value: loreText(lore.epithet, 'en') }, { trait_type: 'Quote', value: loreText(lore.quote, 'en') }] : []),
     ],
     properties: {

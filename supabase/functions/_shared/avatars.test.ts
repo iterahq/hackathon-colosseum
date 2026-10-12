@@ -11,6 +11,9 @@ import {
   avatarMetadata,
   avatarView,
   FREE_TIER,
+  earnedAttributes,
+  isTransferable,
+  originOf,
   equipVerdict,
   isEarnOnly,
   tiersView,
@@ -260,6 +263,24 @@ describe('eligibility and equip', () => {
     const offShelf: AvatarCatalog = { ...catalog, items: new Map([...catalog.items, ['event_space', { ...MYTHIC, active: false }]]) };
     expect(resolveAvatar(offShelf, 'event_space')?.key).toBe('event_space');
     expect(resolveAvatar({ ...catalog, items: new Map([...catalog.items, ['tera_feliz', { ...HAPPY, active: false }]]) }, 'tera_feliz')?.key).toBe(DEFAULT_AVATAR_KEY);
+  });
+
+  it('says in the metadata how a Tera was obtained and whether it can change hands', () => {
+    const bought = avatarMetadata(catalog, LEADER, { serial: 7, asset_address: 'Asset111' }, 'en', SUPABASE);
+    expect(bought.attributes).toEqual(expect.arrayContaining([{ trait_type: 'Origin', value: 'bought' }, { trait_type: 'Transferable', value: 'yes' }]));
+    const earned = avatarMetadata(catalog, LEADER, { serial: 8, asset_address: 'Asset222', origin: 'earned' }, 'en', SUPABASE, { certification: 'Cert111', trail: 'Week 1 · HTML', day: 3 });
+    expect(earned.attributes).toEqual(expect.arrayContaining([{ trait_type: 'Origin', value: 'earned' }, { trait_type: 'Transferable', value: 'no' }, { trait_type: 'Certification', value: 'Cert111' }, { trait_type: 'Day', value: 3 }]));
+    expect(earned.description).toContain('Soulbound');
+    expect(bought.description).not.toContain('Soulbound');
+    expect(earnedAttributes({ wallet: 'W', certification: 'C', day: 2, commit: '10.1.aaaaaaaa', seedSlot: 10, seedBlockhash: 'H' })).toEqual([
+      { key: 'origin', value: 'earned' }, { key: 'learner', value: 'W' }, { key: 'certification', value: 'C' }, { key: 'day', value: '2' },
+      { key: 'chest', value: '10.1.aaaaaaaa' }, { key: 'seed_slot', value: '10' }, { key: 'seed_blockhash', value: 'H' },
+    ]);
+    expect(originOf({ origin: 'earned' })).toBe('earned');
+    expect(originOf({})).toBe('bought');
+    expect(isTransferable('earned')).toBe(false);
+    expect(isTransferable('sponsor')).toBe(false);
+    expect(isTransferable('bought')).toBe(true);
   });
 
   it('names one source of rarity: the ladder, which tiers are earned only, and the tier of every avatar', () => {

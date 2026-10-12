@@ -1,10 +1,11 @@
 import { isLessonProof, verifiedShare } from './proof.ts';
 import type { ArtInput, Lang } from './art.ts';
 import type { I18nText, Tier } from './awards.ts';
-import { claimAttributes, claimsOf } from './claims.ts';
+import { ATTRIBUTE_BUDGET_BYTES, claimAttributes, claimsOf } from './claims.ts';
 import { cosmeticsOf } from './cosmetics.ts';
 import { endorsementAttributes, endorsementsOf } from './endorsement.ts';
 import { podiumPositionOf } from './podium.ts';
+import { chestAttributes, chestsOf } from './tera-roll.ts';
 
 export const APP_URL = 'https://hackathon-colosseum.178-105-2-230.sslip.io';
 export const CLUSTER = 'devnet';
@@ -119,7 +120,9 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       ...(frame ? [{ key: 'frame', value: frame }] : []),
       ...endorsementAttributes(endorsementsOf(row.state)),
     ];
-    return [...attributes, ...claimAttributes(claimsOf(row.state), attributes)];
+    const proven = [...attributes, ...claimAttributes(claimsOf(row.state), attributes)];
+    // The day-chest commitments come last and only in the room that is left: they never change what is above them.
+    return [...proven, ...chestAttributes(chestsOf(row.state), proven, ATTRIBUTE_BUDGET_BYTES)];
   }
   const position = podiumPositionOf(row.achievement_key);
   if (position !== null || row.achievement_key === 'weekly_goal') {

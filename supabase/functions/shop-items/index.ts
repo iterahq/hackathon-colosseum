@@ -10,6 +10,7 @@ import { bearerToken, corsHeaders, json, langOf } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 import { ITEM_COLUMNS, type ShopItem } from '../_shared/shop-items.ts';
 import { isItemKind } from '../_shared/shop-rules.ts';
+import { earnedBlocks, originFields } from '../_shared/tera-chest-store.ts';
 import { unlockLevelOf, unlockView } from '../_shared/unlock.ts';
 
 /** The list is readable with no session, and every call is several reads: one address gets two a second. */
@@ -73,6 +74,10 @@ Deno.serve(async (request) => {
       level = stats ? stats.level : null;
     }
 
+    // How each Tera the caller holds was obtained: bought, or earned from the chest of a stamped day.
+    const earnedByChest = await earnedBlocks(db, avatarRows, lang);
+    const heldFields = (own: AvatarAssetRow | null) => (own && own.mint_status !== 'reserved' ? originFields(own, earnedByChest) : {});
+
     // A gift is bought on someone's profile, not in the shop list: it is listed only when asked for (`?with=gift`).
     const accept = parseAccept(config[SHOP_ACCEPT_KEY]);
     const includedWith = avatars ? includedWithMap(avatars.catalog) : new Map<string, string>();
@@ -84,7 +89,7 @@ Deno.serve(async (request) => {
           const avatar = avatars.catalog.items.get(item.key);
           if (avatar) {
             const own = avatarRows.find((row) => row.item_key === item.key) ?? null;
-            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar, royaltyBps }), ...resolvedCurrencies(accept, item), art: item.art, owned_refs: [] };
+            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar, royaltyBps }), ...heldFields(own), ...resolvedCurrencies(accept, item), art: item.art, owned_refs: [] };
           }
         }
         const held = inventory.filter((entry) => entry.item_key === item.key);
@@ -139,7 +144,7 @@ Deno.serve(async (request) => {
           .filter((avatar) => !avatar.active && !isFreeAvatar(avatar) && isEarnOnly(avatars.catalog, avatar))
           .map((avatar) => {
             const own = avatarRows.find((row) => row.item_key === avatar.key) ?? null;
-            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(avatar.key), own, equippedKey: wornAvatar }), accepts: [], sol_enabled: false, crystals_enabled: false, art: {}, owned_refs: [] };
+            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(avatar.key), own, equippedKey: wornAvatar }), ...heldFields(own), sol_enabled: false, crystals_enabled: false, art: {}, owned_refs: [] };
           })
       : [];
     return json([...items, ...earned], 200, { ...cors, 'Cache-Control': 'private, no-store' });

@@ -12,6 +12,7 @@ import { explorerUrl, pickText, type AchievementRow, type CatalogEntry } from '.
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
 import { regenerate } from '../_shared/lives.ts';
+import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { PROFILE_ASSET_LIMIT, buildProfile, isVerified, profileAvatars, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
@@ -121,7 +122,9 @@ async function build(db: ReturnType<typeof serviceClient>, wallet: string, lang:
     }),
     explorer: explorerUrl,
   });
-  const avatars = walletAvatars ? profileAvatars({ wallet, lang, supabaseUrl: supabaseUrl(), config, catalog: walletAvatars.catalog, rows: walletAvatars.rows, onchain }) : [];
+  const avatars = walletAvatars
+    ? profileAvatars({ wallet, lang, supabaseUrl: supabaseUrl(), config, catalog: walletAvatars.catalog, rows: walletAvatars.rows, onchain, earned: await earnedBlocks(db, walletAvatars.rows, lang) })
+    : [];
   return { ...profile, capabilities, avatar, avatars, circuit };
 }
 

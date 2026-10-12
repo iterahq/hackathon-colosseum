@@ -5,13 +5,14 @@ import { withClaims } from './claims.ts';
 import { claimsByRow } from './claims-store.ts';
 import { changeLives, ensureCompanion, syncMirror } from './companion-store.ts';
 import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics } from './cosmetics.ts';
-import { trailCosmeticPurchases } from './cosmetics-store.ts';
+import { chestCommitsByRow, trailCosmeticPurchases } from './cosmetics-store.ts';
 import { changedAttributes, explorerUrl, onchainAttributes, pickText, type AchievementRow, type CatalogEntry, type ChainWrite } from './credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { deliverGift, loadGift, recipientFacts, type GiftRow } from './gift-store.ts';
 import { applyLifePack, lifePackOf, refillLives, regenerate, type LifePack } from './lives.ts';
 import { inSeason, seasonData } from './seasons.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
+import { withChests } from './tera-roll.ts';
 
 export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort,price_crystals,sol_enabled,crystals_enabled';
 export const PURCHASE_COLUMNS =
@@ -138,7 +139,10 @@ async function loadPassport({ db, userId, refId }: ShopContext): Promise<Achieve
   if (error) throw new Error(`user_achievements: ${error.message}`);
   const row = data as AchievementRow | null;
   // The proven claims ride in `state` for the chain write, as in `restoreCosmetics`: a cosmetic must not drop them from the asset.
-  return row && withClaims(row, (await claimsByRow(db, [row.id])).get(row.id) ?? []);
+  if (!row) return null;
+  const [claims, chests] = await Promise.all([claimsByRow(db, [row.id]), chestCommitsByRow(db, [row.id])]);
+  // The day-chest commitments ride with the claims: an ink bought later must not take them off the asset either.
+  return withChests(withClaims(row, claims.get(row.id) ?? []), chests.get(row.id) ?? new Map());
 }
 
 /** A passport cosmetic: stored on the `trail_pass` row and written to the asset's attributes. */

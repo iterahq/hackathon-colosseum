@@ -22,12 +22,13 @@ import {
 import type { Lang } from './art.ts';
 import { COLLECTIONS } from './chain-names.ts';
 import { loadWornBorder } from './borders-store.ts';
+import type { OnchainAttribute } from './credential.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 
 export const AVATAR_ITEM_COLUMNS =
   'key,title_i18n,description_i18n,price_lamports,price_usd_cents,price_label,rarity,avatar_group,supply_cap,image_key,effect,price_crystals,active,sort';
-export const AVATAR_ASSET_COLUMNS = 'id,user_id,item_key,serial,purchase_id,mint_status,reserved_until,wallet,asset_address,tx_signature,minted_at';
+export const AVATAR_ASSET_COLUMNS = 'id,user_id,item_key,serial,purchase_id,mint_status,reserved_until,wallet,asset_address,tx_signature,minted_at,origin,chest_id';
 const CATALOG_TTL_MS = 60_000;
 const UNIQUE_VIOLATION = '23505';
 const STALE_MINT_MS = 3 * 60_000;
@@ -189,7 +190,15 @@ async function loadById(db: IteraClient, rowId: string): Promise<AvatarAssetRow 
  * asset instead of minting a second one. One invocation mints at a time; another
  * one waits for it. Throws while the asset is still due.
  */
-export async function mintAvatar(db: IteraClient, catalog: AvatarCatalog, item: AvatarItem, row: AvatarAssetRow, wallet: string): Promise<AvatarAssetRow> {
+export async function mintAvatar(
+  db: IteraClient,
+  catalog: AvatarCatalog,
+  item: AvatarItem,
+  row: AvatarAssetRow,
+  wallet: string,
+  /** An EARNED Tera: minted frozen (soulbound) with these attributes after the catalog ones. A bought one passes nothing. */
+  earned?: { attributes: OnchainAttribute[] },
+): Promise<AvatarAssetRow> {
   if (row.mint_status === 'minted' && row.asset_address) return row;
   if (!(await claimAvatarMint(db, row.id))) {
     const deadline = Date.now() + MINT_WAIT_MS;
@@ -213,14 +222,15 @@ export async function mintAvatar(db: IteraClient, catalog: AvatarCatalog, item: 
       const { error } = await db.from('onchain_config').upsert({ key: configKey, value: collection, updated_at: new Date().toISOString() });
       if (error) throw new Error(`onchain_config: ${error.message}`);
     }
-    const created = await sdk.createCollectible(chain, {
+    const input = {
       rowId: `avatar:${row.id}`,
       collection,
       owner: wallet,
       name: avatarAssetName(catalog, item, row.serial),
       uri: avatarMetadataUrl(functionsBase(), row.id),
-      attributes: avatarAttributes(catalog, item, row.serial),
-    });
+      attributes: [...avatarAttributes(catalog, item, row.serial), ...(earned?.attributes ?? [])],
+    };
+    const created = earned ? await sdk.createCredential(chain, input) : await sdk.createCollectible(chain, input);
     const { data, error } = await db
       .from('avatar_assets')
       .update({

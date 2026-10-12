@@ -1,7 +1,8 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { loreView } from '../_shared/lore.ts';
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
-import { avatarFromAttributes, avatarImageUrl, avatarMetadataUrl, tierName, type AvatarAssetRow } from '../_shared/avatars.ts';
+import { avatarFromAttributes, avatarImageUrl, avatarMetadataUrl, teraProof, tierName, type AvatarAssetRow } from '../_shared/avatars.ts';
+import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { readAssets } from '../_shared/chain-read.ts';
 import { COLLECTIONS } from '../_shared/chain-names.ts';
 import { companionChainImageUrl, companionFromAttributes, companionMetadataUrl, companionText, type CompanionValues } from '../_shared/companion.ts';
@@ -171,7 +172,20 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
     thumb_url: avatarImageUrl(supabaseUrl(), item, '128'),
     chip_url: avatarImageUrl(supabaseUrl(), item, 'chip'),
     stamps: [],
+    /** The day chest behind an earned Tera, from our tables; `undefined` for a bought one. */
+    earned: row.chest_id ? (await earnedBlocks(db, [row], lang)).get(row.chest_id) : undefined,
   };
+}
+
+/**
+ * How a Tera was obtained, as its asset says it: `origin` is the attribute
+ * written at mint (absent on a bought one), and it can change hands only while
+ * the chain does not hold it frozen.
+ */
+function teraOrigin(attributes: ReadonlyArray<{ key: string; value: string }>, frozen: boolean, address: string) {
+  const written = attributes.find(({ key }) => key === 'origin')?.value;
+  const origin = written === 'earned' || written === 'sponsor' ? written : 'bought';
+  return { origin, transferable: !frozen, proof: teraProof(address) };
 }
 
 const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
@@ -223,7 +237,7 @@ async function verify(db: IteraClient, address: string, lang: 'pt' | 'en') {
     attributes: onchain.attributes,
     achievement,
     ...(endorsements ? { endorsements } : {}),
-    ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang) }, image_url: avatarAchievement?.image_url ?? null, chip_url: avatarAchievement?.chip_url ?? null } : {}),
+    ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang), ...teraOrigin(onchain.attributes, onchain.frozen, address), ...(avatarAchievement?.earned ? { earned: avatarAchievement.earned } : {}) }, image_url: avatarAchievement?.image_url ?? null, chip_url: avatarAchievement?.chip_url ?? null } : {}),
     ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
     minted_at: achievement?.minted_at ?? null,
     explorer_url: explorerUrl('address', address),
