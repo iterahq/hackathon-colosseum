@@ -14,7 +14,7 @@ import { BTN_PRIMARY, BTN_SMALL, CARD, FOCUS, MONO_LABEL } from '../shopStyles';
 import { ArcadeInspector } from './ArcadeInspector';
 import { ArcadeNav, categoryLabel, panelId, tabId } from './ArcadeNav';
 import { ArcadeTile } from './ArcadeTile';
-import { defaultPick, groupsOf, shelvesOfArcade, type ArcadeCategory } from './arcadeModel';
+import { groupsOf, pickWithin, shelvesOfArcade, type ArcadeCategory } from './arcadeModel';
 
 interface Props {
   items: ShopItem[];
@@ -48,8 +48,8 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState('all');
   const inspected = shelf;
-  const selected = inspected ? (inspected.items.find((i) => i.key === picked[inspected.id]) ?? defaultPick(inspected)) : null;
   const visible = shown === 'avatars' && filter !== 'all' ? groups.filter((g) => g.id === filter) : groups;
+  const selected = inspected ? pickWithin(inspected, picked[inspected.id], visible) : null;
   // On a phone several groups are one swipeable strip each, so the page stays about one screen tall.
   const strips = visible.length > 1;
   const select = (item: ShopItem) => inspected && setPicked((prev) => ({ ...prev, [inspected.id]: item.key }));
