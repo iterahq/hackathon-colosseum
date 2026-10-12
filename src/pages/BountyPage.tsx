@@ -1,3 +1,4 @@
+import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link, useParams } from 'react-router-dom';
 import { BountyActionPanel } from '@/components/bounty/ActionPanel';
 import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, RequirementChip, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
@@ -99,7 +100,10 @@ export default function BountyPage() {
             </div>
             {bounty.judge && <JudgeCaption />}
             <h1 className="[font:700_44px/1.02_'Barlow_Condensed'] max-sm:text-[34px] [overflow-wrap:anywhere]">{bounty.title}</h1>
-            <Reward sol={bounty.rewardSol} size="xl" />
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <Reward sol={bounty.rewardSol} size="xl" />
+              <PrizeTeraTag bounty={bounty} size="lg" />
+            </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
               {bounty.expiresAt && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.expires', { date: formatWhen(bounty.expiresAt, locale) })}</span>}

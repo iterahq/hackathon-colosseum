@@ -12,7 +12,7 @@ vi.mock('@/services/teraChest.service', async (actual) => ({ ...(await actual<ty
 vi.mock('@/lib/chain/chestRecompute', () => ({ recomputeFromChain: mocks.recompute }));
 
 const read = () => ({ chest: toChest(sample.chest)!, recompute: toRecompute(sample.recompute) });
-const rolled = (key: string) => ({ ok: true, result: { commit: sample.chest.commit.value, targetSlot: sample.chest.commit.slot, level: 0, commitTxSlot: sample.chest.commit.tx_slot, seedSlot: sample.chest.seed.slot, blockhash: sample.chest.seed.blockhash, seed: sample.chest.seed.value, tier: 'rare', key, steps: sample.recompute.steps, agrees: key === sample.chest.tera.key } });
+const rolled = (key: string) => ({ ok: true, result: { commit: sample.chest.commit.value, targetSlot: sample.chest.commit.slot, level: sample.chest.level, commitTxSlot: sample.chest.commit.tx_slot, seedSlot: sample.chest.seed.slot, blockhash: sample.chest.seed.blockhash, seed: sample.chest.seed.value, tier: sample.chest.tier, key, steps: sample.recompute.steps, agrees: key === sample.chest.tera.key } });
 
 function show(path = '/verify#chest') {
   return render(
@@ -44,16 +44,16 @@ describe('ChestSection', () => {
 
   it('a linked chest is rolled at once and says the same Tera came out, with where each input came from', async () => {
     mocks.getChest.mockResolvedValue(read());
-    mocks.recompute.mockResolvedValue(rolled('rarity_comum'));
+    mocks.recompute.mockResolvedValue(rolled(sample.chest.tera.key));
     show(`/verify?chest=${sample.chest.id}#chest`);
     const result = await screen.findByTestId('chest-recompute-result');
     expect(mocks.getChest).toHaveBeenCalledWith(sample.chest.id);
-    expect(mocks.recompute.mock.calls[0][0]).toMatchObject({ certification: sample.chest.certification, day: 2, commitTx: sample.chest.commit.tx, teraKey: 'rarity_comum', poolDocument: sample.recompute.pool_document });
+    expect(mocks.recompute.mock.calls[0][0]).toMatchObject({ certification: sample.chest.certification, day: sample.chest.day, commitTx: sample.chest.commit.tx, teraKey: sample.chest.tera.key, poolDocument: sample.recompute.pool_document });
     expect(result).toHaveAttribute('data-agrees', 'true');
-    expect(result).toHaveTextContent('Deu o mesmo Tera: Jade (Super Tera).');
+    expect(result).toHaveTextContent(`Deu o mesmo Tera: ${sample.chest.tera.title} (${sample.chest.tera.tier_name}).`);
     expect(result).toHaveTextContent('da Solana');
     expect(result).toHaveTextContent('do Itera');
-    expect(result).toHaveTextContent('tier_roll = 0x09e18413 mod 10000 = 4355');
+    expect(result).toHaveTextContent(sample.recompute.steps[0]);
   });
 
   it('says it when the math gives another Tera', async () => {
@@ -63,7 +63,7 @@ describe('ChestSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refazer o sorteio' }));
     const result = await screen.findByTestId('chest-recompute-result');
     expect(result).toHaveAttribute('data-agrees', 'false');
-    expect(result).toHaveTextContent('Não bateu: a conta dá base_lider, o baú diz rarity_comum.');
+    expect(result).toHaveTextContent(`Não bateu: a conta dá base_lider, o baú diz ${sample.chest.tera.key}.`);
   });
 
   it('names what failed: no such chest, a seal written too late', async () => {

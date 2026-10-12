@@ -1,3 +1,4 @@
+import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExplorerAnchor, INPUT, LABEL, Notice, ShortWallet, StatusChip, RequirementChip, Reward } from '@/components/bounty/bountyUi';
@@ -31,6 +32,7 @@ function Head({ bounty }: { bounty: SponsorBounty }) {
       <h3 className="[font:700_24px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.titleI18n[locale] || bounty.title}</h3>
       <div className="flex flex-wrap items-center gap-3">
         <Reward sol={bounty.rewardSol} />
+        <PrizeTeraTag bounty={bounty} />
         <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
       </div>
     </>

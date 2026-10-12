@@ -55,7 +55,13 @@ export function useBountyBoard({ live = false }: { live?: boolean } = {}) {
 
 export function useBounty(slug: string) {
   const { locale } = useI18n();
-  return useQuery({ queryKey: queryKeys.bounty.detail(slug, locale), queryFn: () => getBounty(slug, locale), enabled: slug.length > 0 });
+  // A paid bounty whose prize Tera is paid for and not minted yet is read again until the asset shows (a minute at most).
+  return useQuery({
+    queryKey: queryKeys.bounty.detail(slug, locale),
+    queryFn: () => getBounty(slug, locale),
+    enabled: slug.length > 0,
+    refetchInterval: (query) => (query.state.data?.status === 'paid' && query.state.data.prizeTera?.funded && !query.state.data.prizeTera.asset && query.state.dataUpdateCount < 20 ? 3000 : false),
+  });
 }
 
 /** The same bounty from Itera's tables alone: it answers before the read that waits on the chain, and is dropped once that one lands. */
