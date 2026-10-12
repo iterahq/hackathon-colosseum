@@ -20,6 +20,9 @@ import { useSealedAnswer } from '../components/hostLessonRules.js';
 import { useResultBadge } from './useResultBadge.js';
 import { useShrinkToFit } from './useShrinkToFit.js';
 
+/** What the lesson chrome, the instruction, the reset row and the submit button leave of the screen. */
+const PANE_HEIGHT_BELOW_INSTRUCTION = 'sm:h-[clamp(200px,calc(100dvh-31.5rem),720px)]!';
+
 /**
  * The split-pane snack surface: the editor (seeded from the learner's saved
  * work, falling back to `spec.starter`) + optional help link and the
@@ -110,11 +113,24 @@ export function CodeSnackPane({
         <div data-testid="code-instruction">
           <RichText text={spec.prompt ?? ''} />
 
-          <div
-            className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
-            data-testid="code-snack-hint"
-          >
-            <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
+          <div className="mt-3 flex items-center gap-2">
+            <div
+              className="flex flex-1 items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
+              data-testid="code-snack-hint"
+            >
+              <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
+            </div>
+            {/* Spent once the activity is settled/done, and held back mid-grading
+                so a reset cannot land between the submit and its verdicts. It
+                stays available ON the feedback screen on purpose: that is exactly
+                where the learner who broke everything asks to start over. */}
+            {!(hostOwnsSettled && isDone) && (
+              <CodeResetControl
+                onReset={resetToStarter}
+                disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
+                className="max-sm:flex-1"
+              />
+            )}
           </div>
         </div>
 
@@ -172,7 +188,7 @@ export function CodeSnackPane({
                 data-stage-cursor-source
                 // `relative` é a outra metade do contrato: o host desenha o ponteiro
                 // do professor DENTRO deste painel por portal, posicionado em % dele.
-                className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
+                className={`relative ${CODE_PANE_BOX} ${PANE_HEIGHT_BELOW_INSTRUCTION} border border-border bg-[#0a0a0a]`}
               >
                 {/* `spec.language` now drives the editor: `"html"` and `"css"` (the
                     plain-web course) get Monaco's own mode, everything else — including
@@ -189,22 +205,11 @@ export function CodeSnackPane({
                 />
               </div>
               <CodeHelpLink help={spec.help} />
-              {/* Spent once the activity is settled/done, and held back mid-grading
-                  so a reset cannot land between the submit and its verdicts. It
-                  stays available ON the feedback screen on purpose: that is exactly
-                  where the learner who broke everything asks to start over. */}
-              {!(hostOwnsSettled && isDone) && (
-                <CodeResetControl
-                  onReset={resetToStarter}
-                  disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
-                  className="mt-2"
-                />
-              )}
             </div>
 
             <div
               ref={previewBox}
-              className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border ${
+              className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} ${PANE_HEIGHT_BELOW_INSTRUCTION} border border-border ${
                 phonePane === 'preview' ? '' : 'max-sm:invisible'
               }`}
             >
@@ -233,7 +238,7 @@ export function CodeSnackPane({
           onClick={submit}
           disabled={phase !== 'editing' || isDone || outOfLives}
           data-testid="code-submit"
-          className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
+          className={`mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
         >
           {phase === 'submitting' && <Loader2 className="h-4 w-4 animate-spin" />}
           {phase === 'submitting' ? t('code.checks.running') : t('activity.submit')}
