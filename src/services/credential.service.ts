@@ -17,14 +17,16 @@ function parseTera(b: Record<string, unknown>): CredentialVerification['tera'] {
   const a = b.avatar && typeof b.avatar === 'object' ? (b.avatar as Record<string, unknown>) : null;
   if (!a || !text(a.key)) return null;
   const lore = a.lore && typeof a.lore === 'object' ? (a.lore as Record<string, unknown>) : {};
+  const origin = toTeraOrigin({ ...a, asset: b.asset });
   return {
     key: String(a.key),
-    name: text(lore.name) ?? text(b.name) ?? String(a.key),
+    // A sponsor Tera is known by its brand, not by the base Tera it was drawn on.
+    name: origin?.sponsor?.brand ?? text(lore.name) ?? text(b.name) ?? String(a.key),
     rarity: text(a.rarity) ?? '',
     tierName: text(a.tier_name) ?? '',
     serial: typeof a.serial === 'number' ? a.serial : null,
     imageUrl: text(b.image_url),
-    origin: toTeraOrigin({ ...a, asset: b.asset }),
+    origin,
   };
 }
 
