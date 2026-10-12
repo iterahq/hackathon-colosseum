@@ -49,7 +49,7 @@ export function EscrowPanel({ bounty }: { bounty: Bounty }) {
         </span>
       </div>
       <dl className="grid grid-cols-2 gap-2 max-sm:[&>div:last-child:nth-child(odd)]:col-span-2 sm:grid-cols-3">
-        <Tile label={t('bounty.escrow.target')}>
+        <Tile label={t(bounty.status === 'paid' || bounty.status === 'refunded' ? 'bounty.escrow.amount' : 'bounty.escrow.target')}>
           <dd className="[font:700_20px/1.2_'Barlow_Condensed'] text-[#3FD17F]" data-testid="bounty-escrow-target">{formatSol(escrow.targetLamports)}</dd>
         </Tile>
         <Tile label={t('bounty.escrow.approver')} testId="bounty-escrow-approver">

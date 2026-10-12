@@ -6,9 +6,10 @@ import { AskingForPreview, MissionSkillRow, type SkillRequirement } from './Miss
 const show = (requirement: SkillRequirement | null, max?: number) => render(<I18nProvider><MissionSkillRow requirement={requirement} max={max} /></I18nProvider>);
 
 describe('MissionSkillRow', () => {
-  it('shows the gate in one line and a neutral badge per skill', () => {
+  it('says the requirement once, as one chip beside a neutral badge per skill', () => {
     show({ program: 'itera-v2', trail: 'Semana 1 · HTML', minDays: 1 });
-    expect(screen.getByTestId('mission-skills-gate')).toHaveTextContent('Semana 1 · HTML · 1 dia carimbado');
+    expect(screen.getByTestId('mission-skills-gate')).toHaveTextContent('HTML · 1 dia');
+    expect(screen.getByTestId('mission-skills-gate')).toHaveAttribute('title', 'Semana 1 · HTML · 1 dia carimbado');
     const badges = screen.getAllByTestId('skill-badge');
     expect(badges.map((badge) => badge.textContent)).toEqual(['Tags', 'Esqueleto']);
     expect(badges.every((badge) => badge.getAttribute('data-state') === 'neutral')).toBe(true);
