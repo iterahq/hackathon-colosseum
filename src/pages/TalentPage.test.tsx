@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import type { TalentBoard } from '@/types/talent';
@@ -27,7 +27,8 @@ describe('TalentPage', () => {
   it('explains the board, says the numbers are recorded and lists the cards', () => {
     useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board() });
     show();
-    expect(screen.getByTestId('talent-intro')).toHaveTextContent('conferido na chain');
+    expect(screen.getByTestId('talent-intro')).toHaveTextContent('conferível na chain pelo perfil');
+    expect(within(screen.getByTestId('talent-how')).getAllByRole('listitem').slice(0, 4).map((step) => step.textContent)).toEqual(['Escolha alguém', 'Trave recompensa', 'Ela entrega', 'Escrow paga']);
     expect(screen.getByTestId('talent-how')).toHaveTextContent('escolha uma pessoa, trave uma recompensa para ela, ela entrega, você aprova e o programa de escrow paga');
     expect(screen.getByTestId('talent-source')).toHaveTextContent('Abra o perfil para ler a chain agora');
     expect(screen.getAllByTestId('talent-card')).toHaveLength(1);
@@ -75,6 +76,9 @@ describe('TalentPage', () => {
     show();
     expect(screen.getByTestId('talent-contact-rule')).toHaveAttribute('data-company', 'false');
     expect(screen.getByTestId('talent-contact-rule')).toHaveTextContent('só empresas veem');
+    expect(screen.getByTestId('talent-contact-rule')).not.toHaveAttribute('open');
+    expect(screen.getByTestId('talent-contact-rule').querySelector('summary')).toHaveTextContent('Contato: só empresas');
+    expect(screen.getByTestId('talent-contact-full')).toHaveTextContent('Empresa é uma conta da equipe de um patrocinador ou uma carteira que já travou a recompensa de uma missão.');
     expect(screen.queryByTestId('contact-show')).toBeNull();
   });
 
@@ -84,6 +88,7 @@ describe('TalentPage', () => {
     useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board({ learners: [{ ...first, hasContact: true }, { ...first, wallet: 'W2222222222222222222222222222222', hasContact: false }] }) });
     show();
     expect(screen.getByTestId('talent-contact-rule')).toHaveTextContent('até 10 pessoas por dia (7 restantes hoje)');
+    expect(screen.getByTestId('talent-contact-rule').querySelector('summary')).toHaveTextContent('Contatos: 7/10 hoje');
     expect(screen.getAllByTestId('contact-show')).toHaveLength(1);
     expect(screen.getAllByTestId('contact-none')).toHaveLength(1);
     company.data = undefined;
