@@ -5,8 +5,9 @@ import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TalentCard } from '@/components/talent/TalentCard';
 import { TalentFilters } from '@/components/talent/TalentFilters';
 import { TeraNote } from '@/components/tera/TeraNote';
-import { useTalentBoard } from '@/hooks/useTalent';
+import { useCompanyAccess, useTalentBoard } from '@/hooks/useTalent';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useState } from 'react';
 import { useI18n } from '@/i18n';
 import { formatWhen, plural } from '@/utils/bounty';
 import { parseMinDays } from '@/utils/talent';
@@ -27,6 +28,9 @@ export default function TalentPage() {
     setParams(query, { replace: true });
   };
   const learners = board.data?.learners ?? [];
+  const company = useCompanyAccess().data ?? null;
+  // The count the server sent back with the last contact shown, so the line above the cards stays true without another read.
+  const [left, setLeft] = useState<number | null>(null);
 
   return (
     <BountyShell>
@@ -36,6 +40,9 @@ export default function TalentPage() {
         <p className="max-w-[680px] [font:400_16px/1.55_Inter] text-[#C9BFB0]" data-testid="talent-intro">{t('talent.hero.sub')}</p>
         <p className="max-w-[680px] [font:500_14px/1.55_Inter] text-[#F4EDE2]" data-testid="talent-how">{t('talent.hero.how')}</p>
       </section>
+      <p className="max-w-[680px] rounded-[12px] border border-[#2E2A25] bg-[#141210] px-3 py-2 [font:400_13px/1.5_Inter] text-[#C9BFB0]" data-testid="talent-contact-rule" data-company={company?.isCompany === true}>
+        {company?.isCompany ? t('privacy.board.company', { max: company.revealsPerDay, left: left ?? company.revealsLeftToday }) : t('privacy.board.visitor')}
+      </p>
       <TalentFilters filters={filters} capabilities={board.data?.capabilities ?? []} onChange={setFilters} />
       <p className="[font:500_12px/1.5_JetBrains_Mono] text-[#A0978A]" data-testid="talent-source">
         {t('talent.source')}
@@ -67,7 +74,7 @@ export default function TalentPage() {
         <ul className="grid gap-4 sm:grid-cols-2 min-[1100px]:grid-cols-3" data-testid="talent-list">
           {learners.map((learner) => (
             <li key={learner.wallet} className="flex min-w-0">
-              <TalentCard learner={learner} />
+              <TalentCard learner={learner} company={company} onRevealed={setLeft} />
             </li>
           ))}
         </ul>

@@ -3,7 +3,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useBountySession } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
-import { getTalentBoard, getTalentStatus, listMeForTalent, unlistMeFromTalent } from '@/services/talent.service';
+import { getCompanyAccess, getTalentBoard, getTalentStatus, listMeForTalent, unlistMeFromTalent } from '@/services/talent.service';
+import type { ContactField } from '@/types/privacy';
 import type { TalentFilters, TalentStatus } from '@/types/talent';
 
 export function useTalentBoard(filters: TalentFilters) {
@@ -28,8 +29,16 @@ export function useTalentListing() {
   const settle = (status: TalentStatus) => {
     client.setQueryData(queryKeys.talent.mine(userId), status);
     void client.invalidateQueries({ queryKey: queryKeys.talent.all });
+    void client.invalidateQueries({ queryKey: queryKeys.privacy.all });
   };
-  const list = useMutation({ mutationFn: (headline: string) => listMeForTalent(headline), onSuccess: settle });
+  // The contact travels as the mutation's variables for the length of the request; `gcTime: 0` drops it as soon as it settles.
+  const list = useMutation({ mutationFn: ({ headline, contact }: { headline: string; contact?: Partial<Record<ContactField, string>> }) => listMeForTalent(headline, contact), onSuccess: settle, gcTime: 0 });
   const unlist = useMutation({ mutationFn: unlistMeFromTalent, onSuccess: settle });
   return { list, unlist };
+}
+
+/** Whether the signed-in account is a company here (it funded a bounty, or is staff of a sponsor) and how many contacts it may still ask for today. */
+export function useCompanyAccess() {
+  const { signedIn, userId } = useBountySession();
+  return useQuery({ queryKey: queryKeys.talent.company(userId), queryFn: getCompanyAccess, enabled: signedIn, retry: false, staleTime: 30_000 });
 }

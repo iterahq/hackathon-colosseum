@@ -1,3 +1,5 @@
+import type { ContactField } from '@/types/privacy';
+
 export interface TalentCapability {
   key: string;
   title: string;
@@ -24,6 +26,8 @@ export interface TalentLearner {
   lastStampAt: string | null;
   profileUrl: string;
   teamTest: boolean;
+  /** The listing holds a contact a company may ask to see. Nothing of the contact itself is ever in a card. */
+  hasContact?: boolean;
 }
 
 export interface TalentBoard {
@@ -49,4 +53,10 @@ export interface TalentStatus {
   reason: TalentReason | null;
   stampedDays: number;
   totalDays: number;
+  /** Whether the learner's profile page is shown to others: a listing needs it on. Null: the backend does not say. */
+  publicProfile?: boolean | null;
+  /** WHICH contacts the listing holds; never their values. */
+  contactKinds?: ContactField[];
+  companiesLooked?: number;
+  lastLookedAt?: string | null;
 }

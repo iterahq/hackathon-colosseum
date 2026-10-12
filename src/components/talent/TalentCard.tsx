@@ -2,12 +2,16 @@ import { Link } from 'react-router-dom';
 import { Chip, ShortWallet } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
+import { shortAddress } from '@/lib/explorer';
 import { plural } from '@/utils/bounty';
 import { lamportsToSol, missionHref } from '@/utils/talent';
 import { localizeDecimal } from '@/utils/shopPrice';
+import type { CompanyAccess } from '@/types/privacy';
 import type { TalentLearner } from '@/types/talent';
+import { ContactReveal } from './ContactReveal';
 
-export function TalentCard({ learner }: { learner: TalentLearner }) {
+/** `company`: the signed-in account may ask for contacts; without it the card draws nothing about a contact. */
+export function TalentCard({ learner, company = null, onRevealed }: { learner: TalentLearner; company?: CompanyAccess | null; onRevealed?: (left: number) => void }) {
   const { t, locale } = useI18n();
   const share = learner.totalDays > 0 ? Math.min(100, Math.round((learner.stampedDays / learner.totalDays) * 100)) : 0;
   const lastStamp = learner.lastStampAt ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(learner.lastStampAt)) : null;
@@ -20,7 +24,7 @@ export function TalentCard({ learner }: { learner: TalentLearner }) {
           <span aria-hidden className="h-14 w-14 shrink-0 rounded-full bg-[#1C1916] ring-2 ring-[#262320]" />
         )}
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="truncate [font:700_26px/1_'Barlow_Condensed'] text-[#F4EDE2]" data-testid="talent-card-name">{learner.name ?? t('talent.card.noName')}</h2>
+          <h2 className="truncate [font:700_26px/1_'Barlow_Condensed'] text-[#F4EDE2]" data-testid="talent-card-name">{learner.name ?? shortAddress(learner.wallet)}</h2>
           <ShortWallet address={learner.wallet} />
         </div>
       </header>
@@ -58,6 +62,7 @@ export function TalentCard({ learner }: { learner: TalentLearner }) {
         {learner.bountiesPaid > 0 ? plural(t, 'talent.card.paid', learner.bountiesPaid, { sol: localizeDecimal(lamportsToSol(learner.bountiesPaidLamports), locale) }) : t('talent.card.paid.none')}
       </p>
       {lastStamp && <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('talent.card.lastStamp', { date: lastStamp })}</p>}
+      {company?.isCompany && <ContactReveal wallet={learner.wallet} hasContact={learner.hasContact === true} revealsPerDay={company.revealsPerDay} onRevealed={onRevealed} />}
       <div className="mt-auto flex flex-col gap-2 pt-1">
         <Link to={learner.profileUrl} className={`${BTN_SECONDARY} ${BTN_SMALL} flex-1`} data-testid="talent-card-proof">
           {t('talent.card.viewProof')}

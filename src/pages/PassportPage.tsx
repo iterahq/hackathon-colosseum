@@ -7,6 +7,7 @@ import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { PassportTeras } from '@/components/tera/PassportTeras';
 import { ChestCue } from '@/components/tera/ChestCue';
+import { ProfileVisibilityCard } from '@/components/privacy/ProfileVisibilityCard';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { PassportFullCard } from '@/components/passport/PassportFullCard';
@@ -72,6 +73,7 @@ export default function PassportPage() {
           </button>
         )}
         <PassportGraph wallet={view.walletAddress} />
+        {view.walletAddress && <ProfileVisibilityCard />}
         <TalentOptIn />
         <section className="flex flex-col gap-5" aria-labelledby="passport-pages">
           <h2 id="passport-pages" className={H2}>

@@ -638,6 +638,11 @@ async function main() {
   let graph = null;
   let api = null;
   if (mint.status === 'minted') {
+    // A new account starts with a private profile. The proofs below read the profile as a stranger, so the robot makes
+    // the choice a learner makes with the switch: public.
+    const choice = await fetch(`${FUNCTIONS}/privacy`, { method: 'POST', headers: { apikey, Authorization: `Bearer ${wallet.session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set_profile', public: true }) });
+    const chosen = await choice.json().catch(() => ({}));
+    proof('the learner switched the public profile on (new accounts start private)', choice.ok && chosen.public_profile === true, `HTTP ${choice.status} · ${chosen.public_profile_source ?? ''}`);
     graph = await publicGraphProof(wallet, mint);
     api = await apiProof(wallet, mint);
   }

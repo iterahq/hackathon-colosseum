@@ -1,5 +1,7 @@
 /** The talent board: the public read (`talent-board` GET) and the learner's own opt-in (`talent-board` POST). */
+import { contactKinds, parseCompany } from '@/services/privacy.service';
 import { callShop } from '@/services/shopTransport';
+import { CONTACT_FIELDS, type CompanyAccess, type ContactField, type RevealedContact } from '@/types/privacy';
 import type { TalentBoard, TalentCapability, TalentFilters, TalentLearner, TalentReason, TalentStatus } from '@/types/talent';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -32,6 +34,7 @@ export function parseLearner(v: unknown): TalentLearner | null {
     lastStampAt: text(r.last_stamp_at),
     profileUrl: text(r.profile_url) ?? `/u/${wallet}`,
     teamTest: r.team_test === true,
+    hasContact: r.has_contact === true,
   };
 }
 
@@ -58,6 +61,10 @@ export function parseStatus(body: unknown): TalentStatus {
     reason,
     stampedDays: int(r.stamped_days),
     totalDays: int(r.total_days),
+    publicProfile: typeof r.public_profile === 'boolean' ? r.public_profile : null,
+    contactKinds: contactKinds(r.contact),
+    companiesLooked: int(r.companies_looked),
+    lastLookedAt: text(r.last_looked_at),
   };
 }
 
@@ -77,8 +84,34 @@ export async function getTalentStatus(): Promise<TalentStatus> {
   return parseStatus((await post({ action: 'status' })).data);
 }
 
-export async function listMeForTalent(headline: string): Promise<TalentStatus> {
-  return parseStatus((await post({ action: 'list', headline: headline.trim() })).data);
+/** `contact` holds only the fields the learner filled. It goes in the request body and is kept nowhere in the app. */
+export async function listMeForTalent(headline: string, contact?: Partial<Record<ContactField, string>>): Promise<TalentStatus> {
+  return parseStatus((await post({ action: 'list', headline: headline.trim(), ...(contact && Object.keys(contact).length > 0 ? { contact } : {}) })).data);
+}
+
+/** Whether the signed-in account may ask for contacts. Any failure reads as "not a company". */
+export async function getCompanyAccess(): Promise<CompanyAccess> {
+  try {
+    return parseCompany((await post({ action: 'company' })).data);
+  } catch {
+    return parseCompany(null);
+  }
+}
+
+export function parseReveal(body: unknown): { contact: RevealedContact; revealsLeftToday: number } {
+  const r = row(body);
+  const wire = row(r.contact);
+  const contact: RevealedContact = {};
+  for (const field of CONTACT_FIELDS) if (typeof wire[field] === 'string' && wire[field] !== '') contact[field] = wire[field] as string;
+  return { contact, revealsLeftToday: int(r.reveals_left_today) };
+}
+
+/**
+ * A company asks to see the contact of one listed learner. The server checks who is asking, records the look and
+ * counts it against the day. The answer is handed to the caller and stored nowhere: no cache, no log, no storage.
+ */
+export async function revealContact(wallet: string): Promise<{ contact: RevealedContact; revealsLeftToday: number }> {
+  return parseReveal((await post({ action: 'reveal_contact', wallet })).data);
 }
 
 export async function unlistMeFromTalent(): Promise<TalentStatus> {

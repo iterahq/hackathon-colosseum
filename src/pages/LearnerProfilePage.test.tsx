@@ -18,6 +18,7 @@ vi.mock('@/components/graph/CapabilityGraphSection', () => ({
 const storyWallet = { value: null as string | null };
 vi.mock('@/hooks/useProgressStory', () => ({ useProgressStory: () => ({ daysDone: 0, daysStamped: 0, daysPending: 0, daysTotal: 0, verified: null, capabilitiesTotal: null, wallet: storyWallet.value, pending: false }) }));
 vi.mock('@/components/talent/TalentOptIn', () => ({ TalentOptIn: () => <div data-testid="talent-optin" /> }));
+vi.mock('@/components/privacy/ProfileVisibilityCard', () => ({ ProfileVisibilityCard: () => <div data-testid="privacy-card" /> }));
 vi.mock('@/components/gift/ProfileGift', () => ({ ProfileGift: ({ wallet }: { wallet: string }) => <div data-testid="profile-gift" data-wallet={wallet} /> }));
 
 const WALLET = 'CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW';
@@ -47,11 +48,33 @@ describe('LearnerProfilePage', () => {
     expect(screen.getByTestId('profile-mission-cta')).toHaveAttribute('href', `/bounties/post?to=${WALLET}`);
     expect(screen.getByTestId('profile-mission-cta')).toHaveTextContent('Enviar uma missão paga');
     expect(screen.queryByTestId('talent-optin')).toBeNull();
+    expect(screen.queryByTestId('privacy-card')).toBeNull();
     visitor.unmount();
     storyWallet.value = WALLET;
     show();
     expect(screen.queryByTestId('profile-mission')).toBeNull();
     expect(screen.getByTestId('talent-optin')).toBeInTheDocument();
+    expect(screen.getByTestId('privacy-card')).toBeInTheDocument();
+  });
+
+  it('a private profile read by a stranger: one calm line and nothing we aggregate', () => {
+    useLearnerProfile.mockReturnValue({ isPending: false, isError: false, data: { status: 'private', wallet: WALLET } });
+    show();
+    const line = screen.getByTestId('profile-private');
+    expect(line).toHaveTextContent('Este aluno mantém o perfil privado.');
+    expect(line).toHaveTextContent('Uma certificação dele continua podendo ser conferida pelo link da própria certificação.');
+    for (const id of ['profile-band', 'capability-section', 'profile-teras', 'profile-avatars', 'profile-certs', 'profile-mission', 'talent-optin', 'privacy-card', 'profile-invalid']) expect(screen.queryByTestId(id), id).toBeNull();
+    expect(screen.getByTestId('profile-page')).not.toHaveTextContent('CQzi');
+  });
+
+  it('the owner of a private profile sees the whole page, the switch, and no link to copy', () => {
+    storyWallet.value = WALLET;
+    useLearnerProfile.mockReturnValue(ok({ private: true, viewer: 'owner', verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
+    show();
+    expect(screen.getByTestId('profile-band')).toBeInTheDocument();
+    expect(screen.getByTestId('privacy-card')).toBeInTheDocument();
+    expect(screen.getByTestId('profile-share-private')).toHaveTextContent('Seu perfil está privado: o link mostra uma linha só.');
+    expect(screen.queryByRole('button', { name: 'Copiar link' })).toBeNull();
   });
 
   it('lists the certifications linking to /c/<asset>; the companion and the medals stay off the public profile on the focus build', () => {
