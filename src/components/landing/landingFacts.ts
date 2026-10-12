@@ -13,7 +13,4 @@ export const VERIFY_PATH = '/verify';
 export const GATE_PATH = '/verify#gate';
 export const VERIFY_PAGE_LIVE = true;
 
-/** The community behind Itera; the link answers on the public internet. */
-export const DEVFELLOWSHIP_URL = 'https://devfellowship.com';
-
 export const TEAM: readonly [TeamMember, TeamMember] = [{ name: 'Samuel Stefano' }, { name: 'Tainan Fidelis' }];

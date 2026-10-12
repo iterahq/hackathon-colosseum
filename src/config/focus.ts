@@ -1,5 +1,5 @@
 /**
- * The hackathon build shows one loop, learn -> prove -> earn, and nothing beside it.
+ * The hackathon build shows one loop, learn -> prove -> own, and nothing beside it.
  *
  * `FOCUS_BUILD` is on unless the build sets `VITE_FOCUS_BUILD=off`. With it on, the learner UI hides the
  * video courses, the live classes and their staff entry points, the subscription pages, the crystals,
@@ -50,3 +50,10 @@ export const FOCUS_PAID_TERAS_OFF = FOCUS_BUILD && (import.meta.env.VITE_PAID_TE
  * the picker of the profile still offers them as the starter faces, so an account with no Tera yet has a picture.
  */
 export const FOCUS_STARTER_FACES_UNLISTED = FOCUS_BUILD;
+
+/**
+ * The story a visitor meets is learn -> prove -> own (call of 2026-10-12): the bounties, the escrow, the talent board
+ * and the direct missions are out of the landing and the learner home. Their routes, pages and code stay and answer
+ * by URL; a build with `VITE_FOCUS_BUILD=off` shows them again.
+ */
+export const FOCUS_EARN_STORY_OFF = FOCUS_BUILD;
