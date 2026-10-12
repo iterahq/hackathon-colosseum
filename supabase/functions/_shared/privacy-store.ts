@@ -1,6 +1,7 @@
 import { bearerToken } from './http.ts';
 import { resolveCaller, type Caller } from './caller.ts';
 import type { IteraClient } from './db.ts';
+import { unverifiedSubject } from './jwt-subject.ts';
 import {
   CONTACT_FIELDS,
   REVEAL_WINDOW_MS,
@@ -96,7 +97,8 @@ export async function walletView(db: IteraClient, request: Request, wallet: stri
     const accounts = await accountsOfWallet(db, wallet);
     const isPublic = accounts.length === 0 || walletIsPublic([...(await factsOf(db, accounts)).values()]);
     let owner = false;
-    if (bearerToken(request)) {
+    // The anon key every client sends as its bearer names no user: it is not worth a trip to the auth server.
+    if (unverifiedSubject(bearerToken(request)) !== null) {
       const caller = await resolveCaller(db, request).catch(() => 'unauthorized' as const);
       owner = typeof caller !== 'string' && caller.wallet === wallet && accounts.includes(caller.iteraUserId);
     }
