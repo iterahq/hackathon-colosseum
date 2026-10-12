@@ -3,11 +3,14 @@ import { useLayoutEffect, type RefObject } from 'react';
 /** A host that wants its code panes to give height back marks an ancestor with this. */
 export const FIT_VIEWPORT_ATTRIBUTE = 'data-fit-viewport';
 
-const FLOOR_PX = 176;
+/** Eight lines on a phone, where one pane shows at a time; twelve beside each other. */
+const PHONE_FLOOR_PX = 176;
+const FLOOR_PX = 264;
+const PHONE_MAX_WIDTH_PX = 640;
 
 /**
- * Shrinks the code panes by exactly what the page overflows, down to a floor of
- * eight lines, so the instruction, the editor and the submit button share one
+ * Shrinks the code panes by exactly what the page overflows, down to a floor,
+ * so the instruction, the editor and the submit button share one
  * screen. The pane boxes keep their shared geometry classes; this only ever
  * writes an inline height that is SMALLER than what those classes give.
  *
@@ -26,7 +29,8 @@ export function useShrinkToFit(panes: RefObject<HTMLElement | null>[]) {
       const natural = elements[0].getBoundingClientRect().height;
       const overflow = document.documentElement.scrollHeight - window.innerHeight;
       if (overflow <= 0) return;
-      const height = Math.max(FLOOR_PX, Math.floor(natural - overflow));
+      const floor = window.innerWidth < PHONE_MAX_WIDTH_PX ? PHONE_FLOOR_PX : FLOOR_PX;
+      const height = Math.max(floor, Math.floor(natural - overflow));
       if (height >= natural) return;
       for (const el of elements) el.style.height = `${height}px`;
     };

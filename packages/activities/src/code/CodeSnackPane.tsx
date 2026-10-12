@@ -9,7 +9,7 @@ import { TACTILE_CTA } from '../components/tactile.js';
 import { RichText } from '../components/RichText.js';
 import { CodeEditorSurface } from './CodeEditorSurface.js';
 import { parseEditableRegions } from './editableRegions.js';
-import { CODE_PANE_BOX, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID, CODE_SPLIT_PREVIEW } from './geometry.js';
+import { CODE_PANE_BOX, CODE_PANE_SIDE_HEIGHT, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID, CODE_SPLIT_PREVIEW } from './geometry.js';
 import { CodeHelpLink } from './CodeHelpLink.js';
 import { useCodeSnack } from './useCodeSnack.js';
 import { CodeLivePreview } from './CodeLivePreview.js';
@@ -19,6 +19,7 @@ import { useHostOwnsSettledAction } from '../components/settledAction.js';
 import { useSealedAnswer } from '../components/hostLessonRules.js';
 import { useResultBadge } from './useResultBadge.js';
 import { useShrinkToFit } from './useShrinkToFit.js';
+import { useSideInstruction } from './useSideInstruction.js';
 
 /**
  * The split-pane snack surface: the editor (seeded from the learner's saved
@@ -79,6 +80,11 @@ export function CodeSnackPane({
   const editorBox = useRef<HTMLDivElement>(null);
   const previewBox = useRef<HTMLDivElement>(null);
   useShrinkToFit([editorBox, previewBox]);
+  const instruction = useRef<HTMLDivElement>(null);
+  const side = useSideInstruction(instruction);
+  // Beside the instruction nothing sits above the panes, so they take the
+  // screen the lesson chrome leaves instead of the stacked height.
+  const paneBox = side ? `${CODE_PANE_BOX} ${CODE_PANE_SIDE_HEIGHT}` : CODE_PANE_BOX;
   const { unseen: resultUnseen, markStale } = useResultBadge(phonePane, results);
   const onEdit = (next: string) => {
     if (next !== code) markStale();
@@ -104,111 +110,131 @@ export function CodeSnackPane({
       data-activity-kind={activity.kind}
       data-phase={phase}
       data-out-of-lives={outOfLives ? 'true' : 'false'}
+      data-instruction={side ? 'side' : 'above'}
     >
-      <RichText text={spec.prompt ?? ''} />
+      <div className={side ? 'grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6' : undefined}>
+        {/* Beside the panes the instruction takes THEIR height and scrolls on its
+            own, like the statement of a coding problem: its length no longer
+            decides how much editor is left. */}
+        <div className={side ? 'relative min-h-0' : undefined} data-testid="code-instruction">
+          <div className={side ? 'absolute inset-0 overflow-y-auto pr-3' : undefined}>
+            <div ref={instruction}>
+              <RichText text={spec.prompt ?? ''} />
 
-      <div
-        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
-        data-testid="code-snack-hint"
-      >
-        <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
-      </div>
-
-      <div
-        role="group"
-        aria-label={t('code.pane.label')}
-        className="mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 sm:hidden"
-        data-testid="code-pane-switch"
-      >
-        {(['code', 'preview'] as const).map((pane) => (
-          <button
-            key={pane}
-            type="button"
-            aria-pressed={phonePane === pane}
-            onClick={() => setPhonePane(pane)}
-            data-testid={`code-pane-${pane}`}
-            className={`h-11 rounded-lg text-sm font-medium transition-colors ${
-              phonePane === pane ? 'bg-evergreen-soft text-evergreen-hi' : 'text-muted-foreground'
-            }`}
-          >
-            {t(pane === 'code' ? 'code.pane.code' : 'code.pane.preview')}
-            {pane === 'preview' && resultUnseen && (
-              <span
-                aria-hidden="true"
-                data-testid="code-pane-new-result"
-                className="ml-1.5 inline-block h-2 w-2 rounded-full bg-menta align-middle"
-              />
-            )}
-          </button>
-        ))}
-        <span role="status" aria-live="polite" className="sr-only">
-          {resultUnseen ? t('code.pane.newResult') : ''}
-        </span>
-      </div>
-
-      <div className={`mt-4 max-sm:mt-3 ${CODE_SPLIT_GRID}`}>
-        <div
-          className={`flex flex-col max-sm:[grid-area:1/1] ${CODE_SPLIT_EDITOR} ${
-            phonePane === 'code' ? '' : 'max-sm:invisible'
-          }`}
-        >
-          {/* The marker (the Player's `utils/stageCursorDom`) is what the
-              live-class layer finds to mirror this learner's pointer to the
-              class while they are on stage. A DATA ATTRIBUTE, not a prop, and
-              that is exactly why it could travel into the package: the activity
-              tree's public contract carries no live-session concerns, and an
-              attribute costs a consumer that has no live class precisely
-              nothing. The SHAPE comes from `./geometry.ts`, shared with the twin
-              pane in <LiveStage> — `src/test/LiveStageCursor.test.tsx` pins both
-              against those tokens — which is what makes normalized coordinates
-              honest; the remaining size difference is handled on the wire. */}
-          <div
-            ref={editorBox}
-            data-stage-cursor-source
-            // `relative` é a outra metade do contrato: o host desenha o ponteiro
-            // do professor DENTRO deste painel por portal, posicionado em % dele.
-            className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
-          >
-            {/* `spec.language` now drives the editor: `"html"` and `"css"` (the
-                plain-web course) get Monaco's own mode, everything else — including
-                the schema default `"tsx"`, which is not itself a Monaco
-                language id — keeps `"typescript"`, exactly as before this kind
-                had a second language. See CONTRACT.md finding 7 for the
-                history of why this used to be hardcoded. */}
-            <CodeEditorSurface
-              value={code}
-              onChange={onEdit}
-              language={spec.language === 'html' || spec.language === 'css' ? spec.language : 'typescript'}
-              readOnly={readOnly}
-              editableRegions={editableRegions}
-            />
+              <div
+                className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
+                data-testid="code-snack-hint"
+              >
+                <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
+              </div>
+            </div>
           </div>
-          <CodeHelpLink help={spec.help} />
-          {/* Spent once the activity is settled/done, and held back mid-grading
-              so a reset cannot land between the submit and its verdicts. It
-              stays available ON the feedback screen on purpose: that is exactly
-              where the learner who broke everything asks to start over. */}
-          {!(hostOwnsSettled && isDone) && (
-            <CodeResetControl
-              onReset={resetToStarter}
-              disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
-              className="mt-2"
+          {side && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-card to-transparent"
             />
           )}
         </div>
 
-        <div
-          ref={previewBox}
-          className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border ${
-            phonePane === 'preview' ? '' : 'max-sm:invisible'
-          }`}
-        >
-          <CodeLivePreview
-            code={code}
-            language={spec.language}
-            checksRequest={hasChecks ? checksRequest : null}
-            onChecksResult={receiveResults}
-          />
+        <div>
+          <div
+            role="group"
+            aria-label={t('code.pane.label')}
+            className="mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 sm:hidden"
+            data-testid="code-pane-switch"
+          >
+            {(['code', 'preview'] as const).map((pane) => (
+              <button
+                key={pane}
+                type="button"
+                aria-pressed={phonePane === pane}
+                onClick={() => setPhonePane(pane)}
+                data-testid={`code-pane-${pane}`}
+                className={`h-11 rounded-lg text-sm font-medium transition-colors ${
+                  phonePane === pane ? 'bg-evergreen-soft text-evergreen-hi' : 'text-muted-foreground'
+                }`}
+              >
+                {t(pane === 'code' ? 'code.pane.code' : 'code.pane.preview')}
+                {pane === 'preview' && resultUnseen && (
+                  <span
+                    aria-hidden="true"
+                    data-testid="code-pane-new-result"
+                    className="ml-1.5 inline-block h-2 w-2 rounded-full bg-menta align-middle"
+                  />
+                )}
+              </button>
+            ))}
+            <span role="status" aria-live="polite" className="sr-only">
+              {resultUnseen ? t('code.pane.newResult') : ''}
+            </span>
+          </div>
+
+          <div className={`${side ? '' : 'mt-4'} max-sm:mt-3 ${CODE_SPLIT_GRID}`}>
+            <div
+              className={`flex flex-col max-sm:[grid-area:1/1] ${CODE_SPLIT_EDITOR} ${
+                phonePane === 'code' ? '' : 'max-sm:invisible'
+              }`}
+            >
+              {/* The marker (the Player's `utils/stageCursorDom`) is what the
+                  live-class layer finds to mirror this learner's pointer to the
+                  class while they are on stage. A DATA ATTRIBUTE, not a prop, and
+                  that is exactly why it could travel into the package: the activity
+                  tree's public contract carries no live-session concerns, and an
+                  attribute costs a consumer that has no live class precisely
+                  nothing. The SHAPE comes from `./geometry.ts`, shared with the twin
+                  pane in <LiveStage> — `src/test/LiveStageCursor.test.tsx` pins both
+                  against those tokens — which is what makes normalized coordinates
+                  honest; the remaining size difference is handled on the wire. */}
+              <div
+                ref={editorBox}
+                data-stage-cursor-source
+                // `relative` é a outra metade do contrato: o host desenha o ponteiro
+                // do professor DENTRO deste painel por portal, posicionado em % dele.
+                className={`relative ${paneBox} border border-border bg-[#0a0a0a]`}
+              >
+                {/* `spec.language` now drives the editor: `"html"` and `"css"` (the
+                    plain-web course) get Monaco's own mode, everything else — including
+                    the schema default `"tsx"`, which is not itself a Monaco
+                    language id — keeps `"typescript"`, exactly as before this kind
+                    had a second language. See CONTRACT.md finding 7 for the
+                    history of why this used to be hardcoded. */}
+                <CodeEditorSurface
+                  value={code}
+                  onChange={onEdit}
+                  language={spec.language === 'html' || spec.language === 'css' ? spec.language : 'typescript'}
+                  readOnly={readOnly}
+                  editableRegions={editableRegions}
+                />
+              </div>
+              <CodeHelpLink help={spec.help} />
+              {/* Spent once the activity is settled/done, and held back mid-grading
+                  so a reset cannot land between the submit and its verdicts. It
+                  stays available ON the feedback screen on purpose: that is exactly
+                  where the learner who broke everything asks to start over. */}
+              {!(hostOwnsSettled && isDone) && (
+                <CodeResetControl
+                  onReset={resetToStarter}
+                  disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
+                  className="mt-2"
+                />
+              )}
+            </div>
+
+            <div
+              ref={previewBox}
+              className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${paneBox} border border-border ${
+                phonePane === 'preview' ? '' : 'max-sm:invisible'
+              }`}
+            >
+              <CodeLivePreview
+                code={code}
+                language={spec.language}
+                checksRequest={hasChecks ? checksRequest : null}
+                onChecksResult={receiveResults}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

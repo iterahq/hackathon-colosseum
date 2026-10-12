@@ -30,6 +30,16 @@ describe('columnMaxWidthClass — the shared rule', () => {
     expect(columnMaxWidthClass('code')).toBe('max-w-7xl');
   });
 
+  it('gives the fill-in code kinds the middle cap, and the editor kinds the wide one', () => {
+    for (const kind of ['code_fill_bank', 'code_fill_select', 'code_fill_type'] as ActivityKind[]) {
+      expect(columnMaxWidthClass(kind)).toBe('max-w-5xl');
+      expect(columnMaxWidthClass(kind, { [kind]: 'max-w-2xl' })).toBe('max-w-5xl');
+    }
+    for (const kind of ['code_editor_checks', 'code_editor_ungraded'] as ActivityKind[]) {
+      expect(columnMaxWidthClass(kind)).toBe('max-w-7xl');
+    }
+  });
+
   it('keeps the prose measure for every non-wide kind', () => {
     const narrow: ActivityKind[] = [
       'diagram',
