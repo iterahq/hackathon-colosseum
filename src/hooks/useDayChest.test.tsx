@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { I18nProvider } from '@/i18n';
 import { toChest } from '@/services/teraChest.service';
 import { WIRE_CHEST_COMMITTED, WIRE_CHEST_MINTED } from '@/services/teraChestMock';
 import { useDayChest } from './useDayChest';
@@ -9,7 +10,7 @@ import { useDayChest } from './useDayChest';
 const api = vi.hoisted(() => ({ list: vi.fn(), settle: vi.fn() }));
 vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ session: { access_token: 'token', user: { id: 'u1' } } }) }));
 vi.mock('@/services/guestSession.service', () => ({ isGuestAccessToken: () => false }));
-vi.mock('@/services/teraChest.service', async (actual) => ({ ...(await actual<typeof import('@/services/teraChest.service')>()), getMyChests: () => api.list(), settleChest: (id: string) => api.settle(id) }));
+vi.mock('@/services/teraChest.service', async (actual) => ({ ...(await actual<typeof import('@/services/teraChest.service')>()), getMyChests: (lang: string) => api.list(lang), settleChest: (id: string, lang: string) => api.settle(id, lang) }));
 
 const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>;
 const chest = (wire: Record<string, unknown>, lesson: string) => toChest({ ...wire, lesson_id: lesson })!;
@@ -25,7 +26,19 @@ describe('useDayChest', () => {
     api.settle.mockResolvedValue(chest(WIRE_CHEST_MINTED, 'l1'));
     const { result } = renderHook(() => useDayChest('l1', true, 'stamped'), { wrapper });
     await waitFor(() => expect(result.current.phase).toBe('revealed'));
-    expect(api.settle).toHaveBeenCalledWith('l1');
+    expect(api.settle).toHaveBeenCalledWith('l1', expect.stringMatching(/^(pt|en)$/));
+  });
+
+  it('reads the chests in the language on screen, so the trail they name follows the locale', async () => {
+    localStorage.setItem('itera.locale', 'en');
+    api.list.mockResolvedValue({ enabled: true, chests: [] });
+    api.settle.mockResolvedValue(chest(WIRE_CHEST_MINTED, 'l1'));
+    const inEnglish = ({ children }: { children: ReactNode }) => <I18nProvider>{wrapper({ children })}</I18nProvider>;
+    const { result } = renderHook(() => useDayChest('l1', true, 'stamped'), { wrapper: inEnglish });
+    await waitFor(() => expect(result.current.phase).toBe('revealed'));
+    expect(api.list).toHaveBeenCalledWith('en');
+    expect(api.settle).toHaveBeenCalledWith('l1', 'en');
+    localStorage.clear();
   });
 
   it('an old day with no chest is NEVER asked for by looking: it is offered, and opened by the click', async () => {
@@ -55,7 +68,19 @@ describe('useDayChest', () => {
     api.settle.mockResolvedValue(chest(WIRE_CHEST_MINTED, 'l1'));
     const { result } = renderHook(() => useDayChest('l1', true, 'found'), { wrapper });
     await waitFor(() => expect(result.current.phase).toBe('revealed'));
-    expect(api.settle).toHaveBeenCalledWith('l1');
+    expect(api.settle).toHaveBeenCalledWith('l1', expect.stringMatching(/^(pt|en)$/));
+  });
+
+  it('reads the chests in the language on screen, so the trail they name follows the locale', async () => {
+    localStorage.setItem('itera.locale', 'en');
+    api.list.mockResolvedValue({ enabled: true, chests: [] });
+    api.settle.mockResolvedValue(chest(WIRE_CHEST_MINTED, 'l1'));
+    const inEnglish = ({ children }: { children: ReactNode }) => <I18nProvider>{wrapper({ children })}</I18nProvider>;
+    const { result } = renderHook(() => useDayChest('l1', true, 'stamped'), { wrapper: inEnglish });
+    await waitFor(() => expect(result.current.phase).toBe('revealed'));
+    expect(api.list).toHaveBeenCalledWith('en');
+    expect(api.settle).toHaveBeenCalledWith('l1', 'en');
+    localStorage.clear();
   });
 
   it('the click on a day that has nothing to give says so', async () => {

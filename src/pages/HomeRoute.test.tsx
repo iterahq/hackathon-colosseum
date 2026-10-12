@@ -42,6 +42,9 @@ vi.mock('@/config/focus', () => ({
   get FOCUS_SOL_ONLY_SHOP() {
     return focus.on;
   },
+  get FOCUS_EARN_STORY_OFF() {
+    return focus.on;
+  },
   FOCUS_HIDDEN_PATHS: [],
 }));
 
@@ -52,7 +55,7 @@ vi.mock('@/hooks/useContent', () => ({ useUserStats: (...a: unknown[]) => useUse
 vi.mock('@/hooks/useAchievements', () => ({ useAchievements: (...a: unknown[]) => useAchievements(...a) }));
 vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...a: unknown[]) => useCatalog(...a) }));
 vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => useVideoCourses() }));
-vi.mock('@/components/loop/BountiesForYouCard', () => ({ BountiesForYouCard: () => null }));
+vi.mock('@/components/loop/BountiesForYouCard', () => ({ BountiesForYouCard: () => <div data-testid="bounties-for-you" /> }));
 vi.mock('@/hooks/useLiveClass', () => ({
   useActiveLiveClass: () => useActiveLiveClass(),
   useNextScheduledClass: () => useNextScheduledClass(),
@@ -94,7 +97,7 @@ const done = (activityId: string) => ({ activityId, status: 'completed', complet
 
 function dashboard(progress = [done('a1')], over: Record<string, unknown> = {}) {
   const trails = buildTrails([tree], progress);
-  return { trails, featured: pickFeatured(trails), weekly: progress.length, isPending: false, isError: false, refetch: vi.fn(), ...over };
+  return { trails, soon: [], featured: pickFeatured(trails), weekly: progress.length, isPending: false, isError: false, refetch: vi.fn(), ...over };
 }
 
 const lesson = (id: string, position: number, durationSeconds: number) => ({ id, courseId: 'v1', title: id, description: '', videoUrl: '', durationSeconds, position });
@@ -162,6 +165,7 @@ describe('HomeRoute: a member', () => {
     expect(strip).toHaveTextContent('> dia 01 de 2 · HTML');
     expect(within(screen.getByTestId('header-hud')).queryByLabelText('sequência de 1 dias')).not.toBeInTheDocument();
     expect(useTrailDashboard).toHaveBeenCalledWith({ enabled: true });
+    expect(screen.getByTestId('bounties-for-you')).toBeInTheDocument();
     expect(useUserStats).toHaveBeenCalledWith({ enabled: true });
     expect(useAchievements).toHaveBeenCalledWith({ enabled: true });
   });
@@ -271,7 +275,7 @@ describe('HomeRoute: a member', () => {
     expect(within(panel).getAllByTestId('passport-medal').map((m) => m.getAttribute('data-earned'))).toEqual(['true', 'false']);
     const marks = within(panel).getAllByTestId('onchain-mark');
     expect(marks).toHaveLength(1);
-    expect(marks[0]).toHaveAttribute('href', 'https://explorer.solana.com/tx/tx?cluster=devnet');
+    expect(marks[0]).toHaveAttribute('href', 'https://explorer.solana.com/address/Asset111?cluster=devnet');
   });
 
   it('live classes: hidden when empty, then the class in progress with the way in', () => {
@@ -362,13 +366,14 @@ describe('HomeRoute: the focus build', () => {
     member();
   });
 
-  it('keeps the trails, the bounties and the certifications, and leaves the side systems out', () => {
+  it('keeps the trails and the certifications, and leaves the bounties and the side systems out', () => {
     useTrailDashboard.mockReturnValue(dashboard([done('a1')], { weekly: 9 }));
     useVideoCourses.mockReturnValue({ courses: [videoCourse] });
     useActiveLiveClass.mockReturnValue({ data: { id: 'live-1', instructorId: 'someone-else' } });
     renderHome();
     expect(screen.getByTestId('dashboard-main')).toBeInTheDocument();
     expect(screen.getByTestId('achievements')).toBeInTheDocument();
+    expect(screen.queryByTestId('bounties-for-you')).not.toBeInTheDocument();
     expect(screen.queryByTestId('weekly-goal')).not.toBeInTheDocument();
     expect(screen.queryByTestId('course-carousel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('live-classes')).not.toBeInTheDocument();

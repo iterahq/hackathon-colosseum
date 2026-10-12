@@ -12,7 +12,7 @@ import { WelcomeStrip } from '@/components/dashboard/WelcomeStrip';
 import { BountiesForYouCard } from '@/components/loop/BountiesForYouCard';
 import { ChestCue } from '@/components/tera/ChestCue';
 import { AppTopBar } from '@/components/header/AppTopBar';
-import { FOCUS_BUILD } from '@/config/focus';
+import { FOCUS_BUILD, FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import '@/components/dashboard/dashboard.css';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { usePassportView } from '@/hooks/usePassportView';
@@ -42,7 +42,7 @@ function Skeleton() {
   );
 }
 
-/** Learner home: the featured trail, the other trails, the bounties and the certifications; the full build adds the weekly goal, live classes and the course carousel. */
+/** Learner home: the featured trail, the other trails and the certifications; the full build adds the bounties, the weekly goal, live classes and the course carousel. */
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { t, tText } = useI18n();
@@ -81,7 +81,7 @@ export default function DashboardPage() {
             <TrailCards trails={trails} pages={passport.pages} finished={trails.filter((t) => t.status === 'done').length} onOpen={openTrail} />
             <div className="flex min-w-0 flex-col gap-5" data-testid="dashboard-side">
               {!FOCUS_BUILD && <WeeklyGoal done={dashboard.weekly} />}
-              <BountiesForYouCard />
+              {!FOCUS_EARN_STORY_OFF && <BountiesForYouCard />}
               <AchievementsPanel
                 pages={passport.pages}
                 medals={passport.medals}
