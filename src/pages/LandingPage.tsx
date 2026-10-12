@@ -23,10 +23,11 @@ export default function LandingPage() {
       <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-14 px-4 pb-16 pt-6 sm:px-8 sm:pt-10">
         <LandingHero />
         <LandingStory />
-        <ol className="grid list-none gap-4 p-0 md:grid-cols-3" data-testid="landing-steps">
+        <ol className="grid list-none gap-4 p-0 md:grid-cols-2 lg:grid-cols-4" data-testid="landing-steps">
           <LandingStep label={t('landing.step.learn.label')} title={t('landing.step.learn.title')} body={t('landing.step.learn.body')} accent="#3FD17F" />
           <LandingStep label={t('landing.step.prove.label')} title={t('landing.step.prove.title')} body={t('landing.step.prove.body')} accent="#F2C94C" />
           <LandingStep label={t('landing.step.earn.label')} title={t('landing.step.earn.title')} body={older ? `${t('landing.step.earn.body')} ${t('landing.step.earn.older')}` : t('landing.step.earn.body')} accent="#9B8CFF" />
+          <LandingStep label={t('landing.step.found.label')} title={t('landing.step.found.title')} body={t('landing.step.found.body')} accent="#5FB8FF" link={{ to: '/talent', label: t('landing.step.found.link') }} />
         </ol>
         <section className="flex flex-col gap-4" data-testid="landing-live">
           <span className={`${LABEL} text-[#A0978A]`}>{t('landing.live.label')}</span>
