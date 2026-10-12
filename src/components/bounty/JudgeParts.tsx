@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { ExplorerAnchor, INPUT, LABEL, Notice, SECTION_TITLE } from '@/components/bounty/bountyUi';
-import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
+import { BTN_PRIMARY, CARD, FOCUS, MONO_LABEL } from '@/components/shop/shopStyles';
 import type { useJudgeSubmit } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
 import { bountyErrorCode } from '@/services/bounty.service';
-import { formatWhen, lamportsToSol, plural } from '@/utils/bounty';
+import { lamportsToSol, safeHttpsUrl } from '@/utils/bounty';
 import { checkRows, judgeBoardTitle, judgeSlotsText } from '@/utils/bountyJudge';
 import type { BountyDetail, CheckReport, JudgeInfo, JudgeSummary } from '@/types/bounty';
 
@@ -153,31 +153,46 @@ export function JudgePaidBlock({ bounty }: { bounty: BountyDetail }) {
   );
 }
 
+const shortWhen = (iso: string, locale: string): string => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(date);
+};
+
+/** The judge bounty's payouts as a strip of chips. The long counters line is the strip's name and sits in the board's disclosure. */
 export function JudgeBoardBlock({ judge, paidCount, teamTestCount = 0 }: { judge: JudgeSummary; paidCount: number; teamTestCount?: number }) {
   const { t, locale } = useI18n();
-  const [expanded, setExpanded] = useState(false);
   if (paidCount <= 0 && judge.latest.length === 0) return null;
   const title = judgeBoardTitle(t, { outside: paidCount, teamTests: teamTestCount, listed: judge.latest.length });
   return (
-    <section className="flex flex-col gap-2" aria-label={title} data-testid="bounty-judge-board">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className={`${MONO_LABEL} min-w-0 text-[#F2C66D]`}>{title}</p>
-        {judge.latest.length > 0 && !expanded && (
-          <button type="button" onClick={() => setExpanded(true)} className={`${MONO_LABEL} min-h-8 text-[#3FD17F] underline sm:hidden`} data-testid="bounty-judge-expand">
-            {t('bounty.judge.seeAll', { n: judge.latest.length })}
-          </button>
-        )}
+    <section className="flex min-w-0 flex-col gap-2" aria-label={title} data-testid="bounty-judge-board">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className={`${MONO_LABEL} text-[#F2C66D]`}>{t('bounty.judge.board.short')}</span>
+        <span className="rounded-full border border-[#3FD17F]/50 px-2 py-0.5 [font:600_11px_JetBrains_Mono] text-[#3FD17F]" data-testid="bounty-judge-outside">{t('bounty.judge.board.outside', { n: paidCount })}</span>
+        <span className="rounded-full border border-[#2E2A25] px-2 py-0.5 [font:600_11px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-judge-team">{t('bounty.judge.board.team', { n: teamTestCount })}</span>
       </div>
       {judge.latest.length > 0 && (
-        <ul className={`flex-col gap-1 ${expanded ? 'flex' : 'hidden sm:flex'}`}>
-          {judge.latest.map((payout) => (
-            <li key={`${payout.slug}-${payout.paidAt ?? ''}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 [font:500_12px_JetBrains_Mono] text-[#C9BFB0]" data-testid="bounty-judge-latest">
-              <span>{payout.walletShort}</span>
-              {payout.paidAt && <time dateTime={payout.paidAt} className="text-[#A0978A]">{formatWhen(payout.paidAt, locale)}</time>}
-              {payout.teamTest && <span className="rounded-full border border-[#2E2A25] px-2 py-0.5 text-[#A0978A]">{t('bounty.judge.board.teamTest')}</span>}
-              <ExplorerAnchor href={payout.explorerUrl} label={t('bounty.ledger.explorer')} />
-            </li>
-          ))}
+        <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          {judge.latest.map((payout) => {
+            const link = safeHttpsUrl(payout.explorerUrl);
+            const body = (
+              <>
+                <span className="text-[#F4EDE2]">{payout.walletShort}</span>
+                {payout.paidAt && <time dateTime={payout.paidAt} className="text-[#A0978A]">{shortWhen(payout.paidAt, locale)}</time>}
+                {payout.teamTest && <span className="rounded-full border border-[#2E2A25] px-1.5 py-0.5 text-[10px] text-[#A0978A]">{t('bounty.judge.board.teamTest')}</span>}
+                {link && <span aria-hidden className="text-[#3FD17F]">↗</span>}
+              </>
+            );
+            const chip = 'inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-[#262320] bg-[#141210] px-3 [font:500_12px_JetBrains_Mono]';
+            return (
+              <li key={`${payout.slug}-${payout.paidAt ?? ''}`} className="flex shrink-0" data-testid="bounty-judge-latest" data-team-test={payout.teamTest}>
+                {link ? (
+                  <a href={link} target="_blank" rel="noopener noreferrer" title={t('bounty.ledger.explorer')} className={`${chip} hover:border-[#3FD17F] ${FOCUS}`}>{body}</a>
+                ) : (
+                  <span className={chip}>{body}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
