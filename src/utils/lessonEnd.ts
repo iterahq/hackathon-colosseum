@@ -4,6 +4,7 @@
  */
 import type { DayIncomplete } from '@/types/achievements';
 import type { LessonEndInput, LessonEndView, TrailPreview } from '@/types/lessonEnd';
+import type { StampExpectation } from '@/types/loop';
 import type { CeremonyModel } from '@/utils/ceremony';
 
 const CARD: LessonEndView = { kind: 'card', note: null };
@@ -53,6 +54,12 @@ export function preparingModel(p: TrailPreview): CeremonyModel {
     txSignature: null,
     assetAddress: null,
   };
+}
+
+/** What the profile must show once the chain is read again; null unless the server confirmed the stamp on chain. */
+export function confirmedStamp(model: CeremonyModel, trail?: number | null, day?: number | null): StampExpectation | null {
+  if (model.status !== 'minted' || !model.assetAddress) return null;
+  return { asset: model.assetAddress, daysDone: model.daysDone, trail, day };
 }
 
 /** Index of the first activity not completed, or 0 (the start) when the client knows of none. */

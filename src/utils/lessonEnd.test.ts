@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PassportAward, PassportResult } from '@/types/achievements';
 import type { LessonEndInput, PassportCall, TrailPreview } from '@/types/lessonEnd';
 import { ceremonyFromResult } from '@/utils/ceremony';
-import { firstUnfinishedIndex, lessonEndView, preparingModel, shouldCallPassport } from '@/utils/lessonEnd';
+import { confirmedStamp, firstUnfinishedIndex, lessonEndView, preparingModel, shouldCallPassport } from '@/utils/lessonEnd';
 
 const DAY5: TrailPreview = { day: 5, totalDays: 5, stampedBefore: 4, trailTitle: 'HTML', colorIndex: 1 };
 const DAY2: TrailPreview = { day: 2, totalDays: 5, stampedBefore: 1, trailTitle: 'HTML', colorIndex: 1 };
@@ -137,5 +137,15 @@ describe('firstUnfinishedIndex', () => {
   it('points at the first activity not completed, or the start when none is known', () => {
     expect(firstUnfinishedIndex(['a', 'b', 'c'], new Set(['a', 'c']))).toBe(1);
     expect(firstUnfinishedIndex(['a', 'b'], new Set(['a', 'b']))).toBe(0);
+  });
+});
+
+describe('confirmedStamp', () => {
+  it('expects the stamp on the profile only once the server confirmed it on chain', () => {
+    const minted = { ...preparingModel(DAY2), status: 'minted' as const, assetAddress: 'asset-1' };
+    expect(confirmedStamp(minted, 0, 2)).toEqual({ asset: 'asset-1', daysDone: 2, trail: 0, day: 2 });
+    expect(confirmedStamp(preparingModel(DAY2), 0, 2)).toBeNull();
+    expect(confirmedStamp({ ...minted, status: 'pending' }, 0, 2)).toBeNull();
+    expect(confirmedStamp({ ...minted, assetAddress: null }, 0, 2)).toBeNull();
   });
 });

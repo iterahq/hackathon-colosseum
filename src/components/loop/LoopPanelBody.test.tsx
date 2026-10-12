@@ -7,9 +7,11 @@ import { LoopPanelBody } from './LoopPanelBody';
 const state = vi.hoisted(() => ({
   wallet: 'CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya' as string | null,
   loop: {} as Record<string, unknown>,
+  stampRead: { state: 'off', profile: null, retry: () => {} } as Record<string, unknown>,
 }));
 vi.mock('@/hooks/useCompanion', () => ({ useCompanion: () => ({ wallet: state.wallet }) }));
 vi.mock('@/hooks/useLoopView', () => ({ useLoopView: () => state.loop }));
+vi.mock('@/hooks/useStampRead', () => ({ useStampRead: () => state.stampRead }));
 vi.mock('@/components/wallet/LinkWalletButton', () => ({ LinkWalletButton: ({ testId }: { testId?: string }) => <button data-testid={testId}>link</button> }));
 
 const capabilities = {
@@ -53,6 +55,37 @@ describe('LoopPanelBody', () => {
     expect(screen.getByTestId('loop-profile-link')).toHaveAttribute('href', `/u/${state.wallet}`);
     expect(screen.getByTestId('loop-bounty')).toHaveAttribute('href', '/bounties/a');
     expect(screen.getByTestId('loop-almost')).toHaveTextContent('2 more stamped days in Week 1 · HTML open Bounty b (0.01 SOL)');
+  });
+
+  it('never draws the profile beside a confirmed stamp before the chain was read again', () => {
+    const stale = { ...capabilities, verifiedCount: 0 };
+    state.loop = { status: 'ready', capabilities: stale, view: { eligible: [], almost: [], instant: null }, retry: vi.fn() };
+    state.stampRead = { state: 'reading', profile: null, retry: vi.fn() };
+    const reading = mount();
+    expect(screen.getByTestId('loop-panel')).toHaveAttribute('data-state', 'reading');
+    expect(screen.getByText('Reading the chain…')).toBeInTheDocument();
+    expect(screen.queryByText(/of 28 capabilities/)).toBeNull();
+    reading.unmount();
+    const retry = vi.fn();
+    state.stampRead = { state: 'behind', profile: null, retry };
+    mount();
+    expect(screen.getByTestId('loop-panel')).toHaveAttribute('data-state', 'behind');
+    expect(screen.queryByText(/of 28 capabilities/)).toBeNull();
+    screen.getByTestId('loop-reread').click();
+    expect(retry).toHaveBeenCalled();
+    state.stampRead = { state: 'off', profile: null, retry: vi.fn() };
+  });
+
+  it('offers the bounty an automatic check pays as one button', () => {
+    const opening = { bounty: { ...bounty('judge', 1), title: 'Judge bounty: your first page' }, daysDone: 1, missingDays: 0 };
+    state.loop = { status: 'ready', capabilities, view: { eligible: [opening], almost: [], instant: opening }, retry: vi.fn() };
+    const first = mount();
+    expect(screen.getByTestId('loop-instant')).toHaveAttribute('href', '/bounties/judge');
+    expect(screen.getByTestId('loop-instant')).toHaveTextContent('You unlocked a paid bounty: Judge bounty: your first page');
+    first.unmount();
+    state.loop = { status: 'ready', capabilities, view: { eligible: [opening], almost: [], instant: null }, retry: vi.fn() };
+    mount();
+    expect(screen.queryByTestId('loop-instant')).toBeNull();
   });
 
   it('says honestly when no open bounty asks for the trail', () => {

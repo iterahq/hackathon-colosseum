@@ -135,6 +135,8 @@ export const queryKeys = {
     graph: (wallet: string, lang: string) => ['achievements', 'graph', wallet, lang] as const,
     chain: (wallet: string, assets: string[]) => ['achievements', 'chain', wallet, assets] as const,
   },
+  // The chain read that follows a confirmed stamp. Its own root: refreshing 'achievements' must not repeat it.
+  stampRead: (wallet: string, lang: string, asset: string, daysDone: number) => ['stamp-read', wallet, lang, asset, daysDone] as const,
   // Video courses: the public library (with lessons) and the learner's watched lessons.
   videoCourses: {
     list: ['videoCourses', 'list'] as const,
