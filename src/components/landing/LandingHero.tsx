@@ -58,12 +58,12 @@ export function LandingHero() {
         </p>
       </div>
       <img
-        src="/mascot/tera-happy.webp"
+        src="/mascot/tera-hero.webp"
         alt=""
         draggable={false}
-        width={240}
-        height={300}
-        className="h-[180px] w-36 shrink-0 object-contain sm:h-[260px] sm:w-52 md:h-[320px] md:w-64"
+        width={640}
+        height={640}
+        className="h-40 w-40 shrink-0 object-contain sm:h-56 sm:w-56 md:h-72 md:w-72"
       />
     </section>
   );
