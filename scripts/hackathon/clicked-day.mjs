@@ -426,7 +426,8 @@ async function runLesson(wallet, activities) {
         shotNumber += 1;
         writeFileSync(`${OUT}/.shot-counter`, String(shotNumber));
         const path = `${OUT}/${String(shotNumber).padStart(2, '0')}-stamp-screen-${label}.png`;
-        await page.screenshot({ path, fullPage: true }).catch(() => {});
+        await panel.scrollIntoViewIfNeeded().catch(() => {});
+        await page.screenshot({ path }).catch(() => {});
         log(`stamp screen ${label}: state=${state} · ${words.slice(0, 500)} · ${path}`);
         return { state, words };
       };
