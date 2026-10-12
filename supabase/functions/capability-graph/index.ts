@@ -4,6 +4,7 @@ import { buildGraph, type GraphProof } from '../_shared/claims.ts';
 import { loadRecordedProofs } from '../_shared/claims-store.ts';
 import { explorerUrl } from '../_shared/credential.ts';
 import { serviceClient } from '../_shared/db.ts';
+import { walletView } from '../_shared/privacy-store.ts';
 import { corsHeaders, json, langOf, pathAfter } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 
@@ -25,8 +26,10 @@ Deno.serve(async (request) => {
     const [wallet, ...rest] = pathAfter(request, 'capability-graph');
     if (!isSolanaAddress(wallet) || rest.length > 0) return json({ error: 'invalid_address' }, 400, cors);
     const db = serviceClient();
-    const [verdict, recorded] = await Promise.all([takeRate(db, 'capability-graph', callerAddress(request), RATE), loadRecordedProofs(db, wallet)]);
+    const [verdict, recorded, view] = await Promise.all([takeRate(db, 'capability-graph', callerAddress(request), RATE), loadRecordedProofs(db, wallet), walletView(db, request, wallet)]);
     if (!verdict.allowed) return tooMany(verdict, cors);
+    // A private profile: the graph is part of the page its owner chose not to show.
+    if (!view.visible) return json({ wallet, private: true }, 200, { ...cors, 'Cache-Control': 'no-store' });
 
     const lang = langOf(request, 'pt');
     const proofs = new Map<string, GraphProof>();
@@ -40,7 +43,7 @@ Deno.serve(async (request) => {
       proofs,
       explorer: explorerUrl,
     });
-    return json({ wallet, source: 'database', capabilities: graph }, 200, { ...cors, 'Cache-Control': 'public, max-age=10' });
+    return json({ wallet, source: 'database', capabilities: graph }, 200, { ...cors, 'Cache-Control': view.public && !view.owner ? 'public, max-age=10' : 'no-store' });
   } catch (error) {
     console.error('capability-graph failed', error);
     return json({ error: 'internal_error' }, 500, cors);

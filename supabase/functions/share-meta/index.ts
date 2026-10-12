@@ -7,6 +7,7 @@ import { isSolanaAddress } from '../_shared/address.ts';
 import { APP_URL, pickText } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, json, pathAfter } from '../_shared/http.ts';
+import { walletView } from '../_shared/privacy-store.ts';
 import { callerAddress, takeRate, tooMany } from '../_shared/ratelimit.ts';
 
 const IMAGE = `${APP_URL}/og/itera.png`;
@@ -110,7 +111,8 @@ Deno.serve(async (request) => {
         share = await credentialShare(db, id);
         url = `${APP_URL}/c/${id}`;
       } else if (kind === 'u') {
-        share = await profileShare(db, id);
+        // A private profile gets the site's own preview: a link pasted in a chat says nothing our tables count about the wallet.
+        share = (await walletView(db, request, id)).public ? await profileShare(db, id) : DEFAULT;
         url = `${APP_URL}/u/${id}`;
       } else if (kind === 'gift') {
         share = { title: `Gift a life to ${short(id)} | Itera`, description: 'One devnet SOL transfer, signed by your wallet, gives this learner’s Tera a life, written on chain.' };

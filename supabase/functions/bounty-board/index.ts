@@ -7,6 +7,7 @@ import { judgeHistory, refillTemplates, settleJudged } from '../_shared/bounty-j
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
+import { walletView } from '../_shared/privacy-store.ts';
 import { RpcError, withinMs } from '../_shared/rpc.ts';
 import { prizeQuote } from '../_shared/sponsor-tera.ts';
 import { issuePrizeTera, prizeBases, prizeEnabled } from '../_shared/sponsor-tera-store.ts';
@@ -210,11 +211,15 @@ async function invited(db: IteraClient, request: Request, wallet: string, cors: 
 
 /** What a wallet earned from bounties. Each payout is checked against the chain before it counts. */
 async function earnings(db: IteraClient, request: Request, wallet: string, cors: Record<string, string>): Promise<Response> {
+  // What a wallet earned, added up, is part of its profile page: a private profile does not answer it to a stranger.
+  // (Each payout stays public where it happened: on the bounty's own page and on chain.)
+  const view = await walletView(db, request, wallet);
+  if (!view.visible) return json({ wallet, cluster: 'devnet', private: true }, 200, { ...cors, 'Cache-Control': 'no-store' });
   const { data, error } = await db.from('bounties').select(BOUNTY_COLUMNS).eq('status', 'paid').eq('paid_wallet', wallet).order('paid_at', { ascending: false }).limit(50);
   if (error) throw new Error(`bounties: ${error.message}`);
   const bounties = (data ?? []) as unknown as BountyRow[];
   const landed = await landedSignatures(bounties.flatMap((bounty) => (bounty.payout_signature ? [bounty.payout_signature] : [])));
-  return json(earningsView({ wallet, bounties, landed, lang: langOf(request, 'pt') }), 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
+  return json(earningsView({ wallet, bounties, landed, lang: langOf(request, 'pt') }), 200, { ...cors, 'Cache-Control': view.public && !view.owner ? 'public, max-age=20' : 'no-store' });
 }
 
 Deno.serve(async (request) => {

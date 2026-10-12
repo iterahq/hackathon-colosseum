@@ -6,6 +6,9 @@ import { pickText } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { cleanName, publicLabel } from '../_shared/gift.ts';
 import { corsHeaders, json, langOf, readJsonObject } from '../_shared/http.ts';
+import { isSolanaAddress } from '../_shared/address.ts';
+import { REVEALS_PER_DAY, parseContact, revealVerdict } from '../_shared/privacy.ts';
+import { accountsWithContact, companyOf, companyStatus, deleteContact, loadContact, lookedAt, profileOf, publicAccounts, recordReveal, saveContact, seenToday } from '../_shared/privacy-store.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { BOARD_LIMIT, capabilityOptions, certificationFacts, filterCards, listVerdict, orderCards, parseFilter, parseHeadline, type CertificationFacts, type TalentCard } from '../_shared/talent.ts';
 import { loadTestAccountIds } from '../_shared/test-accounts.ts';
@@ -15,6 +18,8 @@ type Lang = 'pt' | 'en';
 const FUNCTION = 'talent-board';
 const READ_RATE: RateLimit = { limit: 60, windowMs: 60_000 };
 const WRITE_RATE: RateLimit = { limit: 30, windowMs: 60_000 };
+/** A reveal hands out personal data: one account asks for few of them a minute, whatever its daily allowance. */
+const REVEAL_RATE: RateLimit = { limit: 12, windowMs: 60_000 };
 const LISTING_COLUMNS = 'user_id,wallet,headline,listed_at,updated_at';
 const LISTING_SCAN = 300;
 
@@ -72,7 +77,10 @@ const GRAPH_ORDER = ITERA_V2_GRAPH.claims.map((entry) => entry.id);
 const order = (key: string) => { const index = GRAPH_ORDER.indexOf(key); return index < 0 ? GRAPH_ORDER.length : index; };
 
 async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
-  const listings = ok<ListingRow[]>((await db.from('talent_listings').select(LISTING_COLUMNS).order('listed_at', { ascending: false }).limit(LISTING_SCAN)) as never, 'talent_listings');
+  const every = ok<ListingRow[]>((await db.from('talent_listings').select(LISTING_COLUMNS).order('listed_at', { ascending: false }).limit(LISTING_SCAN)) as never, 'talent_listings');
+  // The board shows a learner only while their public profile is on: the card links to that page.
+  const [shown, withContact] = every.length > 0 ? await Promise.all([publicAccounts(db, every.map((row) => row.user_id)), accountsWithContact(db, every.map((row) => row.user_id))]) : [new Set<string>(), new Set<string>()];
+  const listings = every.filter((row) => shown.has(row.user_id));
   if (listings.length === 0) return [];
   const userIds = listings.map((row) => row.user_id);
   const wallets = listings.map((row) => row.wallet);
@@ -125,6 +133,8 @@ async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
       name: typed === null ? null : publicLabel(typed, listing.wallet, lang),
       avatar: avatarOf(catalog, avatarOf_.get(listing.user_id) ?? null, ownedBy.get(listing.user_id) ?? new Set(), lang),
       headline: listing.headline,
+      // Whether a company can ask for this learner's contact. The contact itself is never part of a card.
+      has_contact: withContact.has(listing.user_id),
       stamped_days: facts.reduce((sum, entry) => sum + entry.stamped_days, 0),
       total_days: facts.reduce((sum, entry) => sum + entry.total_days, 0),
       certifications: rows.length,
@@ -158,10 +168,15 @@ async function board(db: IteraClient, request: Request, cors: Cors): Promise<Res
 }
 
 async function statusOf(db: IteraClient, caller: Caller, listing: ListingRow | null) {
-  const facts: CertificationFacts[] = (await certificationsOf(db, [caller.iteraUserId])).map((row) => certificationFacts(row.state));
+  const [certifications, profile, contact, looked] = await Promise.all([certificationsOf(db, [caller.iteraUserId]), profileOf(db, caller.iteraUserId), loadContact(db, caller.iteraUserId), lookedAt(db, caller.iteraUserId)]);
+  const facts: CertificationFacts[] = certifications.map((row) => certificationFacts(row.state));
   const verdict = listVerdict(caller.wallet, facts);
   return {
     wallet: caller.wallet,
+    // The caller's OWN privacy facts: this answer is theirs alone and never cached.
+    public_profile: profile.public,
+    contact: listing ? contact : null,
+    ...looked,
     listed: listing !== null,
     listing: listing && { headline: listing.headline, listed_at: listing.listed_at, updated_at: listing.updated_at },
     may_list: verdict.may_list,
@@ -175,6 +190,11 @@ async function statusOf(db: IteraClient, caller: Caller, listing: ListingRow | n
 async function list(db: IteraClient, caller: Caller, body: Record<string, unknown>, cors: Cors): Promise<Response> {
   const headline = parseHeadline(body.headline);
   if (!headline.ok) return json({ error: headline.error }, 400, cors);
+  // A listing carries at least one contact, for companies only. Checked before anything is written.
+  const contact = parseContact(body.contact);
+  if (!contact.ok) return json(contact.error === 'invalid_contact' ? { error: contact.error, field: contact.field } : { error: contact.error }, 400, cors);
+  // The card links to the public page: it has to be on, and switching it on is the learner's own act, not a side effect of listing.
+  if (!(await profileOf(db, caller.iteraUserId)).public) return json({ error: 'profile_private' }, 409, cors);
   const current = await listingOf(db, caller.iteraUserId);
   const status = await statusOf(db, caller, current);
   if (!status.may_list || !caller.wallet) return json({ error: status.reason ?? 'no_wallet' }, 403, cors);
@@ -184,10 +204,42 @@ async function list(db: IteraClient, caller: Caller, body: Record<string, unknow
     if (error.code === '23505') return json({ error: 'wallet_taken' }, 409, cors);
     throw new Error(`talent_listings upsert: ${error.message}`);
   }
+  try {
+    await saveContact(db, caller.iteraUserId, contact.value);
+  } catch (failure) {
+    // A listing made by this call never stays without its contact.
+    if (!current) await db.from('talent_listings').delete().eq('user_id', caller.iteraUserId);
+    throw failure;
+  }
   return json(await statusOf(db, caller, await listingOf(db, caller.iteraUserId)), 200, cors);
 }
 
+/**
+ * Shows a company the contact of one listed learner. The only place a contact leaves the database for somebody who
+ * is not its owner. Who the caller is comes from the session; whether it is a company, from our bounty and tenant
+ * tables; the request names a wallet and nothing else. Every reveal is recorded before the contact is answered.
+ */
+async function revealContact(db: IteraClient, caller: Caller, body: Record<string, unknown>, cors: Cors): Promise<Response> {
+  const limit = await takeRate(db, `${FUNCTION}:reveal`, caller.iteraUserId, REVEAL_RATE);
+  if (!limit.allowed) return tooMany(limit, cors);
+  if (!isSolanaAddress(body.wallet)) return json({ error: 'invalid_body' }, 400, cors);
+  const via = await companyOf(db, caller);
+  // Asked before the listing is looked up: somebody who is not a company learns nothing about who is listed.
+  if (!via) return json({ error: 'not_a_company' }, 403, cors);
+  const { data: listing, error } = await db.from('talent_listings').select('user_id').eq('wallet', body.wallet).maybeSingle();
+  if (error) throw new Error(`talent_listings: ${error.message}`);
+  const learnerId = (listing?.user_id as string | undefined) ?? null;
+  const isShown = learnerId !== null && (await profileOf(db, learnerId)).public;
+  const [contact, seen] = await Promise.all([isShown && learnerId ? loadContact(db, learnerId) : null, seenToday(db, caller.iteraUserId)]);
+  const verdict = revealVerdict({ via, callerUserId: caller.iteraUserId, learnerUserId: learnerId, listed: isShown, hasContact: contact !== null, seenToday: seen });
+  if (!verdict.ok) return json(verdict.error === 'reveal_limit' ? { error: verdict.error, reveals_per_day: REVEALS_PER_DAY } : { error: verdict.error }, verdict.status, cors);
+  const revealedAt = await recordReveal(db, caller.iteraUserId, learnerId as string, verdict.via);
+  return json({ wallet: body.wallet, contact, revealed_at: revealedAt, reveals_left_today: verdict.left }, 200, { ...cors, 'Cache-Control': 'private, no-store' });
+}
+
 async function unlist(db: IteraClient, caller: Caller, cors: Cors): Promise<Response> {
+  // Leaving the board DELETES the contact (the foreign key would too; it is done first and by name).
+  await deleteContact(db, caller.iteraUserId);
   const { error } = await db.from('talent_listings').delete().eq('user_id', caller.iteraUserId);
   if (error) throw new Error(`talent_listings delete: ${error.message}`);
   return json(await statusOf(db, caller, null), 200, cors);
@@ -195,7 +247,8 @@ async function unlist(db: IteraClient, caller: Caller, cors: Cors): Promise<Resp
 
 Deno.serve(async (request) => {
   const wantsPost = request.method === 'POST' || request.headers.get('access-control-request-method') === 'POST';
-  const cors = wantsPost ? corsHeaders(request, 'app', 'GET, POST, OPTIONS') : corsHeaders(request, 'public');
+  // Every POST answer is about the caller (their listing, their contact, a contact shown to them): never stored by a cache.
+  const cors: Cors = wantsPost ? { ...corsHeaders(request, 'app', 'GET, POST, OPTIONS'), 'Cache-Control': 'private, no-store' } : corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try {
     const db = serviceClient();
@@ -213,9 +266,12 @@ Deno.serve(async (request) => {
     if (body.action === 'status') return json(await statusOf(db, caller, await listingOf(db, caller.iteraUserId)), 200, cors);
     if (body.action === 'list') return await list(db, caller, body, cors);
     if (body.action === 'unlist') return await unlist(db, caller, cors);
+    if (body.action === 'company') return json(await companyStatus(db, caller), 200, { ...cors, 'Cache-Control': 'private, no-store' });
+    if (body.action === 'reveal_contact') return await revealContact(db, caller, body, cors);
     return json({ error: 'invalid_action' }, 400, cors);
   } catch (error) {
-    console.error('talent-board failed', error);
+    // The message only: an error object may carry the row it failed on, and a row here can hold a contact.
+    console.error('talent-board failed', error instanceof Error ? error.message : 'error');
     return json({ error: 'internal_error' }, 500, cors);
   }
 });

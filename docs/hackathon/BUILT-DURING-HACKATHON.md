@@ -213,7 +213,25 @@ One collection ("Itera Avatars"), three ways to get a Tera, and the asset says w
   client that sends a tier, replays, races, the switch off, markup in a brand, a funding that skips the fee).
 - **PRs:** #218, #222, #225, #228, #229 (server and chain); #217, #219, #220, #221, #223, #224, #226, #227, #230 (interface).
 
-## Hackathon migrations (`db/migrations/`, 58 files)
+## Privacy: the profile is a choice, a contact is for companies only (added on the last day)
+
+The owner's rule: connecting a wallet also means anonymity. Full description and limits: [`docs/privacy.md`](../privacy.md).
+
+- **Public profile is a choice.** New accounts are private until they choose; accounts that existed stay as they were.
+  A private wallet answers a stranger its address and one flag from every function that summarises a wallet
+  (`learner-profile`, `capability-graph`, `bounty-board/wallet`, `share-meta`). A certification page stays public: it
+  is the proof.
+- **Talent board with a contact.** Listing needs the public page and at least one contact (e-mail, Telegram,
+  LinkedIn or a link; plain text, shape-checked). Leaving the board deletes the contact.
+- **Only companies see a contact.** A company is the staff of a sponsor tenant or a wallet that funded a bounty.
+  Every reveal is recorded, capped at 10 learners a day per company, and the learner sees how many companies looked.
+- **Personal data.** Three tables with RLS on and no policy (service role only), nothing in a public answer, a log
+  line or an on-chain attribute. Code: `_shared/privacy.ts`, `privacy-store.ts`, `supabase/functions/privacy/`,
+  `talent-board`, migration 0355. Attack pass on the deployed backend: `scripts/hackathon/privacy-e2e.mjs`.
+- **Tera follow-ups (#237):** the one-of-one can be rolled only by the chest that completes the program; a tenant's
+  staff may brand a sponsor Tera with the tenant's own name; brands are Latin letters only.
+
+## Hackathon migrations (`db/migrations/`, 61 files)
 
 - `0110_identity_provider_solana.sql`
 - `0111_wallet_user_provisioning.sql`
@@ -276,8 +294,11 @@ One collection ("Itera Avatars"), three ways to get a Tera, and the asset says w
 - `0350_tera_one_rarity.sql`
 - `0351_tera_chests.sql`
 - `0352_sponsor_teras.sql`
+- `0353_tera_chest_crown_level.sql`
+- `0354_tenant_sponsor_brand.sql`
+- `0355_privacy.sql`
 
-## Hackathon edge functions (`supabase/functions/`, 28 functions plus `_shared/`)
+## Hackathon edge functions (`supabase/functions/`, 29 functions plus `_shared/`)
 
 - `action-gift`
 - `bounty-action`
@@ -300,6 +321,7 @@ One collection ("Itera Avatars"), three ways to get a Tera, and the asset says w
 - `link-wallet`
 - `lives`
 - `passport`
+- `privacy`
 - `purchase-confirm`
 - `purchase-intent`
 - `purchase-submit`

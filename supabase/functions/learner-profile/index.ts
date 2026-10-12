@@ -13,6 +13,8 @@ import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient } from '../_sha
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
 import { regenerate } from '../_shared/lives.ts';
 import { bountiesOf, sponsorProfileEntry, sponsorTerasOfWallet } from '../_shared/sponsor-tera-store.ts';
+import { privateProfile } from '../_shared/privacy.ts';
+import { walletView } from '../_shared/privacy-store.ts';
 import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { PROFILE_ASSET_LIMIT, buildProfile, isVerified, profileAvatars, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
@@ -157,12 +159,16 @@ Deno.serve(async (request) => {
     const lang = langOf(request, 'pt');
     const fresh = wantsFresh(request);
     const key = `learner-profile:${wallet}:${lang}`;
-    const [version, row] = await Promise.all([chainVersion(db, wallet), loadCacheRow(db, key)]);
+    const [version, row, view] = await Promise.all([chainVersion(db, wallet), loadCacheRow(db, key), walletView(db, request, wallet)]);
+    // The profile page is a choice. A private wallet answers a stranger its own address and one flag: none of what our
+    // tables aggregate about it. Its owner, signed in, gets the whole page. Decided before the cache is even looked at.
+    if (!view.visible) return json(privateProfile(wallet), 200, { ...cors, 'Cache-Control': 'no-store' });
     try {
       const { body, read } = await cachedRead(db, { key, version, fresh, row }, () => build(db, wallet, lang));
-      return json({ ...body, read }, 200, {
+      return json({ ...body, private: !view.public, viewer: view.owner ? 'owner' : 'public', read }, 200, {
         ...cors,
-        'Cache-Control': fresh ? 'no-store' : 'public, max-age=20',
+        // An answer given to the owner of a private page, or to any signed request, is never stored by a shared cache.
+        'Cache-Control': fresh || view.owner || !view.public ? 'no-store' : 'public, max-age=20',
         'Server-Timing': `${read.source};dur=${read.ms}, edge;dur=${Date.now() - started}`,
       });
     } catch (error) {
