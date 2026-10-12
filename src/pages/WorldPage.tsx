@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AppTopBar } from '@/components/header/AppTopBar';
 import { CrystalSection } from '@/components/world/CrystalSection';
 import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { TeraDialog } from '@/components/world/TeraDialog';
@@ -8,6 +9,7 @@ import { WorldStory } from '@/components/world/WorldStory';
 import { WORLD_GRID, H2 } from '@/components/world/worldStyles';
 import { LORE_TIERS } from '@/content/teraLore';
 import { CAST_KEYS } from '@/components/world/castArt';
+import { useBountySession } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 
@@ -16,10 +18,12 @@ export default function WorldPage() {
   const { t } = useI18n();
   usePageTitle(t('world.title'));
   const [open, setOpen] = useState<string | null>(null);
+  const { signedIn } = useBountySession();
   return (
     <div className="min-h-screen overflow-x-hidden text-[#F4EDE2]" style={WORLD_GRID} data-testid="world-page">
-      <main className="mx-auto flex max-w-[1100px] flex-col gap-14 px-4 pb-20 pt-6 sm:px-8 xl:pt-10">
-        <WorldHero />
+      {signedIn && <AppTopBar />}
+      <main className={`mx-auto flex max-w-[1100px] flex-col gap-14 px-4 pt-6 sm:px-8 xl:pt-10 ${signedIn ? 'pb-28 sm:pb-20' : 'pb-20'}`}>
+        <WorldHero nav={!signedIn} />
         <WorldStory />
         {!FOCUS_SOL_ONLY_SHOP && <CrystalSection />}
         <section id="cast" className="flex scroll-mt-6 flex-col gap-10" aria-labelledby="world-cast">

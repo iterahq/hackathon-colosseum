@@ -4,15 +4,17 @@ import { useI18n } from '@/i18n';
 import { WORLD_LORE } from '@/content/teraLore';
 import { FOCUS, LABEL } from './worldStyles';
 
-export function WorldHero() {
+export function WorldHero({ nav = true }: { nav?: boolean }) {
   const { t, locale } = useI18n();
   const world = WORLD_LORE(locale);
   return (
     <header className="flex flex-col gap-8" data-testid="world-hero">
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/" className={`${LABEL} rounded text-[#A0978A] hover:text-[#F4EDE2] ${FOCUS}`}>{t('world.back')}</Link>
-        <HeaderLocale size="lg" />
-      </div>
+      {nav && (
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/" className={`${LABEL} rounded text-[#A0978A] hover:text-[#F4EDE2] ${FOCUS}`}>{t('world.back')}</Link>
+          <HeaderLocale size="lg" />
+        </div>
+      )}
       <div className="flex flex-col-reverse items-start gap-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-col gap-4">
           <span className={`${LABEL} text-[#3FD17F]`}>{t('world.pageLabel')}</span>
@@ -25,7 +27,7 @@ export function WorldHero() {
             {t('world.cta')}
           </a>
         </div>
-        <img src="/mascot/tera-happy.webp" alt="" draggable={false} className="h-40 w-40 shrink-0 rounded-full bg-[#141210] object-cover ring-2 ring-[#3FD17F] sm:h-56 sm:w-56" />
+        <img src="/mascot/tera-happy.webp" alt="" draggable={false} width={240} height={300} className="h-[200px] w-40 shrink-0 object-contain sm:h-[280px] sm:w-56" />
       </div>
     </header>
   );
