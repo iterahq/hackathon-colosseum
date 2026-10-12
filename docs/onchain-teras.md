@@ -60,8 +60,9 @@ The pool is every priced Tera on the shelf plus the earn-only tiers, by tier, or
 never come out of a chest. A tier with nothing left for this learner hands over to the lower tiers, then to the higher
 tiers **that are for sale**. The walk never climbs into an earn-only tier: otherwise a learner who bought every Tera
 that is sold would turn each chest into an earn-only one. The pool document names those tiers (`earn_only`), so the
-rule is part of what is committed. The first 13 chests committed to version 1 documents, whose walk climbed anywhere;
-they recompute with that rule (the document says its version).
+rule is part of what is committed. The 15 chests opened before that rule existed committed to version 1 documents,
+whose walk climbed anywhere; they recompute with that rule (the document says its version), and none of them climbed
+into an earn-only tier.
 
 ### What the chain guarantees
 
