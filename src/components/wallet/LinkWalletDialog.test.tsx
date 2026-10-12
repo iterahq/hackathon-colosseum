@@ -44,7 +44,7 @@ describe('LinkWalletDialog', () => {
 
   it('done shows the short address and the explorer link', () => {
     show({ phase: 'done', wallet: '7xKpQrstuvwxyzABCDEFGH3Fa' });
-    expect(screen.getByTestId('link-wallet-address')).toHaveTextContent('7xKp…3Fa');
+    expect(screen.getByTestId('link-wallet-address')).toHaveTextContent('7xKp…H3Fa');
     expect(screen.getByText(/ver no explorer/)).toHaveAttribute('href', expect.stringContaining('explorer.solana.com/address/'));
   });
 });

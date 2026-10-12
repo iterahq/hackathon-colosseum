@@ -48,7 +48,7 @@ describe('TalentCard', () => {
   it('labels the team test account and falls back for a missing name and capabilities', () => {
     show({ teamTest: true, name: null, capabilities: [], bountiesPaid: 0, bountiesPaidLamports: 0 });
     expect(screen.getByTestId('talent-card-team-test')).toHaveTextContent('Conta de teste da equipe');
-    expect(screen.getByTestId('talent-card-name')).toHaveTextContent('CQzi…AhW');
+    expect(screen.getByTestId('talent-card-name')).toHaveTextContent('CQzi…DAhW');
     expect(screen.queryByTestId('talent-card-paid')).toBeNull();
     expect(screen.queryByTestId('talent-card-capabilities')).toBeNull();
   });

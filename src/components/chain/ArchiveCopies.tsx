@@ -101,7 +101,7 @@ export function ArchiveCopies({ asset }: { asset: string }) {
             )}
           </div>
           <p className={SMALL}>
-            {t('archive.signed', { signer: shortAddress(data.signer), owner: owner.data ? `${owner.data.slice(0, 6)}…${owner.data.slice(-4)}` : '…' })}
+            {t('archive.signed', { signer: shortAddress(data.signer), owner: owner.data ? shortAddress(owner.data) : '…' })}
             {when && ` ${t('archive.when', { date: when })}`}
           </p>
           <p className={SMALL}>{t('archive.gateways')}</p>

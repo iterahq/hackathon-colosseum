@@ -78,7 +78,7 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
               </span>
               <span className="mt-0.5 flex items-center gap-0.5">
                 <span className="truncate [font:500_11px_JetBrains_Mono] text-[#A0978A]" title={wallet.address}>
-                  {shortAddress(wallet.address, 6, 6)}
+                  {shortAddress(wallet.address)}
                 </span>
                 <button
                   type="button"
