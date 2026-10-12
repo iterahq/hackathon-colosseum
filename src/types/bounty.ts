@@ -113,6 +113,42 @@ export interface Bounty {
   inviteeWallet: string | null;
   inviteeWalletShort: string | null;
   inviteeProfileUrl: string | null;
+  /** The branded Tera the sponsor added as a prize; null for a bounty that pays SOL only. */
+  prizeTera?: PrizeTera | null;
+}
+
+/** A sponsor's branded Tera on a bounty: minted soulbound to the learner the escrow pays. */
+export interface PrizeTera {
+  brand: string;
+  accent: string;
+  base: string;
+  /** The art the server composed. */
+  imageUrl: string | null;
+  /** False on a bounty funded by a transaction that skipped the Tera lines: the prize is not paid for and must not be promised. */
+  funded: boolean;
+  /** Set once the payout minted it. */
+  asset: string | null;
+  mintLamports: number;
+  feeLamports: number;
+  totalLamports: number;
+}
+
+/** What the posting form needs to offer the prize. */
+export interface PrizeTeraOptions {
+  enabled: boolean;
+  bases: { key: string; title: string; imageUrl: string; thumbUrl: string }[];
+  mintLamports: number;
+  feeLamports: number;
+  totalLamports: number;
+  brandMin: number;
+  brandMax: number;
+  previewUrl: string | null;
+}
+
+export interface PrizeTeraInput {
+  brand: string;
+  accent: string;
+  base: string;
 }
 
 export interface LedgerEvent {
@@ -273,6 +309,8 @@ export interface PostOptions {
   programId: string | null;
   trails: SponsorTrail[];
   limits: PostLimits;
+  /** Null when the backend does not offer the prize. */
+  prizeTera?: PrizeTeraOptions | null;
 }
 
 export interface PostedReview {
@@ -310,6 +348,7 @@ export interface CreatePostedInput {
   expiresInDays: number;
   claimHours: number;
   inviteeWallet?: string | null;
+  prizeTera?: PrizeTeraInput | null;
 }
 
 export interface CreatedBounty {
@@ -353,6 +392,8 @@ export interface WalletTx {
   transactionBase64: string;
   costLamports: number;
   rentLamports: number;
+  /** The Tera lines this transaction charges, when the bounty carries a prize. */
+  prizeLamports?: number;
   escrow: string | null;
   pays: string | null;
   lamports: number | null;

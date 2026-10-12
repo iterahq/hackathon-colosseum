@@ -1,3 +1,4 @@
+import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link } from 'react-router-dom';
 import { Reward } from '@/components/bounty/bountyUi';
 import { DirectChip } from '@/components/bounty/DirectParts';
@@ -26,8 +27,9 @@ export function InviteRow({ bounty, now }: { bounty: Bounty; now: number }) {
             {left === null ? t('bounty.inbox.noDate') : t('bounty.inbox.left', { time: formatRemaining(left) })}
           </span>
         </span>
-        <span className="flex shrink-0 items-center gap-3">
+        <span className="flex min-w-0 flex-wrap items-center gap-3">
           <Reward sol={bounty.rewardSol} />
+          <PrizeTeraTag bounty={bounty} link={false} />
           <span className="[font:700_13px_JetBrains_Mono] text-[#3FD17F]">{t('bounty.inbox.open')} →</span>
         </span>
       </Link>

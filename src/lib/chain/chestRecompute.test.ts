@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import sample from './chestSample.fixture.json';
 import { recomputeFromChain, type ChestChain, type ChestClaim } from './chestRecompute';
 
-// A real chest of devnet (a team test wallet), as `tera-chest/<id>` answered it on 2026-10-12.
+// The sample chest of /verify: a real chest of devnet (a team test wallet), as `tera-chest/<id>` answered it on 2026-10-12.
 const { chest, recompute } = sample;
 const claim: ChestClaim = { certification: chest.certification, day: chest.day, commitTx: chest.commit.tx, teraKey: chest.tera.key, tier: chest.tier, poolDocument: recompute.pool_document, unavailable: recompute.unavailable };
 
@@ -52,7 +52,7 @@ describe('recomputeFromChain', () => {
   });
 
   it('refuses a pool that is not the one the seal names', async () => {
-    const swapped = recompute.pool_document.replace('rarity_comum', 'rarity_comun');
+    const swapped = recompute.pool_document.replace('base_guerreiro', 'base_guerreira');
     expect(await recomputeFromChain({ ...claim, poolDocument: swapped }, chain())).toEqual({ ok: false, error: 'pool_mismatch' });
   });
 

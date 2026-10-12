@@ -4,6 +4,7 @@ import { Field } from '@/components/bounty/CreateBountyForm';
 import { blockingInviteeCode, DirectInviteeBlock } from '@/components/bounty/DirectInviteeBlock';
 import { ExplorerAnchor, INPUT, Notice, SECTION_TITLE } from '@/components/bounty/bountyUi';
 import { FundingLink } from '@/components/bounty/FundingLink';
+import { PrizeTeraFields } from '@/components/bounty/PrizeTeraFields';
 import { SponsorFaucet } from '@/components/bounty/SponsorFaucet';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
@@ -13,9 +14,10 @@ import { useI18n } from '@/i18n';
 import { shortAddress, txUrl } from '@/lib/explorer';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { lamportsToSol, POST_TEXT_LIMITS, validatePostForm, type PostField, type PostFormValues, type PostTextField } from '@/utils/bounty';
-import type { BountyLang, CreatedBounty, PostOptions, TxPhase } from '@/types/bounty';
+import type { BountyLang, CreatedBounty, PostOptions, PrizeTeraInput, TxPhase } from '@/types/bounty';
+import { brandError, isAccent, tidyBrand } from '@/utils/prizeTera';
 
-const CREATE_CODES = ['invalid_sponsor', 'invalid_text', 'invalid_reward', 'invalid_requirement', 'invalid_deadline', 'too_many_today', 'too_many_live', 'invalid_invitee', 'own_invitee', 'direct_unavailable'];
+const CREATE_CODES = ['invalid_prize_tera', 'prize_unavailable', 'invalid_sponsor', 'invalid_text', 'invalid_reward', 'invalid_requirement', 'invalid_deadline', 'too_many_today', 'too_many_live', 'invalid_invitee', 'own_invitee', 'direct_unavailable'];
 const LANG_NAMES: Record<BountyLang, string> = { pt: 'Português', en: 'English' };
 
 function Counter({ field, value }: { field: PostTextField; value: string }) {
@@ -47,6 +49,9 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
   const [attempted, setAttempted] = useState(false);
   const [invitee, setInvitee] = useState<string | null>(initialInvitee);
   const [acknowledged, setAcknowledged] = useState(false);
+  const prizeOptions = options.prizeTera ?? null;
+  const [prize, setPrize] = useState<PrizeTeraInput | null>(null);
+  const prizeBad = Boolean(prize && prizeOptions && (brandError(prize.brand, prizeOptions.brandMin, prizeOptions.brandMax) || !isAccent(prize.accent) || !prize.base));
   const [created, setCreated] = useState<CreatedBounty | null>(null);
   const [phase, setPhase] = useState<TxPhase | null>(null);
   const trail = trails.find((x) => x.unitId === unitId) ?? trails[0];
@@ -88,6 +93,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
     setAttempted(true);
     const { rewardLamports, minDays, expiresInDays, claimHours } = check;
     if (invitee && (inviteeBlocked || inviteeCheck.isPending || (needsAck && !acknowledged))) return;
+    if (prizeBad) return;
     if (Object.keys(check.errors).length > 0 || rewardLamports === null || minDays === null || expiresInDays === null || claimHours === null) return;
     create.mutate(
       {
@@ -102,6 +108,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
         expiresInDays,
         claimHours,
         inviteeWallet: invitee,
+        prizeTera: prize && prizeOptions ? { brand: tidyBrand(prize.brand), accent: prize.accent.trim().toLowerCase(), base: prize.base } : null,
       },
       {
         onSuccess: (bounty) => {
@@ -154,7 +161,8 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
   const createCode = create.isError ? bountyErrorCode(create.error) : null;
   const rent = invitee && limits.directEscrowRentLamports !== null ? limits.directEscrowRentLamports : limits.escrowRentLamports;
   const reward = check.rewardLamports;
-  const total = reward !== null && rent !== null ? reward + rent + limits.feeLamports : null;
+  const prizeCost = prize && prizeOptions ? prizeOptions.totalLamports : 0;
+  const total = reward !== null && rent !== null ? reward + rent + limits.feeLamports + prizeCost : null;
 
   return (
     <>
@@ -213,6 +221,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
           <input id="bounty-p-hours" type="number" inputMode="numeric" min="1" value={values.claimHours} onChange={(e) => patch({ claimHours: e.target.value })} className={INPUT} aria-invalid={Boolean(message('claimHours'))} data-testid="bounty-post-hours" />
         </Field>
       </div>
+      {prizeOptions && <PrizeTeraFields options={prizeOptions} value={prize} onChange={setPrize} strict={attempted} />}
       <dl className="flex flex-col gap-1.5 rounded-[12px] border border-[#2E2A25] bg-[#0A0908] p-3.5" data-testid="bounty-post-cost">
         <dt className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.post.cost')}</dt>
         <dd className="flex justify-between gap-3 [font:500_14px_JetBrains_Mono] text-[#C9BFB0]">
@@ -229,6 +238,18 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
           <span>{t('bounty.post.cost.fee')}</span>
           <span>{lamportsToSol(limits.feeLamports)} SOL</span>
         </dd>
+        {prize && prizeOptions && (
+          <>
+            <dd className="flex justify-between gap-3 [font:500_14px_JetBrains_Mono] text-[#C9BFB0]" data-testid="bounty-post-cost-prize-mint">
+              <span>{t('prize.cost.mint')}</span>
+              <span>{lamportsToSol(prizeOptions.mintLamports)} SOL</span>
+            </dd>
+            <dd className="flex justify-between gap-3 [font:500_14px_JetBrains_Mono] text-[#C9BFB0]" data-testid="bounty-post-cost-prize-fee">
+              <span>{t('prize.cost.fee')}</span>
+              <span>{lamportsToSol(prizeOptions.feeLamports)} SOL</span>
+            </dd>
+          </>
+        )}
         {total !== null ? (
           <dd className="flex justify-between gap-3 border-t border-[#262320] pt-1.5 [font:700_15px_JetBrains_Mono] text-[#F4EDE2]" data-testid="bounty-post-total">
             <span>{t('bounty.post.cost.total')}</span>
@@ -242,7 +263,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
         </dd>
       </dl>
       <SponsorFaucet />
-      {attempted && Object.keys(check.errors).length > 0 && <Notice tone="error">{t('bounty.post.err.fix')}</Notice>}
+      {attempted && (Object.keys(check.errors).length > 0 || prizeBad) && <Notice tone="error">{t('bounty.post.err.fix')}</Notice>}
       {create.isError && <Notice tone="error" testId="bounty-post-error">{createCode && CREATE_CODES.includes(createCode) ? t(`bounty.post.err.${createCode}`) : t('bounty.err.generic')}</Notice>}
       {phase !== null && fund.isPending && <TxPhaseNotice phase={phase} />}
       {create.isPending && <Notice testId="bounty-post-creating">{t('bounty.post.state.creating')}</Notice>}

@@ -1,3 +1,4 @@
+import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExplorerAnchor, INPUT, LABEL, LINK, Notice, RequirementChip, Reward, StatusChip } from '@/components/bounty/bountyUi';
@@ -258,6 +259,7 @@ export function PostedBountyCard({ bounty }: { bounty: PostedBounty }) {
       <h3 className="[font:700_24px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <div className="flex flex-wrap items-center gap-3">
         <Reward sol={bounty.rewardSol} />
+        <PrizeTeraTag bounty={bounty} />
         <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
         <ExplorerAnchor href={bounty.escrow?.explorerUrl ?? null} label={t('bounty.escrow.address')} />
       </div>

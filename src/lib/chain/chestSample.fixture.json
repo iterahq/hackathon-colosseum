@@ -1,22 +1,22 @@
 {
  "chest": {
-  "id": "19637b7e-eda1-4887-b964-16302188fb90",
-  "day": 2,
+  "id": "92e64490-e440-4880-aaca-647ea6b1f7aa",
+  "day": 4,
   "trail": "Semana 1 · HTML",
-  "certification": "7uStoFPh1Anokgbkqms7YMJGSdQwiJ1pZtw6B6MmBpcx",
+  "certification": "6xYDUSavb6yNVK5HadEvHutUjq7TZXBGwQisixAw6AsV",
   "status": "minted",
   "commit": {
-   "slot": 510169199,
-   "value": "510169199.0.f8d784c5",
-   "tx": "24hxbn9otL695HBXztFTczHnDVeVGsrGUqfk325JjDUK4PzRseDo6R578N3YiJDUxk1p1UGCw5dx2RaXwLqEam1V",
-   "tx_slot": 510169172,
+   "slot": 510171847,
+   "value": "510171847.0.f8d784c5",
+   "tx": "2uhnB49g8tejX47K86yEzcSWFt66nEAM9QBfw6CQ2WaGcWifxyHaVTbtKYLcC9qbxqUZimQ3td9SPuzMNsZmMpRS",
+   "tx_slot": 510171820,
    "via": "stamp",
-   "explorer_url": "https://explorer.solana.com/tx/24hxbn9otL695HBXztFTczHnDVeVGsrGUqfk325JjDUK4PzRseDo6R578N3YiJDUxk1p1UGCw5dx2RaXwLqEam1V?cluster=devnet"
+   "explorer_url": "https://explorer.solana.com/tx/2uhnB49g8tejX47K86yEzcSWFt66nEAM9QBfw6CQ2WaGcWifxyHaVTbtKYLcC9qbxqUZimQ3td9SPuzMNsZmMpRS?cluster=devnet"
   },
   "seed": {
-   "slot": 510169199,
-   "blockhash": "DFmMy9cePrWc6C4iYqDqR4rG8wRmtd6gAhjZJrA1brCS",
-   "value": "09e18413378e6f0a5269dd792174e4bdfd5e29296dd8e1eb621f8bda99e657b8"
+   "slot": 510171847,
+   "blockhash": "9kzu5hhkfmAUAuvYSJsCTDRNVr4jhJY73BLi8DutMpce",
+   "value": "f69c51314c4ef5e088c877f3e3acb215a95540279f4704082971ec7b6dbbd3bd"
   },
   "level": 0,
   "effort": {
@@ -25,7 +25,7 @@
    "gradable": 0,
    "verified": 0
   },
-  "tier": "rare",
+  "tier": "epic",
   "odds": [
    {
     "tier": "common",
@@ -53,34 +53,34 @@
    }
   ],
   "tera": {
-   "key": "rarity_comum",
-   "title": "Jade",
-   "rarity": "rare",
-   "tier_name": "Super Tera",
+   "key": "base_guerreiro",
+   "title": "Ardo",
+   "rarity": "epic",
+   "tier_name": "Mega Tera",
    "serial": 1,
-   "image_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/rarity_comum.webp",
-   "thumb_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/rarity_comum_128.webp",
-   "chip_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/rarity_comum_chip.webp",
-   "asset": "ARH2HEK9piGPLP5rPpSPVrgAY7PncgejFe5Rdr1guHuo",
-   "page_url": "https://hackathon-colosseum.178-105-2-230.sslip.io/c/ARH2HEK9piGPLP5rPpSPVrgAY7PncgejFe5Rdr1guHuo",
-   "explorer_url": "https://explorer.solana.com/address/ARH2HEK9piGPLP5rPpSPVrgAY7PncgejFe5Rdr1guHuo?cluster=devnet"
+   "image_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/base_guerreiro.webp",
+   "thumb_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/base_guerreiro_128.webp",
+   "chip_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/base_guerreiro_chip.webp",
+   "asset": "Chjb3TpPCbV6ARmuHqDvrwVrnrP7N5677C7QAwt29zzK",
+   "page_url": "https://hackathon-colosseum.178-105-2-230.sslip.io/c/Chjb3TpPCbV6ARmuHqDvrwVrnrP7N5677C7QAwt29zzK",
+   "explorer_url": "https://explorer.solana.com/address/Chjb3TpPCbV6ARmuHqDvrwVrnrP7N5677C7QAwt29zzK?cluster=devnet"
   }
  },
  "recompute": {
   "formula": "seed = sha256(\"itera-chest:v1|\" + blockhash + \"|\" + certification + \"|\" + day); tier = cumulative odds of the committed level at (int(seed[0..8]) mod 10000); tera = first available key walking the tier of the committed pool from (int(seed[8..16]) mod size)",
   "inputs": {
-   "certification": "7uStoFPh1Anokgbkqms7YMJGSdQwiJ1pZtw6B6MmBpcx",
-   "day": 2,
-   "commit_attribute": "chest:2",
-   "commit": "510169199.0.f8d784c5",
-   "commit_slot": 510169199,
-   "commit_tx": "24hxbn9otL695HBXztFTczHnDVeVGsrGUqfk325JjDUK4PzRseDo6R578N3YiJDUxk1p1UGCw5dx2RaXwLqEam1V",
-   "commit_tx_slot": 510169172,
+   "certification": "6xYDUSavb6yNVK5HadEvHutUjq7TZXBGwQisixAw6AsV",
+   "day": 4,
+   "commit_attribute": "chest:4",
+   "commit": "510171847.0.f8d784c5",
+   "commit_slot": 510171847,
+   "commit_tx": "2uhnB49g8tejX47K86yEzcSWFt66nEAM9QBfw6CQ2WaGcWifxyHaVTbtKYLcC9qbxqUZimQ3td9SPuzMNsZmMpRS",
+   "commit_tx_slot": 510171820,
    "level": 0,
    "pool_hash": "f8d784c5d6d7a2fee219ff9bad585153022013df03a162e8619af7ffa9f3bc83",
-   "seed_slot": 510169199,
-   "blockhash": "DFmMy9cePrWc6C4iYqDqR4rG8wRmtd6gAhjZJrA1brCS",
-   "seed": "09e18413378e6f0a5269dd792174e4bdfd5e29296dd8e1eb621f8bda99e657b8"
+   "seed_slot": 510171847,
+   "blockhash": "9kzu5hhkfmAUAuvYSJsCTDRNVr4jhJY73BLi8DutMpce",
+   "seed": "f69c51314c4ef5e088c877f3e3acb215a95540279f4704082971ec7b6dbbd3bd"
   },
   "from_chain": [
    "certification",
@@ -102,33 +102,21 @@
     "verified": 0
    },
    "unavailable": [
-    "acc_capuz_verde",
-    "acc_capuz_web3",
     "acc_chain_link",
-    "acc_cibernetico",
     "acc_cyber_chip",
-    "acc_oculos_tech",
-    "acc_programador",
-    "base_iniciante",
-    "color_azul"
+    "lang_solidity"
    ],
    "held": [
-    "acc_capuz_verde",
-    "acc_capuz_web3",
     "acc_chain_link",
-    "acc_cibernetico",
     "acc_cyber_chip",
-    "acc_oculos_tech",
-    "acc_programador",
-    "base_iniciante",
-    "color_azul"
+    "lang_solidity"
    ],
    "exhausted": []
   },
   "rpc": [
-   "getAccountInfo(7uStoFPh1Anokgbkqms7YMJGSdQwiJ1pZtw6B6MmBpcx) -> Attributes plugin, \"chest:2\" = \"<slot>.<level>.<pool hash 8 hex>\"",
-   "getTransaction(24hxbn9otL695HBXztFTczHnDVeVGsrGUqfk325JjDUK4PzRseDo6R578N3YiJDUxk1p1UGCw5dx2RaXwLqEam1V) -> slot must be below 510169199; its instruction data carries the same attribute",
-   "getBlocks(510169199, 510174199)[0] -> the seed slot; getBlock(that slot).blockhash"
+   "getAccountInfo(6xYDUSavb6yNVK5HadEvHutUjq7TZXBGwQisixAw6AsV) -> Attributes plugin, \"chest:4\" = \"<slot>.<level>.<pool hash 8 hex>\"",
+   "getTransaction(2uhnB49g8tejX47K86yEzcSWFt66nEAM9QBfw6CQ2WaGcWifxyHaVTbtKYLcC9qbxqUZimQ3td9SPuzMNsZmMpRS) -> slot must be below 510171847; its instruction data carries the same attribute",
+   "getBlocks(510171847, 510176847)[0] -> the seed slot; getBlock(that slot).blockhash"
   ],
   "pool": {
    "common": [
@@ -194,22 +182,15 @@
   },
   "pool_document": "{\"v\":1,\"tiers\":[[\"common\",[\"base_iniciante\",\"color_azul\",\"acc_cyber_chip\",\"acc_oculos_tech\",\"acc_capuz_web3\",\"acc_chain_link\",\"acc_programador\",\"acc_cibernetico\",\"acc_capuz_verde\"]],[\"rare\",[\"base_focado\",\"base_estudioso\",\"base_determinado\",\"base_disciplinado\",\"base_focado_no_objetivo\",\"base_criativo\",\"base_analitico\",\"color_roxo\",\"color_dourado\",\"acc_oculos_codificador\",\"base_lider\",\"base_mistico\",\"base_natural\",\"base_livre\",\"lang_javascript\",\"lang_python\",\"lang_solidity\",\"lang_rust\",\"rarity_comum\",\"rarity_raro\"]],[\"epic\",[\"base_guerreiro\",\"base_sombrio\",\"base_sabedoria\",\"base_evoluido\",\"event_halloween\",\"event_natal\",\"event_verao\",\"rarity_epico\"]],[\"legendary\",[\"special_dourado\",\"special_prata\",\"special_verde_neon\",\"special_azul_eletrico\",\"special_roxo_estelar\",\"special_vermelho_lava\",\"special_preto_cosmico\",\"rarity_lendario\"]],[\"mythic\",[\"special_arco_iris\",\"event_space\"]],[\"primordial\",[\"brand_phoenix_full\"]]]}",
   "unavailable": [
-   "acc_capuz_verde",
-   "acc_capuz_web3",
    "acc_chain_link",
-   "acc_cibernetico",
    "acc_cyber_chip",
-   "acc_oculos_tech",
-   "acc_programador",
-   "base_iniciante",
-   "color_azul"
+   "lang_solidity"
   ],
   "steps": [
-   "tier_roll = 0x09e18413 mod 10000 = 4355",
-   "level 0 odds common:7000 rare:2500 epic:450 legendary:45 mythic:5 primordial:0 -> common",
-   "start_roll = 0x378e6f0a = 932081418",
-   "common: all 9 unavailable",
-   "rare: start 932081418 mod 20 = 18, skipped 0 unavailable -> rarity_comum"
+   "tier_roll = 0xf69c5131 mod 10000 = 9537",
+   "level 0 odds common:7000 rare:2500 epic:450 legendary:45 mythic:5 primordial:0 -> epic",
+   "start_roll = 0x4c4ef5e0 = 1280243168",
+   "epic: start 1280243168 mod 8 = 0, skipped 0 unavailable -> base_guerreiro"
   ]
  }
 }

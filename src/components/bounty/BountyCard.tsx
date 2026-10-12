@@ -1,3 +1,4 @@
+import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link } from 'react-router-dom';
 import { JudgeCaption, JudgeChip } from '@/components/bounty/JudgeParts';
 import { RehearsalChip, Reward, RequirementChip, StatusChip } from '@/components/bounty/bountyUi';
@@ -41,7 +42,10 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
       <h3 className="[font:700_26px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</h3>
       <p className="line-clamp-3 [font:400_14px/1.5_Inter] text-[#C9BFB0]">{bounty.summary}</p>
       <div className="mt-auto flex flex-col gap-3 pt-1">
-        <Reward sol={bounty.rewardSol} />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Reward sol={bounty.rewardSol} />
+          <PrizeTeraTag bounty={bounty} link={false} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
           {bounty.status === 'paid' && bounty.claim && (

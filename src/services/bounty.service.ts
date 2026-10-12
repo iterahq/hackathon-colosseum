@@ -33,6 +33,8 @@ import type {
   PostedReview,
   PostLimits,
   PostOptions,
+  PrizeTera,
+  PrizeTeraOptions,
   PostedBy,
   SponsorBounty,
   SponsorList,
@@ -117,6 +119,45 @@ function toPostedBy(v: unknown, sponsor: string): PostedBy {
 const lang = (v: unknown): BountyLang | null => (v === 'pt' || v === 'en' ? v : null);
 
 /** Null when the row lacks what the page cannot work without (id, slug, a known status). */
+const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
+
+/** Null for a bounty with no prize, or a prize block that cannot be drawn safely (no brand, a colour that is not a hex). */
+export function parsePrizeTera(v: unknown): PrizeTera | null {
+  const r = row(v);
+  const brand = text(r.brand);
+  const accent = text(r.accent);
+  if (!brand || !accent || !HEX_COLOUR.test(accent)) return null;
+  return {
+    brand,
+    accent,
+    base: text(r.base) ?? '',
+    imageUrl: safeHttpsUrl(text(r.image_url)),
+    funded: r.funded === true,
+    asset: text(r.asset),
+    mintLamports: int(r.mint_lamports) ?? 0,
+    feeLamports: int(r.fee_lamports) ?? 0,
+    totalLamports: int(r.total_lamports) ?? 0,
+  };
+}
+
+export function parsePrizeOptions(v: unknown): PrizeTeraOptions | null {
+  const r = row(v);
+  const bases = rows(r.bases)
+    .filter((b) => text(b.key) && safeHttpsUrl(text(b.image_url)))
+    .map((b) => ({ key: String(b.key), title: text(b.title) ?? String(b.key), imageUrl: String(b.image_url), thumbUrl: safeHttpsUrl(text(b.thumb_url)) ?? String(b.image_url) }));
+  if (r.enabled !== true || bases.length === 0) return null;
+  return {
+    enabled: true,
+    bases,
+    mintLamports: int(r.mint_lamports) ?? 0,
+    feeLamports: int(r.fee_lamports) ?? 0,
+    totalLamports: int(r.total_lamports) ?? (int(r.mint_lamports) ?? 0) + (int(r.fee_lamports) ?? 0),
+    brandMin: int(r.brand_min_length) ?? 2,
+    brandMax: int(r.brand_max_length) ?? 24,
+    previewUrl: safeHttpsUrl(text(r.preview_url)),
+  };
+}
+
 export function parseBounty(v: unknown): Bounty | null {
   const r = row(v);
   const id = text(r.id);
@@ -169,6 +210,7 @@ export function parseBounty(v: unknown): Bounty | null {
     inviteeWallet: text(r.invitee_wallet),
     inviteeWalletShort: text(r.invitee_wallet_short) ?? text(r.invitee_wallet),
     inviteeProfileUrl: text(r.invitee_profile_url),
+    prizeTera: parsePrizeTera(r.prize_tera),
   };
 }
 
@@ -328,7 +370,7 @@ export function parsePostOptions(body: unknown): PostOptions {
     maxClaimHours: int(l.max_claim_hours) ?? 168,
     directEscrowRentLamports: int(l.direct_escrow_rent_lamports),
   };
-  return { cluster: text(b.cluster) ?? 'devnet', programId: text(b.program_id), trails: toTrails(b.trails), limits };
+  return { cluster: text(b.cluster) ?? 'devnet', programId: text(b.program_id), trails: toTrails(b.trails), limits, prizeTera: parsePrizeOptions(b.prize_tera) };
 }
 
 function toPostedReview(v: unknown): PostedReview | null {
@@ -379,6 +421,7 @@ export function parseWalletTx(body: unknown): WalletTx | null {
     transactionBase64: text(b.transaction_base64) ?? '',
     costLamports: int(b.cost_lamports) ?? 0,
     rentLamports: int(b.rent_lamports) ?? 0,
+    prizeLamports: int(row(b.prize_tera).total_lamports) ?? 0,
     escrow: text(b.escrow),
     pays: text(b.pays),
     lamports: int(b.lamports),
@@ -626,6 +669,7 @@ export async function createPostedBounty(input: CreatePostedInput): Promise<Crea
     expires_in_days: input.expiresInDays,
     claim_hours: input.claimHours,
     ...(input.inviteeWallet ? { invitee_wallet: input.inviteeWallet } : {}),
+    ...(input.prizeTera ? { prize_tera: { brand: input.prizeTera.brand, accent: input.prizeTera.accent, base: input.prizeTera.base } } : {}),
   });
   const r = row(data);
   const id = text(r.id);
