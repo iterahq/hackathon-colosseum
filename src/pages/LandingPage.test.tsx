@@ -68,7 +68,7 @@ describe('LandingPage', () => {
   it('states learn, prove, own with one wallet action, the lesson without a wallet and one link to a certification', () => {
     mount('en');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Learn.Prove.Own.');
-    expect(screen.getByTestId('landing-lede')).toHaveTextContent('Learn to code in 10 to 15 minutes a day. Each finished day is stamped on a certification in your wallet, public on Solana. Avatars are earned by studying or bought with SOL.');
+    expect(screen.getByTestId('landing-lede')).toHaveTextContent('Learn to code in 5 to 15 minutes a day. Each finished day is stamped on a certification in your wallet, public on Solana. Avatars are earned by studying or bought with SOL.');
     // No Phantom in this browser: the action is the link to the sign-in page, with the label of the header button.
     const wallet = screen.getAllByTestId('landing-cta-wallet');
     expect(wallet).toHaveLength(1);
@@ -105,7 +105,7 @@ describe('LandingPage', () => {
     const steps = screen.getAllByTestId('landing-step').map((step) => step.querySelector('span')?.textContent);
     expect(steps).toEqual(['01 · Learn', '02 · Prove', '03 · Own', '04 · Next']);
     const list = screen.getByTestId('landing-steps');
-    expect(list).toHaveTextContent('10 to 15 minutes of hands-on exercises');
+    expect(list).toHaveTextContent('5 to 15 minutes of hands-on exercises');
     expect(list).toHaveTextContent('Anyone can verify it, without Itera.');
     expect(list).toHaveTextContent('Every stamped day opens a chest with an avatar. The others are bought in one tap, with the SOL already in your wallet.');
     expect(list).toHaveTextContent('Web3 on Solana trails');
@@ -128,7 +128,7 @@ describe('LandingPage', () => {
 
   it('tells a stranger who pays and who built it, with no invented number and no community link', () => {
     mount('en');
-    expect(screen.getByTestId('landing-model')).toHaveTextContent('Learning is free. Today the shop sells avatars for SOL. Next: paid micro-certifications and a talent bank for companies.');
+    expect(screen.getByTestId('landing-model')).toHaveTextContent('Learning is free. Today the shop sells avatars for SOL. Next: paid advanced certifications and a talent bank for companies.');
     expect(screen.getByTestId('landing-model')).not.toHaveTextContent(/Stripe|subscription|lives|Sponsors/);
     expect(screen.queryByTestId('landing-model-build')).toBeNull();
     expect(screen.getByTestId('landing')).toHaveTextContent('Everything runs on Solana devnet. Nothing here has real value.');
