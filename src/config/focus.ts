@@ -57,3 +57,9 @@ export const FOCUS_STARTER_FACES_UNLISTED = FOCUS_BUILD;
  * by URL; a build with `VITE_FOCUS_BUILD=off` shows them again.
  */
 export const FOCUS_EARN_STORY_OFF = FOCUS_BUILD;
+
+/**
+ * A day node of the program path carries no kind label ("X-RAY", "CONCEPT", "CODE"): the label is the kind of the
+ * day's FIRST activity only, and a day mixes several kinds, so it described the day wrongly.
+ */
+export const FOCUS_DAY_KIND_LABEL_OFF = FOCUS_BUILD;

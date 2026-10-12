@@ -7,6 +7,12 @@ export const HIT_SLOP = 'relative before:absolute before:-inset-1';
 
 /** What a careful beginner needs for a day of 18 activities, as the landing promises. Copy only, never a timer. */
 export const DAY_MINUTES = 15;
+const FULL_DAY_ACTIVITIES = 18;
+
+/** The estimate follows the size of the day, in steps of 5 minutes: 4 exercises read "about 5 min", 18 activities "about 15 min". */
+export function dayMinutes(activities: number): number {
+  return Math.max(5, Math.ceil((activities * DAY_MINUTES) / FULL_DAY_ACTIVITIES / 5) * 5);
+}
 
 /**
  * Immersive chrome of the lesson: full-width progress bar flush to the top
@@ -46,7 +52,7 @@ export function LessonChrome({
   step?: { n: number; total: number; day: number | null } | null;
 }) {
   const { t } = useI18n();
-  const stepText = step && step.total > 0 ? (step.day ? t('lesson.chrome.step', { day: step.day, min: DAY_MINUTES, n: step.n, total: step.total }) : t('lesson.chrome.stepOnly', { n: step.n, total: step.total })) : null;
+  const stepText = step && step.total > 0 ? (step.day ? t('lesson.chrome.step', { day: step.day, min: dayMinutes(step.total), n: step.n, total: step.total }) : t('lesson.chrome.stepOnly', { n: step.n, total: step.total })) : null;
 
   return (
     <header className="relative">

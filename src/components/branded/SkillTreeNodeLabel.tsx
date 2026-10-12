@@ -14,6 +14,7 @@ export function SkillTreeNodeLabel({
 }: {
   dayLabel: string;
   title: string;
+  /** Empty: the node carries no kind line. */
   kindLabel: string;
   state: NodeState;
   primary: boolean;
@@ -32,9 +33,11 @@ export function SkillTreeNodeLabel({
       >
         {dayLabel}
       </span>
-      <span className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground leading-none">
-        {kindLabel}
-      </span>
+      {kindLabel && (
+        <span className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground leading-none" data-testid="node-kind">
+          {kindLabel}
+        </span>
+      )}
       {showTitle && (
         <span
           className={`mt-1 text-xs font-medium leading-tight line-clamp-2 ${
