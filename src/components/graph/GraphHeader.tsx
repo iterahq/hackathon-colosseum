@@ -12,6 +12,8 @@ interface Props {
   progress: Record<number, Progress>;
   hasRecorded: boolean;
   onRetry: () => void;
+  /** Off on a page that draws one trail: the per-trail list would repeat the counter beside it. */
+  trailList?: boolean;
 }
 
 const RING = 2 * Math.PI * 38;
@@ -20,7 +22,7 @@ function Dot({ className }: { className: string }) {
   return <span className={`inline-block h-3.5 w-3.5 shrink-0 rounded-full ${className}`} aria-hidden="true" />;
 }
 
-export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded, onRetry }: Props) {
+export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded, onRetry, trailList = true }: Props) {
   const { t } = useI18n();
   const total = capabilities.total;
   const ratio = Math.min(1, proven / Math.max(1, total));
@@ -63,6 +65,7 @@ export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded
           <text x="46" y="53" textAnchor="middle" fill="#F4EDE2" style={{ font: "700 22px 'Barlow Condensed'" }}>{Math.round(ratio * 100)}%</text>
         </svg>
       </div>
+      {trailList && (
       <ul className="grid gap-3 sm:grid-cols-3" data-testid="graph-trail-progress">
         {capabilities.trails.map((tr) => {
           const p = progress[tr.trail] ?? { proven: 0, total: 0 };
@@ -79,7 +82,8 @@ export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded
           );
         })}
       </ul>
-      <ul className="flex flex-wrap gap-x-5 gap-y-2 [font:500_13px_Inter] text-[#C9BFB0] lg:col-span-2 lg:row-start-2" aria-label="legend" data-testid="graph-legend">
+      )}
+      <ul className={`flex flex-wrap gap-x-5 gap-y-2 [font:500_13px_Inter] text-[#C9BFB0] ${trailList ? 'lg:col-span-2 lg:row-start-2' : 'lg:justify-end'}`} aria-label="legend" data-testid="graph-legend">
         <li className="flex items-center gap-2"><Dot className="bg-[#3FD17F] shadow-[0_0_10px_rgba(63,209,127,.7)]" />{t('graph.legend.proven')}</li>
         <li className="flex items-center gap-2"><Dot className="border-2 border-[#3FD17F] bg-transparent" />{t('graph.legend.next')}</li>
         <li className="flex items-center gap-2"><Dot className="border-2 border-[#3a352f] bg-transparent" />{t('graph.legend.open')}</li>

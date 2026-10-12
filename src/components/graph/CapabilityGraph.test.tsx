@@ -82,7 +82,7 @@ describe('CapabilityGraphSection', () => {
     expect(refetch).toHaveBeenCalled();
   });
 
-  it('opens the detail for a proven node with safe explorer links and the full hash', () => {
+  it('opens the detail for a proven node with one safe explorer link, the asset, and the full hash', () => {
     chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': '2acb55a6bc0e259f' }), refetch: vi.fn() });
     show();
     fireEvent.click(view('a'));
@@ -90,8 +90,11 @@ describe('CapabilityGraphSection', () => {
     expect(within(dialog).getByTestId('graph-attribute')).toHaveTextContent('claim:a');
     expect(within(dialog).getByTestId('graph-value')).toHaveTextContent('2acb55a6bc0e259f');
     expect(within(dialog).getByTestId('graph-hash')).toHaveTextContent(HASH);
-    expect(within(dialog).getByTestId('graph-tx-link')).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(within(dialog).getByTestId('graph-tx-link')).toHaveAttribute('target', '_blank');
+    const link = within(dialog).getByTestId('graph-asset-link');
+    expect(link.getAttribute('href')).toMatch(/^https:\/\/explorer\.solana\.com\/address\//);
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(within(dialog).queryByTestId('graph-tx-link')).not.toBeInTheDocument();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
