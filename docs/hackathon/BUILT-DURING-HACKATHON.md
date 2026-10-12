@@ -187,7 +187,33 @@ Until now a sponsor posted a bounty and waited for a learner. These two features
   the inbox is a read. Team (Itera-funded) bounties cannot be direct. A bounty the team posted for rehearsal is labelled
   as the team's own wherever it shows.
 
-## Hackathon migrations (`db/migrations/`, 55 files)
+## Tera NFT: earned, bought, sponsored (added on the last day)
+
+One collection ("Itera Avatars"), three ways to get a Tera, and the asset says which. Full description and limits:
+[`docs/onchain-teras.md`](../onchain-teras.md).
+
+- **Earned: the day chest.** Each stamped day opens a chest. The stamp transaction itself commits a future slot on
+  the certification (`chest:<day>`), the seed is the blockhash of the first block at or after that slot, and the tier
+  and the Tera are a pure function of the seed, the committed effort level and the committed pool. The Tera is minted
+  soulbound with its origin and the roll inputs on chain. Legendary, Mythic and Primordial are earn-only. Code:
+  `supabase/functions/_shared/tera-roll.ts` (pure, also run by `/verify` in the browser), `tera-chest-store.ts`,
+  `supabase/functions/tera-chest/`, the stamp path in `passport`, migration 0351.
+- **Bought: a collectible with a fee.** Tera, Super Tera and Mega Tera are sold and stay transferable. The collection
+  carries the Core Royalties plugin, 5% to the treasury
+  ([transaction](https://explorer.solana.com/tx/4qgBKocSRhKxeZ96aYpWXjpSATDv864XbSgf12A6PydjJD3ipcRmwGW1mUshL6TdVebwDedA4TtNMo957ZDYPshB?cluster=devnet)).
+  One source of rarity: the catalog, aligned to the owner's grouping by migration 0350, served by
+  `GET /credential-meta/tiers`.
+- **Sponsored: a branded prize on a bounty.** A sponsor adds a name, a colour and a base Tera (no upload; the server
+  composes the art), pays the mint cost and an issuing fee in the transaction that funds the bounty, and the Tera is
+  minted soulbound to the learner in the settlement that records the payout. The escrow program was not changed. Code:
+  `_shared/sponsor-tera.ts`, `sponsor-tera-store.ts`, `bounty-post`, `bounty-action`, migration 0352.
+- **End to end on devnet** (`scripts/hackathon/tera-e2e.mjs`): a stamp, the commitment read from the stamp
+  transaction, the roll recomputed from the RPC with the same Tera, the asset frozen with its origin; a bounty with a
+  prize posted, funded, paid, and the sponsor Tera minted to the paid wallet. The same script tries to break it (a
+  client that sends a tier, replays, races, the switch off, markup in a brand, a funding that skips the fee).
+- **PRs:** #218, #222, #225, #228, #229 (server and chain); #217, #219, #220, #221, #223, #224, #226, #227, #230 (interface).
+
+## Hackathon migrations (`db/migrations/`, 58 files)
 
 - `0110_identity_provider_solana.sql`
 - `0111_wallet_user_provisioning.sql`
@@ -247,8 +273,11 @@ Until now a sponsor posted a bounty and waited for a learner. These two features
 - `0330_talent_listings.sql`
 - `0340_bounty_direct.sql`
 - `0341_bounty_escrow_direct_version.sql`
+- `0350_tera_one_rarity.sql`
+- `0351_tera_chests.sql`
+- `0352_sponsor_teras.sql`
 
-## Hackathon edge functions (`supabase/functions/`, 27 functions plus `_shared/`)
+## Hackathon edge functions (`supabase/functions/`, 28 functions plus `_shared/`)
 
 - `action-gift`
 - `bounty-action`
@@ -279,6 +308,7 @@ Until now a sponsor posted a bounty and waited for a learner. These two features
 - `shop-claim`
 - `shop-items`
 - `talent-board`
+- `tera-chest`
 - `wallet-faucet`
 
 Also new: `scripts/hackathon/` (end-to-end scripts for the deployed devnet backend), `docs/onchain-passport.md`,

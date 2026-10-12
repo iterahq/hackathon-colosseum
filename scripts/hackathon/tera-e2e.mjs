@@ -16,11 +16,12 @@
 // SPONSOR. A throwaway wallet funded from the treasury posts a bounty with a prize Tera, funds it, the
 // learner delivers, the sponsor approves: the payout mints the branded Tera, frozen, to the paid wallet.
 //
-// Spends about 0.03 devnet SOL of the mint authority and moves 0.06 SOL from the treasury to the
-// throwaway sponsor (the unspent part is sent back). Refuses to start when the authority would end
+// Spends about 0.04 devnet SOL of the mint authority and about 0.015 SOL of the treasury (0.06 SOL goes
+// to the throwaway sponsor, which sends back what it did not spend). Refuses to start when the authority would end
 // below 0.62 SOL or the treasury below 0.25 SOL. Every account it creates is tagged in
-// `itera.test_accounts`; the bounty it posts is marked `is_test`. It never touches the owner's wallet
-// or certification. The kill switch is left as it was found.
+// `itera.test_accounts`; the bounties it posts are marked `is_test`. It never touches the owner's wallet
+// or certification. Both kill switches are left as they were found; the chest switch is OFF for about
+// 15 seconds in the middle of the run (a learner stamping in that window gets the chest by its own write).
 import { writeFileSync } from 'node:fs';
 import { base58Bytes } from '../../supabase/functions/_shared/solana-tx.ts';
 import { CHEST_BLOCK_WINDOW, chestSeed, commitLandedInTime, instructionCommits, parseCommit, recomputeChest } from '../../supabase/functions/_shared/tera-roll.ts';

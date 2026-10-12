@@ -38,6 +38,12 @@ describe('the brand a sponsor types', () => {
     }
   });
 
+  it('KNOWN LIMIT: a look-alike letter from another alphabet passes the reserved-name check', () => {
+    // Cyrillic capital I (U+0406) reads as "Itera". The check is a word list, not a confusables table; the art labels every
+    // such Tera "SPONSOR TERA · BOUNTY PRIZE" and the metadata says the brand is the sponsor's own text.
+    expect(cleanBrand('\u0406tera')).toBe('\u0406tera');
+  });
+
   it('never lets markup reach the art: the brand is escaped again where it is drawn', () => {
     const art = sponsorArt({ prize: { brand: `A&B 'Co'`, accent: '#ff8800', base: 'tera_feliz' }, picture: null, caption: '<b>Build</b> "it" & ship', edition: { number: 1, size: 1 } });
     expect(art).toContain('A&amp;B &#39;Co&#39;');

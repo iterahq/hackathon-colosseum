@@ -186,6 +186,10 @@ a notification to the invitee (the inbox is a read).
 
 ## Bounties posted by any wallet (`origin = wallet`)
 
+> A wallet may add a **sponsor Tera** as the prize of its bounty (`prize_tera` on `create`): paid for in the funding
+> transaction, minted soulbound to the learner when the payout is recorded. The program is unchanged and does not know
+> about it. See [`onchain-teras.md`](onchain-teras.md), "The sponsor Tera".
+
 `/bounties/post` is open to any signed-in wallet; `/bounties/mine` is that wallet's console. Function: `bounty-post`.
 
 - **Who holds what.** The escrow account is created by a transaction whose only signer is the sponsor's wallet. The
