@@ -16,11 +16,11 @@ describe('AvatarPyramid', () => {
     const tiers = screen.getAllByTestId('avatar-tier');
     expect(tiers.map((t) => t.dataset.rarity)).toEqual(['primordial', 'mythic', 'legendary', 'epic', 'rare', 'common']);
     expect(tiers[1]).toHaveTextContent('Tera Mítico');
-    expect(within(tiers[1]).getByTestId('avatar-tier-supply')).toHaveTextContent('8/15 emitidos');
+    expect(within(tiers[1]).getByTestId('avatar-tier-supply')).toHaveTextContent('8/15 com dono');
     expect(within(tiers[1]).getByTestId('avatar-tier-price')).toHaveTextContent('US$ 1000.00');
     expect(within(tiers[3]).getByTestId('avatar-tier-crystals')).toHaveTextContent('2 500 cristais');
     expect(within(tiers[5]).getByTestId('avatar-tier-supply')).toHaveTextContent('ilimitado');
-    expect(screen.getByTestId('avatar-free')).toHaveTextContent('Ícones grátis');
+    expect(screen.getByTestId('avatar-free')).toHaveTextContent('Caras iniciais');
   });
 
   it('shows every state: buy, sold out, out of season, owned, equipped and free', () => {

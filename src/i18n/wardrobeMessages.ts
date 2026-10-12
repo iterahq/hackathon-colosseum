@@ -11,7 +11,7 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.section.livesHint': 'Vidas voltam de graça, 1 a cada 20 min. Recarregar é só para quem tem pressa.',
     'shop.section.more': 'Mais sobre a loja',
     'shop.avatar.free': 'Caras iniciais',
-    'shop.avatar.freeHint': 'Já são seus. Troque quando quiser.',
+    'shop.avatar.freeHint': 'Já são suas. Troque quando quiser.',
     'shop.avatar.unlimited': 'ilimitado',
     'shop.avatar.minted': '{supply} com dono',
     'shop.avatar.soldOut': 'Esgotado',
