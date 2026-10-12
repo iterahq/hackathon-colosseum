@@ -48,6 +48,8 @@ import { BASE_FEE_LAMPORTS, fundsCheck } from '../_shared/purchase-verify.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { RpcError, RpcNodeError, balanceOf, latestBlockhash, rpc, withinMs } from '../_shared/rpc.ts';
 import { decodeSignedTransaction, transactionSignature } from '../_shared/signed-tx.ts';
+import { BRAND_MAX, BRAND_MIN, PRIZE_TOTAL_LAMPORTS, prizeFeeInstruction, prizeOf, prizeQuote } from '../_shared/sponsor-tera.ts';
+import { prizeBases, prizeEnabled } from '../_shared/sponsor-tera-store.ts';
 import { compileMessage, memoInstruction, type Instruction } from '../_shared/solana-message.ts';
 import { base58Decode, base58Encode, base64Encode, serializeTransaction } from '../_shared/solana-tx.ts';
 
@@ -90,7 +92,18 @@ async function options(db: IteraClient, cors: Cors): Promise<Response> {
     withinMs(escrowRentLamports(gated).catch(() => null), FORM_RPC_BUDGET_MS).then((answer) => answer ?? escrowRentLastRead(gated)),
     direct ? withinMs(escrowRentLamports(true, true).catch(() => null), FORM_RPC_BUDGET_MS).then((answer) => answer ?? escrowRentLastRead(true, true)) : null,
   ]);
-  return json({ cluster: 'devnet', program_id: config.bounty_escrow_program ?? null, direct, trails, limits: limits(rent, directRent) }, 200, { ...cors, 'Cache-Control': 'public, max-age=60' });
+  // The prize a sponsor may add: a few base Teras, what it costs, and the rule of the brand. No upload: the server composes the art.
+  const prizeTera = {
+    enabled: prizeEnabled(config),
+    bases: prizeBases('en'),
+    ...prizeQuote(),
+    brand_min_length: BRAND_MIN,
+    brand_max_length: BRAND_MAX,
+    brand_allowed: "letters, digits, spaces and . & + - _ ! '",
+    preview_url: `${functionsBase()}/credential-meta/sponsor-preview.svg`,
+    transferable: false,
+  };
+  return json({ cluster: 'devnet', program_id: config.bounty_escrow_program ?? null, direct, trails, limits: limits(rent, directRent), prize_tera: prizeTera }, 200, { ...cors, 'Cache-Control': 'public, max-age=60' });
 }
 
 /** The stamped days a bounty would ask for, from the form's own two fields. `null`: not a trail, or more days than it has. */
@@ -182,6 +195,8 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
   if (!config.bounty_wallet_tenant || !config.bounty_escrow_program || !config.collection_passports) return json({ error: 'unavailable' }, 503, cors);
   // Only the program can keep a bounty for one wallet: without `create_direct` deployed there is no direct bounty to post.
   if (input.invitee_wallet && !directEscrows(config)) return json({ error: 'direct_unavailable' }, 503, cors);
+  // The prize Tera has its own switch, and its fee goes to the treasury: without both there is no prize to post.
+  if (input.prize_tera && (!prizeEnabled(config) || !isEd25519Address(config.treasury) || config.treasury === wallet)) return json({ error: 'prize_unavailable' }, 503, cors);
 
   const mine = await ownBounties(db, wallet);
   if (mine.filter((bounty) => now.getTime() - Date.parse(bounty.created_at) < DAY_MS).length >= WALLET_POSTS_PER_DAY) return json({ error: 'too_many_today', limit: WALLET_POSTS_PER_DAY }, 429, cors);
@@ -238,14 +253,16 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
     approver_address: wallet,
     source_lang: input.source_lang,
     invitee_wallet: input.invitee_wallet,
+    prize_tera: input.prize_tera,
   });
   if (error) throw new Error(`bounties insert: ${error.message}`);
   const { error: eventError } = await db.from('bounty_events').insert({ bounty_id: id, kind: 'created', wallet });
   if (eventError) console.error('bounty created event not written', id, eventError.message);
   const fund = fundingLinks(functionsBase(), slug);
-  if (!input.invitee_wallet || !standing) return json({ created: true, id, slug, direct: false, fund }, 200, cors);
+  const prize = input.prize_tera ? { prize_tera: { ...input.prize_tera, ...prizeQuote() } } : {};
+  if (!input.invitee_wallet || !standing) return json({ created: true, id, slug, direct: false, fund, ...prize }, 200, cors);
   return json(
-    { created: true, id, slug, direct: true, fund, invitee_wallet: input.invitee_wallet, invitee_known: standing.known_learner, invitee_eligible: standing.eligible, invitee_reason: standing.reason, invitee_proof: standing.proof, invite_enforced_by: 'program' },
+    { created: true, id, slug, direct: true, fund, invitee_wallet: input.invitee_wallet, invitee_known: standing.known_learner, invitee_eligible: standing.eligible, invitee_reason: standing.reason, invitee_proof: standing.proof, invite_enforced_by: 'program', ...prize },
     200,
     cors,
   );
@@ -274,21 +291,40 @@ async function unsigned(wallet: string, instructions: Instruction[], memo: strin
 
 async function fundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: Cors): Promise<Response> {
   if (publicStatus(bounty, new Date()) !== 'awaiting_funding') return json({ error: 'not_fundable' }, 409, cors);
-  const terms = await escrowTerms(bounty, await loadConfig(db));
+  const config = await loadConfig(db);
+  const terms = await escrowTerms(bounty, config);
   if (!terms) return json({ error: 'unavailable' }, 503, cors);
   const [existing, balance, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(wallet), escrowRentLamports(terms.gate !== null, Boolean(terms.invitee))]);
   if (existing) {
     const status = (await refreshFunding(db, bounty)).status;
     return json({ error: 'already_funded', status }, 409, cors);
   }
-  const cost = BigInt(bounty.reward_lamports) + rent;
+  // A prize Tera is paid for in this same transaction: its mint cost and the issuing fee, to the treasury, next to the escrow's `create`.
+  // With the prize switched off after posting, the bounty is funded as a plain one: no fee is taken and no Tera will be minted.
+  const prize = prizeEnabled(config) && isEd25519Address(config.treasury) && config.treasury !== wallet ? prizeOf(bounty.prize_tera) : null;
+  const prizeLamports = prize ? PRIZE_TOTAL_LAMPORTS : 0n;
+  const cost = BigInt(bounty.reward_lamports) + rent + prizeLamports;
   const funds = fundsCheck(balance, cost);
   // `cost_lamports` is the total the form shows; `keep_lamports` is what Solana makes a wallet keep unless it ends at exactly zero.
   if (!funds.ok) {
     const spend = cost + BASE_FEE_LAMPORTS;
     return json({ error: 'insufficient_funds', balance_lamports: Number(balance), required_lamports: Number(funds.required), cost_lamports: Number(spend), keep_lamports: Number(funds.required - spend) }, 402, cors);
   }
-  return unsigned(wallet, [createFor(terms, wallet)], transferMemo(bounty.id, 'fund'), { kind: 'fund', cost_lamports: Number(cost), rent_lamports: Number(rent), escrow: bounty.escrow_address }, cors);
+  return unsigned(
+    wallet,
+    [createFor(terms, wallet), ...(prize ? [prizeFeeInstruction(wallet, config.treasury)] : [])],
+    transferMemo(bounty.id, 'fund'),
+    {
+      kind: 'fund',
+      cost_lamports: Number(cost),
+      reward_lamports: bounty.reward_lamports,
+      rent_lamports: Number(rent),
+      escrow: bounty.escrow_address,
+      // The lines of the prize, so the sponsor reads them before signing; `null` on a bounty without one.
+      prize_tera: prize ? { ...prize, ...prizeQuote(), paid_to: config.treasury } : null,
+    },
+    cors,
+  );
 }
 
 /** Deletes a draft nobody funded: the escrow account is read first, and an account that exists means the money is in. */

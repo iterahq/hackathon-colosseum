@@ -2,6 +2,8 @@ import { isSolanaAddress } from '../_shared/address.ts';
 import { loreView } from '../_shared/lore.ts';
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
 import { avatarFromAttributes, avatarImageUrl, avatarMetadataUrl, teraProof, tierName, type AvatarAssetRow } from '../_shared/avatars.ts';
+import { SPONSOR_TIER_NAME, sponsorImageUrl, sponsorMetadataUrl } from '../_shared/sponsor-tera.ts';
+import { bountiesOf, sponsorBlock, sponsorTeraByAsset } from '../_shared/sponsor-tera-store.ts';
 import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { readAssets } from '../_shared/chain-read.ts';
 import { COLLECTIONS } from '../_shared/chain-names.ts';
@@ -150,9 +152,10 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
   const { data, error } = await db.from('avatar_assets').select(AVATAR_ASSET_COLUMNS).eq('asset_address', assetAddress).maybeSingle();
   if (error) throw new Error(`avatar_assets: ${error.message}`);
   const row = data as AvatarAssetRow | null;
+  if (!row) return loadSponsorAchievement(db, assetAddress, lang);
   const catalog = await loadAvatarCatalog(db);
-  const item = row ? catalog.items.get(row.item_key) : undefined;
-  if (!row || !item) return null;
+  const item = catalog.items.get(row.item_key);
+  if (!item) return null;
   const image = avatarImageUrl(supabaseUrl(), item);
   const tier = tierName(catalog, item, lang);
   return {
@@ -174,6 +177,35 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
     stamps: [],
     /** The day chest behind an earned Tera, from our tables; `undefined` for a bought one. */
     earned: row.chest_id ? (await earnedBlocks(db, [row], lang)).get(row.chest_id) : undefined,
+  };
+}
+
+/** A sponsor Tera in the same shape: the brand, the bounty and the payout that earned it. `null` when the asset is not one. */
+async function loadSponsorAchievement(db: IteraClient, assetAddress: string, lang: 'pt' | 'en') {
+  const row = await sponsorTeraByAsset(db, assetAddress);
+  if (!row) return null;
+  const bounty = (await bountiesOf(db, [row])).get(row.bounty_id);
+  const image = sponsorImageUrl(functionsBase(), row.id);
+  const tier = SPONSOR_TIER_NAME[lang];
+  return {
+    key: 'avatar',
+    kind: 'avatar',
+    tier: 'sponsor',
+    title: `${row.brand} · ${tier} #${row.edition}`,
+    description: pickText(bounty?.title_i18n, lang),
+    lore: null,
+    trail: null,
+    credential_id: row.id,
+    earned_at: row.minted_at,
+    minted_at: row.minted_at,
+    state: { key: row.base, group: 'sponsor', rarity: 'sponsor', tier_name: tier, serial: row.edition, supply_cap: row.edition_size },
+    metadata_url: sponsorMetadataUrl(functionsBase(), row.id),
+    image_url: image,
+    thumb_url: image,
+    chip_url: image,
+    stamps: [],
+    earned: undefined,
+    sponsor: sponsorBlock(row, bounty, lang),
   };
 }
 
@@ -237,7 +269,7 @@ async function verify(db: IteraClient, address: string, lang: 'pt' | 'en') {
     attributes: onchain.attributes,
     achievement,
     ...(endorsements ? { endorsements } : {}),
-    ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang), ...teraOrigin(onchain.attributes, onchain.frozen, address), ...(avatarAchievement?.earned ? { earned: avatarAchievement.earned } : {}) }, image_url: avatarAchievement?.image_url ?? null, chip_url: avatarAchievement?.chip_url ?? null } : {}),
+    ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang), ...teraOrigin(onchain.attributes, onchain.frozen, address), ...(avatarAchievement?.earned ? { earned: avatarAchievement.earned } : {}), ...(avatarAchievement && 'sponsor' in avatarAchievement && avatarAchievement.sponsor ? { sponsor: avatarAchievement.sponsor } : {}) }, image_url: avatarAchievement?.image_url ?? null, chip_url: avatarAchievement?.chip_url ?? null } : {}),
     ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
     minted_at: achievement?.minted_at ?? null,
     explorer_url: explorerUrl('address', address),

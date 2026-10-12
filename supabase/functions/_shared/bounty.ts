@@ -4,6 +4,7 @@ import { ACTION_VERSION, dialToUrl, shortWallet, solAmount, type Lang } from './
 import { staticCheckResults, type HtmlParser } from './grading.ts';
 import { isVerified, type OnchainAsset } from './profile.ts';
 import { BASE_FEE_LAMPORTS } from './purchase-verify.ts';
+import { parsePrizeTera, prizeOf, prizeView, type PrizeTera } from './sponsor-tera.ts';
 import type { SignatureFate } from './treasury.ts';
 
 export { ACTION_VERSION };
@@ -90,6 +91,13 @@ export interface BountyRow {
   template_key: string | null;
   /** A direct bounty: the one wallet that may accept it, named in the escrow account and in its address. `null`: any eligible wallet. */
   invitee_wallet: string | null;
+  /** A sponsor Tera as prize: `{ brand, accent, base }` as stored at posting, or `null`. Read through `prizeOf`. */
+  prize_tera?: unknown;
+  /** The funding transaction, once it was seen to pay the mint cost and the issuing fee of the prize. */
+  prize_fee_signature?: string | null;
+  prize_issued?: number | null;
+  /** The sponsor Tera the payout minted. */
+  prize_asset?: string | null;
 }
 
 /** The lesson engine's static HTML asserts, run on the code a learner pastes as their delivery. */
@@ -429,11 +437,13 @@ function oneOrBoth(value: unknown, min: number, max: number): { texts: I18n; sou
 
 export interface NewWalletBounty extends Omit<NewBounty, 'slug' | 'refund_address'> {
   source_lang: 'pt' | 'en';
+  /** A branded Tera minted to the learner the bounty pays. `null`: no prize. */
+  prize_tera: PrizeTera | null;
   /** A direct bounty: the one wallet it is posted for. */
   invitee_wallet: string | null;
 }
 
-export type NewWalletBountyError = NewBountyError | 'invalid_invitee' | 'own_invitee';
+export type NewWalletBountyError = NewBountyError | 'invalid_invitee' | 'own_invitee' | 'invalid_prize_tera';
 
 /**
  * The form of a wallet that posts a bounty. Stricter than the staff form: a
@@ -461,10 +471,13 @@ export function parseWalletBounty(body: Record<string, unknown>, now: Date, spon
   const invitee = body.invitee_wallet === undefined || body.invitee_wallet === null || body.invitee_wallet === '' ? null : body.invitee_wallet;
   if (invitee !== null && !isEd25519Address(invitee)) return { ok: false, error: 'invalid_invitee' };
   if (invitee !== null && invitee === sponsorWallet) return { ok: false, error: 'own_invitee' };
+  const prize = parsePrizeTera(body.prize_tera);
+  if (!prize.ok) return { ok: false, error: prize.error };
   return {
     ok: true,
     value: {
       invitee_wallet: invitee as string | null,
+      prize_tera: prize.value,
       sponsor_name: sponsor,
       title_i18n: title.texts,
       summary_i18n: summary.texts,
@@ -638,6 +651,8 @@ export function bountyView(input: {
           check_report: paid && bounty.auto_check ? claim.check_report : null,
         }
       : null,
+    /** A sponsor Tera minted, soulbound, to the wallet this bounty pays. `funded`: the funding transaction paid for it. */
+    prize_tera: prizeView({ prize: prizeOf(bounty.prize_tera), functionsBase: input.functionsBase, issued: bounty.prize_issued ?? 0, funded: Boolean(bounty.prize_fee_signature), asset: bounty.prize_asset ?? null, rowId: null }),
     funding: transferView(bounty.funding_signature, bounty.funded_lamports, bounty.funded_at, null),
     payout: transferView(bounty.payout_signature, bounty.payout_lamports, bounty.paid_at, bounty.paid_wallet),
     refund: transferView(bounty.refund_signature, bounty.refund_lamports, bounty.refunded_at, bounty.refund_address),

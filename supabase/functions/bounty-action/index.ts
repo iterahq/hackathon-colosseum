@@ -17,6 +17,7 @@ import {
 } from '../_shared/bounty.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { compileMessage, memoInstruction } from '../_shared/solana-message.ts';
+import { PRIZE_TOTAL_LAMPORTS, prizeFeeInstruction, prizeOf } from '../_shared/sponsor-tera.ts';
 import { actionHeaders, type Lang } from '../_shared/gift.ts';
 import { functionsBase, isUuid, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
 import { fundsCheck } from '../_shared/purchase-verify.ts';
@@ -47,7 +48,7 @@ async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
       bounty,
       lang,
       // The label is the only thing here that needs the node: without it the button shows the reward alone.
-      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated, Boolean(bounty.invitee_wallet)).catch(() => 0n) : 0n),
+      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated, Boolean(bounty.invitee_wallet)).catch(() => 0n) : 0n) + (prizeOf(bounty.prize_tera) ? PRIZE_TOTAL_LAMPORTS : 0n),
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
       blocked: fundingLinkVerdict(bounty, new Date()) === 'ok' ? null : 'not_fundable',
     }),
@@ -64,12 +65,16 @@ async function build(db: IteraClient, bounty: BountyRow, request: Request, lang:
   let message: Uint8Array;
   if (bounty.escrow_kind === 'program') {
     // The payer creates the bounty's account on the escrow program, with the terms this bounty was posted with.
-    const terms = await escrowTerms(bounty, await loadConfig(db));
+    const config = await loadConfig(db);
+    const terms = await escrowTerms(bounty, config);
     if (!terms) return refuse('unavailable', lang, 503);
+    // A bounty with a prize Tera: whoever funds it pays for the prize in the same transaction (mint cost and fee, to the treasury).
+    const prize = prizeOf(bounty.prize_tera) && config.prize_tera === 'on' && isEd25519Address(config.treasury) && config.treasury !== account;
+    const prizeLamports = prize ? PRIZE_TOTAL_LAMPORTS : 0n;
     const [existing, balance, latest, rent] = await Promise.all([readEscrow(terms.programId, bounty.escrow_address), balanceOf(account), latestBlockhash(), escrowRentLamports(terms.gate !== null, Boolean(terms.invitee))]);
     if (existing) return refuse('not_fundable', lang, 400);
-    if (!fundsCheck(balance, fundingCost(bounty, rent)).ok) return refuse('insufficient_funds', lang, 400);
-    message = compileMessage(account, [createFor(terms, account), memoInstruction(transferMemo(bounty.id, 'fund'))], latest.blockhash);
+    if (!fundsCheck(balance, fundingCost(bounty, rent) + prizeLamports).ok) return refuse('insufficient_funds', lang, 400);
+    message = compileMessage(account, [createFor(terms, account), ...(prize ? [prizeFeeInstruction(account, config.treasury)] : []), memoInstruction(transferMemo(bounty.id, 'fund'))], latest.blockhash);
   } else {
     const [held, balance, latest] = await Promise.all([escrowBalance(bounty.escrow_address), balanceOf(account), latestBlockhash()]);
     const missing = fundingTarget(bounty.reward_lamports) - held;
