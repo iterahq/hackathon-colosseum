@@ -28,7 +28,9 @@ export default function CeremonyPreviewPage() {
     assetAddress: status === 'minted' ? 'FixtureAsset1111' : null,
   };
   const phase = params.get('chest');
-  const wire = phase === 'revealed' ? { ...WIRE_CHEST_MINTED, tier: params.get('tier') ?? WIRE_CHEST_MINTED.tier } : phase === 'rolling' ? WIRE_CHEST_ROLLING : phase === 'committed' ? WIRE_CHEST_COMMITTED : null;
-  const chest = phase === 'sealing' || wire ? <DayChest phase={phase as 'sealing'} chest={wire ? toChest(wire) : null} day={model.day} /> : undefined;
+  const TIER_NAMES: Record<string, string> = { common: 'Tera', rare: 'Super Tera', epic: 'Mega Tera', legendary: 'Legendary Tera', mythic: 'Mythic Tera', primordial: 'Primordial Tera' };
+  const tier = params.get('tier') ?? WIRE_CHEST_MINTED.tier;
+  const wire = phase === 'revealed' ? { ...WIRE_CHEST_MINTED, tier, tera: { ...WIRE_CHEST_MINTED.tera, rarity: tier, tier_name: TIER_NAMES[tier] ?? 'Tera' } } : phase === 'rolling' ? WIRE_CHEST_ROLLING : phase === 'committed' ? WIRE_CHEST_COMMITTED : null;
+  const chest = phase === 'sealing' || wire ? <DayChest phase={phase as 'sealing'} chest={wire ? toChest(wire) : null} day={model.day} size={params.get('size') === 'hero' ? 'hero' : 'row'} /> : undefined;
   return <StampCeremony key={`${status}-${last}-${preparing}`} model={model} preparing={preparing} colorIndex={1} chest={chest} compact={Boolean(chest)} actions={<LessonCompleteActions nextLessonId="preview" gold={last && !preparing} />} />;
 }

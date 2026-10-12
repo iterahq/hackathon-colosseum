@@ -26,12 +26,12 @@ vi.mock('@/hooks/usePassport', () => ({
 }));
 
 vi.mock('@/components/loop/LoopPanel', () => ({ LoopPanel: () => null }));
-const chest = vi.hoisted(() => ({ seen: [] as Array<{ lessonId?: string; active: boolean }> }));
+const chest = vi.hoisted(() => ({ seen: [] as Array<{ lessonId?: string; active: boolean; mode?: string }>, offer: false, open: vi.fn() }));
 vi.mock('@/hooks/useDayChest', () => ({
   useMyChests: () => ({ enabled: false, chests: [] }),
-  useDayChest: (lessonId: string | undefined, active: boolean) => {
-    chest.seen.push({ lessonId, active });
-    return { phase: null, chest: null };
+  useDayChest: (lessonId: string | undefined, active: boolean, mode: string) => {
+    chest.seen.push({ lessonId, active, mode });
+    return { phase: null, chest: null, canOpen: chest.offer, nothing: false, opening: false, justOpened: false, open: chest.open };
   },
 }));
 const PREVIEW = { day: 5, totalDays: 5, stampedBefore: 4, trailTitle: 'HTML', colorIndex: 1 };
@@ -116,11 +116,23 @@ describe('PassportCeremonyGate', () => {
   it('asks for the chest of a day found again, and not for a day whose stamp is still owed', () => {
     chest.seen.length = 0;
     const first = show({ kind: 'card', note: null });
-    expect(chest.seen.at(-1)).toEqual({ lessonId: 'l5', active: true });
+    expect(chest.seen.at(-1)).toEqual({ lessonId: 'l5', active: true, mode: 'found' });
     expect(screen.queryByTestId('day-chest')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('day-chest-offer')).not.toBeInTheDocument();
     first.unmount();
     show({ kind: 'card', note: 'stampLater' });
-    expect(chest.seen.at(-1)).toEqual({ lessonId: 'l5', active: false });
+    expect(chest.seen.at(-1)).toEqual({ lessonId: 'l5', active: false, mode: 'found' });
+  });
+
+  it('an old day with no chest offers a button, and only the click opens it', () => {
+    chest.offer = true;
+    chest.open.mockClear();
+    show({ kind: 'card', note: null });
+    expect(screen.getByTestId('day-chest-offer')).toHaveTextContent('Este dia foi carimbado antes de existirem baús.');
+    expect(chest.open).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir o baú deste dia' }));
+    expect(chest.open).toHaveBeenCalledOnce();
+    chest.offer = false;
   });
 
   it('nothing to say: the plain card exactly as before', () => {

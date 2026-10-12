@@ -23,7 +23,7 @@ function toChestTera(v: unknown): ChestTera | null {
   const key = text(r.key);
   const imageUrl = text(r.image_url);
   if (!key || !imageUrl) return null;
-  return { key, title: text(r.title) || key, tierName: text(r.tier_name), imageUrl, thumbUrl: text(r.thumb_url) || imageUrl, asset: orNull(r.asset), pageUrl: orNull(r.page_url), explorerUrl: orNull(r.explorer_url) };
+  return { key, title: text(r.title) || key, tierName: text(r.tier_name), rarity: orNull(r.rarity), imageUrl, thumbUrl: text(r.thumb_url) || imageUrl, asset: orNull(r.asset), pageUrl: orNull(r.page_url), explorerUrl: orNull(r.explorer_url) };
 }
 
 /** Null for anything that is not a chest. A chest said to be minted with no Tera in it is not shown as minted. */
@@ -38,6 +38,7 @@ export function toChest(v: unknown): Chest | null {
   return {
     id,
     day: int(r.day) ?? 0,
+    lessonId: orNull(r.lesson_id),
     trail: text(r.trail),
     certification: text(r.certification),
     status: status === 'minted' && !tera ? 'rolling' : status,

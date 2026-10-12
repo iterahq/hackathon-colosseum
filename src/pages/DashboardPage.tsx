@@ -9,6 +9,7 @@ import { TrailCards } from '@/components/dashboard/TrailCards';
 import { WeeklyGoal } from '@/components/dashboard/WeeklyGoal';
 import { WelcomeStrip } from '@/components/dashboard/WelcomeStrip';
 import { BountiesForYouCard } from '@/components/loop/BountiesForYouCard';
+import { ChestCue } from '@/components/tera/ChestCue';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import { FOCUS_BUILD } from '@/config/focus';
 import '@/components/dashboard/dashboard.css';
@@ -71,6 +72,7 @@ export default function DashboardPage() {
         {!visitor && !dashboard.isPending && !dashboard.isError && trails.length === 0 && (
           <DashboardEmpty kind="empty" onAction={() => (FOCUS_BUILD ? void dashboard.refetch() : navigate('/catalog'))} actionLabel={FOCUS_BUILD ? t('dash.retry') : undefined} />
         )}
+        {!visitor && <ChestCue />}
         {!visitor && <WelcomeStrip trail={featured ?? null} />}
         {featured && <FeaturedTrail trail={featured} onOpenLesson={openLesson} />}
         {!visitor && trails.length > 0 && (
