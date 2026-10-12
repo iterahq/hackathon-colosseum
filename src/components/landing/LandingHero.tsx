@@ -5,7 +5,7 @@ import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
 import { GATE_PATH, VERIFY_PATH } from './landingFacts';
-import { EXAMPLE_WALLET, PRIMARY_CTA, SECONDARY_CTA } from './landingStyles';
+import { EXAMPLE_CERTIFICATION, PRIMARY_CTA, SECONDARY_CTA } from './landingStyles';
 
 export function LandingHero() {
   const { t } = useI18n();
@@ -45,7 +45,7 @@ export function LandingHero() {
           </Link>
         </div>
         <p className="flex flex-wrap gap-x-4 gap-y-1 [font:600_13px_JetBrains_Mono] text-[#A0978A]" data-testid="landing-hero-links">
-          <Link to={`/u/${EXAMPLE_WALLET}`} className={`inline-flex min-h-11 items-center rounded underline underline-offset-4 hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-cta-profile">
+          <Link to={`/c/${EXAMPLE_CERTIFICATION}`} className={`inline-flex min-h-11 items-center rounded underline underline-offset-4 hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-cta-profile">
             {t('landing.cta.profile')} →
           </Link>
           {!FOCUS_EARN_STORY_OFF && (

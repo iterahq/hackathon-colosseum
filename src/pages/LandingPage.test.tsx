@@ -3,7 +3,7 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import LandingPage from './LandingPage';
-import { EXAMPLE_WALLET } from '@/components/landing/landingStyles';
+import { EXAMPLE_CERTIFICATION, EXAMPLE_WALLET } from '@/components/landing/landingStyles';
 
 const data = vi.hoisted(() => ({
   board: {
@@ -77,7 +77,8 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-signin')).toHaveTextContent('Connect Wallet');
     expect(screen.getByTestId('landing-cta-try')).toHaveAttribute('href', '/try');
     expect(screen.getByTestId('landing-cta-try')).toHaveTextContent('Try the first lesson');
-    expect(screen.getByTestId('landing-cta-profile')).toHaveAttribute('href', `/u/${EXAMPLE_WALLET}`);
+    expect(screen.getByTestId('landing-cta-profile')).toHaveAttribute('href', `/c/${EXAMPLE_CERTIFICATION}`);
+    expect(screen.getByTestId('landing-example')).toHaveAttribute('href', `/u/${EXAMPLE_WALLET}`);
     expect(screen.getByTestId('landing-cta-profile')).toHaveTextContent('See a real certification on chain');
     expect(screen.getByTestId('landing-hero-links').querySelectorAll('a')).toHaveLength(1);
     expect(screen.getByTestId('landing-hero')).not.toHaveTextContent(/soulbound|Metaplex|escrow|evidence hash|15 minutes of exercises/i);

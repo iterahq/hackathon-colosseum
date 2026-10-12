@@ -84,6 +84,23 @@ describe('AuthPage', () => {
     expect(screen.queryByTestId('web3-solana')).toBeNull();
   });
 
+  it('is not a dead end without Phantom: the first lesson, an example profile and the devnet note are under the button', () => {
+    mount();
+    expect(screen.getByTestId('login-try')).toHaveAttribute('href', '/try');
+    expect(screen.getByTestId('login-try')).toHaveTextContent('No wallet? Try the first lesson');
+    expect(screen.getByTestId('login-example').getAttribute('href')).toMatch(/^\/u\/[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+    expect(screen.getByTestId('login-example')).toHaveTextContent('See an example profile');
+    expect(screen.getByTestId('login-devnet')).toHaveTextContent('Phantom must be on Solana devnet');
+  });
+
+  it('keeps the screen bare when Phantom is here: no extra links', () => {
+    wallets.list = [phantom];
+    mount();
+    expect(screen.getByTestId('web3-solana')).toBeInTheDocument();
+    expect(screen.queryByTestId('login-try')).toBeNull();
+    expect(screen.queryByTestId('login-example')).toBeNull();
+  });
+
   it('offers the Phantom in-app browser on a phone', () => {
     wallets.mobile = true;
     mount();
