@@ -1,4 +1,4 @@
-import { chainUrl } from '@/lib/explorer';
+import { assetFirstUrl } from '@/lib/explorer';
 import { useI18n } from '@/i18n';
 
 interface Props {
@@ -7,10 +7,10 @@ interface Props {
   className?: string;
 }
 
-/** The green "on-chain" pill; links to the transaction, or to the asset when there is no signature. */
+/** The green "on-chain" pill; opens the asset on the explorer (the page with the image), or the transaction when there is no asset. */
 export function OnChainMark({ txSignature, assetAddress, className }: Props) {
   const { t } = useI18n();
-  const href = chainUrl(txSignature, assetAddress);
+  const href = assetFirstUrl(assetAddress, txSignature);
   const cls = `inline-flex min-h-[24px] items-center rounded-full border border-[#3FD17F] bg-[#1C3A2A] px-2 [font:700_10px_JetBrains_Mono] text-[#3FD17F] ${className ?? ''}`;
   if (!href) return <span className={cls}>◎ {t('passport.onChain')}</span>;
   return (

@@ -7,6 +7,10 @@ export const addressUrl = (address: string): string => `${BASE}/address/${encode
 export const chainUrl = (signature: string | null, asset: string | null): string | null =>
   signature ? txUrl(signature) : asset ? addressUrl(asset) : null;
 
+/** The asset page (the one that draws the certificate image) when there is an asset, its transaction otherwise. */
+export const assetFirstUrl = (asset: string | null, signature: string | null): string | null =>
+  asset ? addressUrl(asset) : signature ? txUrl(signature) : null;
+
 /** `7xKpAbc...3Fa` -> `7xKp…3Fa` */
 export const shortAddress = (address: string): string => (address.length > 10 ? `${address.slice(0, 4)}…${address.slice(-3)}` : address);
 

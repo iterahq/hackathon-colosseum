@@ -71,12 +71,12 @@ export function NodeDetail({ wallet, capabilities, node, views, reads, onClose }
           {proof && <EvidenceBlock evidence={evidence} listed={proof.graded} />}
           {proof && <AttemptTrack wallet={wallet} claimId={node.id} />}
 
-          {(tx || asset) && (
-            <div className="flex flex-wrap gap-2">
-              {tx && <a href={tx} target="_blank" rel="noopener noreferrer" className={LINK} data-testid="graph-tx-link">{t('graph.detail.viewTx')} ↗</a>}
-              {asset && <a href={asset} target="_blank" rel="noopener noreferrer" className={LINK} data-testid="graph-asset-link">{t('graph.detail.viewAsset')} ↗</a>}
-            </div>
-          )}
+          {/* One link, never two: the certification asset (the explorer page with the image); the transaction only when no asset is known. */}
+          {asset ? (
+            <a href={asset} target="_blank" rel="noopener noreferrer" className={`${LINK} self-start`} data-testid="graph-asset-link">{t('graph.detail.viewAsset')} ↗</a>
+          ) : tx ? (
+            <a href={tx} target="_blank" rel="noopener noreferrer" className={`${LINK} self-start`} data-testid="graph-tx-link">{t('graph.detail.viewTx')} ↗</a>
+          ) : null}
 
           {proof && (
             <details className="graph-proof rounded-xl border border-[#262320]" data-testid="graph-proof">

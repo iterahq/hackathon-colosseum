@@ -14,10 +14,12 @@ interface Props {
   /** The open node, when the page owns it: a page that mounts this section in two places (while loading, then loaded) keeps the panel open across the switch. */
   selected?: string | null;
   onSelect?: (id: string | null) => void;
+  /** The map of one trail: the header keeps the counter and the legend, and drops the per-trail list. */
+  single?: boolean;
 }
 
 /** The capability map of one wallet: header, graph, and the detail panel. Re-reads the chain itself in the browser. */
-export function CapabilityGraphSection({ wallet, capabilities, selected: ownedSelected, onSelect }: Props) {
+export function CapabilityGraphSection({ wallet, capabilities, selected: ownedSelected, onSelect, single = false }: Props) {
   const { t } = useI18n();
   const [localSelected, setLocalSelected] = useState<string | null>(null);
   const selected = onSelect ? (ownedSelected ?? null) : localSelected;
@@ -40,7 +42,7 @@ export function CapabilityGraphSection({ wallet, capabilities, selected: ownedSe
 
   return (
     <section className="flex flex-col gap-3" aria-labelledby="graph-heading" data-testid="capability-section">
-      <GraphHeader capabilities={capabilities} chain={chain} proven={proven} progress={progress} hasRecorded={capabilities.nodes.some((n) => n.status === 'recorded')} onRetry={retry} />
+      <GraphHeader capabilities={capabilities} chain={chain} proven={proven} progress={progress} hasRecorded={capabilities.nodes.some((n) => n.status === 'recorded')} onRetry={retry} trailList={!single} />
       <div className="rounded-[14px] border border-[#262320] bg-[radial-gradient(ellipse_at_50%_0%,#16221b_0%,#141210_55%)] p-2 pb-4 sm:p-4">
         <CapabilityGraph capabilities={capabilities} views={views} progress={progress} label={wallet === ANONYMOUS_WALLET ? t('graph.title') : t('graph.mapLabel', { wallet: shortAddress(wallet) })} onSelect={setSelected} />
       </div>

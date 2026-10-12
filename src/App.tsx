@@ -79,6 +79,7 @@ const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 const OtpLoginPage = lazy(() => import("./pages/auth/OtpLoginPage"));
 const GuestLiveRoute = lazy(() => import("./pages/GuestLiveRoute"));
 const PassportPage = lazy(() => import("./pages/PassportPage"));
+const CertificationPage = lazy(() => import("./pages/CertificationPage"));
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const CredentialPage = lazy(() => import("./pages/CredentialPage"));
 const WorldPage = lazy(() => import("./pages/WorldPage"));
@@ -320,13 +321,27 @@ const App = () => (
                     </RequireAuth>
                   }
                 />
-                {/* Tera's passport: auth-gated like the profile, not subscription-gated. */}
+                {/* The certifications: the list at /certifications (and at /passport, its old name, which every older link
+                    still uses), one certification at /certifications/:trailId. Auth-gated like the profile, not subscription-gated. */}
+                {['/certifications', '/passport'].map((path) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      <RequireAuth>
+                        <ShellAccessGate>
+                          <LazyRoute><PassportPage /></LazyRoute>
+                        </ShellAccessGate>
+                      </RequireAuth>
+                    }
+                  />
+                ))}
                 <Route
-                  path="/passport"
+                  path="/certifications/:trailId"
                   element={
                     <RequireAuth>
                       <ShellAccessGate>
-                        <LazyRoute><PassportPage /></LazyRoute>
+                        <LazyRoute><CertificationPage /></LazyRoute>
                       </ShellAccessGate>
                     </RequireAuth>
                   }
@@ -359,9 +374,7 @@ const App = () => (
                 {/* Public: every on-chain claim, with the steps to check it without trusting Itera. */}
                 <Route path="/verify" element={<LazyRoute><VerifyPage /></LazyRoute>} />
                 {/* Names a stranger guesses from the nav: each one lands where the nav item goes. */}
-                <Route path="/certifications" element={<Navigate to="/passport" replace />} />
-                <Route path="/certifications/*" element={<Navigate to="/passport" replace />} />
-                <Route path="/certificates" element={<Navigate to="/passport" replace />} />
+                <Route path="/certificates" element={<Navigate to="/certifications" replace />} />
                 <Route path="/trails" element={<Navigate to="/" replace />} />
                 <Route path="/trails/*" element={<Navigate to="/" replace />} />
                 <Route path="/learn" element={<Navigate to="/try" replace />} />

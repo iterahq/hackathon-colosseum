@@ -28,8 +28,15 @@ describe('PassportPage', () => {
 });
 
 describe('OnChainMark and Medal', () => {
-  it('links to the transaction on devnet', () => {
+  it('opens the asset on devnet, the page that shows the image', () => {
     wrap(<OnChainMark txSignature="sig1" assetAddress="A1" />);
+    const link = screen.getByTestId('onchain-mark');
+    expect(link).toHaveAttribute('href', 'https://explorer.solana.com/address/A1?cluster=devnet');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('falls back to the transaction when no asset is known', () => {
+    wrap(<OnChainMark txSignature="sig1" assetAddress={null} />);
     expect(screen.getByTestId('onchain-mark')).toHaveAttribute('href', 'https://explorer.solana.com/tx/sig1?cluster=devnet');
   });
 
