@@ -104,13 +104,14 @@ describe('LandingPage', () => {
     localStorage.clear();
   });
 
-  it('says a rare Tera cannot be bought, once the catalog answers that some tiers are never for sale', () => {
+  it('says a stamped day opens a chest once the catalog answers, and nothing about buying while the paid shelf is off', () => {
     mount('en');
     expect(screen.getByTestId('landing-steps')).not.toHaveTextContent('cannot be bought');
     cleanup();
     catalog.source = 'live';
     mount('en');
-    expect(screen.getByTestId('landing-steps')).toHaveTextContent('Every stamped day also opens a chest with one Tera; the rare ones only come from there and cannot be bought.');
+    expect(screen.getByTestId('landing-steps')).toHaveTextContent('Every stamped day also opens a chest with one Tera.');
+    expect(screen.getByTestId('landing-steps')).not.toHaveTextContent('cannot be bought');
     catalog.source = 'bundled';
     localStorage.clear();
   });
