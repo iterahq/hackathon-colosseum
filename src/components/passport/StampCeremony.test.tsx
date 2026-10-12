@@ -158,6 +158,23 @@ describe('StampCeremony', () => {
     expect(screen.getByRole('link', { name: 'Ver minhas certificações →' })).toHaveAttribute('href', '/passport');
   });
 
+  it('draws the chest of the day only once the stamp is confirmed on chain, above the lesson buttons', () => {
+    const chest = <div data-testid="chest">chest</div>;
+    const { unmount } = show(model('minted'), { chest });
+    expect(screen.queryByTestId('chest')).not.toBeInTheDocument();
+    settle();
+    const actions = screen.getByTestId('ceremony-actions');
+    expect(screen.getByTestId('chest').compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'next' })).toBeEnabled();
+    unmount();
+    for (const status of ['pending', 'failed', 'no_wallet'] as const) {
+      const view = show(model(status), { chest });
+      settle();
+      expect(screen.queryByTestId('chest')).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
   it('draws what follows the ceremony inside the dialog, where a full-screen ceremony can still be scrolled to it', () => {
     render(
       <I18nProvider>
