@@ -168,7 +168,7 @@ describe('LearnerProfilePage', () => {
     useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [], capabilities: { nodes } }));
     const tiered = show();
     const counts = Object.fromEntries(within(screen.getByTestId('profile-tiers')).getAllByRole('listitem').map((chip) => [chip.getAttribute('data-tier'), chip.getAttribute('data-count')]));
-    expect(counts).toEqual({ top: '0', middle: '2', base: '1' });
+    expect(counts).toEqual({ middle: '2' });
     tiered.unmount();
     useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
     show();

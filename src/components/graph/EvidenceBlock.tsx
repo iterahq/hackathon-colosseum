@@ -53,26 +53,24 @@ export function EvidenceBlock({ evidence, listed }: { evidence: EvidenceCheck; l
   const { t } = useI18n();
   const strong = evidence.check === 'ok';
   const share = strong ? evidence.share : parseShare(listed);
-  const tier: EvidenceTier | null = evidence.check === 'bad' ? null : strong || listed !== undefined ? tierOf(share) : null;
+  const tier: EvidenceTier | null = evidence.check === 'bad' ? null : tierOf(share);
+  const unstated = strong && !share;
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-[#262320] bg-[#0A0908] p-3.5" aria-label={t('graph.detail.evidence')} data-testid="graph-evidence" data-tier={tier ?? undefined} data-strong={strong}>
-      {tier && (
+      {tier && share && (
         <div className={`flex items-center gap-3.5 ${strong ? '' : 'opacity-60'}`}>
           <TierMedal key={`${tier}-${strong}`} tier={tier} size="lg" animate={strong} />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <p className="[font:700_24px/1_'Barlow_Condensed'] tracking-[.01em]" style={{ color: TIER_COLOR[tier] }} data-testid="graph-tier-label">{t(`graph.tier.${tier}`)}</p>
-            {share && share.total > 0 ? (
-              <p data-testid="graph-evidence-graded" data-version={evidence.facts?.version ?? 2}><TierBar share={share} tier={tier} /></p>
-            ) : (
-              evidence.facts && (
-                <p className="w-fit rounded-full border border-[#262320] px-2 py-0.5 [font:500_11px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid="graph-evidence-graded" data-version={evidence.facts.version}>
-                  {t('graph.tier.v1')}
-                </p>
-              )
-            )}
+            <p data-testid="graph-evidence-graded" data-version={evidence.facts?.version ?? 2}><TierBar share={share} tier={tier} /></p>
           </div>
         </div>
+      )}
+      {unstated && (
+        <p className="w-fit max-w-full rounded-full border border-[#262320] px-2.5 py-1 [font:500_11px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid="graph-evidence-graded" data-version={evidence.facts?.version ?? 1}>
+          {t('graph.tier.v1')}
+        </p>
       )}
       {!tier && evidence.loading && <div className="h-16 animate-pulse rounded-lg bg-[#141210]" />}
       {evidence.loading && tier && <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('graph.detail.evidenceLoading')}</p>}

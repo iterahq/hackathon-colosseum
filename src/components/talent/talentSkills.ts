@@ -15,9 +15,9 @@ export function advancedFirst(capabilities: readonly TalentCapability[]): Talent
   return [...capabilities].reverse();
 }
 
-/** The evidence tier of one skill of a card; `null` when the board said nothing about its share. */
+/** The evidence tier of one skill of a card; `null` when its evidence states no share (or the board did not say). */
 export function capabilityTier(capability: TalentCapability): EvidenceTier | null {
-  return capability.graded === undefined ? null : tierOf(parseShare(capability.graded));
+  return tierOf(parseShare(capability.graded));
 }
 
 export function cardTierCounts(capabilities: readonly TalentCapability[]): Record<EvidenceTier, number> | null {
@@ -39,4 +39,9 @@ export function inTrail(capabilities: readonly TalentCapability[], trail: Talent
 /** The learners who proved at least one skill of the trail. No trail keeps everyone. */
 export function learnersOfTrail(learners: readonly TalentLearner[], trail: TalentTrail | ''): TalentLearner[] {
   return trail === '' ? [...learners] : learners.filter((learner) => inTrail(learner.capabilities, trail).length > 0);
+}
+
+/** The trails in which at least one listed person proved a skill: a tab for any other trail would open an empty page. */
+export function provenTrails(capabilities: readonly TalentCapability[]): Set<TalentTrail> {
+  return new Set(TALENT_TRAILS.filter((trail) => capabilities.some((entry) => skillFamily(entry.key) === trail)));
 }

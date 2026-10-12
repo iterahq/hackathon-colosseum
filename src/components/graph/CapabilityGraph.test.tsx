@@ -134,9 +134,13 @@ describe('CapabilityGraphSection', () => {
     show(tiered);
     expect(view('a')).toHaveAttribute('data-tier', 'middle');
     expect(view('a')).toHaveAccessibleName(/Verificada na chain\. Servidor corrigiu parte/);
-    expect(view('b')).toHaveAttribute('data-tier', 'base');
+    expect(view('b')).not.toHaveAttribute('data-tier');
+    expect(within(view('b')).queryByTestId('tier-medal')).not.toBeInTheDocument();
     expect(view('c')).not.toHaveAttribute('data-tier');
-    expect(within(screen.getByTestId('graph-tier-legend')).getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.queryByRole('list', { name: 'Quem conferiu as respostas' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('graph-tier-help'));
+    expect(screen.getByTestId('graph-tier-help')).toHaveAttribute('aria-expanded', 'true');
+    expect(within(screen.getByRole('list', { name: 'Quem conferiu as respostas' })).getAllByRole('listitem')).toHaveLength(3);
   });
 
   it('a profile answer that carries no share draws no medal', () => {
@@ -144,6 +148,7 @@ describe('CapabilityGraphSection', () => {
     show();
     expect(view('a')).not.toHaveAttribute('data-tier');
     expect(within(view('a')).queryByTestId('tier-medal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('graph-tier-help')).not.toBeInTheDocument();
   });
 
   it('keeps the raw proof rows in the page, under a disclosure that starts closed', () => {
@@ -169,8 +174,11 @@ describe('CapabilityGraphSection', () => {
     fireEvent.click(view('a'));
     expect(await screen.findByTestId('graph-hash-ok')).toHaveTextContent('hash confere');
     expect(screen.getByTestId('graph-evidence-facts')).toHaveTextContent('2 atividades concluídas');
-    expect(screen.getByTestId('graph-evidence')).toHaveAttribute('data-tier', 'base');
+    expect(screen.getByTestId('graph-evidence')).not.toHaveAttribute('data-tier');
+    expect(screen.queryByTestId('graph-tier-label')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('graph-evidence')).queryByTestId('tier-medal')).not.toBeInTheDocument();
     expect(screen.getByTestId('graph-evidence-graded')).toHaveAttribute('data-version', '1');
+    expect(screen.getByTestId('graph-evidence-graded')).toHaveTextContent('carimbado antes da correção no servidor');
   });
 
   it('reads the tier from the document whose hash matched, not from the list', async () => {

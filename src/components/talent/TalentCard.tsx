@@ -19,9 +19,9 @@ import { CARD_SKILLS, advancedFirst, capabilityTier, cardTierCounts } from './ta
 const RING = 2 * Math.PI * 19;
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3FD17F]';
 
-function Stat({ icon, value, label, dim = false, testId }: { icon: ReactNode; value: string; label: string; dim?: boolean; testId?: string }) {
+function Stat({ icon, value, label, testId }: { icon: ReactNode; value: string; label: string; testId?: string }) {
   return (
-    <span title={label} className={`inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#262320] bg-[#0A0908] px-2.5 [font:700_12px/1_JetBrains_Mono] ${dim ? 'text-[#6F675C]' : 'text-[#F4EDE2]'}`} data-testid={testId}>
+    <span title={label} className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#262320] bg-[#0A0908] px-2 [font:500_11px/1_JetBrains_Mono] text-[#A0978A]" data-testid={testId}>
       {icon}
       <span aria-hidden="true">{value}</span>
       <span className="sr-only">{label}</span>
@@ -42,12 +42,12 @@ interface Props {
 export function TalentCard({ learner, company = null, onRevealed, activeSkill = '', onPickSkill }: Props) {
   const { t, locale } = useI18n();
   const ratio = learner.totalDays > 0 ? Math.min(1, learner.stampedDays / learner.totalDays) : 0;
-  const lastStamp = learner.lastStampAt ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(learner.lastStampAt)) : null;
+  const lastStamp = learner.lastStampAt ? new Intl.DateTimeFormat(locale, locale === 'pt' ? { day: '2-digit', month: '2-digit' } : { day: 'numeric', month: 'short' }).format(new Date(learner.lastStampAt)) : null;
   const skills = advancedFirst(learner.capabilities);
   const hidden = skills.length - CARD_SKILLS;
   const tiers = cardTierCounts(learner.capabilities);
   const days = t('talent.card.days', { n: learner.stampedDays, m: learner.totalDays });
-  const paid = learner.bountiesPaid > 0 ? plural(t, 'talent.card.paid', learner.bountiesPaid, { sol: localizeDecimal(lamportsToSol(learner.bountiesPaidLamports), locale) }) : t('talent.card.paid.none');
+  const paid = plural(t, 'talent.card.paid', learner.bountiesPaid, { sol: localizeDecimal(lamportsToSol(learner.bountiesPaidLamports), locale) });
 
   return (
     <article className={`${CARD} flex w-full min-w-0 flex-col gap-3.5 p-4 sm:p-5`} data-testid="talent-card">
@@ -100,11 +100,11 @@ export function TalentCard({ learner, company = null, onRevealed, activeSkill = 
       ) : (
         <p className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('talent.card.noCapabilities')}</p>
       )}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {tiers && <TierChips counts={tiers} compact testId="talent-card-tiers" />}
-        <Stat icon={<Award aria-hidden className="h-3.5 w-3.5 text-[#F2C66D]" strokeWidth={2.2} />} value={String(learner.certifications)} label={plural(t, 'talent.card.certs', learner.certifications)} testId="talent-card-certs" />
-        <Stat icon={<Coins aria-hidden className="h-3.5 w-3.5 text-[#3FD17F]" strokeWidth={2.2} />} value={learner.bountiesPaid > 0 ? `${learner.bountiesPaid} · ${localizeDecimal(lamportsToSol(learner.bountiesPaidLamports), locale)} SOL` : '0'} label={paid} dim={learner.bountiesPaid === 0} testId="talent-card-paid" />
-        {lastStamp && <Stat icon={<CalendarCheck aria-hidden className="h-3.5 w-3.5 text-[#A0978A]" strokeWidth={2.2} />} value={lastStamp} label={t('talent.card.lastStamp', { date: lastStamp })} testId="talent-card-last" />}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-hidden" data-testid="talent-card-stats">
+        {tiers && <TierChips counts={tiers} compact testId="talent-card-tiers" className="shrink-0 flex-nowrap" />}
+        {learner.certifications > 0 && <Stat icon={<Award aria-hidden className="h-3 w-3 text-[#F2C66D]" strokeWidth={2.2} />} value={plural(t, 'talent.card.chip.certs', learner.certifications)} label={plural(t, 'talent.card.certs', learner.certifications)} testId="talent-card-certs" />}
+        {learner.bountiesPaid > 0 && <Stat icon={<Coins aria-hidden className="h-3 w-3 text-[#3FD17F]" strokeWidth={2.2} />} value={plural(t, 'talent.card.chip.paid', learner.bountiesPaid)} label={paid} testId="talent-card-paid" />}
+        {lastStamp && <Stat icon={<CalendarCheck aria-hidden className="h-3 w-3" strokeWidth={2.2} />} value={lastStamp} label={t('talent.card.lastStamp', { date: lastStamp })} testId="talent-card-last" />}
       </div>
       {company?.isCompany && <ContactReveal wallet={learner.wallet} hasContact={learner.hasContact === true} revealsPerDay={company.revealsPerDay} onRevealed={onRevealed} />}
       <div className="mt-auto flex flex-col gap-2 pt-1">

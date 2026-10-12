@@ -49,7 +49,7 @@ describe('TalentCard', () => {
     show({ teamTest: true, name: null, capabilities: [], bountiesPaid: 0, bountiesPaidLamports: 0 });
     expect(screen.getByTestId('talent-card-team-test')).toHaveTextContent('Conta de teste da equipe');
     expect(screen.getByTestId('talent-card-name')).toHaveTextContent('CQzi…AhW');
-    expect(screen.getByTestId('talent-card-paid')).toHaveTextContent('Nenhuma missão paga ainda');
+    expect(screen.queryByTestId('talent-card-paid')).toBeNull();
     expect(screen.queryByTestId('talent-card-capabilities')).toBeNull();
   });
 
@@ -74,9 +74,16 @@ describe('TalentCard', () => {
     show({ capabilities: [{ key: 'html-tags', title: 'A', graded: '10/12' }, { key: 'html-skeleton', title: 'B', graded: null }] });
     const [skeleton, tags] = screen.getAllByTestId('talent-card-skill');
     expect(within(tags).getByTestId('skill-badge')).toHaveAttribute('data-tier', 'middle');
-    expect(within(skeleton).getByTestId('skill-badge')).toHaveAttribute('data-tier', 'base');
-    const counts = within(screen.getByTestId('talent-card-tiers')).getAllByRole('listitem').map((chip) => chip.getAttribute('data-count'));
-    expect(counts).toEqual(['0', '1', '1']);
+    expect(within(skeleton).getByTestId('skill-badge')).not.toHaveAttribute('data-tier');
+    const chips = within(screen.getByTestId('talent-card-tiers')).getAllByRole('listitem').map((chip) => [chip.getAttribute('data-tier'), chip.getAttribute('data-count')]);
+    expect(chips).toEqual([['middle', '1']]);
+  });
+
+  it('a card whose evidence predates server grading wears no medal and no tier chip', () => {
+    show({ capabilities: [{ key: 'html-tags', title: 'A', graded: null }, { key: 'html-skeleton', title: 'B', graded: null }] });
+    expect(screen.queryByTestId('skill-badge-tier')).toBeNull();
+    expect(screen.queryByTestId('talent-card-tiers')).toBeNull();
+    expect(screen.getAllByTestId('skill-badge').every((badge) => badge.getAttribute('data-state') === 'lit')).toBe(true);
   });
 
   it('draws no medal and no tier count for a board that carries no share', () => {
@@ -95,7 +102,15 @@ describe('TalentCard', () => {
 
   it('keeps every number as a chip that still says what it counts', () => {
     show();
+    expect(screen.getByTestId('talent-card-certs')).toHaveTextContent('1 cert');
     expect(screen.getByTestId('talent-card-certs')).toHaveTextContent('1 certificação');
-    expect(screen.getByTestId('talent-card-last')).toHaveTextContent(/Último carimbo: 11 de out/);
+    expect(screen.getByTestId('talent-card-paid')).toHaveTextContent('2 pagas');
+    expect(screen.getByTestId('talent-card-last')).toHaveTextContent('11/10');
+    expect(screen.getByTestId('talent-card-last')).toHaveTextContent('Último carimbo: 11/10');
+  });
+
+  it('renders no chip for a count of zero', () => {
+    show({ certifications: 0, bountiesPaid: 0, bountiesPaidLamports: 0, lastStampAt: null });
+    expect(screen.getByTestId('talent-card-stats')).toBeEmptyDOMElement();
   });
 });

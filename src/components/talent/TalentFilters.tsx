@@ -5,7 +5,7 @@ import { skillIcon } from '@/components/skills/skillIcon';
 import { skillShortTitle } from '@/components/skills/skillLabels';
 import { useI18n } from '@/i18n';
 import type { TalentCapability, TalentFilters as Filters } from '@/types/talent';
-import { TALENT_TRAILS, inTrail, type TalentTrail } from './talentSkills';
+import { TALENT_TRAILS, inTrail, provenTrails, type TalentTrail } from './talentSkills';
 
 const DAY_CHOICES = [1, 3, 5, 10];
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3FD17F]';
@@ -26,13 +26,14 @@ export function TalentFilters({ filters, trail, capabilities, onChange }: Props)
   const active = filters.capability !== '' || filters.minDays > 0 || trail !== '';
   const skills = inTrail(capabilities, trail);
   const known = capabilities.some((entry) => entry.key === filters.capability);
+  const trails = TALENT_TRAILS.filter((entry) => entry === trail || provenTrails(capabilities).has(entry));
   return (
     <form className="flex flex-col gap-3" aria-label={t('talent.filters.aria')} onSubmit={(event) => event.preventDefault()} data-testid="talent-filters">
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('talent.filters.trail')} data-testid="talent-filter-trails">
         <button type="button" className={`${TAB} ${trail === '' ? TAB_ON : TAB_OFF}`} aria-pressed={trail === ''} onClick={() => onChange(filters, '')} data-testid="talent-filter-trail" data-trail="">
           {t('talent.filters.trail.any')}
         </button>
-        {TALENT_TRAILS.map((entry) => {
+        {trails.map((entry) => {
           const Icon = skillIcon(`${entry}-`, 'neutral');
           return (
             <button key={entry} type="button" className={`${TAB} ${trail === entry ? TAB_ON : TAB_OFF}`} aria-pressed={trail === entry} onClick={() => onChange({ ...filters, capability: '' }, trail === entry ? '' : entry)} data-testid="talent-filter-trail" data-trail={entry}>
