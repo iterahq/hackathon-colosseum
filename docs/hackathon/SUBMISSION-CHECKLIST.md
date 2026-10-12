@@ -1,6 +1,6 @@
 # Checklist de submissão — Colosseum "Crypto World's Fair" (estado de 2026-10-11, main `f93240f`)
 
-Para o Samuel (e o Tainan onde indicado). Prazo: **2026-10-13 03:59 BRT**. Meta interna: enviar até 2026-10-12 22:00 BRT.
+Para o Samuel. Prazo: **2026-10-13 03:59 BRT**. Meta interna: enviar até 2026-10-12 22:00 BRT.
 Só o que depende de uma pessoa está aqui, na ordem de execução, com tempo estimado. O que as lanes já fecharam não está.
 Itens marcados **(confirmar no site do Colosseum)** não vêm de fonte primária deste repositório. Nunca ponha senha, chave ou
 token neste repositório.
@@ -49,14 +49,14 @@ Fontes: roteiro `~/hackathon-pitch.md` (v3, pessoal), ensaio `/tmp/hk/orch/demo-
 ## Submissão (≈ 1 h)
 
 12. **Números (15 min).** `grep '\[\[' ~/hackathon-pitch.md` e preencher: mês/ano em produção, alunos (itera-player),
-    seguidores/alunos DFL, preço, alunos ativos, turmas, assinantes pagos, anos do Tainan, dado de tração DFL, e
+    seguidores/alunos DFL, preço, alunos ativos, turmas, assinantes pagos, dado de tração DFL, e
     **alunos reais que entraram nesta cópia até o prazo**. Regra: número que não for verdadeiro sai do texto. Nunca
     "N alunos certificados": nesta cópia há 1 certificação real (a sua), 3 contas de gente, 0 bounties pagas a aluno real;
     os totais grandes são nossos testes na devnet e só entram com as palavras "devnet, incluindo nossos próprios testes".
 13. **Contador da landing (2 min, Samuel ou LANE 2).** Depois do ÚLTIMO teste automatizado e antes de qualquer pessoa de
     fora usar o site: `select itera.tag_test_accounts();` no projeto `nyzcbnnbffsizshiolbh` (Management API ou SQL
     editor). Sem isso, contas de robôs criadas depois contam como reais na landing e na loja.
-14. **Plataforma (15 min).** Samuel sai do time atual antes de criar "Itera"; cria o time; convida o Tainan; Tainan aceita.
+14. **Plataforma (15 min).** Samuel sai do time atual antes de criar "Itera"; cria o time.
     Cada pessoa em um time só **(confirmar no site do Colosseum)**.
 15. **Repositório (10 min).** Decidir: A) manter privado e convidar `hackathon@colosseum.com` como leitor; B) público como está;
     C) cópia filtrada (perde o histórico que prova o que foi feito). Análise em `/tmp/hk/REPO-EXPOSURE-AUDIT.md`. Não há

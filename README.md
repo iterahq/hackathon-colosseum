@@ -1,6 +1,6 @@
 # Itera — proof of learning that lives in your wallet
 
-Colosseum "Crypto World's Fair" submission by Tainan Fidelis and Samuel (DevFellowship, Brazil).
+Colosseum "Crypto World's Fair" submission by Samuel Stefano (DevFellowship, Brazil).
 Everything on-chain runs on **Solana devnet**.
 
 **Itera** is a Duolingo-style microlearning app for programming: five-day trails of short activities, real code
@@ -312,7 +312,7 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
 
 ## Team and license
 
-Tainan Fidelis and Samuel, DevFellowship, Brazil.
+Samuel Stefano, DevFellowship, Brazil.
 
 License: no license file yet. The repository is shared with the judges for evaluation; the inherited product code
 is proprietary to Itera.
