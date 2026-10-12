@@ -73,19 +73,19 @@ export function CRYSTAL_LORE(locale: Locale) {
   return { name: pick(c.name, locale), line: pick(c.line, locale), text: pick(c.text, locale), earn };
 }
 
-/** The tier each cast member is shown under (the lore file groups them by chapter, not by key). */
+/** The tier each cast member is shown under on /world (the lore file groups them by chapter, not by key). A lore grouping: it is not `shop_items.rarity`. */
 const TIER_OF: Record<string, LoreTier> = {
   special_arco_iris: 'mythic', event_space: 'mythic', brand_phoenix_full: 'mythic',
   special_dourado: 'legendary', special_prata: 'legendary', special_verde_neon: 'legendary', special_azul_eletrico: 'legendary',
   special_roxo_estelar: 'legendary', special_vermelho_lava: 'legendary', special_preto_cosmico: 'legendary',
   base_guerreiro: 'epic', base_sombrio: 'epic', base_sabedoria: 'epic', base_evoluido: 'epic', event_halloween: 'epic', event_natal: 'epic', event_verao: 'epic',
-  base_lider: 'rare', base_mistico: 'rare', base_natural: 'rare', base_livre: 'rare', acc_cyber_chip: 'rare', acc_oculos_tech: 'rare',
-  acc_capuz_web3: 'rare', acc_chain_link: 'rare', acc_programador: 'rare', acc_fogueira: 'rare',
-  base_iniciante: 'common', base_focado: 'common', base_estudioso: 'common', base_determinado: 'common', base_disciplinado: 'common',
-  base_focado_no_objetivo: 'common', base_criativo: 'common', base_analitico: 'common',
-  color_azul: 'common', color_roxo: 'common', color_dourado: 'common', acc_cibernetico: 'common', acc_oculos_codificador: 'common',
-  acc_capuz_verde: 'common', rarity_comum: 'common',
+  base_lider: 'rare', base_mistico: 'rare', base_natural: 'rare', base_livre: 'rare',
+  base_focado: 'rare', base_estudioso: 'rare', base_determinado: 'rare', base_disciplinado: 'rare', base_focado_no_objetivo: 'rare',
+  base_criativo: 'rare', base_analitico: 'rare',
+  color_roxo: 'rare', color_dourado: 'rare', acc_oculos_codificador: 'rare', rarity_comum: 'rare',
   lang_javascript: 'rare', lang_python: 'rare', lang_solidity: 'rare', lang_rust: 'rare', rarity_raro: 'rare',
+  base_iniciante: 'common', acc_cyber_chip: 'common', acc_oculos_tech: 'common', acc_capuz_web3: 'common', acc_chain_link: 'common',
+  acc_programador: 'common', acc_fogueira: 'common', color_azul: 'common', acc_cibernetico: 'common', acc_capuz_verde: 'common',
   rarity_epico: 'epic',
   rarity_lendario: 'legendary',
 };
