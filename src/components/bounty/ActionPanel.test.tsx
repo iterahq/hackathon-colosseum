@@ -17,6 +17,9 @@ vi.mock('@/hooks/useBounties', () => {
   };
 });
 
+const course = vi.hoisted(() => ({ data: undefined as unknown }));
+vi.mock('@/hooks/useContent', () => ({ useProgram: () => ({ data: course.data }) }));
+
 const bounty = (status: BountyDetail['status']) => ({ id: 'b1', slug: 's', status, direct: true, judge: null, claim: null, escrow: null, postedBy: { kind: 'wallet', wallet: 'W' }, claimHours: 24, requirement: { trail: 'Week 1', minDays: 1, totalDays: 5, program: null } }) as unknown as BountyDetail;
 const show = (b: BountyDetail) => render(<I18nProvider><MemoryRouter><BountyActionPanel bounty={b} /></MemoryRouter></I18nProvider>);
 
@@ -52,5 +55,56 @@ describe('BountyActionPanel on a bounty a wallet posted and nobody funded', () =
     session.signedIn = false;
     show(waiting(null));
     expect(screen.queryByTestId('bounty-action')).toBeNull();
+  });
+});
+
+describe('BountyActionPanel for a wallet that still lacks stamped days', () => {
+  const lesson = (id: string, status: string) => ({ id, activities: [{ id: `${id}-a`, status }] });
+  const open = () => ({ ...bounty('open'), direct: false, postedBy: { kind: 'team', name: 'Itera' }, requirement: { program: 'itera-v2', unitId: 'u2', trail: 'Week 2 · CSS', minDays: 3, totalDays: 5 } }) as unknown as BountyDetail;
+  const lacking = (daysDone: number | null) => ({
+    isPending: false,
+    isError: false,
+    isSuccess: true,
+    refetch: () => undefined,
+    data: { wallet: 'ME', eligible: false, reason: daysDone === null ? 'no_certification' : 'not_enough_days', proof: daysDone === null ? null : { asset: 'A', daysDone, explorerUrl: null }, judgedBefore: false, claim: null, busyElsewhere: false, notInvited: false, inviteeWallet: null },
+  });
+  afterEach(() => {
+    mine.value = { isPending: true, isError: false, isSuccess: false, data: undefined, refetch: () => undefined };
+    course.data = undefined;
+  });
+
+  it('sends to the next lesson of the trail and shows what it unlocks', () => {
+    mine.value = lacking(1);
+    course.data = { units: [{ id: 'u2', lessons: [lesson('l1', 'done'), lesson('l2', 'todo'), lesson('l3', 'todo')] }] };
+    show(open());
+    const button = screen.getByTestId('bounty-study');
+    expect(button).toHaveAttribute('href', '/lesson/l2');
+    expect(button).toHaveTextContent(/Study day 2|Estudar o dia 2/);
+    expect(screen.getByTestId('bounty-missing')).toHaveAttribute('data-done', '1');
+    const badges = screen.getAllByTestId('skill-badge');
+    expect(badges.map((badge) => badge.getAttribute('data-claim'))).toEqual(['css-box', 'css-sizing']);
+    expect(badges.every((badge) => badge.getAttribute('data-state') === 'locked')).toBe(true);
+  });
+
+  it('starts at day 1 with no certification', () => {
+    mine.value = lacking(null);
+    course.data = { units: [{ id: 'u2', lessons: [lesson('l1', 'todo')] }] };
+    show(open());
+    expect(screen.getByTestId('bounty-study')).toHaveAttribute('href', '/lesson/l1');
+    expect(screen.getAllByTestId('skill-badge').map((badge) => badge.getAttribute('data-claim'))).toEqual(['css-rules', 'css-selectors']);
+  });
+
+  it('sends to the passport when the lesson is finished and only the stamp is missing', () => {
+    mine.value = lacking(1);
+    course.data = { units: [{ id: 'u2', lessons: [lesson('l1', 'done'), lesson('l2', 'done')] }] };
+    show(open());
+    expect(screen.getByTestId('bounty-study')).toHaveAttribute('href', '/passport');
+  });
+
+  it('falls back to the program page when the course cannot be read', () => {
+    mine.value = lacking(1);
+    show(open());
+    expect(screen.getByTestId('bounty-study')).toHaveAttribute('href', '/program/itera-v2');
+    expect(screen.getByTestId('bounty-study')).toHaveAttribute('data-target', 'program');
   });
 });
