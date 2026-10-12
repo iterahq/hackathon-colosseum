@@ -43,8 +43,8 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'explain.circuit': 'Metade de cada compra paga carimbos de outros alunos (Circuito).',
     'explain.avatar.changes': 'Vira sua foto de perfil: no topo do app, no seu Tera companheiro e na sua página pública.',
-    'explain.avatar.chain': 'Vira um NFT colecionável na sua carteira, de tiragem limitada. Pode ser transferido.',
-    'explain.avatar.soulbound': 'Certificações e o Tera companheiro continuam presos a você: não podem ser vendidos nem transferidos.',
+    'explain.avatar.chain': 'Vira um NFT colecionável na sua carteira. Pode ser transferido ou revendido.',
+    'explain.avatar.soulbound': 'Certificações e Teras ganhos no baú continuam presos a você: não podem ser vendidos nem transferidos.',
     'explain.avatarFree.changes': 'Vira sua foto de perfil na hora. É grátis e não é NFT.',
     'explain.avatarFree.chain': 'Só os ícones grátis mostram a roupa do Tera por cima.',
     'explain.outfit.changes': 'O Tera passa a vestir a peça nas lições e na sua página pública.',
@@ -140,8 +140,8 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'explain.circuit': "Half of every purchase pays other learners' stamps (the Circuit).",
     'explain.avatar.changes': 'It becomes your profile picture: at the top of the app, on your Tera companion and on your public page.',
-    'explain.avatar.chain': 'It becomes a collectible NFT in your wallet, with limited supply. It can be transferred.',
-    'explain.avatar.soulbound': 'Certifications and the Tera companion stay bound to you: they cannot be sold or transferred.',
+    'explain.avatar.chain': 'It becomes a collectible NFT in your wallet. It can be transferred or resold.',
+    'explain.avatar.soulbound': 'Certifications and Teras earned in a chest stay bound to you: they cannot be sold or transferred.',
     'explain.avatarFree.changes': 'It becomes your profile picture right away. Free, and not an NFT.',
     'explain.avatarFree.chain': "Only the free icons show Tera's outfit on top.",
     'explain.outfit.changes': 'Tera wears the piece in your lessons and on your public page.',

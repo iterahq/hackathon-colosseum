@@ -2,7 +2,8 @@
 import type { AvatarRarity } from '@/types/avatar';
 import type { ShopItem } from '@/types/shop';
 
-export type AvatarState = 'equipped' | 'owned' | 'free' | 'soldout' | 'buy';
+/** `earn`: a Tera of an earn-only tier the learner does not hold: no price, no buy. */
+export type AvatarState = 'equipped' | 'owned' | 'free' | 'soldout' | 'buy' | 'earn';
 
 export interface AvatarTier {
   rarity: AvatarRarity;

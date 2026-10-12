@@ -15,6 +15,7 @@ export function itemAction(item: ShopItem, actions: ShopActions, t: Translate, {
     const state = avatarState(item);
     if (state === 'equipped') return inUse;
     if (state === 'free' || state === 'owned') return equip;
+    if (state === 'earn') return { id: 'earn', label: t('shelf.earn.how'), disabled: true, primary: false };
     if (state === 'soldout') return { id: 'soldout', label: t('shop.avatar.soldOut'), disabled: true, primary: false };
     if (isOffSeason(item)) return { id: 'soldout', label: t('shop.season.out'), disabled: true, primary: false };
     return buy;

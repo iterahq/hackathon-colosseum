@@ -137,6 +137,9 @@ function toAvatarOffer(r: Row): AvatarOffer | null {
     supply: { minted: num(supply.minted), max: typeof supply.max === 'number' ? supply.max : null },
     assetAddress: orNull(r.asset_address),
     allowsOutfit: allowsOutfit(r),
+    earnOnly: r.earn_only === true,
+    transferable: r.transferable === true,
+    royaltyBps: Math.max(0, num(r.royalty_bps)),
     season: toSeason(r.season),
     includes: toIncludes(r.includes),
   };

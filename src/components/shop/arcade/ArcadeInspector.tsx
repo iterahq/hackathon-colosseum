@@ -13,6 +13,7 @@ import { BTN_PRIMARY, BTN_SECONDARY, BTN_TEXT, CARD, FOCUS, MONO_LABEL, RARITY_E
 import { TryOnStage } from '../TryOnStage';
 import { ArcadeArt } from './ArcadeTile';
 import { localizePriceLabel } from '@/utils/shopPrice';
+import { royaltyPercent } from './arcadeModel';
 
 const TRYABLE: readonly ShopItem['kind'][] = ['avatar', 'outfit', 'ink', 'frame'];
 const TOGGLE = `min-h-9 flex-1 rounded-[8px] px-3 [font:700_12px_JetBrains_Mono] uppercase tracking-[.06em] ${FOCUS}`;
@@ -30,6 +31,13 @@ interface Props {
 }
 
 function Action({ item, action, testId, labels, locale, className = '' }: { item: ShopItem; action: ItemAction; testId: string; labels: 'full' | 'short'; locale: string; className?: string }) {
+  if (action.id === 'earn') {
+    return (
+      <p data-testid={testId} data-action="earn" className={`${labels === 'full' ? '[font:600_14px/1.4_Inter]' : 'max-w-[148px] [font:600_11px/1.3_Inter]'} text-[#F2C66D] ${className}`}>
+        {action.label}
+      </p>
+    );
+  }
   if (action.id === 'buy') return <PayButtons item={item} action={action} testId={testId} labels={labels} walletLabel={labels === 'full' ? action.label : localizePriceLabel(shortPrice(item.priceLabel), locale)} stack className={className} keyClass={labels === 'full' ? '!min-h-12 !px-3 ![font:700_14px_Inter]' : '!min-h-11 !px-2 ![font:700_12px_Inter]'} />;
   return (
     <button type="button" disabled={action.disabled} onClick={action.run} data-testid={testId} data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${labels === 'full' ? 'w-full' : '!min-h-11 !px-4 ![font:700_13px_Inter]'} ${className}`}>
@@ -83,6 +91,12 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
             <h2 className="[font:700_32px/1_'Barlow_Condensed'] text-[#F4EDE2]" data-testid="inspector-name">{title}</h2>
             {lore?.epithet && <p className="mt-1 [font:600_13px/1.3_Inter] text-[#C9BFB0]">{lore.epithet}</p>}
           </div>
+          {offer?.transferable && !item.owned && (
+            <p className="[font:600_13px/1.4_Inter] text-[#C9BFB0]" data-testid="inspector-resale">
+              {t('shelf.card.transferable')}
+              {(offer.royaltyBps ?? 0) > 0 ? ` ${t('shelf.card.fee', { pct: royaltyPercent(offer.royaltyBps ?? 0) })}` : ''}
+            </p>
+          )}
           {capped && (
             <div className="flex flex-col gap-1" data-testid="inspector-supply">
               <div className="h-[6px] overflow-hidden rounded-full bg-[#262320]" role="progressbar" aria-valuemin={0} aria-valuemax={capped.max ?? 0} aria-valuenow={capped.minted}>
@@ -138,11 +152,11 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
             <span className="flex min-w-0 flex-col">
               <span className="truncate [font:700_18px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{title}</span>
               <span className={`${MONO_LABEL} truncate !text-[10px]`} style={{ color: offer && !offer.free ? edge : '#A0978A' }}>
-                {offer && !offer.free ? `${offer.tierName} · ${offer.supply.max == null ? t('shop.avatar.unlimited') : `${offer.supply.minted}/${offer.supply.max}`}` : tryable ? t('arcade.details') : full ? t('shop.lives.fullReason') : localizePriceLabel(shortPrice(item.priceLabel), locale)}
+                {offer && !offer.free ? offer.transferable && !item.owned ? `${t('shelf.transferable')} · ${offer.tierName}` : `${offer.tierName} · ${offer.supply.max == null ? t('shop.avatar.unlimited') : `${offer.supply.minted}/${offer.supply.max}`}` : tryable ? t('arcade.details') : full ? t('shop.lives.fullReason') : localizePriceLabel(shortPrice(item.priceLabel), locale)}
               </span>
             </span>
           </button>
-          <Action item={item} action={itemAction(item, actions, t, { buyDisabled })} testId="dock-action" labels="short" locale={locale} className="!w-[148px] flex-none !flex-col" />
+          <Action item={item} action={itemAction(item, actions, t, { buyDisabled })} testId="dock-action" labels="short" locale={locale} className={action.id === 'earn' ? 'flex-none text-right' : '!w-[148px] flex-none !flex-col'} />
         </div>
       </div>
     </>

@@ -38,7 +38,8 @@ export interface WardrobeGroupSpec {
 
 /** The one thing an item offers right now, wherever it is drawn. */
 export interface ItemAction {
-  id: 'buy' | 'equip' | 'unequip' | 'claim' | 'inuse' | 'soldout' | 'applied';
+  /** `earn`: nothing to press, the label says how the item is earned. */
+  id: 'buy' | 'equip' | 'unequip' | 'claim' | 'inuse' | 'soldout' | 'applied' | 'earn';
   label: string;
   run?: () => void;
   disabled: boolean;

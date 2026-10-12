@@ -52,6 +52,12 @@ export interface AvatarOffer {
   supply: { minted: number; max: number | null };
   assetAddress: string | null;
   allowsOutfit: boolean;
+  /** Never for sale at any price: the tier only comes out of the chest of a stamped day. */
+  earnOnly?: boolean;
+  /** A bought Tera can be sent to another wallet or resold. */
+  transferable?: boolean;
+  /** What a resale pays Itera, in basis points; 0 while no royalty is set on chain. */
+  royaltyBps?: number;
   /** Null for an avatar sold all year. */
   season?: AvatarSeason | null;
   includes?: AvatarInclude[];

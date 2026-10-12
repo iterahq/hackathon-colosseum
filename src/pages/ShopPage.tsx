@@ -70,13 +70,11 @@ export default function ShopPage() {
   const targetCert = certs.find((c) => c.trailId === targetId) ?? null;
 
   // The focus build sells for SOL only: the crystal price leaves every row before the shelves are built.
-  // `joined` is what the wardrobe wears (what is owned stays); the shelves list less: no paid avatar tier.
-  const joined = useMemo(
-    () => focusShopItems(withCompanionState(shop.data ?? [], companion.data), 'wardrobe').map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)),
-    [shop.data, companion.data],
-  );
+  // `joined` is what the wardrobe wears: the free faces and what is owned. The shelves list every Tera.
+  const all = useMemo(() => withCompanionState(shop.data ?? [], companion.data).map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)), [shop.data, companion.data]);
+  const joined = useMemo(() => focusShopItems(all, 'wardrobe'), [all]);
   // On the shelf an ink or a frame is "owned" for the certification it is aimed at.
-  const items = useMemo(() => focusShopItems(joined, 'shelf').map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
+  const items = useMemo(() => focusShopItems(all, 'shelf').map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [all, targetId]);
   const byKey = (key: string | null) => items.find((i) => i.key === key);
   const hasWallet = Boolean(companion.wallet);
   const buying = byKey(purchase.state.itemKey);

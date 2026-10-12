@@ -1,7 +1,7 @@
 import { localizePriceLabel } from '@/utils/shopPrice';
 import type { ShopItem } from '@/types/shop';
 import { avatarState } from '@/utils/avatarShop';
-import { featuredOf, isOffSeason, rowsOf, shortPrice } from '../avatarRows';
+import { ROW_ORDER, featuredOf, isOffSeason, rowsOf, shortPrice } from '../avatarRows';
 import { crystalsEnabled, formatCount } from '../pay';
 import { RARITY_EDGE } from '../shopStyles';
 import type { ShopSection } from '../ShopTabs';
@@ -48,15 +48,33 @@ export interface ArcadeGroup {
   items: ShopItem[];
 }
 
+/** What a resale pays Itera, as a whole or one-decimal percentage: 500 -> "5". */
+export const royaltyPercent = (bps: number): string => String(Math.round(bps / 10) / 10);
+
+/** " · transferable · resale pays 5% to Itera" for a tier whose Teras can change hands; the fee only once it is set on chain. */
+function resaleNote(items: readonly ShopItem[], t: Translate): string {
+  if (!items.length || !items.every((i) => i.avatar?.transferable)) return '';
+  const bps = Math.min(...items.map((i) => i.avatar?.royaltyBps ?? 0));
+  return ` · ${t('shelf.transferable')}${bps > 0 ? ` · ${t('shelf.fee', { pct: royaltyPercent(bps) })}` : ''}`;
+}
+
 export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string): ArcadeGroup[] {
   if (shelf.id === 'avatars') {
-    const { rows, free } = rowsOf(shelf.items);
+    // A Tera of an earn-only tier has no price: the three tiers share one group that says how they are earned.
+    const earnOnly = (i: ShopItem) => i.avatar?.earnOnly === true;
+    const { rows, free } = rowsOf(shelf.items.filter((i) => !earnOnly(i)));
     const tiers = rows.map((row): ArcadeGroup => {
       const crystals = row.priceCrystals != null ? ` · ${t('shop.crystals', { n: formatCount(row.priceCrystals, locale) })}` : '';
       const supply = row.supply.max == null ? t('shop.avatar.unlimited') : t('arcade.minted', { minted: row.supply.minted, max: row.supply.max });
-      return { id: row.rarity, title: row.tierName, note: `${localizePriceLabel(row.priceShort, locale)}${crystals} · ${supply}`, edge: RARITY_EDGE[row.rarity], items: row.items };
+      return { id: row.rarity, title: row.tierName, note: `${localizePriceLabel(row.priceShort, locale)}${crystals} · ${supply}${resaleNote(row.items, t)}`, edge: RARITY_EDGE[row.rarity], items: row.items };
     });
-    return free.length ? [...tiers, { id: 'free', title: t('shop.avatar.free'), note: t('shop.avatar.freeHint'), edge: '#2E2A25', items: free }] : tiers;
+    const rank = (i: ShopItem) => ROW_ORDER.indexOf(i.avatar?.rarity ?? 'common');
+    const earned = shelf.items.filter(earnOnly).sort((a, b) => rank(a) - rank(b));
+    return [
+      ...tiers,
+      ...(earned.length ? [{ id: 'earn', title: t('shelf.earn.title'), note: t('shelf.earn.note'), edge: RARITY_EDGE.legendary, items: earned }] : []),
+      ...(free.length ? [{ id: 'free', title: t('shop.avatar.free'), note: t('shop.avatar.freeHint'), edge: '#2E2A25', items: free }] : []),
+    ];
   }
   if (shelf.id === 'borders') {
     const sale = shelf.items.filter((i) => i.forSale !== false);
@@ -76,7 +94,7 @@ export function compactCount(n: number): string {
   return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
 }
 
-export type TileTone = 'price' | 'mine' | 'equipped' | 'free' | 'muted';
+export type TileTone = 'price' | 'mine' | 'equipped' | 'free' | 'muted' | 'earn';
 
 /** The one short line under a tile: what it costs or what it already is. */
 export function tileLine(item: ShopItem, t: Translate, locale = 'en'): { text: string; tone: TileTone; crystal: boolean } {
@@ -86,6 +104,7 @@ export function tileLine(item: ShopItem, t: Translate, locale = 'en'): { text: s
     if (state === 'equipped') return plain(t('shop.equipped'), 'equipped');
     if (state === 'owned') return plain(t('shop.owned'), 'mine');
     if (state === 'free') return plain(t('arcade.free'), 'free');
+    if (state === 'earn') return plain(t('shelf.earnOnly'), 'earn');
     if (state === 'soldout') return plain(t('shop.avatar.soldOut'), 'muted');
     if (isOffSeason(item)) return plain(item.avatar?.season?.label ?? t('shop.season.out'), 'muted');
   } else if (item.kind !== 'life') {

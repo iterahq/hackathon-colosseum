@@ -43,7 +43,7 @@ describe('the bundled catalog', () => {
     }
   });
 
-  // Reads the deployed catalog. Skipped when this machine has no network or the route is not deployed: otherwise a tier that moved in the catalog and not in the bundled copy fails here.
+  // Reads the deployed catalog. Skipped only when this machine has no network: with one, a tier that moved in the catalog and not in the bundled copy fails here.
   it('agrees with the live catalog on every Tera of the cast and on every tier', async (ctx) => {
     let res: Response;
     try {
@@ -51,13 +51,14 @@ describe('the bundled catalog', () => {
     } catch {
       return ctx.skip();
     }
-    if (res.status === 404) return ctx.skip();
     expect(res.status, 'credential-meta/tiers').toBe(200);
     const live = toTeraCatalog(await res.json(), 'live');
     expect(live, 'the answer is a catalog').not.toBeNull();
     if (!live) return;
-    const moved = LORE_KEYS.filter((key) => loreTierOf(key, live.avatars) !== loreTierOf(key)).map((key) => `${key}: bundled ${loreTierOf(key)}, catalog ${loreTierOf(key, live.avatars)}`);
+    const moved = LORE_KEYS.filter((key) => key in live.avatars && loreTierOf(key, live.avatars) !== loreTierOf(key)).map((key) => `${key}: bundled ${loreTierOf(key)}, catalog ${loreTierOf(key, live.avatars)}`);
     expect(moved).toEqual([]);
+    // Priced in the bundled copy and absent from the catalog: only the one Tera that has no catalog row.
+    expect(Object.keys(FALLBACK.avatars).filter((key) => !(key in live.avatars))).toEqual(['acc_fogueira']);
     expect(live.tiers).toEqual(FALLBACK_CATALOG.tiers);
   }, 12_000);
 });
