@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CRYSTAL_LORE, EARN_EVENTS, LORE_KEYS, LORE_TIERS, TIER_LORE, WORLD_LORE, loreKeysOfTier, loreOf, loreRelated,
+  CRYSTAL_LORE, EARN_EVENTS, LORE_KEYS, LORE_TIERS, TIER_LORE, WORLD_LORE, loreKeysOfTier, loreOf, loreRelated, loreTierOf,
 } from './teraLore';
 import raw from './teraLore.json';
 
 const LOCALES = ['pt', 'en'] as const;
 
 describe('teraLore', () => {
-  it('has the full cast', () => expect(LORE_KEYS.length).toBe(46));
+  it('has the full cast', () => expect(LORE_KEYS.length).toBe(64));
 
   it.each(LOCALES)('every avatar has non-empty fields within limits (%s)', (locale) => {
     for (const key of LORE_KEYS) {
@@ -65,5 +65,13 @@ describe('teraLore', () => {
   it('places every avatar in exactly one tier', () => {
     const all = LORE_TIERS.flatMap((t) => loreKeysOfTier(t));
     expect(new Set(all).size).toBe(LORE_KEYS.length);
+  });
+
+  it('shows a paid avatar under its catalog rarity, never under the free moods', () => {
+    expect(['color_roxo', 'color_dourado', 'acc_oculos_codificador', 'rarity_comum'].map(loreTierOf)).toEqual(['common', 'common', 'common', 'common']);
+    expect(['lang_solidity', 'rarity_raro'].map(loreTierOf)).toEqual(['rare', 'rare']);
+    expect(loreTierOf('rarity_epico')).toBe('epic');
+    expect(loreTierOf('rarity_lendario')).toBe('legendary');
+    expect(loreTierOf('code_404')).toBe('free');
   });
 });

@@ -83,6 +83,11 @@ const TIER_OF: Record<string, LoreTier> = {
   acc_capuz_web3: 'rare', acc_chain_link: 'rare', acc_programador: 'rare', acc_fogueira: 'rare',
   base_iniciante: 'common', base_focado: 'common', base_estudioso: 'common', base_determinado: 'common', base_disciplinado: 'common',
   base_focado_no_objetivo: 'common', base_criativo: 'common', base_analitico: 'common',
+  color_azul: 'common', color_roxo: 'common', color_dourado: 'common', acc_cibernetico: 'common', acc_oculos_codificador: 'common',
+  acc_capuz_verde: 'common', rarity_comum: 'common',
+  lang_javascript: 'rare', lang_python: 'rare', lang_solidity: 'rare', lang_rust: 'rare', rarity_raro: 'rare',
+  rarity_epico: 'epic',
+  rarity_lendario: 'legendary',
 };
 
 export const loreTierOf = (key: string): LoreTier => TIER_OF[key] ?? 'free';
