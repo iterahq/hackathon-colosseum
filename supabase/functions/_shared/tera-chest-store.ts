@@ -42,7 +42,7 @@ const MAX_ATTEMPTS = 40;
 /** A commitment that landed late is written again at most this many times. */
 const MAX_COMMITS = 4;
 const SLOT_MS = 400;
-const PLAN_BUDGET_MS = 1_800;
+const PLAN_BUDGET_MS = 1_200;
 const SERIAL_ATTEMPTS = 6;
 
 export const CHEST_COLUMNS =
