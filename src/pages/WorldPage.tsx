@@ -11,6 +11,7 @@ import { LORE_TIERS } from '@/content/teraLore';
 import { CAST_KEYS } from '@/components/world/castArt';
 import { useBountySession } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useTeraCatalog } from '@/hooks/useTeraCatalog';
 import { useI18n } from '@/i18n';
 
 /** /world: the lore of Brasa, the crystals and the cast of Teras. Public, static. */
@@ -19,6 +20,7 @@ export default function WorldPage() {
   usePageTitle(t('world.title'));
   const [open, setOpen] = useState<string | null>(null);
   const { signedIn } = useBountySession();
+  const catalog = useTeraCatalog();
   return (
     <div className="min-h-screen overflow-x-hidden text-[#F4EDE2]" style={WORLD_GRID} data-testid="world-page">
       {signedIn && <AppTopBar />}
@@ -32,11 +34,11 @@ export default function WorldPage() {
             <span className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.12em] text-[#A0978A]">{t('world.cast.count', { n: CAST_KEYS.length })}</span>
           </div>
           {LORE_TIERS.map((tier) => (
-            <TierSection key={tier} tier={tier} onOpen={setOpen} />
+            <TierSection key={tier} tier={tier} catalog={catalog} onOpen={setOpen} />
           ))}
         </section>
       </main>
-      <TeraDialog avatarKey={open} onSelect={setOpen} onClose={() => setOpen(null)} />
+      <TeraDialog avatarKey={open} avatars={catalog.avatars} onSelect={setOpen} onClose={() => setOpen(null)} />
     </div>
   );
 }

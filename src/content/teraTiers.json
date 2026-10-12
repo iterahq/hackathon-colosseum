@@ -1,0 +1,133 @@
+{
+  "tiers": [
+    {
+      "rarity": "common",
+      "rank": 1,
+      "tier_name": {
+        "pt": "Tera",
+        "en": "Tera"
+      },
+      "label": {
+        "pt": "Comum",
+        "en": "Common"
+      },
+      "earn_only": false
+    },
+    {
+      "rarity": "rare",
+      "rank": 2,
+      "tier_name": {
+        "pt": "Super Tera",
+        "en": "Super Tera"
+      },
+      "label": {
+        "pt": "Raro",
+        "en": "Rare"
+      },
+      "earn_only": false
+    },
+    {
+      "rarity": "epic",
+      "rank": 3,
+      "tier_name": {
+        "pt": "Mega Tera",
+        "en": "Mega Tera"
+      },
+      "label": {
+        "pt": "Muito raro",
+        "en": "Epic"
+      },
+      "earn_only": false
+    },
+    {
+      "rarity": "legendary",
+      "rank": 4,
+      "tier_name": {
+        "pt": "Tera Lendário",
+        "en": "Legendary Tera"
+      },
+      "label": {
+        "pt": "Lendário",
+        "en": "Legendary"
+      },
+      "earn_only": true
+    },
+    {
+      "rarity": "mythic",
+      "rank": 5,
+      "tier_name": {
+        "pt": "Tera Mítico",
+        "en": "Mythic Tera"
+      },
+      "label": {
+        "pt": "Mítico",
+        "en": "Mythic"
+      },
+      "earn_only": true
+    },
+    {
+      "rarity": "primordial",
+      "rank": 6,
+      "tier_name": {
+        "pt": "Tera Primordial",
+        "en": "Primordial Tera"
+      },
+      "label": {
+        "pt": "Único",
+        "en": "One of one"
+      },
+      "earn_only": true
+    }
+  ],
+  "avatars": {
+    "acc_capuz_verde": "common",
+    "acc_capuz_web3": "common",
+    "acc_chain_link": "common",
+    "acc_cibernetico": "common",
+    "acc_cyber_chip": "common",
+    "acc_fogueira": "common",
+    "acc_oculos_codificador": "rare",
+    "acc_oculos_tech": "common",
+    "acc_programador": "common",
+    "base_analitico": "rare",
+    "base_criativo": "rare",
+    "base_determinado": "rare",
+    "base_disciplinado": "rare",
+    "base_estudioso": "rare",
+    "base_evoluido": "epic",
+    "base_focado": "rare",
+    "base_focado_no_objetivo": "rare",
+    "base_guerreiro": "epic",
+    "base_iniciante": "common",
+    "base_lider": "rare",
+    "base_livre": "rare",
+    "base_mistico": "rare",
+    "base_natural": "rare",
+    "base_sabedoria": "epic",
+    "base_sombrio": "epic",
+    "brand_phoenix_full": "primordial",
+    "color_azul": "common",
+    "color_dourado": "rare",
+    "color_roxo": "rare",
+    "event_halloween": "epic",
+    "event_natal": "epic",
+    "event_space": "mythic",
+    "event_verao": "epic",
+    "lang_javascript": "rare",
+    "lang_python": "rare",
+    "lang_rust": "rare",
+    "lang_solidity": "rare",
+    "rarity_comum": "rare",
+    "rarity_epico": "epic",
+    "rarity_lendario": "legendary",
+    "rarity_raro": "rare",
+    "special_arco_iris": "mythic",
+    "special_azul_eletrico": "legendary",
+    "special_dourado": "legendary",
+    "special_prata": "legendary",
+    "special_preto_cosmico": "legendary",
+    "special_roxo_estelar": "legendary",
+    "special_verde_neon": "legendary",
+    "special_vermelho_lava": "legendary"
+  }
+}
