@@ -42,13 +42,17 @@ function answer(body: unknown, status = 200): Response {
 
 const refuse = (code: BountyActionError, lang: Lang, status: number) => answer(bountyActionError(code, lang), status);
 
-async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
+async function describe(db: IteraClient, bounty: BountyRow, lang: Lang): Promise<Response> {
+  // The same condition `build` charges the prize under: the text never names a fee the transaction will not carry.
+  const config = prizeOf(bounty.prize_tera) ? await loadConfig(db).catch(() => ({}) as Record<string, string>) : {};
+  const prizeLamports = prizeOf(bounty.prize_tera) && config.prize_tera === 'on' && isEd25519Address(config.treasury) ? PRIZE_TOTAL_LAMPORTS : 0n;
   return answer(
     bountyActionGet({
       bounty,
       lang,
       // The label is the only thing here that needs the node: without it the button shows the reward alone.
-      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated, Boolean(bounty.invitee_wallet)).catch(() => 0n) : 0n) + (prizeOf(bounty.prize_tera) ? PRIZE_TOTAL_LAMPORTS : 0n),
+      missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated, Boolean(bounty.invitee_wallet)).catch(() => 0n) : 0n) + prizeLamports,
+      prizeLamports,
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
       blocked: fundingLinkVerdict(bounty, new Date()) === 'ok' ? null : 'not_fundable',
     }),
@@ -123,7 +127,7 @@ Deno.serve(async (request) => {
     const bounty = await loadBounty(db, isUuid(first) ? { id: first } : { slug: first });
     // A bounty moderation hid is answered like one that does not exist: its words are not offered to any wallet.
     if (!bounty || fundingLinkVerdict(bounty, new Date()) === 'not_found') return refuse('not_found', lang, 404);
-    if (request.method === 'GET') return await describe(bounty, lang);
+    if (request.method === 'GET') return await describe(db, bounty, lang);
     if (request.method === 'POST') return await build(db, bounty, request, lang);
     return refuse('invalid_body', lang, 405);
   } catch (error) {

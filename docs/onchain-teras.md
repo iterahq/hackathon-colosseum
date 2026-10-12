@@ -14,7 +14,8 @@ itself says which.
 | Table | `avatar_assets` (`origin = earned`, `chest_id`) | `avatar_assets` (`origin = bought`) | `sponsor_teras` |
 
 Legendary, Mythic and Primordial are **earn-only** (`avatar_tiers.earn_only`): the purchase rail refuses them
-(`409 earn_only`) whatever a catalog row says, and a chest reaches one only when its seed rolls it.
+(`409 earn_only`) whatever a catalog row says, and a chest reaches one only when its seed rolls it. The Primordial,
+of which one exists, can be rolled by ONE chest only: the one of the day that completes the last trail of the program.
 
 The rarity of every Tera has one source, the catalog (`shop_items.rarity`, served by `GET /credential-meta/tiers`).
 Migration `0350_tera_one_rarity.sql` aligned it to the owner's grouping and kept the previous values in
@@ -48,13 +49,27 @@ the background and by `POST /tera-chest`. A chest never holds or fails a stamp.
 
 Parts of 10 000. A day earns one effort point for each of: the server graded at least 75% of the day's gradable
 answers; the server graded no answer of the day wrong (and graded at least one); the day finished the trail.
+**Level 4** is not a fourth point: it is level 3 on the day that finishes the **last trail of the program**, when
+every trail of the program is gold for that learner. It is the only row that gives the Primordial any weight.
 
 | level | common | rare | epic | legendary | mythic | primordial |
 |---|---|---|---|---|---|---|
 | 0 | 7000 | 2500 | 450 | 45 | 5 | 0 |
-| 1 | 6000 | 3000 | 880 | 100 | 19 | 1 |
-| 2 | 5000 | 3400 | 1350 | 210 | 36 | 4 |
-| 3 | 3800 | 3700 | 2000 | 400 | 90 | 10 |
+| 1 | 6000 | 3000 | 880 | 100 | 20 | 0 |
+| 2 | 5000 | 3400 | 1350 | 210 | 40 | 0 |
+| 3 | 3800 | 3700 | 2000 | 400 | 100 | 0 |
+| 4 | 3800 | 3700 | 2000 | 400 | 90 | 10 |
+
+So a one-of-one cannot come out of an ordinary day: on every chest but one per learner its weight is zero, and a
+chest opened late by its own write (below) never carries level 4. A learner reaches that one chest by finishing every
+trail, with the last day mostly server-graded and without a miss; even then the odds are 10 in 10 000.
+
+This table is written **inside the pool document** (version 3, `odds`), so it is covered by the hash in the
+commitment: a chest is always recomputed with the odds it committed to. The chests opened on 2026-10-12 before this
+rule committed to documents of version 1 or 2, whose odds are the earlier table (`LEGACY_ODDS_TABLE` in
+`tera-roll.ts`: levels 1, 2 and 3 gave the Primordial 1, 4 and 10 parts). They recompute with that table; none of them
+rolled it. `GET /tera-chest/rules` and `GET /credential-meta/tiers` also say, per earn-only tier, how it is earned
+(`earn_only.<tier>.how`, `tiers[].how`), from the same table.
 
 The pool is every priced Tera on the shelf plus the earn-only tiers, by tier, ordered by `sort` then key. Free faces
 never come out of a chest. A tier with nothing left for this learner hands over to the lower tiers, then to the higher
@@ -130,9 +145,13 @@ With the public RPC (`commitment: confirmed`) and no session:
 - **Room on the asset.** The commitment is 35 bytes per day and is sized after everything else the certification
   carries. If a certification ever has no room, the oldest commitments leave the asset first (their transactions
   remain); a day whose commitment cannot fit at all gets `failed: commitment_does_not_fit_the_asset`.
-- **Levels 2 and 3 were not produced by the end-to-end script** (its learner's days are inserted, not graded). The
-  levels are covered by the unit tests of the pure module.
-- The one-of-one (Primordial) can come out of any chest of level 1 or more, a test account's included.
+- **Level 2 was produced on chain** by a learner whose answers were graded by `grade` (`PART=effort` of the
+  end-to-end script). Levels 3 and 4 need a finished trail and a finished program of graded days; the script holds
+  the answers of day 1 only, so those two are covered by the unit tests of the pure module.
+- **"Every trail gold" is our tables' word at commit time.** The level is on chain and each certification says `gold`
+  on chain, but the server is what counted them when it wrote level 4.
+- The kill switch's off path is no longer exercised by the end-to-end script, which must not flip a switch on the live
+  backend. It was proven by the runs of 2026-10-12 that did (`tera-e2e-chest-1.log`, `-chest-2.log`, `-final.log`).
 
 ### Kill switch
 
@@ -180,14 +199,22 @@ shows `verified: false` for a Tera whose wallet no longer holds it.
 
 A sponsor posting a bounty from a wallet (`bounty-post`) may add a prize: `prize_tera: { brand, accent, base }`.
 
-- **No upload.** `brand` is 2 to 24 letters, digits, spaces and `. & + - _ ! '`; anything else (markup, quotes,
-  slashes, emoji) refuses the form, and so does a name that poses as the team. Control and direction characters are
-  dropped. `accent` is `#rrggbb`. `base` is one of four free faces. The server composes the art from those three
+- **No upload.** `brand` is 2 to 24 Latin letters (accents included), ASCII digits, spaces and `. & + - _ ! '`;
+  anything else (markup, quotes, slashes, emoji, a letter of another script) refuses the form, and so does a name that
+  poses as the team. Control and direction characters are dropped. Latin only is the cheap guard against a look-alike
+  built with another alphabet (a Cyrillic "І" in "Іtera"); it also refuses an honest name in another script, and a
+  Latin look-alike ("ltera" with a lowercase L) still passes: the art labels every such Tera a sponsor Tera and the
+  metadata says the brand is the sponsor's own text.
+- **A tenant's own name.** The team's names are refused to everyone except the STAFF of the tenant whose row declares
+  the name (`tenants.branding.sponsor_brand`, set by migration `0354`, today `DevFellowship` on `dfl-batch`). The check
+  reads the caller's memberships and the tenant rows; nothing in the request takes part. The same rule opens the
+  sponsor name of the bounty. `accent` is `#rrggbb`. `base` is one of four free faces. The server composes the art from those three
   values (`sponsorArt` in `_shared/sponsor-tera.ts`), and the brand is XML-escaped again where it is drawn.
   `GET /credential-meta/sponsor-preview.svg?brand=&accent=&base=` shows exactly what will be minted.
 - **The sponsor pays.** The funding transaction the server builds carries, next to the escrow's `create`, one transfer
   to the treasury: the mint cost (0.004 SOL) plus an issuing fee (0.01 SOL). The quote names both lines before the
-  wallet signs. The funding blink builds the same transaction.
+  wallet signs. The funding blink builds the same transaction and its text names the prize, the part of the total that
+  goes to the treasury, and that a refund does not return it.
 - **Minted in the settlement that pays.** When the escrow account says `paid` and our tables record it
   (`recordWalletPayout`), the same step mints the Tera, frozen, to the wallet the escrow paid, with `origin=sponsor`,
   `brand`, `accent`, `learner`, `bounty` (its id) and `payout_tx`. One per bounty and claim (a unique row, an address
@@ -227,6 +254,6 @@ tables.
 
 ```bash
 source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN
-node scripts/hackathon/tera-e2e.mjs                 # devnet; about 0.04 SOL of the authority; PART=chest | sponsor | all
+node scripts/hackathon/tera-e2e.mjs                 # devnet; about 0.05 SOL of the authority; PART=chest | effort | sponsor | all
 npx vitest run --config vitest.supabase.config.ts supabase/functions/_shared/tera-roll.test.ts supabase/functions/_shared/sponsor-tera.test.ts
 ```

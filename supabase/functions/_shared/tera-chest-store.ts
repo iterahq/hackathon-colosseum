@@ -113,6 +113,24 @@ async function loadPool(db: IteraClient, hash: string): Promise<ParsedPool & { d
 
 const confirmedSlot = () => rpc<number>('getSlot', [{ commitment: 'confirmed' }]);
 
+/**
+ * Whether every trail of the certification's program is gold for this learner, read from the rows as they stand
+ * (the stamp being written has already turned its own row gold). The chest of the day that makes this true is the
+ * only one that may roll the one-of-one.
+ */
+async function programComplete(db: IteraClient, userId: string, programSlug: unknown): Promise<boolean> {
+  if (typeof programSlug !== 'string' || !programSlug) return false;
+  const [program, passes] = await Promise.all([
+    db.from('programs').select('id,units(id)').eq('slug', programSlug).is('archived_at', null).maybeSingle(),
+    db.from('user_achievements').select('ref_id,state').eq('user_id', userId).eq('achievement_key', 'trail_pass'),
+  ]);
+  if (program.error) throw new Error(`programs: ${program.error.message}`);
+  if (passes.error) throw new Error(`user_achievements: ${passes.error.message}`);
+  const units = ((program.data?.units ?? []) as Array<{ id: string }>).map((unit) => unit.id);
+  const gold = new Set(((passes.data ?? []) as Array<{ ref_id: string; state: Record<string, unknown> }>).filter((row) => row.state.tier === 'gold').map((row) => row.ref_id));
+  return units.length > 0 && units.every((unit) => gold.has(unit));
+}
+
 /** The lessons among these where the server graded an answer wrong: a day with one is not a clean day. */
 async function lessonsWithMisses(db: IteraClient, userId: string, lessonIds: string[]): Promise<Set<string>> {
   if (lessonIds.length === 0) return new Set();
@@ -145,20 +163,23 @@ export async function planStampCommits(
   try {
     const work = (async () => {
       const lessonIds = input.dayRows.map((row) => row.ref_id);
-      const [slot, pool, misses, known] = await Promise.all([
+      const turnsGold = input.certification.state.tier === 'gold';
+      const [slot, pool, misses, known, crown] = await Promise.all([
         confirmedSlot(),
         currentPool(db),
         lessonsWithMisses(db, input.userId, lessonIds),
         db.from('tera_chests').select('day,status,commit_tx').eq('certification_id', input.certification.id),
+        // Only a write that finishes a trail can finish the program: every other stamp skips the read.
+        turnsGold ? programComplete(db, input.userId, input.certification.state.program_slug) : Promise.resolve(false),
       ]);
       if (known.error) throw new Error(known.error.message);
       // A day whose commitment already landed keeps it: only a day never committed, or committed by a write that did not land, is planned.
       const settled = new Set(((known.data ?? []) as Array<{ day: number; status: string; commit_tx: string | null }>).filter((row) => row.status !== 'committed' || row.commit_tx !== null).map((row) => row.day));
-      const goldDay = input.certification.state.tier === 'gold' ? [...input.dayRows].sort((a, b) => b.earned_at.localeCompare(a.earned_at))[0]?.id : null;
+      const goldDay = turnsGold ? [...input.dayRows].sort((a, b) => b.earned_at.localeCompare(a.earned_at))[0]?.id : null;
       return input.dayRows.flatMap((row): PlannedCommit[] => {
         const day = typeof row.state.day === 'number' ? row.state.day : 0;
         if (!Number.isInteger(day) || day < 1 || day > 99 || settled.has(day)) return [];
-        const inputs = effortOf(row.state.proof, !misses.has(row.ref_id), row.id === goldDay);
+        const inputs = effortOf(row.state.proof, !misses.has(row.ref_id), row.id === goldDay, crown);
         const level = effortLevel(inputs);
         const target = slot + CHEST_SLOT_DISTANCE;
         return [{ day, lessonId: row.ref_id, slot: target, level, inputs, value: commitValue({ slot: target, level, poolHash: pool.hash }), poolHash: pool.hash }];
@@ -357,7 +378,7 @@ async function chestAsset(db: IteraClient, chestId: string): Promise<AvatarAsset
 async function rollAndReserve(db: IteraClient, chest: ChestRow, catalog: AvatarCatalog): Promise<{ chest: ChestRow; asset: AvatarAssetRow | null }> {
   const known = await chestAsset(db, chest.id);
   if (known) return { chest, asset: known };
-  const { pool, earnOnly } = await loadPool(db, chest.pool_hash);
+  const { pool, earnOnly, odds } = await loadPool(db, chest.pool_hash);
   for (let attempt = 0; attempt < SERIAL_ATTEMPTS; attempt += 1) {
     const [rows, supply] = await Promise.all([
       db.from('avatar_assets').select('item_key,mint_status').eq('user_id', chest.user_id),
@@ -369,7 +390,7 @@ async function rollAndReserve(db: IteraClient, chest: ChestRow, catalog: AvatarC
     // A key the pool names and the catalog no longer has cannot be minted.
     const gone = Object.values(pool).flat().filter((key) => !catalog.items.has(key)).sort();
     const unavailable = [...new Set([...held, ...exhausted, ...gone])].sort();
-    const result = rollChest({ seed: chest.seed as string, level: chest.level as EffortLevel, pool, unavailable, earnOnly });
+    const result = rollChest({ seed: chest.seed as string, level: chest.level as EffortLevel, pool, unavailable, earnOnly, odds });
     const roll = { held, exhausted, gone, unavailable, steps: result.steps, rolled_tier: result.rolled_tier, tier_roll: result.tier_roll, start_roll: result.start_roll };
     if (!result.key || !result.tier) {
       return { chest: await patchChest(db, chest.id, { status: 'failed', error: 'nothing_left_to_give', roll, claimed_at: null }), asset: null };
@@ -507,7 +528,8 @@ export async function chestOfDay(db: IteraClient, config: Record<string, string>
   ]);
   if (siblings.error) throw new Error(`user_achievements: ${siblings.error.message}`);
   const gold = certification.state.tier === 'gold' && siblings.data?.[0]?.id === stamp.id;
-  return commitByOwnWrite(db, config, certification, { userId, lessonId, day, inputs: effortOf(stamp.state.proof, !misses.has(lessonId), gold), existing: null });
+  // A chest opened late by its own write never carries the crown: the one-of-one is rolled only by the stamp that completes the program.
+  return commitByOwnWrite(db, config, certification, { userId, lessonId, day, inputs: effortOf(stamp.state.proof, !misses.has(lessonId), gold, false), existing: null });
 }
 
 /** After a stamp: settles the learner's open chests, waiting for each seed block. Runs after the response is sent. */
@@ -531,6 +553,8 @@ export async function settleOpenChests(db: IteraClient, config: Record<string, s
 // ---------------------------------------------------------------------------
 
 export interface ChestContext {
+  /** The pool each chest committed to, by hash: its odds are the ones the chest is shown with. */
+  pools: Map<string, ParsedPool>;
   catalog: AvatarCatalog;
   certifications: Map<string, Pick<AchievementRow, 'id' | 'asset_address' | 'state' | 'wallet_address'>>;
   assets: Map<string, AvatarAssetRow>;
@@ -540,14 +564,21 @@ export interface ChestContext {
 export async function chestContext(db: IteraClient, chests: readonly ChestRow[]): Promise<ChestContext> {
   const certificationIds = [...new Set(chests.map((chest) => chest.certification_id))];
   const chestIds = chests.map((chest) => chest.id);
-  const [catalog, certifications, assets] = await Promise.all([
+  const poolHashes = [...new Set(chests.map((chest) => chest.pool_hash))];
+  const [pools, catalog, certifications, assets] = await Promise.all([
+    poolHashes.length > 0 ? db.from('tera_chest_pools').select('hash,document').in('hash', poolHashes) : Promise.resolve({ data: [], error: null }),
     loadAvatarCatalog(db),
     certificationIds.length > 0 ? db.from('user_achievements').select('id,asset_address,state,wallet_address').in('id', certificationIds) : Promise.resolve({ data: [], error: null }),
     chestIds.length > 0 ? db.from('avatar_assets').select(AVATAR_ASSET_COLUMNS).in('chest_id', chestIds) : Promise.resolve({ data: [], error: null }),
   ]);
   if (certifications.error) throw new Error(`user_achievements: ${certifications.error.message}`);
   if (assets.error) throw new Error(`avatar_assets: ${assets.error.message}`);
+  if (pools.error) throw new Error(`tera_chest_pools: ${pools.error.message}`);
   return {
+    pools: new Map(((pools.data ?? []) as Array<{ hash: string; document: string }>).flatMap((row) => {
+      const parsed = parsePoolDocument(row.document);
+      return parsed ? [[row.hash, parsed] as const] : [];
+    })),
     catalog,
     certifications: new Map(((certifications.data ?? []) as Array<Pick<AchievementRow, 'id' | 'asset_address' | 'state' | 'wallet_address'>>).map((row) => [row.id, row])),
     assets: new Map(((assets.data ?? []) as AvatarAssetRow[]).map((row) => [row.chest_id as string, row])),
@@ -572,7 +603,8 @@ export function chestView(chest: ChestRow, context: ChestContext, lang: Lang, re
     level: chest.level,
     effort: chest.inputs,
     tier: chest.tier,
-    odds: oddsOf(chest.level as EffortLevel),
+    odds: oddsOf(chest.level as EffortLevel, context.pools.get(chest.pool_hash)?.odds),
+    pool_version: context.pools.get(chest.pool_hash)?.version ?? null,
     tera:
       item && chest.status === 'minted'
         ? {
@@ -596,7 +628,7 @@ export function chestView(chest: ChestRow, context: ChestContext, lang: Lang, re
 /** The `Recompute` of the contract: every input of the roll, where each comes from, and the pool document the commitment names. */
 export async function recomputeView(db: IteraClient, chest: ChestRow, context: ChestContext) {
   const certification = context.certifications.get(chest.certification_id);
-  const { pool, earnOnly, document } = await loadPool(db, chest.pool_hash);
+  const { pool, earnOnly, odds, version, document } = await loadPool(db, chest.pool_hash);
   return {
     formula: CHEST_FORMULA,
     inputs: {
@@ -625,7 +657,9 @@ export async function recomputeView(db: IteraClient, chest: ChestRow, context: C
     /** The tiers the walk never climbs into; `null` on the first pools, whose walk climbs anywhere. */
     earn_only: earnOnly,
     pool_document: document,
-    odds_table: ODDS_TABLE,
+    /** The odds this chest committed to (inside the pool document from version 3 on). */
+    odds_table: odds,
+    pool_version: version,
     unavailable: chest.roll?.unavailable ?? [],
     steps: chest.roll?.steps ?? [],
   };

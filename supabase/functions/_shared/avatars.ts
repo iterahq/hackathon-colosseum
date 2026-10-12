@@ -3,6 +3,7 @@ import { APP_URL, pickText, type OnchainAttribute } from './credential.ts';
 import type { BorderSpec } from './crystals.ts';
 import { loreOf, loreText, loreView } from './lore.ts';
 import { seasonData, seasonView } from './seasons.ts';
+import { EARN_ONLY_RULES } from './tera-roll.ts';
 
 /** The avatar every learner wears until they pick another one. Never minted, never sold. */
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
@@ -157,7 +158,16 @@ export function tiersView(catalog: Pick<AvatarCatalog, 'items' | 'tiers'>) {
   return {
     tiers: [...catalog.tiers.values()]
       .sort((a, b) => a.rank - b.rank)
-      .map((tier) => ({ rarity: tier.rarity, rank: tier.rank, tier_name: text(tier.tier_name_i18n), label: text(tier.label_i18n), earn_only: tier.earn_only === true })),
+      .map((tier) => ({
+        rarity: tier.rarity,
+        rank: tier.rank,
+        tier_name: text(tier.tier_name_i18n),
+        label: text(tier.label_i18n),
+        earn_only: tier.earn_only === true,
+        /** For an earn-only tier: the sentence that says how it is earned, and the chest levels that can give it. */
+        how: tier.earn_only === true ? (EARN_ONLY_RULES[tier.rarity as keyof typeof EARN_ONLY_RULES]?.how ?? null) : null,
+        chest_levels: tier.earn_only === true ? (EARN_ONLY_RULES[tier.rarity as keyof typeof EARN_ONLY_RULES]?.levels ?? []) : null,
+      })),
     avatars: Object.fromEntries([...catalog.items.values()].map((item) => [item.key, isFreeAvatar(item) ? FREE_TIER : item.rarity])),
   };
 }

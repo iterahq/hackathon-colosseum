@@ -4,6 +4,10 @@ import { onchainAttributes, type AchievementRow, type CatalogEntry } from './cre
 import { sha256Hex } from './sha256';
 import {
   CHEST_TIERS,
+  CROWN_LEVEL,
+  EARN_ONLY_RULES,
+  LEGACY_ODDS_TABLE,
+  oddsOf,
   ODDS_TABLE,
   ODDS_TOTAL,
   buildPool,
@@ -39,20 +43,56 @@ const POOL: ChestPool = {
 const EARN_ONLY = ['legendary', 'mythic', 'primordial'] as const;
 /** A pool document as the first chests committed to it: no earn-only list, a walk that climbs anywhere. */
 const V1_DOCUMENT = '{"v":1,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]]}';
+/** A pool document of the second version: earn-only tiers named, the legacy odds. */
+const V2_DOCUMENT = '{"v":2,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]],"earn_only":["legendary","mythic","primordial"]}';
 /** A seed whose first 8 hex characters are `tier` and next 8 are `start`. */
 const seedOf = (tier: number, start: number) => `${tier.toString(16).padStart(8, '0')}${start.toString(16).padStart(8, '0')}${'0'.repeat(48)}`;
 
 describe('odds', () => {
   it('every level adds up to 10 000 and never loses weight at the top as effort grows', () => {
-    for (const level of [0, 1, 2, 3] as EffortLevel[]) {
-      expect(CHEST_TIERS.reduce((total, tier) => total + ODDS_TABLE[level][tier], 0)).toBe(ODDS_TOTAL);
+    for (const table of [ODDS_TABLE, LEGACY_ODDS_TABLE]) {
+      for (const level of Object.keys(table).map(Number)) {
+        expect(CHEST_TIERS.reduce((total, tier) => total + table[level][tier], 0)).toBe(ODDS_TOTAL);
+      }
     }
-    for (const tier of ['epic', 'legendary', 'mythic', 'primordial'] as const) {
+    for (const tier of ['epic', 'legendary', 'mythic'] as const) {
       expect(ODDS_TABLE[1][tier]).toBeGreaterThan(ODDS_TABLE[0][tier]);
       expect(ODDS_TABLE[2][tier]).toBeGreaterThan(ODDS_TABLE[1][tier]);
       expect(ODDS_TABLE[3][tier]).toBeGreaterThan(ODDS_TABLE[2][tier]);
     }
-    expect(ODDS_TABLE[0].primordial).toBe(0);
+  });
+
+  it('gives the one-of-one no weight on any ordinary day: only the crown level can roll it', () => {
+    for (const level of [0, 1, 2, 3]) expect(ODDS_TABLE[level].primordial).toBe(0);
+    expect(ODDS_TABLE[CROWN_LEVEL].primordial).toBe(10);
+    // Every possible tier roll of every ordinary level, with nothing held: never the primordial.
+    for (const level of [0, 1, 2, 3] as EffortLevel[]) {
+      for (const roll of [0, 5000, 9989, 9990, 9998, 9999]) {
+        expect(rollChest({ seed: seedOf(roll, 0), level, pool: POOL, unavailable: [], earnOnly: EARN_ONLY }).tier).not.toBe('primordial');
+      }
+    }
+    expect(rollChest({ seed: seedOf(9990, 0), level: 4, pool: POOL, unavailable: [], earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', key: 'p1' });
+    expect(rollChest({ seed: seedOf(9989, 0), level: 4, pool: POOL, unavailable: [], earnOnly: EARN_ONLY }).rolled_tier).toBe('mythic');
+  });
+
+  it('says how each earn-only tier is earned from the table itself', () => {
+    expect(EARN_ONLY_RULES.primordial?.levels).toEqual([CROWN_LEVEL]);
+    expect(EARN_ONLY_RULES.legendary?.levels).toEqual([0, 1, 2, 3, 4]);
+    expect(EARN_ONLY_RULES.mythic?.levels).toEqual([0, 1, 2, 3, 4]);
+    expect(EARN_ONLY_RULES.primordial?.how.en).toContain('last trail');
+  });
+
+  it('reaches the crown level only at level 3 on the day that completes the whole program', () => {
+    const full = { verified: 12, gradable: 12, clean: true, gold: true };
+    expect(effortLevel({ ...full, crown: true })).toBe(4);
+    expect(effortLevel({ ...full, crown: false })).toBe(3);
+    expect(effortLevel(full)).toBe(3);
+    expect(effortLevel({ ...full, clean: false, crown: true })).toBe(2);
+    expect(effortLevel({ ...full, verified: 0, gradable: 0, clean: false, crown: true })).toBe(1);
+    expect(effortLevel({ verified: 12, gradable: 12, clean: true, gold: false, crown: true })).toBe(2);
+    // A crown without the gold day is not a crown, whatever is passed in.
+    expect(effortOf({ verified: 12, self_reported: 0 }, true, false, true)).toMatchObject({ gold: false, crown: false });
+    expect(effortLevel(effortOf({ verified: 12, self_reported: 0 }, true, true, true))).toBe(4);
   });
 
   it('gives one effort point each for a server-graded day, a clean day and the day that finishes the trail', () => {
@@ -65,10 +105,10 @@ describe('odds', () => {
   });
 
   it('reads the effort of a day from the proof of its stamp, and a day nobody graded is never a clean day', () => {
-    expect(effortOf({ verified: 10, self_reported: 2, participation: 6, legacy: 0, evidence: 'x' }, true, false)).toEqual({ verified: 10, gradable: 12, clean: true, gold: false });
-    expect(effortOf({ verified: 10, self_reported: 2 }, false, true)).toEqual({ verified: 10, gradable: 12, clean: false, gold: true });
-    expect(effortOf(undefined, true, false)).toEqual({ verified: 0, gradable: 0, clean: false, gold: false });
-    expect(effortOf({ verified: '10', self_reported: -1 }, true, false)).toEqual({ verified: 0, gradable: 0, clean: false, gold: false });
+    expect(effortOf({ verified: 10, self_reported: 2, participation: 6, legacy: 0, evidence: 'x' }, true, false)).toEqual({ verified: 10, gradable: 12, clean: true, gold: false, crown: false });
+    expect(effortOf({ verified: 10, self_reported: 2 }, false, true)).toEqual({ verified: 10, gradable: 12, clean: false, gold: true, crown: false });
+    expect(effortOf(undefined, true, false)).toEqual({ verified: 0, gradable: 0, clean: false, gold: false, crown: false });
+    expect(effortOf({ verified: '10', self_reported: -1 }, true, false)).toEqual({ verified: 0, gradable: 0, clean: false, gold: false, crown: false });
     expect(effortLevel(effortOf({ verified: 10, self_reported: 2 }, true, true))).toBe(3);
   });
 });
@@ -90,10 +130,18 @@ describe('pool', () => {
 
   it('hashes one exact document, and reads it back', () => {
     const document = poolDocument(POOL, EARN_ONLY);
-    expect(document).toBe('{"v":2,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]],"earn_only":["legendary","mythic","primordial"]}');
+    expect(document).toBe(
+      '{"v":3,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]],"earn_only":["legendary","mythic","primordial"],' +
+        '"odds":[[7000,2500,450,45,5,0],[6000,3000,880,100,20,0],[5000,3400,1350,210,40,0],[3800,3700,2000,400,100,0],[3800,3700,2000,400,90,10]]}',
+    );
     expect(poolHash(POOL, EARN_ONLY)).toBe(sha256Hex(document));
-    expect(parsePoolDocument(document)).toEqual({ pool: POOL, earnOnly: EARN_ONLY });
-    expect(parsePoolDocument(V1_DOCUMENT)).toEqual({ pool: POOL, earnOnly: null });
+    expect(parsePoolDocument(document)).toEqual({ pool: POOL, earnOnly: EARN_ONLY, odds: ODDS_TABLE, version: 3 });
+    expect(parsePoolDocument(V1_DOCUMENT)).toEqual({ pool: POOL, earnOnly: null, odds: LEGACY_ODDS_TABLE, version: 1 });
+    expect(parsePoolDocument(V2_DOCUMENT)).toEqual({ pool: POOL, earnOnly: EARN_ONLY, odds: LEGACY_ODDS_TABLE, version: 2 });
+    // A version 3 document must carry odds that add up: a row that does not is not a pool.
+    expect(parsePoolDocument(document.replace('[7000,2500,450,45,5,0]', '[7000,2500,450,45,5,1]'))).toBeNull();
+    expect(parsePoolDocument(document.replace(/,"odds":.*\}$/, '}'))).toBeNull();
+    expect(poolHash(POOL, EARN_ONLY, LEGACY_ODDS_TABLE)).not.toBe(poolHash(POOL, EARN_ONLY));
     expect(parsePoolDocument('{"v":2,"tiers":[]}')).toBeNull();
     expect(parsePoolDocument(document.replace('"earn_only":["legendary","mythic","primordial"]', '"earn_only":["gold"]'))).toBeNull();
     expect(parsePoolDocument('not json')).toBeNull();
@@ -107,7 +155,8 @@ describe('commitment', () => {
     const value = commitValue({ slot: 510164365, level: 2, poolHash: 'a1b2c3d4e5f6'.padEnd(64, '0') });
     expect(value).toBe('510164365.2.a1b2c3d4');
     expect(parseCommit(value)).toEqual({ slot: 510164365, level: 2, pool: 'a1b2c3d4' });
-    for (const bad of ['', '510164365', '510164365.4.a1b2c3d4', '0.1.a1b2c3d4', '510164365.1.A1B2C3D4', '510164365.1.a1b2c3d', '1e9.1.a1b2c3d4', null, undefined]) {
+    expect(parseCommit('510164365.4.a1b2c3d4')).toEqual({ slot: 510164365, level: 4, pool: 'a1b2c3d4' });
+    for (const bad of ['', '510164365', '510164365.5.a1b2c3d4', '0.1.a1b2c3d4', '510164365.1.A1B2C3D4', '510164365.1.a1b2c3d', '1e9.1.a1b2c3d4', null, undefined]) {
       expect(parseCommit(bad)).toBeNull();
     }
   });
@@ -189,9 +238,12 @@ describe('seed and roll', () => {
     expect(tierAt(0, 9500)).toBe('epic');
     expect(tierAt(0, 9995)).toBe('mythic');
     expect(tierAt(0, 9999)).toBe('mythic');
-    expect(tierAt(1, 9999)).toBe('primordial');
-    expect(tierAt(3, 9989)).toBe('mythic');
-    expect(tierAt(3, 9990)).toBe('primordial');
+    expect(tierAt(1, 9999)).toBe('mythic');
+    expect(tierAt(3, 9899)).toBe('legendary');
+    expect(tierAt(3, 9900)).toBe('mythic');
+    expect(tierAt(3, 9999)).toBe('mythic');
+    expect(tierAt(4, 9989)).toBe('mythic');
+    expect(tierAt(4, 9990)).toBe('primordial');
     expect(tierAt(3, 10_000 + 3799)).toBe('common');
   });
 
@@ -221,9 +273,9 @@ describe('seed and roll', () => {
     expect(bought).toMatchObject({ rolled_tier: 'common', tier: null, key: null });
     expect(bought.steps[bought.steps.length - 1]).toBe('nothing left in any tier the walk may enter');
     // The same learner still gets an earn-only Tera when the seed itself rolls one.
-    expect(rollChest({ seed: seedOf(9990, 0), level: 3, pool: POOL, unavailable: forSale, earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', tier: 'primordial', key: 'p1' });
+    expect(rollChest({ seed: seedOf(9990, 0), level: 4, pool: POOL, unavailable: forSale, earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', tier: 'primordial', key: 'p1' });
     // And a rolled earn-only tier with nothing left walks DOWN, through the earn-only tiers below it.
-    expect(rollChest({ seed: seedOf(9990, 0), level: 3, pool: POOL, unavailable: ['p1'], earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', tier: 'mythic', key: 'm1' });
+    expect(rollChest({ seed: seedOf(9990, 0), level: 4, pool: POOL, unavailable: ['p1'], earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', tier: 'mythic', key: 'm1' });
   });
 
   it('keeps the walk of the first pools (version 1) as it was, so the chests rolled then recompute the same', () => {
@@ -235,6 +287,13 @@ describe('seed and roll', () => {
     expect(old.ok && old.tier !== null && ['legendary', 'mythic', 'primordial', 'epic', 'rare', 'common'].includes(old.tier)).toBe(true);
     const everything = Object.values(POOL).flat();
     expect(rollChest({ seed: seedOf(7000, 1), level: 0, pool: POOL, unavailable: everything })).toMatchObject({ rolled_tier: 'rare', tier: null, key: null });
+    // The chests of versions 1 and 2 keep the odds they committed to: there, level 1 could roll the primordial at 9999.
+    const legacy = (document: string) => recomputeChest({ blockhash: 'B', certification: 'C', day: 1, commit: commitValue({ slot: 5, level: 1, poolHash: sha256Hex(document) }), poolDocument: document, unavailable: [] });
+    expect(oddsOf(1, LEGACY_ODDS_TABLE).find((entry) => entry.tier === 'primordial')?.weight).toBe(1);
+    expect(oddsOf(4, LEGACY_ODDS_TABLE)).toEqual(oddsOf(3, LEGACY_ODDS_TABLE));
+    expect(legacy(V1_DOCUMENT).ok && legacy(V2_DOCUMENT).ok).toBe(true);
+    expect(rollChest({ seed: seedOf(9999, 0), level: 1, pool: POOL, unavailable: [], odds: LEGACY_ODDS_TABLE }).rolled_tier).toBe('primordial');
+    expect(rollChest({ seed: seedOf(9999, 0), level: 1, pool: POOL, unavailable: [] }).rolled_tier).toBe('mythic');
   });
 
   it('spreads many seeds over the tiers about as the table says', () => {
