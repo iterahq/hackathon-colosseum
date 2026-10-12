@@ -128,19 +128,13 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
           {t('header.id.profile')}
         </Link>
         {!wallet && (
-          <Link to="/passport" role="menuitem" className={`${MENU_ITEM} text-[#3FD17F]`} onClick={onClose} data-testid="header-menu-link-wallet">
+          <Link to="/certifications" role="menuitem" className={`${MENU_ITEM} text-[#3FD17F]`} onClick={onClose} data-testid="header-menu-link-wallet">
             {t('header.id.linkWallet')}
           </Link>
         )}
         <Link to="/artifacts" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-files">
           {t('header.nav.files')}
         </Link>
-        {FOCUS_BUILD && (
-          <Link to="/shop" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-shop">
-            <HeaderIcon name="shop" size={16} />
-            {t('header.nav.shop')}
-          </Link>
-        )}
         {!FOCUS_BUILD && (
           <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
             {t('invite.menu')}
@@ -156,9 +150,11 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
           <HeaderIcon name="external" size={16} />
           {t('header.id.help')}
         </a>
-        <Link to="/world" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-world">
-          {t('world.title')}
-        </Link>
+        {!FOCUS_BUILD && (
+          <Link to="/world" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-world">
+            {t('world.title')}
+          </Link>
+        )}
         <MenuLegalRow>
           <a href={LEGAL_AND_HELP_URLS.terms} target="_blank" rel="noreferrer" role="menuitem" className={MENU_LEGAL} onClick={onClose}>
             {t('header.id.terms')}

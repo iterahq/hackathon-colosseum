@@ -54,6 +54,10 @@ describe('activeNavOf', () => {
     expect(activeNavOf('/program/itera-v2', false)).toBe('courses');
     expect(activeNavOf('/course/react-do-zero', false)).toBe('courses');
     expect(activeNavOf('/passport')).toBe('passport');
+    expect(activeNavOf('/certifications')).toBe('passport');
+    expect(activeNavOf('/certifications/some-trail')).toBe('passport');
+    expect(activeNavOf('/world')).toBe('world');
+    expect(activeNavOf('/shop')).toBe('shop');
     expect(activeNavOf('/artifacts/abc')).toBe('files');
     expect(activeNavOf('/talent')).toBe('talent');
     expect(activeNavOf('/verify')).toBe('verify');

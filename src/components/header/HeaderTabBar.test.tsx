@@ -9,18 +9,33 @@ const openInvites = vi.fn(() => 0);
 vi.mock('@/hooks/useInvites', () => ({ useOpenInviteCount: () => openInvites() }));
 
 describe('HeaderTabBar', () => {
-  it('gives every nav entry its own column, so a sixth entry never wraps to a second row', () => {
+  it('gives every nav entry its own column, so no entry wraps to a second row', () => {
     render(
       <I18nProvider>
         <MemoryRouter>
-          <HeaderTabBar active="bounties" />
+          <HeaderTabBar active="shop" />
         </MemoryRouter>
       </I18nProvider>,
     );
     const list = screen.getByTestId('header-tab-bar').querySelector('ul')!;
     expect(list.style.gridTemplateColumns).toBe(`repeat(${HEADER_NAV.length}, minmax(0, 1fr))`);
     expect(list.querySelectorAll('li')).toHaveLength(HEADER_NAV.length);
-    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/bounties');
+    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/shop');
+  });
+
+  it('walks the demo in order: Trails, Certifications, World, Shop', () => {
+    localStorage.setItem('itera.locale', 'en');
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <HeaderTabBar active="trails" />
+        </MemoryRouter>
+      </I18nProvider>,
+    );
+    const links = screen.getAllByRole('link');
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/', '/certifications', '/world', '/shop']);
+    expect(links.map((a) => a.textContent)).toEqual(['Trails', 'Certs', 'World', 'Shop']);
+    localStorage.removeItem('itera.locale');
   });
 });
 
@@ -38,27 +53,25 @@ describe('invite badge', () => {
     show();
     expect(screen.queryByTestId('invite-badge')).toBeNull();
   });
-  it('shows the count on the Bounties tab only', () => {
+  it('draws nothing with open invites either: Bounties is not a tab on the focus build', () => {
     openInvites.mockReturnValue(2);
     show();
-    const badge = screen.getByTestId('invite-badge');
-    expect(badge).toHaveTextContent('2');
-    expect(badge).toHaveAccessibleName('Missões enviadas para você: 2');
-    expect(badge.closest('a')).toHaveAttribute('href', '/bounties');
-    expect(screen.getAllByTestId('invite-badge')).toHaveLength(1);
+    expect(screen.queryByTestId('invite-badge')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Miss|Bount/ })).toBeNull();
   });
 });
 
 describe('HEADER_NAV', () => {
-  it('puts Verify in the signed-in nav and keeps Files in the account menu', () => {
+  it('keeps Verify in the full nav and Files in the account menu', () => {
     expect(FULL_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'courses', 'passport', 'shop', 'bounties', 'verify']);
-    expect(HEADER_NAV.find((n) => n.id === 'verify')?.to).toBe('/verify');
+    expect(FULL_HEADER_NAV.find((n) => n.id === 'verify')?.to).toBe('/verify');
   });
-  it('points the Talent tab at the public board', () => {
-    expect(FOCUS_HEADER_NAV.find((n) => n.id === 'talent')?.to).toBe('/talent');
-  });
-  it('shows the five tabs of the loop on the focus build, the courses and the shop left out', () => {
-    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'bounties', 'talent', 'verify']);
+  it('shows the four tabs of the demo on the focus build, World before Shop', () => {
+    expect(FOCUS_HEADER_NAV.map((n) => n.id)).toEqual(['trails', 'passport', 'world', 'shop']);
+    expect(FOCUS_HEADER_NAV.map((n) => n.to)).toEqual(['/', '/certifications', '/world', '/shop']);
     expect(HEADER_NAV).toBe(FOCUS_HEADER_NAV);
+  });
+  it('hides Talent, Bounties and Verify from the tabs', () => {
+    for (const id of ['talent', 'bounties', 'verify']) expect(FOCUS_HEADER_NAV.find((n) => n.id === id)).toBeUndefined();
   });
 });

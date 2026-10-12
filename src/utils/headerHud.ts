@@ -41,6 +41,8 @@ export function activeNavOf(pathname: string, focus = FOCUS_BUILD): NavId | null
   if (pathname.startsWith('/program/')) return focus ? 'trails' : 'courses';
   if (pathname === '/catalog' || pathname.startsWith('/catalog/') || pathname.startsWith('/course/')) return 'courses';
   if (pathname === '/passport' || pathname.startsWith('/passport/')) return 'passport';
+  if (pathname === '/certifications' || pathname.startsWith('/certifications/')) return 'passport';
+  if (pathname === '/world' || pathname.startsWith('/world/')) return 'world';
   if (pathname === '/artifacts' || pathname.startsWith('/artifacts/')) return 'files';
   if (pathname === '/shop' || pathname.startsWith('/shop/')) return 'shop';
   if (pathname === '/bounties' || pathname.startsWith('/bounties/')) return 'bounties';
