@@ -31,7 +31,7 @@ export function CurlLine({ command }: { command: string }) {
   const { t } = useI18n();
   return (
     <div className="flex min-w-0 flex-col gap-2" data-testid="raw-curl">
-      <pre className="max-w-full overflow-x-auto rounded-lg border border-[#262320] bg-[#141210] p-2.5 [font:500_11px/1.5_JetBrains_Mono] text-[#C9BFB0]">{command}</pre>
+      <pre tabIndex={0} className="max-w-full overflow-x-auto rounded-lg border border-[#262320] bg-[#141210] p-2.5 [font:500_11px/1.5_JetBrains_Mono] text-[#C9BFB0]">{command}</pre>
       <div>
         <CopyButton value={command} label={t('verify.copyCommand')} doneLabel={t('bounty.copied')} />
       </div>
