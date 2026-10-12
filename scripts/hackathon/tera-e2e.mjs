@@ -132,6 +132,8 @@ async function chestPart() {
   check('the seed is sha256 of the blockhash, the certification and the day', redo.result.ok && redo.result.seed === chest.seed.value && redo.result.seed === chestSeed(redo.blockhash, certification, 1));
   check('recomputing the roll from public data gives the same Tera', redo.result.ok && redo.result.key === chest.tera.key && redo.result.tier === chest.tier, `${redo.result.key}`);
   check('a tier and a key sent by the client decided nothing', chest.tera.key === redo.result.key && chest.level === commit.level && chest.tera.key !== 'brand_phoenix_full');
+  const poolDoc = JSON.parse(redo.published.recompute.pool_document);
+  check('the committed pool names the tiers that are never sold: the walk cannot climb into one', poolDoc.v === 2 && JSON.stringify(poolDoc.earn_only) === JSON.stringify(['legendary', 'mythic', 'primordial']) && JSON.stringify(redo.published.recompute.earn_only) === JSON.stringify(poolDoc.earn_only));
   check('the public read needs no session and names the chain inputs', redo.published.recompute.inputs.commit === commitText && redo.published.recompute.inputs.commit_tx === stampTx && redo.published.chest.id === chest.id);
   report.chests[0] = { ...report.chests[0], id: chest.id, tera: chest.tera.key, tier: chest.tier, asset: chest.tera.asset, seed_slot: redo.slot };
 
