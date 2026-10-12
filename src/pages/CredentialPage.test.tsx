@@ -65,7 +65,7 @@ describe('CredentialPage (public)', () => {
     useCredential.mockReturnValue({ isPending: false, isError: false, data: verified() });
     show();
     expect(screen.getByTestId('read-without-itera')).toHaveTextContent('não do servidor da Itera');
-    expect(await screen.findByText('Esta conta não existe na devnet.')).toBeInTheDocument();
+    expect(await screen.findByText(/Este endereço não tem conta na devnet/)).toBeInTheDocument();
     expect(readAccount).toHaveBeenCalledTimes(1);
     expect(readAccount.mock.calls[0][0]).toBe('Asset1111111111');
     expect(screen.getByRole('link', { name: /O que dura/ })).toHaveAttribute('href', '/verify#durable');
