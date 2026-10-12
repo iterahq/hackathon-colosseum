@@ -156,6 +156,9 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
           <HeaderIcon name="external" size={16} />
           {t('header.id.help')}
         </a>
+        <Link to="/world" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-world">
+          {t('world.title')}
+        </Link>
         <MenuLegalRow>
           <a href={LEGAL_AND_HELP_URLS.terms} target="_blank" rel="noreferrer" role="menuitem" className={MENU_LEGAL} onClick={onClose}>
             {t('header.id.terms')}
