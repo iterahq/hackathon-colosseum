@@ -159,7 +159,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
             {hero && <span className="max-w-full truncate [font:600_10px/1.5_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A]" data-testid="day-chest-day">{t('chest.day', { n })}</span>}
             <span className={`[font:400_12px/1.3_Inter] text-[#C9BFB0] ${hero ? 'mt-1' : 'line-clamp-1'}`} data-testid="day-chest-yours">{t('chest.earned')}</span>
             <span className={`flex max-w-full flex-wrap items-center gap-x-4 ${hero ? 'justify-center' : '-mb-1'}`}>
-              <Link to="/world#cast" className={`${LINK} whitespace-nowrap ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:700_11px_JetBrains_Mono]`}`} data-testid="day-chest-world" onClick={(e) => e.stopPropagation()}>
+              <Link to="/world" className={`${LINK} whitespace-nowrap ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:700_11px_JetBrains_Mono]`}`} data-testid="day-chest-world" onClick={(e) => e.stopPropagation()}>
                 {t('chest.world')} →
               </Link>
               <Link to={chestVerifyPath(chest.id)} className={`${LINK} whitespace-nowrap !text-[#A0978A] ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:600_11px_JetBrains_Mono]`}`} data-testid="day-chest-verify" onClick={(e) => e.stopPropagation()}>

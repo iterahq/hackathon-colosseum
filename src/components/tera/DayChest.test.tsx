@@ -61,7 +61,7 @@ describe('DayChest', () => {
     expect(screen.queryByTestId('day-chest-earn-only')).not.toBeInTheDocument();
     expect(screen.getByTestId('day-chest-yours')).toHaveTextContent('Ganho estudando. Preso à sua carteira.');
     expect(screen.getByTestId('day-chest-won')).toHaveTextContent('Você ganhou um avatar');
-    expect(screen.getByTestId('day-chest-world')).toHaveAttribute('href', '/world#cast');
+    expect(screen.getByTestId('day-chest-world')).toHaveAttribute('href', '/world');
     expect(screen.getByTestId('day-chest-verify')).toHaveAttribute('href', '/verify?chest=chest_fixture_1#chest');
     expect(screen.getByTestId('day-chest-tera')).toHaveAttribute('src', expect.stringContaining('base_lider_128.webp'));
   });

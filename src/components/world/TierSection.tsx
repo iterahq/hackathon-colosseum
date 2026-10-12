@@ -1,6 +1,7 @@
 import { TIER_LORE, type LoreTier } from '@/content/teraLore';
 import type { TeraCatalog } from '@/types/tera';
 import { castKeysOfTier } from './castArt';
+import { FOCUS_BUILD } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { ObtainBadges } from './ObtainBadges';
 import { earnHow, obtainWays, type OwnedTeras } from './obtain';
@@ -13,7 +14,8 @@ export function TierSection({ tier, catalog, owned = null, onOpen }: { tier: Lor
   const info = TIER_LORE(tier, locale);
   const keys = castKeysOfTier(tier, catalog.avatars);
   const ways = obtainWays(tier, catalog);
-  const how = earnHow(tier, catalog, locale);
+  // The focus build lets the badges say it: the catalog's sentence about an earn-only tier is odds and effort levels.
+  const how = FOCUS_BUILD ? null : earnHow(tier, catalog, locale);
   if (keys.length === 0) return null;
   const solo = keys.length === 1;
   return (

@@ -164,7 +164,7 @@ export default function ShopPage() {
         targetTitle={targetCert?.title ?? null}
         outfit={buying?.kind === 'outfit' ? buying.key : companion.outfit}
         art={bought ? <LearnerAvatar avatar={bought} size="xl" /> : undefined}
-        action={bought && purchase.state.phase === 'paid' && avatar.key !== bought.key ? { label: t('tryon.equipNow'), onClick: () => (equipAvatar.mutate(bought), purchase.reset()) } : null}
+        action={bought && purchase.state.phase === 'paid' && avatar.key !== bought.key ? { label: t('shop.avatar.useNow'), onClick: () => (equipAvatar.mutate(bought), purchase.reset()) } : null}
         onRetry={purchase.retry}
         onFund={() => void purchase.fund()}
         onClose={purchase.reset}
@@ -176,7 +176,7 @@ export default function ShopPage() {
         targetTitle={targetCert?.title ?? null}
         outfit={crystalItem?.kind === 'outfit' ? crystalItem.key : companion.outfit}
         art={crystalBought ? <LearnerAvatar avatar={crystalBought} size="xl" /> : undefined}
-        action={crystalBought && crystalPay.state.phase === 'paid' && avatar.key !== crystalBought.key ? { label: t('tryon.equipNow'), onClick: () => (equipAvatar.mutate(crystalBought), crystalPay.reset()) } : null}
+        action={crystalBought && crystalPay.state.phase === 'paid' && avatar.key !== crystalBought.key ? { label: t('shop.avatar.useNow'), onClick: () => (equipAvatar.mutate(crystalBought), crystalPay.reset()) } : null}
         onRetry={crystalPay.retry}
         onFund={crystalPay.reset}
         onClose={crystalPay.reset}

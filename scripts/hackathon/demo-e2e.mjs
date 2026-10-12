@@ -5,8 +5,9 @@
 //   3 world   /world: the Tera just earned is unlocked, every other one is locked, tiers say how they are obtained
 //   4 profile /profile: the wallet balance in SOL
 //   5 buy     /shop: buys one Tera with SOL through a fake Phantom (devnet), wears it, and the profile shows it
+//   6 world   /world again: the bought Tera is unlocked too, and says it was bought
 //
-//   node scripts/hackathon/demo-e2e.mjs --base http://127.0.0.1:5199 --out /tmp/demo [--wallet-file F] [--steps 1,2,3,4,5]
+//   node scripts/hackathon/demo-e2e.mjs --base http://127.0.0.1:5199 --out /tmp/demo [--wallet-file F] [--steps 1,2,3,4,5,6]
 //     [--fund 6000000]   lamports the authority sends the throwaway wallet before step 4 when it holds less
 //     [--buy <item key>] the Tera to buy (default: the first one of the cheapest tier on the shelf)
 // Environment (source ~/.config/itera-hackathon/supabase.env): HACKATHON_DB_PASSWORD, SUPABASE_ACCESS_TOKEN.
@@ -24,7 +25,7 @@ const option = (name, fallback) => (args.includes(`--${name}`) ? args[args.index
 const BASE = option('base', 'https://hackathon.iterahq.dev').replace(/\/$/, '');
 const OUT = option('out', '/tmp/hk-demo-e2e');
 const WALLET_FILE = option('wallet-file', `${OUT}/wallet.json`);
-const STEPS = new Set(option('steps', '1,2,3,4,5').split(',').map(Number));
+const STEPS = new Set(option('steps', '1,2,3,4,5,6').split(',').map(Number));
 const FUND_LAMPORTS = BigInt(option('fund', '6000000'));
 const BUY_KEY = option('buy', '');
 const LESSON_ID = '0e7d6618-f9ba-46ba-bf28-71cf86f32716';
@@ -289,10 +290,18 @@ async function seeWorld(page, earnedKey, label) {
   const cards = await page.locator('[data-testid^="world-tier-"] [data-testid="world-tera"]').evaluateAll((list) => list.map((el) => ({ key: el.getAttribute('data-tera'), hold: el.getAttribute('data-hold'), origin: el.getAttribute('data-origin') })));
   const unlocked = cards.filter((card) => card.hold === 'unlocked');
   const text = await page.getByTestId('world-page').innerText();
-  await page.getByTestId('world-collection').scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, -90));
+  // The first screen of the world already shows what the wallet holds; one link goes down to the cast.
   await shot(page, `world-${label}`);
-  await shot(page, `world-${label}-full`, true);
+  await page.getByTestId('world-collection-all').click();
+  await page.waitForTimeout(700);
+  await shot(page, `world-${label}-cast`);
+  const tier = page.locator(`[data-testid^="world-tier-"] [data-testid="world-tera"][data-tera="${earnedKey}"]`);
+  if (await tier.count()) {
+    await tier.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, 160));
+    await page.waitForTimeout(500);
+    await shot(page, `world-${label}-tier`);
+  }
   return { cards, unlocked, text, count: await page.getByTestId('world-collection-count').innerText(), earnedHold: cards.find((card) => card.key === earnedKey) ?? null };
 }
 
@@ -369,7 +378,7 @@ try {
   if (STEPS.has(4)) {
     const held = BigInt((await rpc('getBalance', [wallet.address, { commitment: 'confirmed' }])).value);
     if (held < FUND_LAMPORTS) {
-      const signature = await fund(loadAuthority(), wallet.address, Number(FUND_LAMPORTS - held));
+      const signature = await fund(loadAuthority(), wallet.address, FUND_LAMPORTS - held);
       log(`funded the throwaway wallet with ${FUND_LAMPORTS - held} lamports: ${signature}`);
       await sleep(3000);
     }
@@ -400,7 +409,10 @@ try {
     await shot(page, 'profile-wearing-bought');
     await picker.scrollIntoViewIfNeeded();
     await shot(page, 'profile-picker');
-    const world = await seeWorld(page, report.purchase.key, 'after-purchase');
+  }
+  if (STEPS.has(6)) {
+    const bought = report.purchase?.key ?? psql(`select coalesce(item_key,'') from itera.avatar_assets where user_id = :'u'::uuid and origin = 'bought' and mint_status = 'minted' order by minted_at desc limit 1;`, { u: wallet.userId });
+    const world = await seeWorld(page, bought, 'after-purchase');
     check('world: the bought Tera is unlocked too and says it was bought', world.earnedHold?.hold === 'unlocked' && world.earnedHold?.origin === 'bought' && world.unlocked.length === 2, `${JSON.stringify(world.earnedHold)} · ${world.count}`);
   }
 } catch (error) {
