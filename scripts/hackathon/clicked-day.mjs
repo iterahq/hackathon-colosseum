@@ -3,7 +3,8 @@
 // the lesson player, with a brand-new wallet, then proves the certification (UI + API + chain).
 //   flock /tmp/hk/orch/locks/browser.lock node scripts/hackathon/clicked-day.mjs \
 //     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--lang pt|en] [--stop-after N] [--verify-only] [--guest]
-//     [--viewport 1440x900] [--end-viewport 390x844] [--home-first]
+//     [--viewport 1440x900] [--end-viewport 390x844] [--home-first] [--chest]
+// `--chest` follows the chest of the day on the stamp screen (sealed, then the Tera), and looks for it again after a reload.
 // `--end-viewport` resizes the window before the last activity, so the stamp screen is seen at that size.
 // `--home-first` opens the dashboard before the lesson, as a person who has just signed in does.
 // `--guest` plays the landing's first path: the whole day at /try with NO session (answers kept in the browser),
@@ -30,6 +31,7 @@ const STOP_AFTER = Number(option('stop-after', '0'));
 const VERIFY_ONLY = args.includes('--verify-only');
 const GUEST = args.includes('--guest');
 const HOME_FIRST = args.includes('--home-first');
+const CHEST = args.includes('--chest');
 const size = (text) => (/^\d+x\d+$/.test(text ?? '') ? { width: Number(text.split('x')[0]), height: Number(text.split('x')[1]) } : null);
 const VIEWPORT = size(option('viewport', '')) ?? { width: 1280, height: 900 };
 const END_VIEWPORT = size(option('end-viewport', ''));
@@ -449,6 +451,37 @@ async function runLesson(wallet, activities) {
       } else log('NOTE: no loop panel at the end of the day');
       await page.waitForTimeout(500);
       await shot(page, 'end-of-day-ceremony');
+      if (CHEST) {
+        // The chest of the day: one row under the chain row, sealed, then the Tera. It must never push the way out of view.
+        const chest = page.getByTestId('day-chest');
+        const phases = [];
+        const started = Date.now();
+        while (Date.now() - started < 60_000) {
+          const phase = await chest.getAttribute('data-phase').catch(() => null);
+          if (phase && phase !== phases[phases.length - 1]) {
+            phases.push(phase);
+            await page.waitForTimeout(phase === 'revealed' ? 900 : 150);
+            await shot(page, `chest-${phase}`);
+            log(`chest ${phase} at +${Math.round((Date.now() - started) / 100) / 10}s: ${(await chest.innerText().catch(() => '')).replace(/\s+/g, ' ')}`);
+          }
+          if (phase === 'revealed') break;
+          await page.waitForTimeout(250);
+        }
+        proof('chest: the row appeared under the stamp and ended on the Tera', phases[phases.length - 1] === 'revealed', phases.join(' -> ') || 'no chest row');
+        const box = await chest.boundingBox().catch(() => null);
+        const next = await page.locator('[data-testid="lesson-next-cta"], [data-testid="lesson-finish-cta"]').first().boundingBox().catch(() => null);
+        const view = page.viewportSize();
+        proof('chest: the next-lesson button is still inside the screen, below the chest', Boolean(box && next && view && next.y >= box.y + box.height && next.y + next.height <= view.height), `chest ${box ? Math.round(box.y) : '?'}-${box ? Math.round(box.y + box.height) : '?'} · button ${next ? Math.round(next.y) : '?'}-${next ? Math.round(next.y + next.height) : '?'} · screen ${view?.height}`);
+        const inner = await chest.evaluate((el) => [el.scrollHeight, el.clientHeight, el.scrollWidth, el.clientWidth]).catch(() => null);
+        proof('chest: nothing scrolls inside the row', Boolean(inner && inner[0] <= inner[1] && inner[2] <= inner[3]), String(inner));
+        const verify = await page.getByTestId('day-chest-verify').getAttribute('href').catch(() => null);
+        proof('chest: the row links to the page where anyone rolls it again', /^\/verify\?chest=.+#chest$/.test(verify ?? ''), verify ?? '');
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        const again = await chest.waitFor({ state: 'visible', timeout: 30_000 }).then(() => chest.getAttribute('data-phase'), () => null);
+        await page.waitForTimeout(800);
+        await shot(page, 'chest-after-reload');
+        proof('chest: after a reload the chest of the day is found again, settled', again === 'revealed', String(again));
+      }
       const text = (await page.getByTestId('lesson-main').innerText().catch(() => '')).replace(/\s+/g, ' ');
       log(`end of day screen: ${text.slice(0, 300)}`);
     }
