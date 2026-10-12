@@ -41,7 +41,9 @@ export function toChest(v: unknown): Chest | null {
     trail: text(r.trail),
     certification: text(r.certification),
     status: status === 'minted' && !tera ? 'rolling' : status,
-    commit: int(commit.slot) != null ? { slot: commit.slot as number, tx: text(commit.tx) } : null,
+    commit: int(commit.slot) != null ? { slot: commit.slot as number, tx: text(commit.tx), value: text(commit.value) || undefined, txSlot: int(commit.tx_slot), via: text(commit.via) || undefined } : null,
+    level: int(r.level),
+    effort: r.effort && typeof r.effort === 'object' ? { verified: int(row(r.effort).verified) ?? 0, gradable: int(row(r.effort).gradable) ?? 0, clean: row(r.effort).clean === true, gold: row(r.effort).gold === true } : null,
     seed: int(seed.slot) != null && text(seed.blockhash) ? { slot: seed.slot as number, blockhash: text(seed.blockhash) } : null,
     tier: orNull(r.tier),
     odds: (Array.isArray(r.odds) ? r.odds : []).map(row).filter((o) => text(o.tier) && int(o.weight) != null).map((o) => ({ tier: text(o.tier), weight: o.weight as number })),
@@ -62,7 +64,8 @@ export function toRecompute(v: unknown): ChestRecompute | null {
   if (!formula) return null;
   const inputs = Object.fromEntries(Object.entries(row(r.inputs)).filter((e): e is [string, string | number] => typeof e[1] === 'string' || typeof e[1] === 'number'));
   const list = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : []);
-  return { formula, inputs, pool: list(r.pool), steps: list(r.steps) };
+  const itera = row(r.from_itera);
+  return { formula, inputs, poolDocument: text(r.pool_document), unavailable: list(r.unavailable), held: list(itera.held), exhausted: list(itera.exhausted), fromChain: list(r.from_chain), steps: list(r.steps) };
 }
 
 /** The signed-in learner's chests, newest first. `enabled: false` on any failure. */

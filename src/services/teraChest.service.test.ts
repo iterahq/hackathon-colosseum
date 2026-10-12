@@ -39,7 +39,9 @@ describe('toRecompute', () => {
     const r = toRecompute(WIRE_RECOMPUTE);
     expect(r?.formula).toContain('sha256');
     expect(r?.inputs.day).toBe(3);
-    expect(r?.pool).toEqual(['base_lider', 'base_livre', 'base_natural']);
+    expect(r?.poolDocument).toContain('base_lider');
+    expect([r?.unavailable, r?.held, r?.exhausted]).toEqual([['base_livre'], ['base_livre'], []]);
+    expect(r?.fromChain).toContain('blockhash');
     expect(r?.steps).toHaveLength(3);
     expect(toRecompute({})).toBeNull();
   });
