@@ -14,7 +14,7 @@ import type { Chest, ChestRecompute } from '@/types/tera';
 const CELL = 'border-t border-[#2E2A25] px-2 py-2 text-right [font:500_12px_JetBrains_Mono] tabular-nums text-[#C9BFB0]';
 const HEAD = 'px-2 py-2 text-right [font:600_10px/1.3_JetBrains_Mono] uppercase tracking-wider text-[#8F8779]';
 const SUBTITLE = "[font:700_18px/1.2_'Barlow_Condensed'] text-[#F4EDE2]";
-const TAG = 'ml-1.5 rounded-full border px-1.5 py-[1px] [font:600_9px_JetBrains_Mono] uppercase tracking-[.08em]';
+const TAG = 'ml-1.5 inline-block whitespace-nowrap rounded-full border px-1.5 py-[1px] [font:600_9px_JetBrains_Mono] uppercase tracking-[.08em]';
 const LEVELS = [0, 1, 2, 3] as const;
 
 type Outcome =
@@ -70,7 +70,7 @@ async function check(id: string): Promise<Outcome> {
   if (!recompute || !chest.commit || chest.status !== 'minted') return { state: 'failed', chest, reason: 'not_settled' };
   try {
     const outcome = await recomputeFromChain({ certification: chest.certification, day: chest.day, commitTx: chest.commit.tx, teraKey: chest.tera?.key ?? null, tier: chest.tier, poolDocument: recompute.poolDocument, unavailable: recompute.unavailable });
-    return outcome.ok ? { state: 'done', chest, recompute, result: outcome.result } : { state: 'failed', chest, reason: outcome.error };
+    return 'result' in outcome ? { state: 'done', chest, recompute, result: outcome.result } : { state: 'failed', chest, reason: outcome.error };
   } catch {
     return { state: 'failed', chest, reason: 'unreachable' };
   }

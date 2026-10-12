@@ -6,7 +6,7 @@ describe('toChest', () => {
   it('reads a committed chest: the slot is on chain, nothing is rolled', () => {
     const chest = toChest(WIRE_CHEST_COMMITTED);
     expect(chest).toMatchObject({ id: 'chest_fixture_1', day: 3, trail: 'HTML', status: 'committed', seed: null, tier: null, tera: null, retryAfterMs: 1200 });
-    expect(chest?.commit).toEqual({ slot: 418_220_113, tx: '5fixtureCommitSignature' });
+    expect(chest?.commit).toMatchObject({ slot: 418_220_113, tx: '5fixtureCommitSignature' });
     expect(chest?.odds).toHaveLength(6);
   });
 

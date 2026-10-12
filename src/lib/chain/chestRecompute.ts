@@ -87,7 +87,7 @@ export async function recomputeFromChain(claim: ChestClaim, chain: ChestChain = 
   const block = await chain.firstBlock(parsed.slot);
   if (!block) return { ok: false, error: 'no_block' };
   const roll = recomputeChest({ blockhash: block.blockhash, certification: claim.certification, day: claim.day, commit, poolDocument: claim.poolDocument, unavailable: claim.unavailable });
-  if (!roll.ok) return { ok: false, error: roll.error };
+  if ('error' in roll) return { ok: false, error: roll.error };
   return {
     ok: true,
     result: { commit, targetSlot: parsed.slot, level: parsed.level, commitTxSlot: tx.slot, seedSlot: block.slot, blockhash: block.blockhash, seed: roll.seed, tier: roll.tier ?? '', key: roll.key ?? '', steps: roll.steps, agrees: Boolean(roll.key) && roll.key === claim.teraKey },
