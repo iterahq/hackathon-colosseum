@@ -23,7 +23,7 @@ export default function CeremonyPreviewPage() {
     trailTitle: 'HTML',
     status,
     last,
-    newMedals: status === 'minted' && params.get('medal') !== '0' ? [{ key: 'streak_3', title: 'Streak 3', glyph: 'D3', kind: 'streak', credentialId: null }] : [],
+    newMedals: status === 'minted' && params.get('medal') !== '0' ? [{ key: 'early', title: 'Early bird', glyph: 'EB', kind: 'milestone', credentialId: null }, { key: 'first', title: 'First stamp', glyph: 'D1', kind: 'milestone', credentialId: null }] : [],
     txSignature: status === 'minted' ? '5fixtureSignature' : null,
     assetAddress: status === 'minted' ? 'FixtureAsset1111' : null,
   };

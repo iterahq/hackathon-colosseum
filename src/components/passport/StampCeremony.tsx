@@ -78,11 +78,12 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, c
       : t(hasWallet || model.status === 'minted' ? 'passport.ceremony.headline.day' : 'passport.ceremony.headline.dayDone', { n: day });
   const base = typeof window !== 'undefined' && window.innerWidth < 400 ? 260 : 300;
   const width = compact && typeof window !== 'undefined' && window.innerHeight < 980 ? base - 40 : base;
+  const gapClass = compact ? 'gap-4' : 'gap-5';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden text-[#F4EDE2]" style={GRID} role="dialog" aria-modal="true" aria-label={headline} data-testid="stamp-ceremony" data-step={step} data-phase={preparing ? 'preparing' : 'resolved'}>
       {last && step >= 5 && !reduce && <Confetti accent={color.c} />}
-      <div className={`mx-auto flex w-full max-w-[480px] flex-col items-center gap-5 px-4 pb-8 pt-8 ${footer ? '' : 'min-h-full'}`}>
+      <div className={`mx-auto flex w-full max-w-[480px] flex-col items-center ${gapClass} px-4 pb-8 pt-8 ${footer ? '' : 'min-h-full'}`}>
         <span className="[font:500_13px_JetBrains_Mono]" style={{ color: color.cl }}>
           {t('passport.ceremony.step', { n: day, total: Math.max(totalDays, day), trail: model.trailTitle })}
         </span>
@@ -115,7 +116,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, c
             <LearnerMascot mood={step >= 3 ? 'happy' : 'neutral'} outfit={outfit} />
           </motion.span>
         </motion.div>
-        <div className="mt-6 min-h-[110px] w-full">
+        <div className={compact ? 'mt-4 min-h-[88px] w-full' : 'mt-6 min-h-[110px] w-full'}>
           {(settled || prepared.current) && (
             <CeremonyStatusRow
               status={settled ? model.status : 'minting'}
@@ -130,6 +131,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, c
               onLater={onLater}
               onConnect={onConnect}
               hasWallet={hasWallet}
+              compact={compact}
             />
           )}
         </div>
