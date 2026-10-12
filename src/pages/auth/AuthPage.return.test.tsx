@@ -7,7 +7,6 @@ import AuthPage from './AuthPage';
 vi.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({ session: { access_token: 'signed-in-token' }, loading: false, signInWithPassword: vi.fn(), signInWithSolana: vi.fn(), configured: true }),
 }));
-vi.mock('@/auth/dflFederation', () => ({ loginWithDfl: vi.fn() }));
 vi.mock('@/services/guestSession.service', () => ({ isGuestAccessToken: () => false }));
 
 function landing(entry: string | { pathname: string; search?: string; state?: unknown }) {
