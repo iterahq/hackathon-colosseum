@@ -116,7 +116,7 @@ describe('commerce affordances per surface', () => {
     expect(container.textContent).not.toMatch(FORBIDDEN);
   });
 
-  it.each(['web', 'shell', 'pending'])('the login page is wallet-only on the %s surface: no sign-up or subscribe link', (value) => {
+  it.each(['web', 'shell', 'pending'] as const)('the login page is wallet-only on the %s surface: no sign-up or subscribe link', (value) => {
     surface.value = value;
     const { container } = mount(<LoginPage />);
     expect(screen.getByTestId('login-page')).toBeInTheDocument();
