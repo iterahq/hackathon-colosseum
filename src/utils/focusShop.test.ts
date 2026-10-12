@@ -8,7 +8,8 @@ const list = [
   item('frame_fire', 'frame'),
   item('face_happy', 'avatar', { owned: true, avatar: { free: true, rarity: 'common' } }),
   item('base_lider', 'avatar', { avatar: { free: false, rarity: 'rare' } }),
-  item('special_dourado', 'avatar', { owned: true, avatar: { free: false, rarity: 'legendary' } }),
+  item('special_dourado', 'avatar', { owned: true, avatar: { free: false, rarity: 'legendary', earnOnly: true } }),
+  item('event_space', 'avatar', { avatar: { free: false, rarity: 'mythic', earnOnly: true } }),
   item('event_natal', 'avatar', { avatar: { free: false, rarity: 'epic', season: { available: true } } }),
   item('cape', 'outfit'),
   item('scarf', 'outfit', { owned: true }),
@@ -18,11 +19,11 @@ const list = [
 const keys = (items: ShopItem[]) => items.map((i) => i.key);
 
 describe('focusShopItems', () => {
-  it('lists the certification cosmetics and the free faces only: no paid avatar tier, owned or not', () => {
-    expect(keys(focusShopItems(list, 'shelf', true))).toEqual(['ink_gold', 'frame_fire', 'face_happy']);
+  it('lists the certification cosmetics and every Tera: free, for sale and earn-only; nothing else', () => {
+    expect(keys(focusShopItems(list, 'shelf', true))).toEqual(['ink_gold', 'frame_fire', 'face_happy', 'base_lider', 'special_dourado', 'event_space', 'event_natal']);
   });
 
-  it('keeps what the wallet already owns wearable', () => {
+  it('wears only the free faces and what the wallet owns: a Tera on the shelf is not in the wardrobe', () => {
     expect(keys(focusShopItems(list, 'wardrobe', true))).toEqual(['ink_gold', 'frame_fire', 'face_happy', 'special_dourado', 'scarf']);
   });
 

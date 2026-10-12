@@ -37,6 +37,7 @@ export function avatarState(item: ShopItem): AvatarState {
   if (item.equipped) return 'equipped';
   if (item.avatar?.free) return 'free';
   if (item.owned) return 'owned';
+  if (item.avatar?.earnOnly) return 'earn';
   return isSoldOut(item) ? 'soldout' : 'buy';
 }
 

@@ -33,13 +33,14 @@ export function toTeraCatalog(body: unknown, source: TeraCatalog['source']): Ter
 
 export const FALLBACK_CATALOG: TeraCatalog = toTeraCatalog(FALLBACK, 'bundled') as TeraCatalog;
 
-/** The live catalog, or the bundled copy when the function is missing, fails or answers something else. Never throws. */
+/** The live catalog, or the bundled copy when the function is missing, fails or answers something else. Never throws. A Tera the live catalog does not list keeps its bundled tier. */
 export async function getTeraCatalog(): Promise<TeraCatalog> {
   if (!url || !anonKey) return FALLBACK_CATALOG;
   try {
     const res = await fetch(`${url}/functions/v1/credential-meta/tiers`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } });
     if (!res.ok) return FALLBACK_CATALOG;
-    return toTeraCatalog(await res.json(), 'live') ?? FALLBACK_CATALOG;
+    const live = toTeraCatalog(await res.json(), 'live');
+    return live ? { ...live, avatars: { ...FALLBACK_CATALOG.avatars, ...live.avatars } } : FALLBACK_CATALOG;
   } catch {
     return FALLBACK_CATALOG;
   }

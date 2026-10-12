@@ -36,3 +36,12 @@ describe('avatarState', () => {
     expect(avatarState(item('a', { supply: { minted: 4, max: 5 } }))).toBe('buy');
   });
 });
+
+describe('an earn-only Tera', () => {
+  it('is never offered for sale, sold out or not; held, it is owned like any other', () => {
+    expect(avatarState(item('sol', { rarity: 'legendary', earnOnly: true }))).toBe('earn');
+    expect(avatarState(item('one', { rarity: 'primordial', earnOnly: true, supply: { minted: 1, max: 1 } }))).toBe('earn');
+    expect(avatarState(item('sol', { rarity: 'legendary', earnOnly: true }, { owned: true }))).toBe('owned');
+    expect(avatarState(item('sol', { rarity: 'legendary', earnOnly: true }, { owned: true, equipped: true }))).toBe('equipped');
+  });
+});

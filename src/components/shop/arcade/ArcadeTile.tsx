@@ -11,7 +11,7 @@ import { FOCUS, HEART, RARITY_EDGE } from '../shopStyles';
 import { SwatchPreview } from '../SwatchTile';
 import { tileLine, type TileTone } from './arcadeModel';
 
-const TONE: Record<TileTone, string> = { price: 'text-[#F4EDE2]', mine: 'text-[#3FD17F]', equipped: 'text-[#0A0908] bg-[#3FD17F] px-1.5 rounded-full', free: 'text-[#3FD17F]', muted: 'text-[#8A8175]' };
+const TONE: Record<TileTone, string> = { price: 'text-[#F4EDE2]', mine: 'text-[#3FD17F]', equipped: 'text-[#0A0908] bg-[#3FD17F] px-1.5 rounded-full', free: 'text-[#3FD17F]', muted: 'text-[#8A8175]', earn: 'text-[#F2C66D]' };
 
 /** The picture of an item at tile size; the inspector draws the same thing larger. */
 export function ArcadeArt({ item, avatar, lives, large = false }: { item: ShopItem; avatar: Avatar; lives: LivesState | null; large?: boolean }) {
@@ -57,7 +57,7 @@ export function ArcadeTile({ item, selected, avatar, lives, onSelect, className 
   const name = (item.avatar ? loreOf(item.key, locale)?.name : null) ?? item.title;
   const edge = item.avatar && !item.avatar.free ? RARITY_EDGE[item.avatar.rarity] : '#2E2A25';
   const dim = item.kind === 'avatar' && (avatarState(item) === 'soldout' || isOffSeason(item));
-  const locked = item.forSale === false && !item.owned;
+  const locked = item.forSale === false && !item.owned && !item.avatar?.earnOnly;
   const state = item.equipped && item.owned ? 'equipped' : item.owned ? 'owned' : 'buy';
 
   return (

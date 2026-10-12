@@ -85,6 +85,10 @@ describe('shop wire normalisers (shapes as deployed 2026-10-09)', () => {
     expect(full.avatar?.includes).toEqual([{ key: 'border_pinho', kind: 'border', title: 'borda do Pinho' }]);
     expect(bare.priceCrystals).toBeNull();
     expect(bare.avatar?.season).toBeNull();
+    expect([bare.avatar?.earnOnly, bare.avatar?.transferable, bare.avatar?.royaltyBps]).toEqual([false, false, 0]);
+    const [sale, earn] = toShopItems([{ ...base, key: 'dom', transferable: true, royalty_bps: 500, for_sale: true }, { ...base, key: 'sol', earn_only: true, for_sale: false }]);
+    expect([sale.avatar?.transferable, sale.avatar?.royaltyBps, sale.avatar?.earnOnly]).toEqual([true, 500, false]);
+    expect([earn.avatar?.earnOnly, earn.forSale, earn.avatar?.transferable]).toEqual([true, false, false]);
     expect(bare.avatar?.includes).toEqual([]);
   });
 
