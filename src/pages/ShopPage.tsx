@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { AppTopBar } from '@/components/header/AppTopBar';
-import { FOCUS_BUILD, FOCUS_SHOP_KINDS, FOCUS_SHOP_ONLY, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
+import { FOCUS_BUILD, FOCUS_SHOP_ONLY, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArcade } from '@/components/shop/arcade/ShopArcade';
@@ -29,6 +29,7 @@ import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import type { CertTarget, ShopActions } from '@/types/shopView';
 import { avatarOf } from '@/utils/avatarShop';
+import { focusShopItems } from '@/utils/focusShop';
 import { withCompanionState } from '@/utils/shop';
 
 const TAB = `min-h-11 flex-1 rounded-[10px] px-5 [font:700_15px_Inter] sm:flex-none ${FOCUS}`;
@@ -57,7 +58,7 @@ export default function ShopPage() {
   }, [crystalPhase]);
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
-  const [section, setSection] = useState<ArcadeCategory>('avatars');
+  const [section, setSection] = useState<ArcadeCategory>(FOCUS_SHOP_ONLY ? 'certs' : 'avatars');
   const { hash } = useLocation();
   useEffect(() => {
     if (hash === '#invite') setSection('more');
@@ -69,15 +70,13 @@ export default function ShopPage() {
   const targetCert = certs.find((c) => c.trailId === targetId) ?? null;
 
   // The focus build sells for SOL only: the crystal price leaves every row before the shelves are built.
+  // `joined` is what the wardrobe wears (what is owned stays); the shelves list less: no paid avatar tier.
   const joined = useMemo(
-    () =>
-      withCompanionState(shop.data ?? [], companion.data)
-        .filter((item) => !FOCUS_SHOP_ONLY || FOCUS_SHOP_KINDS.has(item.kind))
-        .map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)),
+    () => focusShopItems(withCompanionState(shop.data ?? [], companion.data), 'wardrobe').map((item) => (FOCUS_SOL_ONLY_SHOP ? { ...item, crystalsEnabled: false, priceCrystals: null } : item)),
     [shop.data, companion.data],
   );
   // On the shelf an ink or a frame is "owned" for the certification it is aimed at.
-  const items = useMemo(() => joined.map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
+  const items = useMemo(() => focusShopItems(joined, 'shelf').map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
   const byKey = (key: string | null) => items.find((i) => i.key === key);
   const hasWallet = Boolean(companion.wallet);
   const buying = byKey(purchase.state.itemKey);

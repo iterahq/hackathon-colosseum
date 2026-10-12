@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_AVATAR } from '@/types/avatar';
 import type { ShopItem } from '@/types/shop';
-import { buildProfileLook } from './profileLook';
+import { buildProfileLook, shownLookTabs } from './profileLook';
 
 const avatar = (key: string, o: { free?: boolean; owned?: boolean; group?: string; allowsOutfit?: boolean }): ShopItem =>
   ({
@@ -59,5 +59,13 @@ describe('buildProfileLook', () => {
   it('ignores kinds it does not know', () => {
     const look = buildProfileLook([{ key: 'border_x', kind: 'border', owned: true } as unknown as ShopItem], DEFAULT_AVATAR, null);
     expect(look.owned.gear).toBe(0);
+  });
+
+  it('shows a tab in the focus build only when the learner owns something in it', () => {
+    const owned = (looks: number, gear: number) => ({ owned: { faces: 2, looks, gear } });
+    expect(shownLookTabs(owned(0, 0), true)).toEqual(['faces']);
+    expect(shownLookTabs(owned(1, 0), true)).toEqual(['faces', 'looks']);
+    expect(shownLookTabs(owned(0, 3), true)).toEqual(['faces', 'gear']);
+    expect(shownLookTabs(owned(0, 0), false)).toEqual(['faces', 'looks', 'gear']);
   });
 });

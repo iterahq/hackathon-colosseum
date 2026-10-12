@@ -1,8 +1,11 @@
 /** Pure grouping of the shop list into the three profile tabs. Families are told apart by `kind` and `group` only. */
 import { DEFAULT_AVATAR, type LearnerAvatar } from '@/types/avatar';
+import { FOCUS_SHOP_ONLY } from '@/config/focus';
 import type { ShopItem } from '@/types/shop';
 
 export type LookTab = 'faces' | 'looks' | 'gear';
+
+export const ALL_LOOK_TABS: readonly LookTab[] = ['faces', 'looks', 'gear'];
 
 export interface OutfitChip {
   key: string;
@@ -72,4 +75,9 @@ export function buildProfileLook(items: ShopItem[], current: LearnerAvatar, outf
     missing,
     owned: { faces: faces.length, looks: looks.length, gear: gearAvatars.length + outfits.length },
   };
+}
+
+/** The focus build has no paid looks or accessories to offer: a tab is shown only when the learner owns something in it. */
+export function shownLookTabs(look: Pick<ProfileLook, 'owned'>, focus: boolean = FOCUS_SHOP_ONLY): readonly LookTab[] {
+  return focus ? ALL_LOOK_TABS.filter((tab) => tab === 'faces' || look.owned[tab] > 0) : ALL_LOOK_TABS;
 }

@@ -24,6 +24,10 @@ export const FOCUS_SOL_ONLY_SHOP = FOCUS_BUILD;
  */
 export const FOCUS_LIVES_OFF = FOCUS_BUILD;
 
-/** The shop sells what the certification shows: avatars and the inks and frames of the credential. */
+/**
+ * The shop sells what the certification shows: the inks and frames of the credential. Avatars stay only as
+ * the free faces (equip, nothing to pay): every paid avatar tier is off the shelf, and an avatar a wallet
+ * already owns is still worn from the wardrobe and the profile.
+ */
 export const FOCUS_SHOP_KINDS: ReadonlySet<string> = new Set(['avatar', 'ink', 'frame']);
 export const FOCUS_SHOP_ONLY = FOCUS_BUILD;

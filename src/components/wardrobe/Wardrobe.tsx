@@ -1,7 +1,7 @@
 import { TeraAvatar } from '@iterahq/activities';
 import { useEffect, useMemo, useState } from 'react';
 import { useEquipOutfit } from '@/hooks/useCompanion';
-import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
+import { FOCUS_SHOP_ONLY, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { useCrystals, useEquipTheme, useSpendCrystals } from '@/hooks/useCrystals';
 import { useEquipAvatar } from '@/hooks/useShopWardrobe';
 import { ShopCallError } from '@/services/shopTransport';
@@ -132,7 +132,7 @@ export function Wardrobe({ items, actions, avatar, outfit, certs, failed = false
             <p className="[font:700_24px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{t('wardrobe.empty.title')}</p>
             <p className="mt-1 [font:400_14px/1.45_Inter] text-[#A0978A]">{t('wardrobe.empty.body')}</p>
           </div>
-          <button type="button" onClick={() => onShop('shop-avatars')} className={`${BTN_PRIMARY} ${BTN_SMALL}`}>{t('wardrobe.goShop')}</button>
+          <button type="button" onClick={() => onShop(FOCUS_SHOP_ONLY ? 'shop-certs' : 'shop-avatars')} className={`${BTN_PRIMARY} ${BTN_SMALL}`}>{t('wardrobe.goShop')}</button>
         </div>
       )}
       {groups.map((group) => (
