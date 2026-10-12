@@ -4,15 +4,16 @@ import { TERA_FALLBACK_IMAGE, teraAvatarImage } from '@/utils/teraAvatarImage';
 const SIZES = { md: 'h-24 w-24', xl: 'h-40 w-40' } as const;
 
 /** Round portrait (the ring is part of the art), loaded at once: the cast page exists for these pictures. A soft glow stands in while a picture arrives; a missing file falls back to the default Tera. */
-export function TeraPortrait({ avatarKey, tier, size = 'md', className = '' }: {
+export function TeraPortrait({ avatarKey, tier, size = 'md', art = 'chip', className = '' }: {
   avatarKey: string;
   tier: LoreTier;
   size?: keyof typeof SIZES;
+  art?: 'chip' | 'full';
   className?: string;
 }) {
   return (
     <img
-      src={teraAvatarImage(avatarKey, 'chip')}
+      src={teraAvatarImage(avatarKey, art)}
       alt=""
       loading="eager"
       decoding="async"

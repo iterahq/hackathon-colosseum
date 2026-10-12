@@ -6,11 +6,11 @@ type Lore = typeof raw;
 
 const LORE: Lore = raw;
 
-export type LoreTier = 'free' | 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
+export type LoreTier = 'free' | 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'primordial';
 export type EarnEvent = 'lesson' | 'clean_lesson' | 'day' | 'trail' | 'streak' | 'invite' | 'podium';
 
 export const EARN_EVENTS: readonly EarnEvent[] = ['lesson', 'clean_lesson', 'day', 'trail', 'streak', 'invite', 'podium'];
-export const LORE_TIERS: readonly LoreTier[] = ['mythic', 'legendary', 'epic', 'rare', 'common', 'free'];
+export const LORE_TIERS: readonly LoreTier[] = ['primordial', 'mythic', 'legendary', 'epic', 'rare', 'common', 'free'];
 
 const pick = (bag: Bag | undefined, locale: Locale): string => (bag?.[locale] || bag?.pt || '').trim();
 
@@ -75,7 +75,8 @@ export function CRYSTAL_LORE(locale: Locale) {
 
 /** The tier each cast member is shown under on /world (the lore file groups them by chapter, not by key). A lore grouping: it is not `shop_items.rarity`. */
 const TIER_OF: Record<string, LoreTier> = {
-  special_arco_iris: 'mythic', event_space: 'mythic', brand_phoenix_full: 'mythic',
+  brand_phoenix_full: 'primordial',
+  special_arco_iris: 'mythic', event_space: 'mythic',
   special_dourado: 'legendary', special_prata: 'legendary', special_verde_neon: 'legendary', special_azul_eletrico: 'legendary',
   special_roxo_estelar: 'legendary', special_vermelho_lava: 'legendary', special_preto_cosmico: 'legendary',
   base_guerreiro: 'epic', base_sombrio: 'epic', base_sabedoria: 'epic', base_evoluido: 'epic', event_halloween: 'epic', event_natal: 'epic', event_verao: 'epic',

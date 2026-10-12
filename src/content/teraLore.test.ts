@@ -75,4 +75,9 @@ describe('teraLore', () => {
     expect(loreTierOf('rarity_epico')).toBe('epic');
     expect(loreTierOf('rarity_lendario')).toBe('legendary');
   });
+
+  it('keeps the primordial tier for the Primordial Phoenix alone, first on the page', () => {
+    expect(LORE_TIERS[0]).toBe('primordial');
+    expect(loreKeysOfTier('primordial')).toEqual(['brand_phoenix_full']);
+  });
 });
