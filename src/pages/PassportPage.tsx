@@ -6,6 +6,7 @@ import { PassportGraph } from '@/components/graph/PassportGraph';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { PassportTeras } from '@/components/tera/PassportTeras';
+import { ChestCue } from '@/components/tera/ChestCue';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { PassportFullCard } from '@/components/passport/PassportFullCard';
@@ -48,6 +49,7 @@ export default function PassportPage() {
       <DashboardTopBar xp={stats.data?.totalXp ?? null} achievements={view.isPending ? null : view.earnedCount} activities={stats.data?.completedActivities ?? null} streak={stats.data?.streakDays ?? null} />
       <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-14 pt-6 sm:px-8 xl:pt-10">
         <PassportHero wallet={view.walletAddress} pages={view.totals.pages} stamps={view.totals.stamps} pending={pending} medals={view.totals.medals} />
+        <ChestCue />
         {view.walletAddress && pending > 0 && (
           <HeldStampNotice
             id="held"

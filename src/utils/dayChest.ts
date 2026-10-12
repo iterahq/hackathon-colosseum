@@ -31,3 +31,14 @@ export function chestPollMs(chest: Chest | null | undefined, polls: number): num
   if (chest.status !== 'committed' && chest.status !== 'rolling') return false;
   return Math.min(5000, Math.max(600, chest.retryAfterMs ?? CHEST_POLL_MS));
 }
+
+const EARN_ONLY_FALLBACK: ReadonlySet<string> = new Set(['legendary', 'mythic', 'primordial']);
+
+/** The rarity key the reveal is coloured by: the Tera's own tier, else the tier the roll landed on. */
+export const chestRarity = (chest: Chest | null): string | null => chest?.tera?.rarity || chest?.tier || null;
+
+/** Whether the Tera that came out is of a tier that is never for sale. `earnOnly` is the catalog's list when it is known. */
+export const isEarnOnlyTier = (rarity: string | null, earnOnly: ReadonlySet<string> = EARN_ONLY_FALLBACK): boolean => Boolean(rarity) && earnOnly.has(rarity as string);
+
+/** The chest of a lesson's day among the learner's chests: a read, never a request to open one. */
+export const chestOfLesson = (chests: readonly Chest[], lessonId: string | undefined): Chest | null => (lessonId ? (chests.find((c) => c.lessonId === lessonId) ?? null) : null);

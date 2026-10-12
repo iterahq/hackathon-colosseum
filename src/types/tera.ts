@@ -24,6 +24,8 @@ export interface ChestTera {
   key: string;
   title: string;
   tierName: string;
+  /** Rarity key of its tier (`rare`, `legendary`…), when the backend sends it. */
+  rarity?: string | null;
   imageUrl: string;
   thumbUrl: string;
   asset: string | null;
@@ -35,6 +37,8 @@ export interface ChestTera {
 export interface Chest {
   id: string;
   day: number;
+  /** The lesson whose day opened it. */
+  lessonId?: string | null;
   trail: string;
   certification: string;
   status: ChestStatus;

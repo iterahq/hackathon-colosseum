@@ -142,7 +142,7 @@ beforeEach(() => {
   focus.on = false;
   useTrailDashboard.mockReturnValue(dashboard());
   useUserStats.mockReturnValue({ data: { totalXp: 120, streakDays: 1, badgeCount: 0, completedActivities: 7 }, isPending: false });
-  useAchievements.mockReturnValue({ items: [], earnedCount: 0, isPending: false, isError: false, refetch: vi.fn() });
+  useAchievements.mockReturnValue({ items: [], earned: [], earnedCount: 0, isPending: false, isError: false, refetch: vi.fn() });
   useCatalog.mockReturnValue({ data: [], isPending: false, isError: false, refetch: refetchCatalog });
   useVideoCourses.mockReturnValue({ courses: [] });
   useActiveLiveClass.mockReturnValue({ data: null });
@@ -252,6 +252,7 @@ describe('HomeRoute: a member', () => {
     const trailRow = (key: string, refId: string, over = {}) =>
       achievement({ key, kind: 'trail', earned: { id: `r-${key}`, achievementKey: key, refId, earnedAt: '2026-10-08T00:00:00Z', mintStatus: 'minted', assetAddress: 'Asset111', txSignature: 'tx', ...over } });
     useAchievements.mockReturnValue({
+      earned: [],
       items: [
         trailRow('trail_pass', 'u-html'),
         achievement({ key: 'first_stamp', kind: 'milestone', title: { pt: 'Primeiro carimbo' }, earned: { id: 'm1', achievementKey: 'first_stamp', refId: null, earnedAt: null, mintStatus: 'pending', assetAddress: null, txSignature: null } }),
