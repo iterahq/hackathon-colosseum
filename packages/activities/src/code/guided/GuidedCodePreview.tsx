@@ -61,8 +61,10 @@ export function GuidedCodePreview({
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-border ${
-        ready ? 'h-[min(360px,46dvh)] md:h-auto md:min-h-[min(240px,46dvh)]' : 'max-sm:hidden'
+      className={`overflow-hidden rounded-2xl border ${
+        ready
+          ? 'h-[min(360px,46dvh)] border-border md:h-auto md:min-h-[min(240px,46dvh)]'
+          : 'border-dashed border-border/70 bg-background/40 max-sm:hidden'
       }`}
     >
       {ready ? (

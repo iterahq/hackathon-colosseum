@@ -72,7 +72,7 @@ export function GuidedCodePane({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl border border-border bg-card p-4 md:p-6"
+      className="rounded-3xl border border-border bg-card p-4 md:p-6 short:p-4"
       data-testid="activity-shell"
       data-activity-kind={activity.kind}
       data-guided-variant={variant}
@@ -86,28 +86,28 @@ export function GuidedCodePane({
           template que já está travado manda o aluno tentar o que não dá. */}
       {guided.revealed ? (
         <div
-          className="mt-3 flex items-center gap-2 rounded-xl border border-streak/40 bg-streak/10 px-3.5 py-2.5 text-sm text-streak"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-streak/40 bg-streak/10 px-3.5 py-2.5 text-sm text-streak short:py-1"
           data-testid="guided-code-revealed"
         >
           <Eye className="h-4 w-4 shrink-0" /> {t('code.guided.revealedNotice')}
         </div>
       ) : guided.outOfLives ? (
         <div
-          className="mt-3 flex items-center gap-2 rounded-xl border border-clay/40 bg-clay/10 px-3.5 py-2.5 text-sm text-clay"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-clay/40 bg-clay/10 px-3.5 py-2.5 text-sm text-clay short:py-1"
           data-testid="guided-code-answer-shown"
         >
           <Eye className="h-4 w-4 shrink-0" /> {t('code.lives.answerShown')}
         </div>
       ) : (
         <div
-          className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground short:py-1"
           data-testid="guided-code-hint"
         >
           <PanelsTopLeft className="h-4 w-4 shrink-0 text-menta" /> {t(GUIDED_VARIANT_HINT[variant])}
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 short:mt-3">
         <GuidedCodeWorkspace
           variant={variant}
           lines={guided.lines}
@@ -156,7 +156,7 @@ export function GuidedCodePane({
           disabled={isDone || guided.outOfLives || (sealed?.judging ?? false)}
           aria-busy={sealed?.judging || undefined}
           data-testid="guided-submit"
-          className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
+          className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 short:mt-4 ${TACTILE_CTA}`}
         >
           {sealed?.judging ? t('activity.checking') : t('activity.submit')}
         </button>

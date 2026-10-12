@@ -54,6 +54,15 @@ export const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind
   // Every one-behaviour code kind is the same split pane (plan T9).
   'code_editor_checks',
   'code_editor_ungraded',
+]);
+
+/**
+ * The fill-in code kinds are a LOCKED template beside its preview — no Monaco,
+ * and lesson code is written to 34 columns. In the wide cap the template used a
+ * quarter of its pane and the exercise read as an empty 1232 px slab, so they
+ * take the same middle cap as the scenes.
+ */
+export const GUIDED_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
   'code_fill_bank',
   'code_fill_select',
   'code_fill_type',
@@ -122,6 +131,7 @@ export function columnMaxWidthClass(
 ): string {
   if (!kind) return DEFAULT_COLUMN_MAX_WIDTH;
   if (WIDE_COLUMN_KINDS.has(kind)) return WIDE_COLUMN_MAX_WIDTH;
+  if (GUIDED_COLUMN_KINDS.has(kind)) return SCENE_COLUMN_MAX_WIDTH;
   if (SCENE_COLUMN_KINDS.has(kind)) return overrides?.[kind] ?? SCENE_COLUMN_MAX_WIDTH;
   return overrides?.[kind] ?? DEFAULT_COLUMN_MAX_WIDTH;
 }

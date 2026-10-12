@@ -37,14 +37,23 @@ export function GuidedCodeTemplate({
   onActivate: (blank: CodeBlank) => void;
   onChange: (blank: CodeBlank, value: string) => void;
 }) {
-  const gutterWidth = `${String(lines.length).length}ch`;
+  // A template that ends in a newline would draw a numbered line with nothing on it.
+  const isEmpty = (line: GuidedLine) =>
+    line.segments.every((segment) => segment.kind === 'code' && segment.text.trim() === '');
+  let end = lines.length;
+  while (end > 0 && isEmpty(lines[end - 1])) end -= 1;
+  const shown = lines.slice(0, end);
+  const gutterWidth = `${String(shown.length).length}ch`;
 
   return (
     <div
       data-testid="guided-code-template"
-      className="max-h-[min(360px,46dvh)] overflow-auto rounded-2xl border border-border bg-[#0a0a0a] py-3 font-mono text-[13px] leading-[22px]"
+      // No height cap from `md` up: a capped template scrolled inside a page that
+      // also scrolls, for the sake of one clipped line. A phone keeps a far cap so
+      // a very long template cannot push the submit button a screen away.
+      className="overflow-hidden rounded-2xl border border-border bg-[#0a0a0a] py-3 font-mono text-[13px] leading-[22px] max-sm:max-h-[62dvh] max-sm:overflow-y-auto max-sm:py-2.5 max-sm:leading-5"
     >
-      {lines.map((line) => (
+      {shown.map((line) => (
         <div key={line.number} className="flex items-start px-3">
           <span
             aria-hidden
