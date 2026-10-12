@@ -46,7 +46,7 @@ describe('AuthPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Enter Itera');
     expect(screen.getByTestId('web3-solana')).toHaveTextContent('Connect Wallet');
     expect(screen.getByTestId('web3-solana').className).toContain('min-h-14');
-    expect(screen.getByTestId('login-art')).toHaveAttribute('src', '/mascot/tera-hero.webp');
+    expect(screen.getByTestId('login-art')).toHaveAttribute('src', '/mascot/tera-body.webp');
     expect(screen.getAllByRole('button').map((b) => b.getAttribute('data-testid'))).toEqual(['web3-solana', 'locale-toggle']);
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
@@ -66,6 +66,25 @@ describe('AuthPage', () => {
     expect(screen.queryByTestId('web3-solana-solflare')).toBeNull();
     fireEvent.click(screen.getByTestId('web3-solana'));
     await waitFor(() => expect(auth.signInWithSolana).toHaveBeenCalledWith(phantom.provider));
+  });
+
+  it('shows the ghost while idle and a spinner with the approve text while Phantom is open', async () => {
+    wallets.list = [phantom];
+    let resolve: (value: { error: null }) => void = () => {};
+    auth.signInWithSolana.mockReturnValue(new Promise((done) => (resolve = done)));
+    mount();
+    const button = screen.getByTestId('web3-solana');
+    expect(button).toHaveAttribute('data-state', 'idle');
+    expect(button).toHaveAttribute('aria-busy', 'false');
+    expect(screen.getByTestId('connect-wallet-glyph')).toBeInTheDocument();
+    fireEvent.click(button);
+    await waitFor(() => expect(button).toHaveAttribute('data-state', 'busy'));
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent('Approve in Phantom…');
+    expect(screen.queryByTestId('connect-wallet-glyph')).toBeNull();
+    resolve({ error: null });
+    await waitFor(() => expect(button).toHaveAttribute('data-state', 'idle'));
   });
 
   it('says so when the wallet refuses', async () => {

@@ -40,14 +40,6 @@
 export const CODE_PANE_BOX = 'h-[clamp(360px,55vh,720px)] max-sm:h-[264px] short:h-[max(300px,calc(100vh-25.5rem))] overflow-hidden rounded-2xl';
 
 /**
- * The panes' height when the instruction sits BESIDE them (the self-paced
- * lesson, a long instruction, a wide screen): what the lesson chrome, the reset
- * control and the submit button leave of the screen. Only ever added next to
- * `CODE_PANE_BOX`, never instead of it.
- */
-export const CODE_PANE_SIDE_HEIGHT = 'h-[clamp(360px,calc(100dvh-20rem),760px)]!';
-
-/**
  * 60/40 in favour of the editor (call de 06/08: "aproveitar mais espaço, 60%
  * código 40% render"), as fifths — the closest split Tailwind expresses without
  * arbitrary fractions.

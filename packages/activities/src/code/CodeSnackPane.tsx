@@ -9,7 +9,7 @@ import { TACTILE_CTA } from '../components/tactile.js';
 import { RichText } from '../components/RichText.js';
 import { CodeEditorSurface } from './CodeEditorSurface.js';
 import { parseEditableRegions } from './editableRegions.js';
-import { CODE_PANE_BOX, CODE_PANE_SIDE_HEIGHT, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID, CODE_SPLIT_PREVIEW } from './geometry.js';
+import { CODE_PANE_BOX, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID, CODE_SPLIT_PREVIEW } from './geometry.js';
 import { CodeHelpLink } from './CodeHelpLink.js';
 import { useCodeSnack } from './useCodeSnack.js';
 import { CodeLivePreview } from './CodeLivePreview.js';
@@ -19,7 +19,6 @@ import { useHostOwnsSettledAction } from '../components/settledAction.js';
 import { useSealedAnswer } from '../components/hostLessonRules.js';
 import { useResultBadge } from './useResultBadge.js';
 import { useShrinkToFit } from './useShrinkToFit.js';
-import { useSideInstruction } from './useSideInstruction.js';
 
 /**
  * The split-pane snack surface: the editor (seeded from the learner's saved
@@ -80,11 +79,6 @@ export function CodeSnackPane({
   const editorBox = useRef<HTMLDivElement>(null);
   const previewBox = useRef<HTMLDivElement>(null);
   useShrinkToFit([editorBox, previewBox]);
-  const instruction = useRef<HTMLDivElement>(null);
-  const side = useSideInstruction(instruction);
-  // Beside the instruction nothing sits above the panes, so they take the
-  // screen the lesson chrome leaves instead of the stacked height.
-  const paneBox = side ? `${CODE_PANE_BOX} ${CODE_PANE_SIDE_HEIGHT}` : CODE_PANE_BOX;
   const { unseen: resultUnseen, markStale } = useResultBadge(phonePane, results);
   const onEdit = (next: string) => {
     if (next !== code) markStale();
@@ -110,31 +104,18 @@ export function CodeSnackPane({
       data-activity-kind={activity.kind}
       data-phase={phase}
       data-out-of-lives={outOfLives ? 'true' : 'false'}
-      data-instruction={side ? 'side' : 'above'}
+      data-instruction="above"
     >
-      <div className={side ? 'grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6' : undefined}>
-        {/* Beside the panes the instruction takes THEIR height and scrolls on its
-            own, like the statement of a coding problem: its length no longer
-            decides how much editor is left. */}
-        <div className={side ? 'relative min-h-0' : undefined} data-testid="code-instruction">
-          <div className={side ? 'absolute inset-0 overflow-y-auto pr-3' : undefined}>
-            <div ref={instruction}>
-              <RichText text={spec.prompt ?? ''} />
+      <div>
+        <div data-testid="code-instruction">
+          <RichText text={spec.prompt ?? ''} />
 
-              <div
-                className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
-                data-testid="code-snack-hint"
-              >
-                <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
-              </div>
-            </div>
+          <div
+            className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
+            data-testid="code-snack-hint"
+          >
+            <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
           </div>
-          {side && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-card to-transparent"
-            />
-          )}
         </div>
 
         <div>
@@ -170,7 +151,7 @@ export function CodeSnackPane({
             </span>
           </div>
 
-          <div className={`${side ? '' : 'mt-4'} max-sm:mt-3 ${CODE_SPLIT_GRID}`}>
+          <div className={`mt-4 max-sm:mt-3 ${CODE_SPLIT_GRID}`}>
             <div
               className={`flex flex-col max-sm:[grid-area:1/1] ${CODE_SPLIT_EDITOR} ${
                 phonePane === 'code' ? '' : 'max-sm:invisible'
@@ -191,7 +172,7 @@ export function CodeSnackPane({
                 data-stage-cursor-source
                 // `relative` é a outra metade do contrato: o host desenha o ponteiro
                 // do professor DENTRO deste painel por portal, posicionado em % dele.
-                className={`relative ${paneBox} border border-border bg-[#0a0a0a]`}
+                className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
               >
                 {/* `spec.language` now drives the editor: `"html"` and `"css"` (the
                     plain-web course) get Monaco's own mode, everything else — including
@@ -223,7 +204,7 @@ export function CodeSnackPane({
 
             <div
               ref={previewBox}
-              className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${paneBox} border border-border ${
+              className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border ${
                 phonePane === 'preview' ? '' : 'max-sm:invisible'
               }`}
             >
