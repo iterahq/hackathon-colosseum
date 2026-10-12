@@ -120,7 +120,7 @@ export default function CredentialPage() {
             {found.status === 'verified' && found.data.tera?.origin && <TeraOriginPanel origin={found.data.tera.origin} />}
             <CredentialCard lookup={found} onRecheck={() => recheck.mutate()} rechecking={recheck.isPending} />
             {found.data.asset && <ReadWithoutItera asset={found.data.asset} />}
-            {found.data.asset && found.status === 'verified' && <ArchiveCopies asset={found.data.asset} />}
+            {found.data.asset && found.status === 'verified' && !found.data.tera && <ArchiveCopies asset={found.data.asset} />}
           </>
         )}
         <Link to="/" className={BTN}>
