@@ -18,18 +18,18 @@ function mount(locale: 'pt' | 'en', onClose = vi.fn()) {
 }
 
 describe('HeaderMenu', () => {
-  it("links to Tera's World from the help group, in English", () => {
-    const onClose = mount('en');
-    const link = screen.getByTestId('header-menu-world');
-    expect(link).toHaveAttribute('href', '/world');
-    expect(link).toHaveTextContent("Tera's World");
-    expect(link.closest('[role="group"]')).toHaveAttribute('aria-label', 'Help');
-    link.click();
-    expect(onClose).toHaveBeenCalled();
+  it('leaves the World and the Shop to the tabs on the focus build', () => {
+    mount('en');
+    expect(screen.queryByTestId('header-menu-world')).toBeNull();
+    expect(screen.queryByTestId('header-menu-shop')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Help' })).toBeInTheDocument();
   });
 
-  it('says "Mundo do Tera" in Portuguese', () => {
-    mount('pt');
-    expect(screen.getByTestId('header-menu-world')).toHaveTextContent('Mundo do Tera');
+  it('sends an account with no wallet to Certifications to link one', () => {
+    const onClose = mount('en');
+    const link = screen.getByTestId('header-menu-link-wallet');
+    expect(link).toHaveAttribute('href', '/certifications');
+    link.click();
+    expect(onClose).toHaveBeenCalled();
   });
 });

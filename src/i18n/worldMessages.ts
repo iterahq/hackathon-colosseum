@@ -2,6 +2,7 @@
 export const WORLD_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'world.title': 'Mundo do Tera',
+    'header.nav.world': 'Mundo',
     'world.pageLabel': 'MUNDO DO TERA',
     'world.back': '← Voltar ao Itera',
     'world.cta': 'Conhecer os Teras',
@@ -30,6 +31,7 @@ export const WORLD_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   },
   en: {
     'world.title': "Tera's World",
+    'header.nav.world': 'World',
     'world.pageLabel': "TERA'S WORLD",
     'world.back': '← Back to Itera',
     'world.cta': 'Meet the Teras',

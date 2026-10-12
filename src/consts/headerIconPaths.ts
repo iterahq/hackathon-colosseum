@@ -1,4 +1,4 @@
-export type HeaderIconName = 'flame' | 'bolt' | 'star' | 'trails' | 'courses' | 'passport' | 'files' | 'shop' | 'chevron' | 'copy' | 'external' | 'solana' | 'verify' | 'talent';
+export type HeaderIconName = 'flame' | 'bolt' | 'star' | 'trails' | 'courses' | 'passport' | 'files' | 'shop' | 'chevron' | 'copy' | 'external' | 'solana' | 'verify' | 'talent' | 'world';
 
 /** Glyphs drawn with a fill. */
 export const HEADER_ICON_FILLED: Partial<Record<HeaderIconName, string>> = {
@@ -16,6 +16,7 @@ export const HEADER_ICON_STROKED: Partial<Record<HeaderIconName, string>> = {
   files: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
   talent: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.2A6.5 6.5 0 0 1 21.5 20',
   verify: 'M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6zM8.5 12l2.5 2.5 4.5-5',
+  world: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a13.5 13.5 0 0 1 0 18M12 3a13.5 13.5 0 0 0 0 18',
   shop: 'M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8zM9 8V7a3 3 0 0 1 6 0v1',
   chevron: 'm6 9 6 6 6-6',
   copy: 'M11 9h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zM5 15V5a2 2 0 0 1 2-2h10',
