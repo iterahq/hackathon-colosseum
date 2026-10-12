@@ -4,6 +4,14 @@ import { I18nProvider } from '@/i18n';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { PURCHASE_IDLE, type PurchaseState } from '@/utils/purchaseMachine';
 
+const flags = vi.hoisted(() => ({ circuitOff: true }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_CIRCUIT_OFF() {
+    return flags.circuitOff;
+  },
+}));
+
 const show = (state: PurchaseState, kind: 'life' | 'outfit' | 'ink' = 'life') =>
   render(
     <I18nProvider>
@@ -81,12 +89,22 @@ describe('PurchaseDialog', () => {
     expect(screen.getByTestId('purchase-detail')).toHaveTextContent('-32603 Blockhash not found');
   });
 
-  it('paid: says how many stamps of other learners the purchase paid for, only when the backend confirmed it', () => {
+  it('paid: says how many stamps of other learners the purchase paid for, only when the backend confirmed it and the build tells the Circuit', () => {
+    flags.circuitOff = false;
     const paid = { ...PURCHASE_IDLE, phase: 'paid' as const, explorerUrl: null };
     const { unmount } = show({ ...paid, proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: null, written: [], lives: null, circuitStamps: 110 } }, 'outfit');
     expect(screen.getByTestId('purchase-circuit')).toHaveTextContent('+110 carimbos cobertos pra outros alunos');
     unmount();
     show({ ...paid, proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: null, written: [], lives: null, circuitStamps: null } }, 'outfit');
     expect(screen.queryByTestId('purchase-circuit')).not.toBeInTheDocument();
+    flags.circuitOff = true;
+  });
+
+  it('paid, focus build: the purchase says nothing about stamps of other learners', () => {
+    const paid = { ...PURCHASE_IDLE, phase: 'paid' as const, explorerUrl: null };
+    show({ ...paid, proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: null, written: [], lives: null, circuitStamps: 110 } }, 'outfit');
+    expect(screen.getByTestId('purchase-proof')).toBeInTheDocument();
+    expect(screen.queryByTestId('purchase-circuit')).not.toBeInTheDocument();
+    expect(screen.getByTestId('purchase-proof')).not.toHaveTextContent(/carimbos cobertos|stamps covered/);
   });
 });
