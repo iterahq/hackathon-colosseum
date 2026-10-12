@@ -2,6 +2,7 @@ import type { Locale } from '@/i18n';
 import type { ReactNode } from 'react';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { itemAction } from '@/components/shop/itemAction';
+import { FOCUS_SHOP_ONLY } from '@/config/focus';
 import { BTN_TEXT } from '@/components/shop/shopStyles';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import type { LearnerAvatar as Avatar } from '@/types/avatar';
@@ -50,7 +51,7 @@ export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, 
   const outfits = items.filter((i) => i.kind === 'outfit' && i.owned);
   const cosmetics = items.filter((i) => i.kind === 'ink' || i.kind === 'frame');
 
-  return [
+  const groups: WardrobeGroupSpec[] = [
     {
       id: 'avatar',
       title: t('wardrobe.group.avatar'),
@@ -99,4 +100,6 @@ export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, 
         ),
     },
   ];
+  // The focus shop sells no outfits: an empty outfit group would only point at a shelf that is not there.
+  return FOCUS_SHOP_ONLY ? groups.filter((group) => group.id !== 'outfit' || group.count > 0) : groups;
 }

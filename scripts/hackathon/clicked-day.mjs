@@ -3,6 +3,9 @@
 // the lesson player, with a brand-new wallet, then proves the certification (UI + API + chain).
 //   flock /tmp/hk/orch/locks/browser.lock node scripts/hackathon/clicked-day.mjs \
 //     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--lang pt|en] [--stop-after N] [--verify-only] [--guest]
+//     [--viewport 1440x900] [--end-viewport 390x844] [--home-first]
+// `--end-viewport` resizes the window before the last activity, so the stamp screen is seen at that size.
+// `--home-first` opens the dashboard before the lesson, as a person who has just signed in does.
 // `--guest` plays the landing's first path: the whole day at /try with NO session (answers kept in the browser),
 // then the wallet's session appears (the sign-in) and the page claims the answers; the day must be stamped at once.
 // `--lang` is the language the robot studies in: the page is set to it and the robot types what the lesson
@@ -26,6 +29,10 @@ const WALLET_FILE = option('wallet-file', `${OUT}/wallet.json`);
 const STOP_AFTER = Number(option('stop-after', '0'));
 const VERIFY_ONLY = args.includes('--verify-only');
 const GUEST = args.includes('--guest');
+const HOME_FIRST = args.includes('--home-first');
+const size = (text) => (/^\d+x\d+$/.test(text ?? '') ? { width: Number(text.split('x')[0]), height: Number(text.split('x')[1]) } : null);
+const VIEWPORT = size(option('viewport', '')) ?? { width: 1280, height: 900 };
+const END_VIEWPORT = size(option('end-viewport', ''));
 const GUEST_ANSWERS_KEY = 'itera.guest.day1.v1';
 const ACTIVITY_BOX = GUEST ? 'try-activity' : 'lesson-activity';
 const LANG = option('lang', 'pt') === 'en' ? 'en' : 'pt';
@@ -309,7 +316,7 @@ async function runLesson(wallet, activities) {
   const browser = await chromium.launch({ headless: true });
   let completed = false;
   try {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: LANG === 'en' ? 'en-US' : 'pt-BR' });
+    const context = await browser.newContext({ viewport: VIEWPORT, locale: LANG === 'en' ? 'en-US' : 'pt-BR' });
     const sessionKey = `sb-${PROJECT_REF}-auth-token`;
     await context.addInitScript(([key, value, lang]) => {
       // The lesson preview is a sandboxed frame with no storage: only the page itself is prepared.
@@ -339,6 +346,12 @@ async function runLesson(wallet, activities) {
       if (url.includes('/rest/v1/progress') && request.method() !== 'GET') progressWrites.push(`${request.method()} ${response.status()} ${request.postData()?.slice(0, 80)}`);
     });
 
+    if (HOME_FIRST && !GUEST) {
+      await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+      await page.getByTestId('dash-bounties').waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {});
+      await page.waitForTimeout(2500);
+      log(`home before the lesson: ${(await page.getByTestId('dash-bounties').innerText().catch(() => '(no bounties card)')).replace(/\s+/g, ' ').slice(0, 200)}`);
+    }
     await page.goto(GUEST ? `${BASE}/try` : `${BASE}/lesson/${LESSON_ID}`, { waitUntil: 'domcontentloaded' });
     if (GUEST) proof('visitor: /try opened with no session in the browser', page.url().endsWith('/try') && (await page.evaluate((key) => localStorage.getItem(key), sessionKey)) === null, page.url());
     else proof('lesson opened at /lesson/<id>', page.url().includes(`/lesson/${LESSON_ID}`), page.url());
@@ -368,6 +381,7 @@ async function runLesson(wallet, activities) {
       currentId = id;
       lastId = id;
       await page.waitForTimeout(700);
+      if (END_VIEWPORT && ordinal === activities.length) await page.setViewportSize(END_VIEWPORT);
       const ctx = { done: [] };
       const did = await handle(page, activity, ordinal, ctx);
       // The grade request is sent by the player once the answer settles.
@@ -403,7 +417,36 @@ async function runLesson(wallet, activities) {
       proof('the day is NOT held for review after the claim', passportAnswers.length > 0 && !held, held ? JSON.stringify(held.day_pending_review) : `${passportAnswers.length} passport answer(s), none held`);
     }
     if (completed) {
-      await page.waitForTimeout(2500);
+      // The stamp screen at the moment its loop panel appears, and five seconds later.
+      const panel = page.getByTestId('loop-panel');
+      const seen = await panel.waitFor({ state: 'visible', timeout: 60_000 }).then(() => true, () => false);
+      const panelNow = async (label) => {
+        const state = await panel.getAttribute('data-state').catch(() => null);
+        const words = (await panel.innerText().catch(() => '')).replace(/\s+/g, ' ');
+        shotNumber += 1;
+        writeFileSync(`${OUT}/.shot-counter`, String(shotNumber));
+        const path = `${OUT}/${String(shotNumber).padStart(2, '0')}-stamp-screen-${label}.png`;
+        await page.screenshot({ path, fullPage: true }).catch(() => {});
+        log(`stamp screen ${label}: state=${state} · ${words.slice(0, 500)} · ${path}`);
+        return { state, words };
+      };
+      if (seen) {
+        const states = [];
+        const first = await panelNow('t0');
+        states.push(first);
+        for (let wait = 0; wait < 50; wait += 1) {
+          await page.waitForTimeout(100);
+          const state = await panel.getAttribute('data-state').catch(() => null);
+          const words = (await panel.innerText().catch(() => '')).replace(/\s+/g, ' ');
+          if (state !== states[states.length - 1].state) states.push({ state, words });
+          if (/\b0 (of|de) \d+ /.test(words)) states.push({ state: 'ZERO', words });
+        }
+        const later = await panelNow('t5');
+        const stamped = /stamped|carimbad/i.test((await page.getByTestId('lesson-main').innerText().catch(() => '')));
+        proof('stamp screen: the panel never showed a zero count in its first 5 s', !states.some((entry) => entry.state === 'ZERO') && !/\b0 (of|de) \d+ /.test(first.words), states.map((entry) => entry.state).join(' -> '));
+        proof('stamp screen: 5 s later the day claims are verified and the paid bounty button is there', stamped && later.state === 'ready' && (await panel.locator('[data-testid="loop-claim"][data-status="verified"]').count()) === NODES.length && (await panel.getByTestId('loop-instant').count()) === 1, `${later.state} · verified claims ${await panel.locator('[data-testid="loop-claim"][data-status="verified"]').count()} · instant ${await panel.getByTestId('loop-instant').count()}`);
+      } else log('NOTE: no loop panel at the end of the day');
+      await page.waitForTimeout(500);
       await shot(page, 'end-of-day-ceremony');
       const text = (await page.getByTestId('lesson-main').innerText().catch(() => '')).replace(/\s+/g, ' ');
       log(`end of day screen: ${text.slice(0, 300)}`);

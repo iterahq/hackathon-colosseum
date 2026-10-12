@@ -1,22 +1,23 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { useI18n } from '@/i18n';
-import type { LookTab } from '@/utils/profileLook';
-
-const LOOK_TABS: LookTab[] = ['faces', 'looks', 'gear'];
+import { ALL_LOOK_TABS, type LookTab } from '@/utils/profileLook';
 
 interface Props {
   tab: LookTab;
+  /** The tabs on show, in order. */
+  tabs?: readonly LookTab[];
   counts: Record<LookTab, number>;
   onTab: (tab: LookTab) => void;
 }
 
 /** Segmented tablist with roving tabindex: arrows, Home and End move and select. */
-export function LookTabs({ tab, counts, onTab }: Props) {
+export function LookTabs({ tab, tabs: LOOK_TABS = ALL_LOOK_TABS, counts, onTab }: Props) {
   const { t } = useI18n();
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const onKey = (e: KeyboardEvent) => {
     const i = LOOK_TABS.indexOf(tab);
-    const next = e.key === 'ArrowRight' ? (i + 1) % 3 : e.key === 'ArrowLeft' ? (i + 2) % 3 : e.key === 'Home' ? 0 : e.key === 'End' ? 2 : -1;
+    const n = LOOK_TABS.length;
+    const next = e.key === 'ArrowRight' ? (i + 1) % n : e.key === 'ArrowLeft' ? (i + n - 1) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
     if (next < 0) return;
     e.preventDefault();
     onTab(LOOK_TABS[next]);
