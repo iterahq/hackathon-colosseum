@@ -264,7 +264,7 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
   written on chain (`stamps_issued`, the landing tile; 13 outside the tagged test accounts) and 11,605 stamps funded
   (`stamps_funded`, the shop line; 715 outside). These are different numbers: "written" counts minted day stamps, while
   "funded" is a capacity, the half of each purchase moved to the mint authority divided by the 5,000-lamport fee of
-  one stamp, so it is not a count of stamps that exist. A profile's line "paid the network fee of N stamps" is the
+  one stamp, so it is not a count of stamps that exist. A profile's line "cover the network fee of up to N stamps" is the
   same capacity for that wallet's own purchases. What is true is that the whole loop runs end to end on devnet and anyone can verify every step.
 - The server authority pays for and signs every mint and stamp; key custody is a function secret, not a multisig.
 - Grading of choice, fill, order, match and static code checks is server-side (`grade`), 118 of 234 activities. The
