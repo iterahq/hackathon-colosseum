@@ -1,6 +1,9 @@
 /** A wallet whose certification, claims and medals are already on devnet: the landing reads it live. */
 export const EXAMPLE_WALLET = 'CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya';
 
+/** The HTML certification of that wallet: its public page at /c/<asset> shows the certificate and reads it from the chain. */
+export const EXAMPLE_CERTIFICATION = 'Fkd4BibqhKNjUWLHJg9ZDh1CaGsDCXWfyZ7pkKJkbteC';
+
 export const PRIMARY_CTA =
   'inline-flex min-h-12 items-center justify-center rounded-[12px] border-b-[5px] border-[#249457] bg-[#3FD17F] px-6 [font:700_16px_Inter] text-[#0A0908] hover:bg-[#5BE095] active:translate-y-[2px] active:border-b-[3px]';
 

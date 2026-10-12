@@ -1,14 +1,17 @@
 /**
  * Itera sign-in: Phantom, and nothing else on the screen. One "Connect Wallet" button; a browser without
- * Phantom gets the one link that fixes it (the Phantom app's browser on a phone, the install page on a desktop).
+ * Phantom gets the one link that fixes it (the Phantom app's browser on a phone, the install page on a desktop)
+ * and, under it, the two ways on that need no wallet: the first lesson and an example profile.
  * The e-mail, code and DevFellowship routes still exist by URL; nothing links to them from here.
  * On success navigates to the `from` location (default '/').
  */
 import { useMemo, useState } from 'react';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { ConnectWalletButton } from '@/components/header/ConnectWalletButton';
+import { EXAMPLE_WALLET } from '@/components/landing/landingStyles';
+import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
 import { returnPathOf } from '@/lib/loginReturn';
 import { isGuestAccessToken } from '@/services/guestSession.service';
@@ -17,6 +20,8 @@ import { PHANTOM_INSTALL_URL, isMobileBrowser } from '@/utils/solanaWallets';
 
 const PRIMARY =
   "inline-flex min-h-14 w-full items-center justify-center rounded-xl border-0 border-b-[5px] border-b-[#1F8A4F] bg-[#3FD17F] px-6 [font:700_22px_'Barlow_Condensed'] uppercase tracking-[.04em] text-[#0A0908] transition-transform duration-75 hover:bg-[#5BE095] active:translate-y-[3px] active:border-b-[2px] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F4EDE2]";
+
+const SMALL_LINK = 'inline-flex min-h-11 items-center rounded text-[#C9BFB0] underline underline-offset-4 hover:text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]';
 
 export default function AuthPage() {
   const { session, loading, configured } = useAuth();
@@ -54,15 +59,28 @@ export default function AuthPage() {
         onConnected={() => navigate(from, { replace: true })}
         onError={(noWallet) => setWalletError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'))}
         fallback={
-          mobile ? (
-            <a href={phantomHref} className={PRIMARY} data-testid="open-in-phantom">
-              {t('door.noWallet.openPhantom')}
-            </a>
-          ) : (
-            <a href={PHANTOM_INSTALL_URL} target="_blank" rel="noreferrer" className={PRIMARY} data-testid="install-phantom">
-              {t('door.noWallet.install')}
-            </a>
-          )
+          <>
+            {mobile ? (
+              <a href={phantomHref} className={PRIMARY} data-testid="open-in-phantom">
+                {t('door.noWallet.openPhantom')}
+              </a>
+            ) : (
+              <a href={PHANTOM_INSTALL_URL} target="_blank" rel="noreferrer" className={PRIMARY} data-testid="install-phantom">
+                {t('door.noWallet.install')}
+              </a>
+            )}
+            <p className="mt-3 text-center [font:500_12px/1.5_JetBrains_Mono] text-[#A0978A]" data-testid="login-devnet">
+              {t('door.noWallet.devnet')}
+            </p>
+            <p className="mt-4 flex flex-col items-center gap-1 [font:500_14px/1.4_Inter]">
+              <Link to={TRY_PATH} className={SMALL_LINK} data-testid="login-try">
+                {t('door.noWallet.try')} →
+              </Link>
+              <Link to={`/u/${EXAMPLE_WALLET}`} className={SMALL_LINK} data-testid="login-example">
+                {t('door.noWallet.example')} →
+              </Link>
+            </p>
+          </>
         }
       />
       {walletError && (
