@@ -98,4 +98,12 @@ describe('filter and order', () => {
     const options = capabilityOptions([card({ capabilities: [{ key: 'b', title: 'B' }, { key: 'a', title: 'A' }] })], ['a', 'b']);
     expect(options.map((o) => o.key)).toEqual(['a', 'b']);
   });
+
+describe('the share of a skill', () => {
+  it('rides on a card and never on the list of filter options', () => {
+    const cards = [card({ capabilities: [{ key: 'a', title: 'A', graded: '10/12' }] })];
+    expect(filterCards(cards, { capability: 'a', minDays: 0 })[0].capabilities).toEqual([{ key: 'a', title: 'A', graded: '10/12' }]);
+    expect(capabilityOptions(cards, ['a'])).toEqual([{ key: 'a', title: 'A' }]);
+  });
+});
 });

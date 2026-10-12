@@ -2,6 +2,7 @@ import { loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
 import { DEFAULT_AVATAR_KEY, avatarView, fallbackAvatarView, resolveAvatar, type AvatarCatalog } from '../_shared/avatars.ts';
 import { ITERA_V2_GRAPH, graphOf } from '../_shared/capability-graph.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
+import { gradedShare } from '../_shared/claims.ts';
 import { pickText } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { cleanName, publicLabel } from '../_shared/gift.ts';
@@ -43,6 +44,7 @@ interface ProofRow {
   claim_id: string;
   tx_signature: string | null;
   proven_at: string;
+  evidence: string | null;
 }
 
 function ok<T>(result: { data: T | null; error: { message: string } | null }, label: string): T {
@@ -94,7 +96,7 @@ async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
     loadTestAccountIds(db),
     loadAvatarCatalog(db).catch(() => null),
   ]);
-  const proofs = certifications.length > 0 ? ok<ProofRow[]>((await db.from('claim_proofs').select('user_achievement_id,claim_id,tx_signature,proven_at').in('user_achievement_id', certifications.map((row) => row.id))) as never, 'claim_proofs') : [];
+  const proofs = certifications.length > 0 ? ok<ProofRow[]>((await db.from('claim_proofs').select('user_achievement_id,claim_id,tx_signature,proven_at,evidence').in('user_achievement_id', certifications.map((row) => row.id))) as never, 'claim_proofs') : [];
 
   const nameOf = new Map(ok<Array<{ id: string; display_name: string | null }>>(users as never, 'users').map((row) => [row.id, row.display_name]));
   // A wallet bound to an e-mail account: its display name may be a real name, so it is never shown.
@@ -115,14 +117,14 @@ async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
   return listings.map((listing) => {
     const rows = certifications.filter((row) => row.user_id === listing.user_id);
     const facts = rows.map((row) => certificationFacts(row.state));
-    const written = new Map<string, { title: string; at: string }>();
+    const written = new Map<string, { title: string; graded: string | null }>();
     let lastStamp: string | null = null;
     for (const row of rows) {
       const graph = graphOf(row.state.program_slug);
       for (const proof of proofsOf.get(row.id) ?? []) {
         if (!lastStamp || proof.proven_at > lastStamp) lastStamp = proof.proven_at;
         const claim = graph?.claims.find((entry) => entry.id === proof.claim_id);
-        if (claim && proof.tx_signature && !written.has(claim.id)) written.set(claim.id, { title: pickText(claim.title, lang), at: proof.proven_at });
+        if (claim && proof.tx_signature && !written.has(claim.id)) written.set(claim.id, { title: pickText(claim.title, lang), graded: gradedShare(proof.evidence) });
       }
       if (!lastStamp && row.earned_at) lastStamp = row.earned_at;
     }
@@ -138,7 +140,8 @@ async function loadCards(db: IteraClient, lang: Lang): Promise<TalentCard[]> {
       stamped_days: facts.reduce((sum, entry) => sum + entry.stamped_days, 0),
       total_days: facts.reduce((sum, entry) => sum + entry.total_days, 0),
       certifications: rows.length,
-      capabilities: [...written].map(([key, value]) => ({ key, title: value.title })).sort((a, b) => order(a.key) - order(b.key)),
+      // `graded`: the share the stored evidence document states. Read from our tables, like every number of a card.
+      capabilities: [...written].map(([key, value]) => ({ key, title: value.title, graded: value.graded })).sort((a, b) => order(a.key) - order(b.key)),
       bounties_paid: money.count,
       bounties_paid_lamports: money.lamports,
       last_stamp_at: lastStamp,
