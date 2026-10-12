@@ -9,6 +9,15 @@ import { ChestCue } from './ChestCue';
 
 const state = vi.hoisted(() => ({ list: null as unknown, followed: [] as unknown[] }));
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play: vi.fn() }) }));
+// The picture of the Tera is in the browser at once: the reveal waits for it.
+class LoadedImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  set src(_value: string) {
+    this.onload?.();
+  }
+}
+vi.stubGlobal('Image', LoadedImage);
 vi.mock('@/hooks/useTeraCatalog', async () => {
   const { FALLBACK_CATALOG } = await import('@/services/teraCatalog.service');
   return { useTeraCatalog: () => FALLBACK_CATALOG };

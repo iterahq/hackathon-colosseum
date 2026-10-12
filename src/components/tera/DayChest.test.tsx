@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { toChest } from '@/services/teraChest.service';
@@ -9,6 +9,15 @@ import { DayChest } from './DayChest';
 
 const play = vi.hoisted(() => vi.fn());
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play }) }));
+// The picture of the Tera is in the browser at once: the reveal waits for it.
+class LoadedImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  set src(_value: string) {
+    this.onload?.();
+  }
+}
+vi.stubGlobal('Image', LoadedImage);
 vi.mock('@/hooks/useTeraCatalog', async () => {
   const { FALLBACK_CATALOG } = await import('@/services/teraCatalog.service');
   return { useTeraCatalog: () => FALLBACK_CATALOG };
@@ -106,5 +115,19 @@ describe('DayChest', () => {
     expect(screen.getByTestId('day-chest')).toHaveAttribute('data-size', 'hero');
     expect(screen.getByTestId('day-chest-day')).toHaveTextContent('saiu do baú do dia 3');
     expect(screen.getByTestId('day-chest-tera')).toHaveAttribute('src', expect.stringContaining('base_lider.webp'));
+  });
+
+  it('keeps the chest closed until the picture of the Tera is in the browser, and never longer than a moment', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Image', class { onload = null; onerror = null; src = ''; });
+    show('revealed', WIRE_CHEST_MINTED);
+    expect(screen.getByTestId('day-chest')).toHaveAttribute('data-phase', 'rolling');
+    expect(screen.queryByTestId('day-chest-tera')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chest-art')).toHaveAttribute('data-open', 'false');
+    act(() => void vi.advanceTimersByTime(2600));
+    expect(screen.getByTestId('day-chest')).toHaveAttribute('data-phase', 'revealed');
+    expect(screen.getByTestId('day-chest-tera')).toBeInTheDocument();
+    vi.useRealTimers();
+    vi.stubGlobal('Image', LoadedImage);
   });
 });

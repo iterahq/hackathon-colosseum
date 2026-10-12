@@ -17,6 +17,8 @@ import { ChestArt } from './ChestArt';
 const LINK = 'inline-flex min-h-10 items-center [font:600_12px_JetBrains_Mono] text-[#3FD17F] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]';
 /** The colour a tier is named in. The edge of a common Tera is too dark to read as text, so it is named in bone. */
 const TIER_TEXT: Record<string, string> = { ...RARITY_EDGE, common: '#C9BFB0' };
+/** How long the reveal waits for the picture before opening without it. */
+const ART_WAIT_MS = 2500;
 const tierColor = (rarity: string | null): string => (rarity && rarity in TIER_TEXT ? TIER_TEXT[rarity] : '#3FD17F');
 
 interface Props {
@@ -42,12 +44,31 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
   const catalog = useTeraCatalog();
   const [skipped, setSkipped] = useState(false);
   const quiet = still || reduce || skipped;
-  const revealed = phase === 'revealed' && chest?.tera != null;
+  const hero = size === 'hero';
+  const opened = phase === 'revealed' && chest?.tera != null;
+  const art = opened ? (hero ? chest.tera.imageUrl : chest.tera.thumbUrl) : null;
+  // The Tera comes out only once its picture is in the browser: an empty ring at the moment of the reveal is no reward.
+  const [loaded, setLoaded] = useState<string | null>(null);
+  useEffect(() => {
+    if (!art || still || loaded === art) return;
+    let alive = true;
+    const done = () => alive && setLoaded(art);
+    const picture = new Image();
+    picture.onload = done;
+    picture.onerror = done;
+    picture.src = art;
+    const id = window.setTimeout(done, ART_WAIT_MS);
+    return () => {
+      alive = false;
+      window.clearTimeout(id);
+    };
+  }, [art, still, loaded]);
+  const revealed = opened && (still || loaded === art);
+  const shown: ChestPhase = opened && !revealed ? 'rolling' : phase;
   const rarity = revealed ? chestRarity(chest) : null;
   const earnOnly = isEarnOnlyTier(rarity, new Set(catalog.tiers.filter((tier) => tier.earnOnly).map((tier) => tier.rarity)));
   const tierName = revealed ? chest.tera.tierName || catalog.tiers.find((tier) => tier.rarity === rarity)?.tierName[locale] || t('chest.tera') : '';
   const color = tierColor(rarity);
-  const hero = size === 'hero';
   const chimed = useRef(still);
   const chestId = chest?.id ?? null;
   useEffect(() => {
@@ -64,7 +85,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
   return (
     <motion.section
       data-testid="day-chest"
-      data-phase={phase}
+      data-phase={shown}
       data-size={size}
       data-rarity={rarity ?? undefined}
       data-earn-only={revealed ? earnOnly : undefined}
@@ -75,7 +96,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: quiet ? 0 : 0.25 }}
       className={`relative w-full shrink-0 overflow-hidden rounded-[14px] bg-[#141210] text-left ${hero ? 'flex flex-col items-center gap-3 p-5 text-center' : '-mt-2 flex h-[140px] items-center gap-3 px-3'} ${earnOnly ? 'border-2' : 'border border-l-[3px]'}`}
-      style={earnOnly ? { borderColor: color, backgroundImage: `linear-gradient(120deg, ${color}26, #141210 62%)`, boxShadow: `0 0 28px ${color}33` } : { borderColor: '#262320', borderLeftColor: revealed ? RARITY_EDGE[rarity as keyof typeof RARITY_EDGE] ?? color : phase === 'sealing' ? '#5E574E' : '#F2C66D' }}
+      style={earnOnly ? { borderColor: color, backgroundImage: `linear-gradient(120deg, ${color}26, #141210 62%)`, boxShadow: `0 0 28px ${color}33` } : { borderColor: '#262320', borderLeftColor: revealed ? RARITY_EDGE[rarity as keyof typeof RARITY_EDGE] ?? color : shown === 'sealing' ? '#5E574E' : '#F2C66D' }}
     >
       {revealed && earnOnly && !quiet && <Confetti accent={color} />}
       {revealed && !quiet && (
@@ -94,7 +115,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
             />
             </span>
             <motion.img
-              src={hero ? chest.tera.imageUrl : chest.tera.thumbUrl}
+              src={art ?? chest.tera.thumbUrl}
               alt=""
               draggable={false}
               data-testid="day-chest-tera"
@@ -112,7 +133,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
             </span>
           </>
         ) : (
-          <ChestArt open={false} color={phase === 'sealing' ? '#5E574E' : '#F2C66D'} shaking={phase === 'rolling'} still={quiet} size={hero ? 132 : 88} />
+          <ChestArt open={false} color={shown === 'sealing' ? '#5E574E' : '#F2C66D'} shaking={shown === 'rolling'} still={quiet} size={hero ? 132 : 88} />
         )}
       </div>
       <div className={`flex min-w-0 flex-col ${hero ? 'items-center' : 'flex-1'}`}>
@@ -144,7 +165,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
           <>
             <span className="truncate [font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#F2C66D]">{t('chest.title', { n })}</span>
             <span className={`[font:600_14px/1.35_Inter] text-[#F4EDE2] ${hero ? 'mt-1 max-w-[30ch]' : 'line-clamp-3'}`} data-testid="day-chest-line">
-              {t(phase === 'rolling' ? 'chest.rolling' : phase === 'committed' ? 'chest.committed' : 'chest.sealing')}
+              {t(shown === 'rolling' ? 'chest.rolling' : shown === 'committed' ? 'chest.committed' : 'chest.sealing')}
             </span>
             {chest?.commit ? (
               <a href={txUrl(chest.commit.tx)} target="_blank" rel="noopener noreferrer" className={LINK} data-testid="day-chest-commit" onClick={(e) => e.stopPropagation()}>
