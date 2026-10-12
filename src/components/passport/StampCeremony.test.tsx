@@ -157,4 +157,16 @@ describe('StampCeremony', () => {
     expect(screen.getByRole('button', { name: 'next' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver minhas certificações →' })).toHaveAttribute('href', '/passport');
   });
+
+  it('draws what follows the ceremony inside the dialog, where a full-screen ceremony can still be scrolled to it', () => {
+    render(
+      <I18nProvider>
+        <MemoryRouter>
+          <StampCeremony model={model('minted')} colorIndex={1} footer={<div data-testid="after">panel</div>} />
+        </MemoryRouter>
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('stamp-ceremony')).toContainElement(screen.getByTestId('after'));
+    expect(screen.getByTestId('ceremony-footer')).toBeInTheDocument();
+  });
 });

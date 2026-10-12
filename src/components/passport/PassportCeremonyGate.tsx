@@ -76,8 +76,8 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
         onConnect={passport.connect}
         outfit={outfit}
         hasWallet={Boolean(link.wallet) || link.pending}
+        footer={preparing ? undefined : <LoopPanel trail={trail} day={day} stamp={confirmedStamp(view.model, trail, day)} />}
       />
-      {!preparing && <LoopPanel trail={trail} day={day} stamp={confirmedStamp(view.model, trail, day)} />}
     </div>
   );
 }
