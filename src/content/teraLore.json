@@ -45,6 +45,10 @@
     "mythic": {
       "name": { "pt": "Tera Mítico", "en": "Mythic Tera" },
       "text": { "pt": "Faíscas que saíram de Brasa e voltam só de vez em quando; quase ninguém viu de perto.", "en": "Sparks that left Brasa and only come back now and then; almost nobody has seen one up close." }
+    },
+    "primordial": {
+      "name": { "pt": "Tera Primordial", "en": "Primordial Tera" },
+      "text": { "pt": "Só existe uma. Já estava em Brasa antes da Primeira Chama, e toda brasa que acende veio dela.", "en": "There is only one. She was in Brasa before the First Flame, and every ember that lights came from her." }
     }
   },
   "avatars": {
@@ -414,7 +418,7 @@
       "story": { "pt": "A Fênix Primordial é o ser mais antigo de Brasa, mais antigo que a Primeira Chama. A chama era só um pedaço dela; depois que as sete cores saíram, ela mesma subiu da pedra, verde e de asas abertas, e ninguém estava olhando. Cada pedrinha de fogo frio que alguém ganha é uma brasa dela que esfriou, e quando uma vida apaga e a pedrinha quebra, é ela quem traz o Tera de volta. Quase ninguém a viu. Dizem que o passarinho cinza da lenda dormiu cinco dias na pedra onde ela dormia, sem saber.", "en": "The Primordial Phoenix is the oldest being in Brasa, older than the First Flame. The flame was only a piece of her; after the seven colours came out, she herself rose from the stone, green and wings wide, while nobody was looking. Every small stone of cold fire someone earns is an ember of hers that cooled, and when a life goes out and the stone is cracked, she is the one who brings the Tera back. Almost nobody has seen her. They say the grey bird from the legend slept five days on the stone she was sleeping in, without knowing." },
       "quote": { "pt": "Já apaguei mais vezes que todos vocês. Ainda estou aqui.", "en": "I have gone out more times than all of you. I am still here." },
       "relations": ["brand_tera_hero", "special_arco_iris", "special_prata"],
-      "art_note": "Full-body phoenix at the bottom left of sheet A (mv2103zn): green with lime-glowing spread wings, long flowing tail feathers, > on the chest, small floating leaf-flames. Sheet C (mv215zq4) has a near-identical FÊNIX VERDE with a golden </> on the chest. Crop: crops/brand_phoenix_full.png."
+      "art_note": "Medallion portrait supplied by the owner on 2026-10-12: green phoenix with gold-tipped feathers and a gem on the brow, spread wings, inside a ring of glowing vines. Replaces the full-body crop of sheet A."
     },
     "code_deployando": {
       "name": { "pt": "Zarpa", "en": "Zarpa" },
