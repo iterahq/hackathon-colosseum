@@ -1,3 +1,4 @@
+import { FOCUS_PAID_TERAS_OFF } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import { MONO_LABEL } from './shopStyles';
@@ -18,7 +19,7 @@ const explainerKind = (item: ShopItem): string => (item.kind !== 'avatar' ? item
 export function ShopExplainer({ item, className = '' }: { item: ShopItem; className?: string }) {
   const { t } = useI18n();
   const kind = explainerKind(item);
-  const royalty = kind === 'avatar' ? (item.avatar?.royaltyBps ?? 0) : 0;
+  const royalty = kind === 'avatar' && !FOCUS_PAID_TERAS_OFF ? (item.avatar?.royaltyBps ?? 0) : 0;
   return (
     <div className={`flex flex-col gap-3 rounded-[12px] border border-[#262320] bg-[#0F0D0B] p-3.5 text-left ${className}`} data-testid="shop-explainer" data-kind={kind}>
       <div>

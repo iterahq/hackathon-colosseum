@@ -49,6 +49,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.step.prove.body':
       'A credencial fica na sua carteira e não pode ser vendida nem transferida. Cada habilidade provada entra nela com uma impressão digital do seu trabalho. Qualquer pessoa confere, sem login. Os nomes técnicos estão na página Verifique.',
     'landing.step.prove.chest': 'Cada dia carimbado também abre um baú com um Tera; os raros só saem dali e não se compram.',
+    'landing.step.prove.chestOnly': 'Cada dia carimbado também abre um baú com um Tera.',
     'landing.step.earn.label': '03 · Ganhar',
     'landing.step.earn.title': 'A credencial abre missões pagas',
     'landing.step.earn.older': 'Missões antigas dependem da chave da Itera para os dias.',
@@ -130,6 +131,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.step.prove.body':
       'The credential lives in your wallet and cannot be sold or moved. Each skill you prove is written on it with a fingerprint of your work. Anyone can check it, no login. The technical names are on the Verify page.',
     'landing.step.prove.chest': 'Every stamped day also opens a chest with one Tera; the rare ones only come from there and cannot be bought.',
+    'landing.step.prove.chestOnly': 'Every stamped day also opens a chest with one Tera.',
     'landing.step.earn.label': '03 · Earn',
     'landing.step.earn.title': 'The credential opens paid bounties',
     'landing.step.earn.older': "Older bounties rely on Itera's key for the days.",

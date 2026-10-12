@@ -178,6 +178,8 @@ bounded to 1.2 s; past that the stamp goes out as it always did.
 
 ## The bought Tera
 
+> The hackathon build hides this shelf (`FOCUS_PAID_TERAS_OFF` in `src/config/focus.ts`): the three tiers for sale are not listed or offered in the UI. Build with `VITE_PAID_TERAS=on` to bring it back; the server, the `purchase-*` functions and every Tera already bought are unchanged.
+
 Unchanged purchase rail (see [`onchain-purchases.md`](onchain-purchases.md), "Tera avatars"): minted with no freeze
 plugin, so its owner can transfer it. Tera, Super Tera and Mega Tera are for sale.
 

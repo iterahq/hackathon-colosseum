@@ -1,3 +1,4 @@
+import { FOCUS_PAID_TERAS_OFF } from '@/config/focus';
 import { localizePriceLabel } from '@/utils/shopPrice';
 import type { ShopItem } from '@/types/shop';
 import { avatarState } from '@/utils/avatarShop';
@@ -89,6 +90,7 @@ export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string): Arca
     const tiers = rows.map((row): ArcadeGroup => {
       const crystals = row.priceCrystals != null ? ` · ${t('shop.crystals', { n: formatCount(row.priceCrystals, locale) })}` : '';
       const supply = tierSupply(row.items, t);
+      if (FOCUS_PAID_TERAS_OFF) return { id: row.rarity, title: row.tierName, note: t('shelf.owned.note'), edge: RARITY_EDGE[row.rarity], items: row.items };
       return { id: row.rarity, title: row.tierName, note: `${localizePriceLabel(row.priceShort, locale)}${crystals} · ${supply}${resaleNote(row.items, t)}`, edge: RARITY_EDGE[row.rarity], items: row.items };
     });
     const rank = (i: ShopItem) => ROW_ORDER.indexOf(i.avatar?.rarity ?? 'common');

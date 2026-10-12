@@ -25,9 +25,16 @@ export const FOCUS_SOL_ONLY_SHOP = FOCUS_BUILD;
 export const FOCUS_LIVES_OFF = FOCUS_BUILD;
 
 /**
- * The shop sells what the certification shows (the inks and frames of the credential) and the Teras: the free
- * faces, the three tiers for sale (Tera, Super Tera, Mega Tera, transferable) and the earn-only tiers, listed with
- * no price. The wardrobe and the profile wear only what is free or owned.
+ * The shop sells what the certification shows (the inks and frames of the credential) and lists the Teras: the free
+ * faces and the earn-only tiers, with no price. The wardrobe and the profile wear only what is free or owned.
  */
 export const FOCUS_SHOP_KINDS: ReadonlySet<string> = new Set(['avatar', 'ink', 'frame']);
 export const FOCUS_SHOP_ONLY = FOCUS_BUILD;
+
+/**
+ * The paid Tera shelf is off: the three tiers for sale (Tera, Super Tera, Mega Tera) leave the shop, and with them the
+ * "transferable" and "resale fee" wording there, on the landing and in the world. A Tera a wallet already bought stays
+ * in its wardrobe and on its profile. Only the UI changes: the routes, the `purchase-*` functions and the chest are as
+ * they were. A build with `VITE_PAID_TERAS=on` brings the shelf back.
+ */
+export const FOCUS_PAID_TERAS_OFF = FOCUS_BUILD && (import.meta.env.VITE_PAID_TERAS as string | undefined) !== 'on';

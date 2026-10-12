@@ -29,7 +29,7 @@ import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import type { CertTarget, ShopActions } from '@/types/shopView';
 import { avatarOf } from '@/utils/avatarShop';
-import { focusShopItems } from '@/utils/focusShop';
+import { focusShopItems, isHiddenPaidTera } from '@/utils/focusShop';
 import { withCompanionState } from '@/utils/shop';
 
 const TAB = `min-h-11 flex-1 rounded-[10px] px-5 [font:700_15px_Inter] sm:flex-none ${FOCUS}`;
@@ -86,7 +86,7 @@ export default function ShopPage() {
   const actions: ShopActions = {
     busy: purchase.busy || equipOutfit.isPending || equipAvatar.isPending || claim.isPending,
     hasWallet,
-    buy: (item) => (hasWallet ? void purchase.buy(item.key, isCosmetic(item) ? targetId || undefined : undefined) : setLinking(true)),
+    buy: (item) => (isHiddenPaidTera(item) ? undefined : hasWallet ? void purchase.buy(item.key, isCosmetic(item) ? targetId || undefined : undefined) : setLinking(true)),
     claim: (item) => claim.mutate(item.key),
     equip: (item) => {
       const face = avatarOf(item);
