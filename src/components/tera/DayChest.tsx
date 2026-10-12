@@ -144,6 +144,7 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
                 {t('chest.earnOnlyChip')}
               </span>
             )}
+            <span className={`max-w-full truncate [font:700_11px/1.4_JetBrains_Mono] uppercase tracking-[.08em] text-[#F2C66D] ${hero ? 'mb-1' : ''}`} data-testid="day-chest-won">{t('chest.won')}</span>
             <motion.span
               className={`max-w-full truncate uppercase ${hero ? "[font:700_40px/1_'Barlow_Condensed']" : "[font:700_28px/1_'Barlow_Condensed']"}`}
               style={{ color, textShadow: earnOnly ? `0 0 18px ${color}88` : undefined }}
@@ -156,10 +157,15 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
             </motion.span>
             <span className={`max-w-full truncate text-[#F4EDE2] ${hero ? 'mt-1 [font:600_20px/1.2_Inter]' : '[font:600_16px/1.25_Inter]'}`} data-testid="day-chest-name">{chest.tera.title}</span>
             {hero && <span className="max-w-full truncate [font:600_10px/1.5_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A]" data-testid="day-chest-day">{t('chest.day', { n })}</span>}
-            <span className={`[font:400_12px/1.3_Inter] text-[#C9BFB0] ${hero ? 'mt-1' : 'line-clamp-2'}`} data-testid="day-chest-yours">{t('chest.earned')}</span>
-            <Link to={chestVerifyPath(chest.id)} className={`${LINK} whitespace-nowrap ${hero ? '' : `-mb-1 ${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:600_11px_JetBrains_Mono]`}`} data-testid="day-chest-verify" onClick={(e) => e.stopPropagation()}>
-              {t('chest.verify')} →
-            </Link>
+            <span className={`[font:400_12px/1.3_Inter] text-[#C9BFB0] ${hero ? 'mt-1' : 'line-clamp-1'}`} data-testid="day-chest-yours">{t('chest.earned')}</span>
+            <span className={`flex max-w-full flex-wrap items-center gap-x-4 ${hero ? 'justify-center' : '-mb-1'}`}>
+              <Link to="/world#cast" className={`${LINK} whitespace-nowrap ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:700_11px_JetBrains_Mono]`}`} data-testid="day-chest-world" onClick={(e) => e.stopPropagation()}>
+                {t('chest.world')} →
+              </Link>
+              <Link to={chestVerifyPath(chest.id)} className={`${LINK} whitespace-nowrap !text-[#A0978A] ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:600_11px_JetBrains_Mono]`}`} data-testid="day-chest-verify" onClick={(e) => e.stopPropagation()}>
+                {t('chest.verify')} →
+              </Link>
+            </span>
           </>
         ) : (
           <>

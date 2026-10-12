@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import { CrystalSection } from '@/components/world/CrystalSection';
 import { FOCUS_SOL_ONLY_SHOP, FOCUS_STARTER_FACES_UNLISTED } from '@/config/focus';
@@ -30,6 +31,11 @@ export default function WorldPage() {
   const shop = useShop({ enabled: signedIn });
   // Known only once the learner's list answered: until then nothing is drawn as locked.
   const owned = useMemo(() => (signedIn && shop.data ? ownedTerasOf(shop.data) : null), [signedIn, shop.data]);
+  // A link from the day's chest lands on the cast, where the Tera just earned is the first thing unlocked.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash === '#cast') document.getElementById('cast')?.scrollIntoView();
+  }, [hash]);
   const cast = useMemo(() => CAST_KEYS.filter((key) => CAST_TIERS.includes(loreTierOf(key, catalog.avatars))), [catalog.avatars]);
   return (
     <div className="min-h-screen overflow-x-hidden text-[#F4EDE2]" style={WORLD_GRID} data-testid="world-page">
