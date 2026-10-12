@@ -9,9 +9,9 @@ done during the competition is judged).
 - Last inherited commit: `1f5b925b` (2026-10-09 16:49 -0300), "feat: funnel events (DFL-00D3F) (#699)".
 - First hackathon commit: `34336b3` (2026-10-09 17:44 -0300), "chore: bootstrap hackathon copy (drop CI, isolation
   banner, API base build arg) (#1)". Its parent is the copy point.
-- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `f93240f`, 2026-10-11 03:00 -0300): 110 commits,
+- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `8c24bf0`, 2026-10-12 07:36 -0300): 266 commits,
   one per merged PR (squash merges), all by one git author account.
-- Diff against the copy point: 844 files changed, 719 added, 105 modified, 20 deleted; 68,189 lines added and 5,266 removed.
+- Diff against the copy point: 1,276 files changed, 1,093 added, 160 modified, 23 deleted; 109,018 lines added and 6,341 removed.
 - To refresh these numbers: `git rev-list --count 1f5b925b..origin/main`, `git diff --shortstat 1f5b925b origin/main`,
   `gh pr list --state merged --limit 200`.
 - Before the copy point the repository history has 721 commits. The history of the original product is included in
@@ -26,7 +26,7 @@ done during the competition is judged).
 - Subscription billing code (Stripe) and the original documentation, including the original `CLAUDE.md`.
 - Brand assets: the Tera mascot images, fonts and sound effects under `public/`.
 - `supabase/functions/` did not exist at the copy point: the original backend runs elsewhere and is not in this
-  repository. All 27 edge functions below were written during the competition.
+  repository. All 34 edge functions below were written during the competition.
 
 ## What was built during the competition
 
@@ -154,7 +154,7 @@ Merged pull requests (`gh pr list --state merged`, titles as merged; times are i
 | #200 | Bounty page: no empty card on settled bounties, direct requirement text, sponsor signer on the ledger | Settled bounty shows no empty action card; the ledger names the sponsor wallet as signer of new funding and payout steps. |
 | #201 | /verify: the escrow program refusing a wallet that was not invited | `gate-check?direct=1` and the second check on `/verify#gate`. |
 
-Merged after this table was written: see `gh pr list --state merged`. Nothing is open at the time of writing.
+Merged after this table was written: see `gh pr list --state merged` (the table stops at #201; main is at #270).
 
 ## Talent board and direct bounty (added in the last hours)
 
@@ -231,7 +231,7 @@ The owner's rule: connecting a wallet also means anonymity. Full description and
 - **Tera follow-ups (#237):** the one-of-one can be rolled only by the chest that completes the program; a tenant's
   staff may brand a sponsor Tera with the tenant's own name; brands are Latin letters only.
 
-## Hackathon migrations (`db/migrations/`, 61 files)
+## Hackathon migrations (`db/migrations/`, 81 files)
 
 - `0110_identity_provider_solana.sql`
 - `0111_wallet_user_provisioning.sql`
@@ -288,6 +288,23 @@ The owner's rule: connecting a wallet also means anonymity. Full description and
 - `0201_bounty_escrow_program.sql`
 - `0202_bounty_refund_schedule.sql`
 - `0210_rate_hits.sql`
+- `0230_bounty_event_signer.sql`
+- `0231_bounty_escrow_version.sql`
+- `0232_credential_archives.sql`
+- `0240_bounty_wallet_sponsors.sql`
+- `0250_free_email_accounts.sql`
+- `0251_guest_first_lesson.sql`
+- `0260_itera_v2_english_content.sql`
+- `0261_server_judged_misses.sql`
+- `0262_itera_v2_english_pictures.sql`
+- `0270_read_cache.sql`
+- `0280_server_written_results.sql`
+- `0281_answer_key_server_only.sql`
+- `0282_answer_key_check_signed_in_only.sql`
+- `0290_judge_bounties.sql`
+- `0291_judge_bounty_template.sql`
+- `0292_bounty_event_escrow_moved.sql`
+- `0320_guest_claim_completed_at.sql`
 - `0330_talent_listings.sql`
 - `0340_bounty_direct.sql`
 - `0341_bounty_escrow_direct_version.sql`
@@ -298,7 +315,7 @@ The owner's rule: connecting a wallet also means anonymity. Full description and
 - `0354_tenant_sponsor_brand.sql`
 - `0355_privacy.sql`
 
-## Hackathon edge functions (`supabase/functions/`, 29 functions plus `_shared/`)
+## Hackathon edge functions (`supabase/functions/`, 34 functions plus `_shared/`)
 
 - `action-gift`
 - `bounty-action`
@@ -308,6 +325,7 @@ The owner's rule: connecting a wallet also means anonymity. Full description and
 - `bounty-sponsor`
 - `capability-graph`
 - `circuit`
+- `credential-archive`
 - `class-podium`
 - `companion`
 - `credential-meta`
@@ -319,6 +337,7 @@ The owner's rule: connecting a wallet also means anonymity. Full description and
 - `grade`
 - `learner-profile`
 - `link-wallet`
+- `lesson`
 - `lives`
 - `passport`
 - `privacy`

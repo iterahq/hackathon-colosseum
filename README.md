@@ -46,7 +46,7 @@ example to open without playing: certificate
 | Tera companion (one per wallet learner) | Core asset, collection "Itera Companions" | Yes | Mirrors `lives`, `max_lives`, `outfit`, `level`, `xp`, `streak`, `avatar`. Written on purchase, equip, lesson end and when the last life is lost, rate limited. A gifted life shows as 6/5 | `/c/<asset>`, `/u/<wallet>` |
 | Collectible Tera avatar | Core asset, collection "Itera Avatars" | **No**, transferable | Minted on a paid purchase, numbered, rarity pyramid with supply caps | `/c/<asset>`, Explorer |
 | Shop payment | System transfer + Memo (intent id) | n/a | Learner wallet to treasury | Explorer, `purchase-confirm` |
-| Bounty escrow (one account per bounty) | Program-derived account of the Itera escrow program (`programs/bounty-escrow`, native Solana program) | n/a | Created when a sponsor locks a reward. `accept` is signed by the learner's own wallet (the treasury only pays the fee) and records the claimant after the **program** reads their certification account; the learner's wallet signs the give-up too; `release` pays that wallet once; `refund` returns to the sponsor. The account stays on chain saying `paid` and to whom | `/bounties/<slug>`, Explorer |
+| Bounty escrow (one account per bounty) | Program-derived account of the Itera escrow program (`programs/bounty-escrow`, native Solana program) | n/a | Created when a sponsor locks a reward, in one of three layouts: 195 bytes (attested), 228 (gated), 260 (direct). `accept` is signed by the learner's own wallet (the treasury only pays the fee) and the **program** reads their certification account: owner and collection in all three. Gated and direct bounties also read the certification's plugins (frozen, Attributes under the update authority, trail hash, `days_done` against the bounty's minimum) and no attester co-signs; a direct bounty accepts only its invited wallet. An attested bounty does not read the days: the approver or Itera's attester key co-signs and vouches for them. The learner's wallet signs the give-up too; `release` pays the recorded wallet once, signed by the approver; `refund` returns to the sponsor. The account stays on chain saying `paid` and to whom | `/bounties/<slug>`, Explorer |
 | Circuito | System transfer + Memo `circuit:<purchase id>` | n/a | 50 % of each paid purchase, treasury to mint authority, to fund the stamps the server pays; public counter at `GET /circuit` | Explorer |
 
 Addresses (devnet):
@@ -63,8 +63,14 @@ Addresses (devnet):
 
 Example assets:
 
-- Gold certification, 5/5 HTML:
+- Gold certification, 5/5 HTML (minted before server grading; carries the claim hashes but no `server_verified`):
   [`4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG`](https://explorer.solana.com/address/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG?cluster=devnet)
+- Certification with server-verified share and claim hashes (`server_verified` = `10/12`, claims `html-skeleton` and
+  `html-tags`): [`Eedhtwu3Y2he54nSc4BcT11xNnXqCnJJEANyfL3W4dqa`](https://explorer.solana.com/address/Eedhtwu3Y2he54nSc4BcT11xNnXqCnJJEANyfL3W4dqa?cluster=devnet)
+  (`/c/Eedhtwu3Y2he54nSc4BcT11xNnXqCnJJEANyfL3W4dqa`). It is bronze, one day of five, and its wallet took a bounty during
+  our own runs. Treat it as a team test account: by "Known limits" no certification other than the owner's is a real
+  learner's.
+  No gold 5/5 certification with `server_verified` was found at the time of writing.
 - A bounty paid by the escrow program (accept, delivery, approval, payout, each with its transaction):
   [`/bounties/e2e-ui-mv3bd099`](https://hackathon-colosseum.178-105-2-230.sslip.io/bounties/e2e-ui-mv3bd099)
 - Collectible avatar, "Tera · Iniciante #1" (transferable):
@@ -99,15 +105,22 @@ keys still say `passport`; only user-facing text says "Certification".
   (`GET /credential-verify/<asset>` does exactly these checks, and anyone can repeat them in Explorer).
 - **Bounties: what the chain decides and what the server decides.** The reward of a bounty sits in an account of
   the escrow program `ETeJkm9QrVgMuaMdAV6aLkFZGLDX6pMcniAXu8rcBqhq`. The program decides where that money can go:
-  only to a wallet that owns a certification of the "Itera Passports" collection (it reads the asset account
-  itself), only once, or back to the sponsor recorded when the bounty was funded. The server decides everything
-  else: how many stamped days a bounty asks for (read from the same on-chain asset), the deadlines, and when to pay
-  its own bounties; a person on the sponsor's staff decides whether a delivery is approved. **The learner's wallet
-  signs the accept and the give-up** (fee paid by the treasury, so it needs no SOL); the program records nobody
-  without their signature, and the first accept that lands wins a race. The server's key (the treasury) co-signs
-  every accept as attester and is the approver of Itera's own bounties: it can refuse, delay, reopen a claim or
-  refund an unclaimed bounty of its own early; it cannot redirect a reward, nor move the reward of a bounty another
-  wallet posted. Anyone can check all of this at `/verify` (program source, IDL, deployed-code hash, raw accounts). **The program is upgradeable and its upgrade
+  only to a wallet that owns a certification of the collection the bounty names (it reads the asset account
+  itself), only once, or back to the sponsor recorded when the bounty was funded. What the program reads beyond that
+  depends on the layout of the bounty's account. **Gated and direct bounties** (228 and 260 bytes) name a trail and
+  a minimum number of stamped days in their terms, and `accept` reads them from the certification itself: it must
+  be frozen, its Attributes must sit under the update authority (the owner cannot write them), its `program` and
+  `trail` must hash to the bounty's trail, and `days_done` must reach the minimum. No attester co-signs these. A
+  direct bounty also names one invited wallet, and the program refuses every other (`NotInvited`). **The older
+  attested layout** (195 bytes) names no days: the program reads only owner and collection, and the bounty's
+  approver or Itera's attester key (the treasury) must co-sign the accept and vouch for the days. The server decides
+  the rest: the deadlines, which layout each bounty uses (recorded as `escrow_gated`), when to pay its own bounties, and (through the sponsor's
+  staff) whether a delivery is approved. **The learner's wallet signs the accept and the give-up** (fee paid by the
+  treasury, so it needs no SOL); the program records nobody without their signature, and the first accept that
+  lands wins a race. The treasury is the approver of Itera's own bounties and the attester of the older layout: as
+  approver it can refuse or delay a payout, reopen a claim (`unclaim`) and refund a bounty of its own early; as
+  attester it can only co-sign an accept or reopen a claim. Neither can redirect a reward, nor move the reward of a
+  bounty another wallet posted. Anyone can check all of this at `/verify` (program source, IDL, deployed-code hash, raw accounts). **The program is upgradeable and its upgrade
   authority is the Itera authority key**, a single key held as a function secret: whoever holds it could replace
   the program and, with it, every rule above. On devnet that is deliberate, to fix bugs during the hackathon; it is
   the first thing to remove (or hand to a multisig) before real money. Full model:
@@ -119,8 +132,9 @@ keys still say `passport`; only user-facing text says "Certification".
   completion written by a client. Of the 234 activities of the demo program, 118 are graded on the server (choices,
   ordering, matching, fill-in code and the HTML exercises whose tests read the page or the source), 51 need a browser
   (gestures, computed style, simulated clicks) and are recorded as `self_reported`, and 65 have nothing to grade.
-  A stamp says what stands behind it: the certification carries `server_verified` ("10/12") on chain and each
-  capability claim commits to the hashes of the graded answers. Details and what this still does not prove:
+  A stamp says what stands behind it: a certification stamped after the grading change carries `server_verified` ("10/12") on chain and each
+  capability claim commits to the hashes of the graded answers; the featured gold example below predates it and
+  carries the claim hashes without `server_verified`. Details and what this still does not prove:
   "Trust model" in [`docs/onchain-passport.md`](docs/onchain-passport.md).
 
 ## Architecture
@@ -132,7 +146,7 @@ keys still say `passport`; only user-facing text says "Certification".
  Supabase (project nyzcbnnbffsizshiolbh)        Solana devnet
    Auth (email, Sign in with Solana)              Metaplex Core: 4 collections,
    Postgres schema `itera` (RLS on)  <--- reads -- certifications, medals, companions, avatars
-   Edge functions (Deno, 27) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
+   Edge functions (Deno, 34) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
         ^         authority key + treasury key are function secrets
         |
  public readers: /c/<asset>, /u/<wallet>, Solana Action (Blink)
@@ -168,6 +182,14 @@ Edge functions in `supabase/functions/` (all have `verify_jwt = false` and check
 | `bounty-sponsor` | user token, staff only | Post, fund (escrow on devnet), approve or reject, refund |
 | `bounty-action` | public (Solana Action) | Blink: fund a bounty from any wallet |
 | `share-meta` | public | Link-preview HTML (Open Graph) for `/c`, `/u` and `/gift`, served to crawlers by nginx |
+| `bounty-post` | public read of the form options; user token for every action | A wallet's own bounty: draft, fund, approve, reject, refund, submit work, report; also direct bounties and the check of an invited wallet |
+| `capability-graph` | public | A wallet's capability graph from our tables, with no chain read: claims read `recorded`, not `verified` |
+| `credential-archive` | public (rate limited) | Permanent Arweave copies of a certification's picture, metadata and claim evidence: `GET` lists them, `POST` uploads what is new |
+| `gate-check` | public | Simulates the escrow program's `accept` for any wallet so anyone can watch it refuse; `?send=1` sends it for real with a throwaway key and Itera pays the fee |
+| `lesson` | user token (the lesson is read as the caller, under row level security) | The lesson a learner plays; the exercise specs are sealed before they leave |
+| `privacy` | user token | The caller's own privacy: the public-profile switch, their talent-board contact, how many companies looked |
+| `talent-board` | public read; user token to list, unlist, or (company only) reveal a contact | Opt-in listing of learners built from chain facts, with filters; a contact is shown only to a company, capped and recorded |
+| `tera-chest` | public read of one chest or `rules`; user token to list own chests and settle a day's chest | The day chest of a stamped day: the committed roll, its recomputation, and the settle that mints an earned Tera |
 
 Migrations are in `db/migrations/` (see the next section for the hackathon ones). Shared pure logic with tests lives
 in `supabase/functions/_shared/`.
@@ -177,12 +199,12 @@ in `supabase/functions/_shared/`.
 **Existed before (inherited from `itera-player`, not part of the judged work):** the lesson player and the activity
 engine, the lesson and trail content, e-mail authentication, the Supabase schema up to migration 0109, the live-class
 feature, the instructor and admin screens, subscription billing code (Stripe), the mobile shell, and the monorepo
-tooling. Of the 2,493 tracked files at `main` when this was written, roughly 2,000 are TypeScript; the copy point already
-contained about 2,000 files. The inherited product is large and is not claimed.
+tooling. Of the 3,069 tracked files at `main` when this was written, 2,449 are TypeScript; the copy point already
+contained 1,999 files, 1,571 of them TypeScript. The inherited product is large and is not claimed.
 
-**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-11, 110 commits after the copy point, merged PRs #1 to
-#112; +68.1k / -5.2k lines in 844 files against the copy point; everything under `supabase/functions/` and 55 new
-migrations 0110 to 0210; counts as of main `f93240f`, see the disclosure file for the exact list):
+**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-12, 266 commits after the copy point, merged PRs numbered up to
+#270; +109.0k / -6.3k lines in 1,276 files against the copy point; everything under `supabase/functions/` (34 functions)
+and 81 new migration files, 0110 to 0355; counts as of main `8c24bf0`, see the disclosure file for the exact list):
 
 - Wallet auth: Sign in with Solana (Phantom), provisioning trigger, nickname step, link a wallet to an e-mail account.
 - Credentials: Certifications (stamp per day, gold, server-paid, server-generated SVG art), medals, stamp ceremony,
@@ -237,17 +259,37 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
 - Devnet only. No real money moves. Prices are fixed in lamports with no live quote; mainnet would use USDC.
 - Every account in this database was created during the hackathon: three belong to people (the owner's wallet, a demo
   e-mail, the sponsor e-mail) and the rest are our own test runs (tagged in `itera.test_accounts`). One real certification
-  exists (the owner's, eight claims on chain) and no bounty has been paid to a real learner. The counters on the landing
-  page and in the shop count real accounts only; the larger totals (52 certifications, 312 claims, 5 005 stamps funded)
-  are test runs on devnet. What is true is that the whole loop runs end to end on devnet and anyone can verify every step.
+  exists (the owner's, eight claims on chain) and no bounty has been paid to a real learner. The Circuito
+  counters on the landing page and in the shop include those test runs: on 2026-10-12 `GET /circuit` answers 369 stamps
+  written on chain (`stamps_issued`, the landing tile; 13 outside the tagged test accounts) and 11,605 stamps funded
+  (`stamps_funded`, the shop line; 715 outside). These are different numbers: "written" counts minted day stamps, while
+  "funded" is a capacity, the half of each purchase moved to the mint authority divided by the 5,000-lamport fee of
+  one stamp, so it is not a count of stamps that exist. A profile's line "cover the network fee of up to N stamps" is the
+  same capacity for that wallet's own purchases. What is true is that the whole loop runs end to end on devnet and anyone can verify every step.
 - The server authority pays for and signs every mint and stamp; key custody is a function secret, not a multisig.
 - Grading of choice, fill, order, match and static code checks is server-side (`grade`), 118 of 234 activities. The
   answer keys of the simple kinds still reach the browser for instant feedback, so server grading stops forged
   completions, not copied answers. The 51 activities the server cannot grade (gestures, computed style, simulated
   clicks) are recorded as self-reported; a stamp states the share it verified ("10/12") instead of hiding it.
-- Bounties: the escrow program does not read the stamped days (the server does), has one approver key and is
+- Bounties: the program reads the stamped days only for gated and direct bounties; in the older attested layout the
+  approver or Itera's attester key vouches for them. There is one approver key per bounty and the program is
   upgradeable by one key. There is no dispute path: a rejected delivery reopens the bounty and the learner sees the
   sponsor's note. Rewards are devnet SOL. An approved delivery is a human judgement, not a proof.
+  - Creating a bounty's escrow account uses `create_account` at an address fixed by the bounty's terms. If someone
+    sends lamports to that address before it is funded, the creation fails and the sponsor must post the bounty
+    again. No funds are at risk: the failed transaction moves nothing.
+  - The escrow protects the sponsor's money more than the worker's time. After a learner has delivered, the approver
+    can still `unclaim` (reopening the bounty and clearing the claimant) and then `refund` the sponsor, so the
+    learner is paid nothing. The approver cannot pay any wallet but the recorded claimant, cannot pay twice, and
+    cannot pay an uncertified wallet; it can only choose whether and when to `release`, or take the claim back.
+    Nothing on chain obliges it to pay a delivery.
+  - Accepting a gated bounty is permissionless on chain: the claimant signs and the program reads the certification,
+    and nothing else. Rules only the server enforces (one open claim per learner, not your own bounty) can be
+    bypassed by calling the program directly. `release` still follows the approver, so this allows squatting on a
+    bounty, not theft. A claimed bounty can be reopened by the claimant, the approver or the attester; if none of
+    them acts, an expired claimed bounty cannot be refunded (`refund` needs it open) and its funds stay stranded
+    until one of them does, for instance if the approver and attester keys are lost. There is no instruction that
+    closes an escrow account, so each bounty's rent (about 0.0016 SOL) stays locked in it.
 - Privacy: a private profile hides this site's summary of a wallet, not the wallet's assets, which anyone can list on
   chain. A contact on the talent board is shown to "companies", and a company is any wallet that funded one bounty:
   on devnet that costs effort, not money. Reads are capped (10 learners a day) and recorded, and leaving the board
