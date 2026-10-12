@@ -300,8 +300,8 @@ async function fundTx(db: IteraClient, wallet: string, bounty: BountyRow, cors: 
     return json({ error: 'already_funded', status }, 409, cors);
   }
   // A prize Tera is paid for in this same transaction: its mint cost and the issuing fee, to the treasury, next to the escrow's `create`.
-  const prize = prizeOf(bounty.prize_tera);
-  if (prize && (!prizeEnabled(config) || !isEd25519Address(config.treasury) || config.treasury === wallet)) return json({ error: 'prize_unavailable' }, 503, cors);
+  // With the prize switched off after posting, the bounty is funded as a plain one: no fee is taken and no Tera will be minted.
+  const prize = prizeEnabled(config) && isEd25519Address(config.treasury) && config.treasury !== wallet ? prizeOf(bounty.prize_tera) : null;
   const prizeLamports = prize ? PRIZE_TOTAL_LAMPORTS : 0n;
   const cost = BigInt(bounty.reward_lamports) + rent + prizeLamports;
   const funds = fundsCheck(balance, cost);
