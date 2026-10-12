@@ -1,3 +1,4 @@
+import { Coins, Lock, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BountyCard } from '@/components/bounty/BountyCard';
 import { InviteInbox } from '@/components/bounty/InviteInbox';
@@ -13,6 +14,12 @@ import { formatWhen, hiddenTestsLine, plural, sortBounties } from '@/utils/bount
 import { daysFooter, judgeBoardTitle, judgePaidHint, openHint } from '@/utils/bountyJudge';
 import { localizeDecimal } from '@/utils/shopPrice';
 import type { BountyStats } from '@/types/bounty';
+
+const HERO_STEPS = [
+  { id: 'lock', Icon: Lock },
+  { id: 'gate', Icon: ShieldCheck },
+  { id: 'pay', Icon: Coins },
+] as const;
 
 function Stat({ label, value, source, testId }: { label: string; value: string; source: string; testId: string }) {
   return (
@@ -54,7 +61,20 @@ export default function BountiesPage() {
       <section className="flex flex-col gap-4 pt-2" aria-labelledby="bounty-hero">
         <span className={`${MONO_LABEL} text-[#3FD17F]`}>{t('bounty.eyebrow')}</span>
         <h1 id="bounty-hero" className="max-w-[760px] [font:700_60px/.98_'Barlow_Condensed'] max-sm:text-[44px]">{t('bounty.hero.title')}</h1>
-        <p className="max-w-[640px] [font:400_16px/1.55_Inter] text-[#C9BFB0]">{t('bounty.hero.sub')}</p>
+        <p className="max-w-[640px] [font:400_16px/1.4_Inter] text-[#C9BFB0]" data-testid="bounty-hero-line">{t('bounty.hero.line')}</p>
+        <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label={t('bounty.fold.how')} data-testid="bounty-hero-steps">
+          {HERO_STEPS.map(({ id, Icon }, index) => (
+            <li key={id} className="flex items-center gap-1.5" title={t(`bounty.hero.step.${id}.full`)}>
+              {index > 0 && <span aria-hidden className="[font:700_13px_JetBrains_Mono] text-[#5E574E]">→</span>}
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#2E2A25] bg-[#141210] pl-1 pr-2.5">
+                <span className="grid h-6 w-6 place-items-center rounded-full border border-[#3FD17F]/60 bg-[#3FD17F]/10 text-[#3FD17F]">
+                  <Icon aria-hidden className="h-3 w-3" strokeWidth={2.4} />
+                </span>
+                <span className="[font:600_11px/1_JetBrains_Mono] text-[#F4EDE2]">{t(`bounty.hero.step.${id}`)}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
         <div className="flex flex-wrap gap-3">
           <Link to="/bounties/post" className={BTN_PRIMARY} data-testid="bounty-post-cta">
             {t('bounty.hero.post')}
@@ -115,6 +135,11 @@ export default function BountiesPage() {
         </ul>
       )}
       <Fold label={t('bounty.fold.how')} testId="bounty-how" className="border-t border-[#262320] pt-3">
+        <ol className="flex list-decimal flex-col gap-1 pl-5 text-[#C9BFB0]" data-testid="bounty-hero-sub">
+          {HERO_STEPS.map(({ id }) => (
+            <li key={id}>{t(`bounty.hero.step.${id}.full`)}</li>
+          ))}
+        </ol>
         <p data-testid="bounty-custody">{t('bounty.custody')}</p>
         {footer && <p data-testid="bounty-days-footer">{footer}</p>}
         <Link to="/verify#gate" className={LINK} data-testid="bounty-how-gate">
