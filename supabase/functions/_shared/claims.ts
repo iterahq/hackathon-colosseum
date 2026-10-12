@@ -146,6 +146,61 @@ export function expectedClaims(state: Record<string, unknown>, trail: number): A
   return expected.sort((a, b) => graph.claims.indexOf(a.claim) - graph.claims.indexOf(b.claim));
 }
 
+const SHARE = /^\d{1,3}\/\d{1,3}( \+\d{1,3} legacy)?$/;
+
+/** The `verified` share a version 2 evidence document states ("10/12"); `null` for version 1 or anything unreadable. */
+export function gradedShare(evidence: string | null | undefined): string | null {
+  if (typeof evidence !== 'string') return null;
+  try {
+    const parsed = JSON.parse(evidence) as { v?: unknown; verified?: unknown };
+    return parsed.v === EVIDENCE_VERSION_GRADED && typeof parsed.verified === 'string' && SHARE.test(parsed.verified) ? parsed.verified : null;
+  } catch {
+    return null;
+  }
+}
+
+export const JOURNEY_DOTS = 12;
+export const JOURNEY_ACTIVITIES = 40;
+
+export interface AttemptRow {
+  activity_id: string;
+  mode: string;
+  passed: boolean;
+}
+
+export interface JourneyActivity {
+  mode: 'server' | 'self_reported';
+  /** Verdicts in order, up to the first pass; the last `JOURNEY_DOTS` when there were more. */
+  verdicts: boolean[];
+  tries: number;
+}
+
+/**
+ * How a lesson was passed, from its attempt rows oldest first: per graded
+ * activity the verdicts up to its first pass and who decided them. Carries no
+ * answer, no hash, no activity id and no time. Activities with nothing to
+ * grade are left out; so is whatever came after the first pass.
+ */
+export function journeyOf(rows: readonly AttemptRow[]): { activities: JourneyActivity[]; tries: number; first_try: number } {
+  const byActivity = new Map<string, { mode: 'server' | 'self_reported'; verdicts: boolean[]; done: boolean }>();
+  for (const row of rows) {
+    if (row.mode !== 'server' && row.mode !== 'self_reported') continue;
+    const entry = byActivity.get(row.activity_id) ?? { mode: row.mode, verdicts: [], done: false };
+    byActivity.set(row.activity_id, entry);
+    if (entry.done) continue;
+    entry.verdicts.push(row.passed === true);
+    entry.mode = row.mode;
+    entry.done = row.passed === true;
+  }
+  const all = [...byActivity.values()].slice(0, JOURNEY_ACTIVITIES);
+  const activities = all.map((entry) => ({ mode: entry.mode, verdicts: entry.verdicts.slice(-JOURNEY_DOTS), tries: entry.verdicts.length }));
+  return {
+    activities,
+    tries: activities.reduce((total, entry) => total + entry.tries, 0),
+    first_try: all.filter((entry) => entry.verdicts[0] === true).length,
+  };
+}
+
 export type NodeStatus = 'verified' | 'recorded' | 'open';
 
 export interface GraphProof {
@@ -155,6 +210,8 @@ export interface GraphProof {
   evidence_hash: string;
   tx_signature: string | null;
   proven_at: string | null;
+  /** The share the evidence document states, "10/12"; absent or `null` when it states none. */
+  graded?: string | null;
 }
 
 export interface GraphInput {
@@ -191,6 +248,7 @@ export function buildGraph(input: GraphInput) {
         evidence_hash: proof.evidence_hash,
         tx_signature: proof.tx_signature,
         proven_at: proof.proven_at,
+        graded: proof.graded ?? null,
         asset_explorer_url: input.explorer('address', proof.asset),
         tx_explorer_url: input.explorer('tx', proof.tx_signature),
       },
@@ -222,7 +280,7 @@ interface CertificationRow {
  */
 export function graphProofs(input: {
   rows: readonly CertificationRow[];
-  proofs: ReadonlyArray<{ user_achievement_id: string; claim_id: string; evidence_hash: string; tx_signature: string | null; proven_at: string }>;
+  proofs: ReadonlyArray<{ user_achievement_id: string; claim_id: string; evidence_hash: string; tx_signature: string | null; proven_at: string; evidence?: string | null }>;
   attributesOf: (asset: string) => readonly Attribute[] | null;
   isVerified: (asset: string) => boolean;
 }): Map<string, GraphProof> {
@@ -238,6 +296,7 @@ export function graphProofs(input: {
       evidence_hash: proof.evidence_hash,
       tx_signature: proof.tx_signature,
       proven_at: proof.proven_at,
+      graded: gradedShare(proof.evidence),
     });
   }
   return found;

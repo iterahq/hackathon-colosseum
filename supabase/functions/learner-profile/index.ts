@@ -5,7 +5,7 @@ import { ITERA_V2_GRAPH } from '../_shared/capability-graph.ts';
 import { readAssets } from '../_shared/chain-read.ts';
 import { walletCircuit } from '../_shared/circuit-store.ts';
 import { buildGraph, graphProofs } from '../_shared/claims.ts';
-import { loadEvidence, loadGraphData } from '../_shared/claims-store.ts';
+import { loadEvidence, loadGraphData, loadJourney } from '../_shared/claims-store.ts';
 import { loadStats } from '../_shared/companion-store.ts';
 import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { explorerUrl, pickText, type AchievementRow, type CatalogEntry } from '../_shared/credential.ts';
@@ -40,6 +40,7 @@ async function loadWalletAvatars(db: ReturnType<typeof serviceClient>, wallet: s
 }
 
 const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
+const JOURNEY_RATE: RateLimit = { limit: 60, windowMs: 60_000 };
 
 /** Everything a wallet earned, with its assets read from the chain now. Throws `RpcError` when the node did not answer. */
 async function build(db: ReturnType<typeof serviceClient>, wallet: string, lang: 'pt' | 'en') {
@@ -144,12 +145,24 @@ Deno.serve(async (request) => {
 
   try {
     const [wallet, ...rest] = pathAfter(request, 'learner-profile');
-    const evidenceOf = rest.length === 2 && rest[0] === 'evidence' && /^[a-z0-9-]{1,24}$/.test(rest[1]) ? rest[1] : null;
-    if (!isSolanaAddress(wallet) || (rest.length > 0 && !evidenceOf)) return json({ error: 'invalid_address' }, 400, cors);
+    const claimOf = (route: string) => (rest.length === 2 && rest[0] === route && /^[a-z0-9-]{1,24}$/.test(rest[1]) ? rest[1] : null);
+    const evidenceOf = claimOf('evidence');
+    const journeyFor = claimOf('journey');
+    if (!isSolanaAddress(wallet) || (rest.length > 0 && !evidenceOf && !journeyFor)) return json({ error: 'invalid_address' }, 400, cors);
 
     const db = serviceClient();
-    const verdict = await takeRate(db, 'learner-profile', callerAddress(request), RATE);
+    const verdict = journeyFor
+      ? await takeRate(db, 'learner-profile-journey', callerAddress(request), JOURNEY_RATE)
+      : await takeRate(db, 'learner-profile', callerAddress(request), RATE);
     if (!verdict.allowed) return tooMany(verdict, cors);
+    // The attempt track is ours, not the chain's: it is part of the page, so a private wallet answers a stranger nothing of it.
+    if (journeyFor) {
+      const view = await walletView(db, request, wallet);
+      if (!view.visible) return json({ ...privateProfile(wallet), claim: journeyFor }, 200, { ...cors, 'Cache-Control': 'no-store' });
+      const journey = await loadJourney(db, wallet, journeyFor);
+      if (!journey) return json({ error: 'not_found' }, 404, cors);
+      return json({ wallet, claim: journeyFor, source: 'itera', ...journey }, 200, { ...cors, 'Cache-Control': view.public && !view.owner ? 'public, max-age=20' : 'no-store' });
+    }
     // The document whose SHA-256 is on the asset: public, so anyone can hash it and compare.
     if (evidenceOf) {
       const evidence = await loadEvidence(db, wallet, evidenceOf);

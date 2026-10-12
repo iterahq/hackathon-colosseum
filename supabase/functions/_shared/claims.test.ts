@@ -8,8 +8,11 @@ import {
   claimsOf,
   evidenceDocument,
   expectedClaims,
+  gradedShare,
   graphProofs,
   hasUnwrittenClaims,
+  journeyOf,
+  JOURNEY_DOTS,
   onchainClaims,
   sha256Hex,
   withClaims,
@@ -227,5 +230,72 @@ describe('the graph of a wallet', () => {
     const view = buildGraph({ graph: ITERA_V2_GRAPH, lang: 'en', trails: [], proofs: new Map(), explorer });
     expect(view.nodes.every((node) => node.status === 'open' && node.proof === null)).toBe(true);
     expect(view.next).toBe('html-tags');
+  });
+});
+
+describe('the share a node carries', () => {
+  const doc = (verified: string | null) => evidenceDocument({ claim: 'html-tags', program: 'itera-v2', wallet: WALLET, lessonId: 'lesson-1', activities: [{ id: 'a', completed_at: '2026-10-10T12:00:00.000Z', attempt: hashOf('b') }], verified });
+
+  it('is what a version 2 document states', () => {
+    expect(gradedShare(doc('10/12'))).toBe('10/12');
+    expect(gradedShare(doc('2/2 +14 legacy'))).toBe('2/2 +14 legacy');
+  });
+
+  it('is nothing for a version 1 document or a share that is not one', () => {
+    expect(gradedShare(doc(null))).toBeNull();
+    expect(gradedShare(doc('all of them'))).toBeNull();
+    expect(gradedShare('not json')).toBeNull();
+    expect(gradedShare(JSON.stringify({ v: 1, verified: '12/12' }))).toBeNull();
+    expect(gradedShare(undefined)).toBeNull();
+  });
+
+  it('reaches the node from the stored document and carries nothing else of it', () => {
+    const proofs = graphProofs({
+      rows: [{ id: 'row-1', achievement_key: 'trail_pass', asset_address: 'asset-1' }],
+      proofs: [
+        { user_achievement_id: 'row-1', claim_id: 'html-tags', evidence_hash: hashOf('a'), tx_signature: 'sig1', proven_at: '2026-10-10T12:00:00.000Z', evidence: doc('10/12') },
+        { user_achievement_id: 'row-1', claim_id: 'html-skeleton', evidence_hash: hashOf('c'), tx_signature: null, proven_at: '2026-10-10T12:00:00.000Z' },
+      ],
+      attributesOf: () => [],
+      isVerified: () => true,
+    });
+    const view = buildGraph({ graph: ITERA_V2_GRAPH, lang: 'en', trails: [], proofs, explorer: () => null });
+    const tags = view.nodes.find((node) => node.id === 'html-tags');
+    expect(tags?.proof?.graded).toBe('10/12');
+    expect(view.nodes.find((node) => node.id === 'html-skeleton')?.proof?.graded).toBeNull();
+    expect(JSON.stringify(view)).not.toContain(hashOf('b'));
+    expect(JSON.stringify(view)).not.toContain('lesson-1');
+  });
+});
+
+describe('the attempt track of a lesson', () => {
+  const row = (activity_id: string, passed: boolean, mode = 'server') => ({ activity_id, mode, passed, answer_hash: hashOf('d'), reason: 'secret reason', created_at: '2026-10-10T12:00:00.000Z' });
+
+  it('keeps the verdicts up to the first pass, in order, per graded activity', () => {
+    const journey = journeyOf([row('a', false), row('b', true), row('a', false), row('a', true), row('a', false), row('c', true, 'self_reported'), row('d', true, 'participation')]);
+    expect(journey.activities).toEqual([
+      { mode: 'server', verdicts: [false, false, true], tries: 3 },
+      { mode: 'server', verdicts: [true], tries: 1 },
+      { mode: 'self_reported', verdicts: [true], tries: 1 },
+    ]);
+    expect(journey.tries).toBe(5);
+    expect(journey.first_try).toBe(2);
+  });
+
+  it('answers verdicts and modes only: no answer, hash, reason, activity id or time', () => {
+    const text = JSON.stringify(journeyOf([row('activity-secret', false), row('activity-secret', true)]));
+    expect(text).toBe('{"activities":[{"mode":"server","verdicts":[false,true],"tries":2}],"tries":2,"first_try":0}');
+  });
+
+  it('shows the last dots of a long struggle and still counts every try', () => {
+    const journey = journeyOf([...Array.from({ length: 20 }, () => row('a', false)), row('a', true)]);
+    expect(journey.activities[0].verdicts).toHaveLength(JOURNEY_DOTS);
+    expect(journey.activities[0].verdicts.at(-1)).toBe(true);
+    expect(journey.activities[0].tries).toBe(21);
+  });
+
+  it('is empty when nothing was graded', () => {
+    expect(journeyOf([])).toEqual({ activities: [], tries: 0, first_try: 0 });
+    expect(journeyOf([row('a', true, 'participation')]).activities).toEqual([]);
   });
 });
