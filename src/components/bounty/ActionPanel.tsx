@@ -1,12 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
-import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD } from '@/components/shop/shopStyles';
+import { Chip, ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
+import { missionSkills } from '@/components/bounty/bountySkills';
+import { judgedDays, lessonOfDay } from '@/components/bounty/questState';
+import { SkillBadge } from '@/components/skills/SkillBadge';
 import { DeliverForm } from '@/components/bounty/DeliverForm';
 import { FundingLink } from '@/components/bounty/FundingLink';
 import { JudgeDeliverForm, JudgeProgress } from '@/components/bounty/JudgeParts';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
+import { useProgram } from '@/hooks/useContent';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useBountySession, useJudgeSubmit, useMyBountyStatus, useSignedBountyStep } from '@/hooks/useBounties';
 import { useI18n } from '@/i18n';
@@ -108,12 +112,16 @@ function Accept({ bounty, status, accept }: { bounty: BountyDetail; status: MyBo
           {t('bounty.accept.proof', { n: status.proof.daysDone })} <ExplorerAnchor href={status.proof.explorerUrl} label={t('bounty.accept.proofLink')} />
         </div>
       )}
-      <p className="[font:400_14px/1.5_Inter] text-[#A0978A]">{t('bounty.accept.hint', { hours: bounty.claimHours })}</p>
-      {bounty.escrow?.custody === 'program' && (
-        <p className="[font:400_13px/1.5_Inter] text-[#A0978A]" data-testid="bounty-accept-signs">
-          {t('bounty.accept.signs')}
-        </p>
-      )}
+      <div className="flex flex-wrap gap-1.5" data-testid="bounty-accept-terms">
+        <Chip>{t('bounty.accept.chip.window', { hours: bounty.claimHours })}</Chip>
+        <Chip>{t('bounty.accept.chip.one')}</Chip>
+        {bounty.escrow?.custody === 'program' && (
+          <span className="contents" data-testid="bounty-accept-signs" title={t('bounty.accept.signs')}>
+            <Chip>{t('bounty.accept.chip.wallet')}</Chip>
+            <Chip>{t('bounty.accept.chip.fee')}</Chip>
+          </span>
+        )}
+      </div>
       {accept.error !== null && !accept.pending && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
       <button type="button" disabled={accept.pending} onClick={() => accept.run(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
         {accept.pending ? stepLabel(t, accept.phase) : t('bounty.accept.cta')}
@@ -123,9 +131,13 @@ function Accept({ bounty, status, accept }: { bounty: BountyDetail; status: MyBo
 }
 
 function Missing({ bounty, status }: { bounty: BountyDetail; status: MyBountyStatus }) {
-  const { t } = useI18n();
-  const { trail, minDays, program } = bounty.requirement;
-  if (status.reason === 'no_wallet') {
+  const { t, locale } = useI18n();
+  const { minDays, program, unitId } = bounty.requirement;
+  const noWallet = status.reason === 'no_wallet';
+  const done = Math.min(judgedDays(bounty, status) ?? 0, Math.max(0, minDays - 1));
+  const nextDay = done + 1;
+  const course = useProgram(noWallet ? undefined : program || undefined);
+  if (noWallet) {
     return (
       <>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.missing.noWallet')}</p>
@@ -133,14 +145,24 @@ function Missing({ bounty, status }: { bounty: BountyDetail; status: MyBountySta
       </>
     );
   }
-  const done = status.proof?.daysDone ?? 0;
+  const lesson = lessonOfDay(course.data, unitId, nextDay);
+  const unlocks = (missionSkills(bounty.requirement, locale) ?? []).filter((skill) => skill.day === nextDay);
+  const target = lesson ? (lesson.finished ? '/passport' : `/lesson/${lesson.lessonId}`) : program ? `/program/${program}` : '/';
   return (
     <>
-      <p className="[font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-missing">
-        {status.reason === 'not_enough_days' ? t('bounty.missing.days', { done, min: minDays, trail }) : t('bounty.missing.cert', { min: minDays, trail })}
-      </p>
-      <Link to={program ? `/program/${program}` : '/'} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-study">
-        {t('bounty.missing.study')}
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2" data-testid="bounty-missing" data-done={done} data-min={minDays}>
+        <span className={`${MONO_LABEL} text-[#F2C66D]`}>{t('bounty.quest.day', { n: nextDay })}</span>
+        {unlocks.length > 0 && (
+          <>
+            <span className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.missing.unlocks')}</span>
+            {unlocks.map((skill) => (
+              <SkillBadge key={skill.id} claimId={skill.id} title={skill.title} hint={skill.hint} state="locked" stateLabel={t('bounty.quest.state.locked')} />
+            ))}
+          </>
+        )}
+      </div>
+      <Link to={target} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-study" data-target={lesson ? (lesson.finished ? 'passport' : 'lesson') : 'program'}>
+        {lesson?.finished ? t('bounty.missing.stamp') : lesson ? t('bounty.missing.next', { n: nextDay }) : t('bounty.missing.study')}
       </Link>
     </>
   );

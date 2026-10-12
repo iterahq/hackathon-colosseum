@@ -1,7 +1,7 @@
 import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link, useParams } from 'react-router-dom';
 import { BountyActionPanel } from '@/components/bounty/ActionPanel';
-import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, RequirementChip, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
+import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
 import { DirectChip, DirectNotice } from '@/components/bounty/DirectParts';
 import { EscrowPanel } from '@/components/bounty/EscrowPanel';
 import { HeldNotice } from '@/components/bounty/HeldNotice';
@@ -9,13 +9,14 @@ import { JudgeCaption, JudgeChecksSection, JudgeChip, JudgePaidBlock } from '@/c
 import { Ledger } from '@/components/bounty/Ledger';
 import { PaidBlock } from '@/components/bounty/PaidBlock';
 import { ReportBounty } from '@/components/bounty/ReportBounty';
+import { SkillQuestCard } from '@/components/bounty/SkillQuestCard';
 import { CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TeraNote, TERA_BUTTON } from '@/components/tera/TeraNote';
 import { useBounty, useBountyRecord } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 import { addressUrl } from '@/lib/explorer';
-import { formatWhen, plural } from '@/utils/bounty';
+import { formatWhen } from '@/utils/bounty';
 import type { BountyDetail } from '@/types/bounty';
 
 function Block({ title, children }: { title: string; children: string }) {
@@ -104,16 +105,14 @@ export default function BountyPage() {
               <Reward sol={bounty.rewardSol} size="xl" />
               <PrizeTeraTag bounty={bounty} size="lg" />
             </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
-              {bounty.expiresAt && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.expires', { date: formatWhen(bounty.expiresAt, locale) })}</span>}
-            </div>
+            {bounty.expiresAt && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('bounty.detail.expires', { date: formatWhen(bounty.expiresAt, locale) })}</span>}
           </section>
           {bounty.direct && bounty.inviteeWallet && <DirectNotice wallet={bounty.inviteeWallet} short={bounty.inviteeWalletShort ?? bounty.inviteeWallet} />}
           {bounty.hidden && <Notice tone="error" testId="bounty-hidden-banner">{t('bounty.hidden.banner')}</Notice>}
           {bounty.rehearsal && <Notice testId="bounty-rehearsal-banner">{t('bounty.rehearsal.banner')}</Notice>}
           <PaidBlock bounty={bounty} />
           <JudgePaidBlock bounty={bounty} />
+          <SkillQuestCard bounty={bounty} />
           {confirming ? (
             <p role="status" aria-busy="true" className="[font:500_13px/1.5_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-chain-reading">{t('bounty.detail.confirming')}</p>
           ) : (
@@ -125,9 +124,6 @@ export default function BountyPage() {
           <Block title={t('bounty.detail.brief')}>{bounty.brief}</Block>
           <Block title={t('bounty.detail.deliverable')}>{bounty.deliverable}</Block>
           <JudgeChecksSection bounty={bounty} />
-          <Block title={t('bounty.detail.requirement')}>
-            {plural(t, bounty.direct ? 'bounty.detail.requirementDirectBody' : 'bounty.detail.requirementBody', bounty.requirement.totalDays, { trail: bounty.requirement.trail, min: bounty.requirement.minDays })}
-          </Block>
           <EscrowPanel bounty={bounty} />
           <Ledger events={bounty.events} judge={bounty.judge} report={bounty.claim?.checkReport ?? null} />
           <ReportBounty bounty={bounty} />

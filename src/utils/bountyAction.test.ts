@@ -26,8 +26,8 @@ describe('actionTitle', () => {
   });
   it('names the stamped days that are missing, with the days the wallet has', () => {
     const short = status({ reason: 'not_enough_days', proof: { asset: 'A', daysDone: 1, explorerUrl: null } });
-    expect(render('en', actionTitle(bounty, short))).toBe('Not yet: 3 stamped days of JavaScript needed (1 in this wallet)');
-    expect(render('pt', actionTitle(bounty, short))).toBe('Ainda não: 3 dias carimbados de JavaScript necessários (1 nesta carteira)');
+    expect(render('en', actionTitle(bounty, short))).toBe('Not yet: 1 of 3 stamped days');
+    expect(render('pt', actionTitle(bounty, short))).toBe('Ainda não: 1 de 3 dias carimbados');
   });
   it('uses the singular for one day, in both languages', () => {
     const one = { ...bounty, requirement: { ...bounty.requirement, minDays: 1 } };
@@ -35,8 +35,8 @@ describe('actionTitle', () => {
     expect(render('pt', actionTitle(one, status({ reason: 'not_enough_days' })))).toBe('Ainda não: 1 dia carimbado de JavaScript necessário');
   });
   it('says there is no certification', () => {
-    expect(render('en', actionTitle(bounty, status({ reason: 'no_certification' })))).toBe('Not yet: no JavaScript certification in this wallet');
-    expect(render('pt', actionTitle(bounty, status({ reason: 'no_certification' })))).toBe('Ainda não: nenhuma certificação de JavaScript nesta carteira');
+    expect(render('en', actionTitle(bounty, status({ reason: 'no_certification' })))).toBe('Not yet: no JavaScript certification');
+    expect(render('pt', actionTitle(bounty, status({ reason: 'no_certification' })))).toBe('Ainda não: sem certificação de JavaScript');
   });
   it('says to link a wallet for an e-mail account', () => {
     expect(render('en', actionTitle(bounty, status({ wallet: null, reason: 'no_wallet' })))).toBe('Not yet: link a wallet');
