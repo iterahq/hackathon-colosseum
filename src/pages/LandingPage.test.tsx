@@ -65,8 +65,7 @@ describe('LandingPage', () => {
       '4open bounties',
       '0.28 SOLin escrow',
       '1bounty paid0 to outside learners · 1 team rehearsal',
-      '276stamps written on chainnetwork fee paid by Itera, with help from the shop',
-      "29shop purchaseson devnet, the team's test runs included",
+      '276stamps written on chainnetwork fee paid by Itera',
     ]);
     expect(screen.getByTestId('landing-live-readat')).toHaveTextContent(/^Read at [^.]*\.$/);
     expect(screen.getByTestId('landing-live')).not.toHaveTextContent(/never go down|capacity/);
@@ -92,7 +91,9 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-story')).not.toHaveTextContent(/production|cohort/);
     expect(screen.getByTestId('landing-model')).toHaveTextContent('Itera pays the network fee of every stamp');
     expect(screen.getByTestId('landing-model')).not.toHaveTextContent(/Stripe|subscription|lives/);
-    expect(screen.getByTestId('landing-model')).toHaveTextContent("Itera's server moves half of each purchase, in a public transfer");
+    expect(screen.getByTestId('landing-model')).toHaveTextContent('Sponsors lock SOL on chain for bounties.');
+    expect(screen.getByTestId('landing-model')).not.toHaveTextContent(/purchase|shop/);
+    expect(screen.queryByTestId('landing-purchases-hint')).toBeNull();
     expect(screen.getByTestId('landing-steps')).toHaveTextContent('the program on chain reads them from the credential in your wallet before it lets you accept.');
     expect(screen.getByTestId('landing-model-build')).toHaveTextContent('no real money moves');
     const team = screen.getByTestId('landing-team-member').textContent ?? '';
