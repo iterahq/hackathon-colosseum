@@ -63,6 +63,22 @@
 .graph-sheet {
   animation: graph-sheet-in 0.22s ease-out;
 }
+.graph-proof summary::-webkit-details-marker {
+  display: none;
+}
+.graph-proof-chevron {
+  transition: transform 0.18s ease;
+}
+.graph-proof[open] .graph-proof-chevron {
+  transform: rotate(180deg);
+}
+.graph-track-dot {
+  animation: graph-dot-in 0.28s ease-out backwards;
+}
+@keyframes graph-dot-in {
+  from { transform: scale(0.2); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
 @keyframes graph-ping {
   0% { transform: scale(0.94); opacity: 0.95; }
   70% { transform: scale(1.16); opacity: 0.1; }
@@ -91,5 +107,7 @@
   .graph-edge-flow, .graph-sheet { animation: none; }
   [data-view='checking'] .graph-medal { animation: none; }
   .graph-medal { transition: none; }
+  .graph-proof-chevron { transition: none; }
+  .graph-track-dot { animation: none; }
   .graph-node:hover .graph-medal, .graph-node:focus-visible .graph-medal { transform: none; }
 }

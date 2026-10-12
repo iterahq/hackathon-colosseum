@@ -2,8 +2,13 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useI18n } from '@/i18n';
 import type { AssetRead } from '@/lib/chainClaims';
 import type { Capabilities, CapabilityNode } from '@/types/learnerProfile';
-import { EvidenceBlock } from '@/components/graph/EvidenceBlock';
-import type { NodeView } from '@/components/graph/capabilityView';
+import { SkillBadge } from '@/components/skills/SkillBadge';
+import { skillShortTitle } from '@/components/skills/skillLabels';
+import { AttemptTrack } from '@/components/graph/AttemptTrack';
+import { EvidenceBlock, useEvidenceCheck } from '@/components/graph/EvidenceBlock';
+import { formatDate } from '@/components/graph/formatDate';
+import { isLit, type NodeView } from '@/components/graph/capabilityView';
+import { nodeTier } from '@/components/graph/evidenceTier';
 
 const EXPLORER = 'https://explorer.solana.com/';
 const safeUrl = (url: string | null): string | null => (url && url.startsWith(EXPLORER) ? url : null);
@@ -29,7 +34,7 @@ interface Props {
 }
 
 export function NodeDetail({ wallet, capabilities, node, views, reads, onClose }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const view = views[node.id] ?? 'open';
   const trailTitle = (trail: number) => capabilities.trails.find((x) => x.trail === trail)?.title ?? `#${trail + 1}`;
   const proof = node.proof;
@@ -38,6 +43,7 @@ export function NodeDetail({ wallet, capabilities, node, views, reads, onClose }
   const shownValue = chainValue ?? proof?.onchainValue ?? null;
   const tx = safeUrl(proof?.txExplorerUrl ?? null);
   const asset = safeUrl(proof?.assetExplorerUrl ?? null);
+  const evidence = useEvidenceCheck(wallet, proof ? node.id : null, proof?.evidenceHash ?? '');
   const prerequisites = node.requires.map((id) => capabilities.nodes.find((n) => n.id === id)).filter((n): n is CapabilityNode => Boolean(n));
 
   return (
@@ -62,22 +68,8 @@ export function NodeDetail({ wallet, capabilities, node, views, reads, onClose }
             {t(`graph.status.${view}`)}
           </p>
 
-          {proof && (
-            <dl className="flex flex-col gap-3">
-              <div>
-                <dt className={LABEL}>{t('graph.detail.attribute')}</dt>
-                <dd className="mt-1 break-all [font:500_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="graph-attribute">{proof.attribute}</dd>
-              </div>
-              <div>
-                <dt className={LABEL}>{t('graph.detail.value')}</dt>
-                <dd className="mt-1 break-all [font:500_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="graph-value">{shownValue ?? t('graph.detail.notWritten')}</dd>
-              </div>
-              <div>
-                <dt className={LABEL}>{t('graph.detail.hash')}</dt>
-                <dd className="mt-1 break-all [font:500_12px/1.5_JetBrains_Mono] text-[#C9BFB0]" data-testid="graph-hash">{proof.evidenceHash}</dd>
-              </div>
-            </dl>
-          )}
+          {proof && <EvidenceBlock evidence={evidence} listed={proof.graded} />}
+          {proof && <AttemptTrack wallet={wallet} claimId={node.id} />}
 
           {(tx || asset) && (
             <div className="flex flex-wrap gap-2">
@@ -86,7 +78,41 @@ export function NodeDetail({ wallet, capabilities, node, views, reads, onClose }
             </div>
           )}
 
-          {proof && <EvidenceBlock wallet={wallet} claimId={node.id} proofHash={proof.evidenceHash} />}
+          {proof && (
+            <details className="graph-proof rounded-xl border border-[#262320]" data-testid="graph-proof">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+                <span className={LABEL}>{t('graph.detail.proof')}</span>
+                <span className="flex min-w-0 items-center gap-2 [font:500_11px_JetBrains_Mono] text-[#6F675C]">
+                  <span className="truncate">{proof.attribute}</span>
+                  <svg className="graph-proof-chevron shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </span>
+              </summary>
+              <dl className="flex flex-col gap-3 px-3.5 pb-3.5">
+                <div>
+                  <dt className={LABEL}>{t('graph.detail.attribute')}</dt>
+                  <dd className="mt-1 break-all [font:500_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="graph-attribute">{proof.attribute}</dd>
+                </div>
+                <div>
+                  <dt className={LABEL}>{t('graph.detail.value')}</dt>
+                  <dd className="mt-1 break-all [font:500_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="graph-value">{shownValue ?? t('graph.detail.notWritten')}</dd>
+                </div>
+                <div>
+                  <dt className={LABEL}>{t('graph.detail.hash')}</dt>
+                  <dd className="mt-1 break-all [font:500_12px/1.5_JetBrains_Mono] text-[#C9BFB0]" data-testid="graph-hash">{proof.evidenceHash}</dd>
+                </div>
+                {evidence.facts && (
+                  <div>
+                    <dt className={LABEL}>{t('graph.detail.evidence')}</dt>
+                    <dd className="mt-1 [font:500_13px/1.45_Inter] text-[#C9BFB0]" data-testid="graph-evidence-facts">
+                      {t('graph.detail.activities', { n: evidence.facts.activityCount, date: formatDate(evidence.facts.completedAt, locale) })}
+                      <br />
+                      {evidence.facts.serverVerified ? t('graph.detail.graded', { share: evidence.facts.serverVerified, n: evidence.facts.answerHashes }) : t('graph.detail.ungraded')}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </details>
+          )}
 
           {node.status === 'open' && (
             <div className="flex flex-col gap-3" data-testid="graph-open-help">
@@ -96,13 +122,24 @@ export function NodeDetail({ wallet, capabilities, node, views, reads, onClose }
                 {prerequisites.length === 0 ? (
                   <p className="mt-1 [font:500_13px_Inter] text-[#A0978A]">{t('graph.detail.noRequires')}</p>
                 ) : (
-                  <ul className="mt-2 flex flex-col gap-2">
-                    {prerequisites.map((p) => {
+                  <ul className="mt-3 flex flex-wrap gap-x-2 gap-y-3">
+                    {prerequisites.map((p, index) => {
                       const pv = views[p.id] ?? 'open';
+                      const tier = nodeTier(p);
                       return (
-                        <li key={p.id} className="flex items-start justify-between gap-3 rounded-lg border border-[#262320] bg-[#0A0908] px-3 py-2.5" data-testid="graph-prereq">
-                          <span className="[font:500_13px/1.35_Inter] text-[#F4EDE2]">{p.title}</span>
-                          <span className={`shrink-0 rounded-full border px-2 py-0.5 [font:700_11px_JetBrains_Mono] ${PILL[pv]}`}>{t(`graph.status.${pv}`)}</span>
+                        <li key={p.id} data-testid="graph-prereq" data-view={pv}>
+                          <SkillBadge
+                            claimId={p.id}
+                            title={skillShortTitle(p.id, locale, p.title)}
+                            hint={p.title}
+                            state={isLit(pv) ? 'lit' : pv === 'recorded' ? 'neutral' : 'locked'}
+                            stateLabel={t(`graph.status.${pv}`)}
+                            tier={tier}
+                            tierLabel={tier ? t(`graph.tier.${tier}`) : undefined}
+                            size="md"
+                            animate
+                            index={index}
+                          />
                         </li>
                       );
                     })}

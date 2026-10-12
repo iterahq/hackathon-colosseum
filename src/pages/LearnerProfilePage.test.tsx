@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import LearnerProfilePage from '@/pages/LearnerProfilePage';
@@ -156,5 +156,22 @@ describe('LearnerProfilePage', () => {
     );
     expect(screen.getByTestId('profile-band-loading')).toBeInTheDocument();
     expect(screen.getByTestId('capability-section')).toHaveAttribute('data-source', 'static');
+  });
+  it('counts the proven capabilities per evidence tier beside the verified line, and shows none without a share', () => {
+    const proof = (graded: string | null) => ({ asset: 'AS', attribute: 'claim:x', evidence_hash: 'ab'.padEnd(64, '0'), graded });
+    const nodes = [
+      { id: 'a', title: 'A', status: 'verified', proof: proof('10/12') },
+      { id: 'b', title: 'B', status: 'verified', proof: proof('10/12') },
+      { id: 'c', title: 'C', status: 'recorded', proof: proof(null) },
+      { id: 'd', title: 'D', status: 'open' },
+    ];
+    useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [], capabilities: { nodes } }));
+    const tiered = show();
+    const counts = Object.fromEntries(within(screen.getByTestId('profile-tiers')).getAllByRole('listitem').map((chip) => [chip.getAttribute('data-tier'), chip.getAttribute('data-count')]));
+    expect(counts).toEqual({ top: '0', middle: '2', base: '1' });
+    tiered.unmount();
+    useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [] }));
+    show();
+    expect(screen.queryByTestId('profile-tiers')).toBeNull();
   });
 });

@@ -71,6 +71,8 @@ export interface CapabilityProof {
   provenAt: string | null;
   assetExplorerUrl: string | null;
   txExplorerUrl: string | null;
+  /** The share the evidence document states ("10/12"); `null`: it states none; absent: the answer did not look. */
+  graded?: string | null;
 }
 
 export interface CapabilityNode {
@@ -108,6 +110,21 @@ export interface ClaimEvidence {
   evidenceHash: string;
   txSignature: string | null;
   txExplorerUrl: string | null;
+}
+
+export interface JourneyActivity {
+  /** Who decided the verdicts: the server, or the browser's own report. */
+  mode: 'server' | 'self_reported';
+  /** In order, up to the first pass; `true` is a hit. */
+  verdicts: boolean[];
+  tries: number;
+}
+
+/** The attempt track behind one proven claim, from Itera's own table. Carries verdicts only. */
+export interface ClaimJourney {
+  activities: JourneyActivity[];
+  tries: number;
+  firstTry: number;
 }
 
 export interface LearnerProfile {

@@ -2,6 +2,8 @@ import { TalentOptIn } from '@/components/talent/TalentOptIn';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CapabilityGraphSection } from '@/components/graph/CapabilityGraphSection';
+import { tierCounts } from '@/components/graph/evidenceTier';
+import { TierChips } from '@/components/graph/TierMedal';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
@@ -48,6 +50,7 @@ export default function LearnerProfilePage() {
   const hidden = lookup?.status === 'private';
   const owner = profile?.viewer === 'owner' || (profile != null && story.wallet === profile.wallet);
   const capabilities = hidden ? null : (profile?.capabilities ?? graph.data ?? (valid && lookup?.status !== 'invalid' ? staticCapabilities(locale) : null));
+  const tiers = profile?.capabilities ? tierCounts(profile.capabilities.nodes) : null;
   const empty = profile && !profile.companion && profile.certifications.length === 0 && profile.medals.length === 0;
 
   return (
@@ -99,7 +102,10 @@ export default function LearnerProfilePage() {
                       {t(`profile.pending${story.daysPending === 1 ? '' : '.other'}`, { n: story.daysPending })} →
                     </Link>
                   )}
-                  <p className="mt-1 [font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <p className="[font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
+                    {tiers && <TierChips counts={tiers} compact testId="profile-tiers" />}
+                  </div>
                   <ChainReadLine read={lookup?.status === 'ok' ? lookup.read : undefined} ms={0} onRecheck={() => recheck.mutate()} rechecking={recheck.isPending} className="mt-1" />
                 </div>
               </div>
