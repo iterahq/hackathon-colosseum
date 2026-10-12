@@ -43,7 +43,7 @@ export function TalentFilters({ filters, trail, capabilities, onChange }: Props)
         })}
         <label className="ml-auto flex min-w-0 items-center gap-2 max-sm:ml-0 max-sm:w-full max-sm:flex-col max-sm:items-stretch max-sm:gap-1.5">
           <span className={`${LABEL} shrink-0`}>{t('talent.filters.minDays')}</span>
-          <select className={`${INPUT} sm:w-[170px]`} value={filters.minDays} onChange={(event) => onChange({ ...filters, minDays: Number(event.target.value) }, trail)} data-testid="talent-filter-days">
+          <select className={`${INPUT} sm:w-[210px]`} value={filters.minDays} onChange={(event) => onChange({ ...filters, minDays: Number(event.target.value) }, trail)} data-testid="talent-filter-days">
             <option value={0}>{t('talent.filters.minDays.any')}</option>
             {DAY_CHOICES.map((n) => (
               <option key={n} value={n}>{t('talent.filters.minDays.n', { n })}</option>
