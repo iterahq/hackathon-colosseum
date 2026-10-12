@@ -154,6 +154,10 @@ async function chestPart() {
   check('credential-verify says how it was obtained and that it cannot be transferred', tera.answer.avatar?.origin === 'earned' && tera.answer.avatar?.transferable === false && tera.answer.avatar?.earned?.chest_id === chest.id && tera.answer.avatar?.proof?.asset === chest.tera.asset);
   const byAsset = await get(`tera-chest/${chest.tera.asset}`);
   check('the chest is also found by the address of the Tera it minted', byAsset.http === 200 && byAsset.j?.chest?.id === chest.id);
+  // A new account's profile page is private until its owner says otherwise: a stranger gets the address and one flag.
+  const hidden = (await get(`learner-profile/${learner.address}?fresh=1`)).j;
+  check('before the learner chooses, the profile page of a new account answers a stranger nothing but `private`', hidden?.private === true && !('avatars' in hidden) && !('certifications' in hidden), JSON.stringify(hidden).slice(0, 120));
+  await call('privacy', learner, { action: 'set_profile', public: true });
   const profile = (await get(`learner-profile/${learner.address}?fresh=1`)).j;
   const listed = (profile?.avatars ?? []).find((entry) => entry.asset === chest.tera.asset);
   check('learner-profile lists it as earned, not transferable, with the day that opened it', listed?.origin === 'earned' && listed?.transferable === false && listed?.earned?.day === 1 && listed?.earned?.certification === certification && listed?.verified === true && Boolean(listed?.rarity));

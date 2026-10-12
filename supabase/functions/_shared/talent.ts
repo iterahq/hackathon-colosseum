@@ -48,6 +48,8 @@ export interface TalentCard {
   name: string | null;
   avatar: { key: string; title: string; thumb_url: string; rarity: string } | null;
   headline: string | null;
+  /** A company can ask for this learner's contact. The contact is never on a card. */
+  has_contact: boolean;
   stamped_days: number;
   total_days: number;
   certifications: number;

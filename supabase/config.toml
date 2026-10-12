@@ -134,3 +134,7 @@ verify_jwt = false
 # The day chest: the public read of one chest answers anyone; the learner's list and the settle validate the bearer token themselves.
 [functions.tera-chest]
 verify_jwt = false
+
+# The learner's own privacy (profile switch, contact while listed). The function validates the bearer token itself.
+[functions.privacy]
+verify_jwt = false

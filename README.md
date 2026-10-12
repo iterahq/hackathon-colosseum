@@ -225,7 +225,7 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
   Nothing secret goes in a `VITE_*` variable.
 - Edge function secrets: `SOLANA_AUTHORITY_SECRET`, `SOLANA_TREASURY_SECRET`, `SOLANA_RPC_URL`
   (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase).
-- Migrations: `db/migrations/` (hackathon ones are 0110 to 0352). Functions: `supabase/functions/`, deployed with
+- Migrations: `db/migrations/` (hackathon ones are 0110 to 0355). Functions: `supabase/functions/`, deployed with
   `supabase functions deploy <name> --project-ref <ref> --use-api`.
 - Unit tests of the on-chain modules (no network, no secrets): `npx vitest run --config vitest.supabase.config.ts`.
 - `scripts/hackathon/*.mjs` are end-to-end scripts against the deployed devnet backend (passport, purchase, gift,
@@ -248,6 +248,10 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
 - Bounties: the escrow program does not read the stamped days (the server does), has one approver key and is
   upgradeable by one key. There is no dispute path: a rejected delivery reopens the bounty and the learner sees the
   sponsor's note. Rewards are devnet SOL. An approved delivery is a human judgement, not a proof.
+- Privacy: a private profile hides this site's summary of a wallet, not the wallet's assets, which anyone can list on
+  chain. A contact on the talent board is shown to "companies", and a company is any wallet that funded one bounty:
+  on devnet that costs effort, not money. Reads are capped (10 learners a day) and recorded, and leaving the board
+  deletes the contact. See [`docs/privacy.md`](docs/privacy.md).
 - Avatar transfers are not tracked for equip, and the new holder gets no row. Avatar refunds are manual.
 - Teras: an earned Tera's roll can be recomputed by anyone, but one key writes every commitment (it could commit a day
   twice; every write is public), the effort level and the list of Teras a learner already holds are our server's word,
