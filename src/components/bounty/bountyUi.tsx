@@ -169,15 +169,18 @@ export function BountyShell({ children, width = 960 }: { children: ReactNode; wi
 }
 
 /** One collapsed disclosure: what it holds stays in the page (and in a find-in-page), one tap away. */
-export function Fold({ label, children, testId, className = '' }: { label: string; children: ReactNode; testId?: string; className?: string }) {
+export function Fold({ label, children, testId, className = '', aside }: { label: string; children: ReactNode; testId?: string; className?: string; aside?: ReactNode }) {
   return (
-    <details className={`group/fold min-w-0 ${className}`} data-testid={testId}>
-      <summary className={`flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 rounded [font:700_13px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] [&::-webkit-details-marker]:hidden ${FOCUS}`}>
-        <ChevronRight aria-hidden className="h-4 w-4 shrink-0 transition-transform group-open/fold:rotate-90" />
-        {label}
-      </summary>
-      <div className="flex min-w-0 flex-col gap-2.5 pb-1 pt-1 [font:400_13px/1.55_Inter] text-[#A0978A] [overflow-wrap:anywhere]">{children}</div>
-    </details>
+    <div className={`relative min-w-0 ${className}`}>
+      <details className="group/fold min-w-0" data-testid={testId}>
+        <summary className={`flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 rounded [font:700_13px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] [&::-webkit-details-marker]:hidden ${FOCUS}`}>
+          <ChevronRight aria-hidden className="h-4 w-4 shrink-0 transition-transform group-open/fold:rotate-90" />
+          {label}
+        </summary>
+        <div className="flex min-w-0 flex-col gap-2.5 pb-1 pt-1 [font:400_13px/1.55_Inter] text-[#A0978A] [overflow-wrap:anywhere]">{children}</div>
+      </details>
+      {aside && <div className="absolute right-0 top-0 flex h-11 items-center">{aside}</div>}
+    </div>
   );
 }
 

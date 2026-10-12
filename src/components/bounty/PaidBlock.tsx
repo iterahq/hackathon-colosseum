@@ -15,11 +15,10 @@ export function PaidBlock({ bounty }: { bounty: BountyDetail }) {
   const prize = bounty.prizeTera ?? null;
   const prizeIs = prizeState(bounty);
   return (
-    <section className="flex flex-col gap-3 rounded-[14px] border-2 border-[#3FD17F] bg-[#3FD17F]/10 p-4 sm:p-5" aria-label={t('bounty.paid.label')} data-testid="bounty-paid">
+    <section className="flex flex-col gap-2 rounded-[14px] border-2 border-[#3FD17F] bg-[#3FD17F]/10 p-4 sm:p-5" aria-label={t('bounty.paid.label')} data-testid="bounty-paid">
       <p className="[font:700_32px/1.05_'Barlow_Condensed'] text-[#3FD17F] max-sm:text-[26px]">
         {t('bounty.paid.title', { sol: localizeDecimal(payout.sol, locale), wallet: claim?.walletShort ?? payout.wallet ?? '' })}
       </p>
-      <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.paid.plain')}</p>
       {prize && prizeIs !== 'none' && (
         <div className="flex min-w-0 items-center gap-3 rounded-[12px] border border-dashed bg-[#141210] p-3" style={{ borderColor: prize.accent }} data-testid="bounty-paid-prize" data-state={prizeIs} role="status">
           {prize.imageUrl && <img src={prize.imageUrl} alt="" className={`h-20 w-20 shrink-0 rounded-[12px] bg-[#0A0908] object-cover ${prizeIs === 'unfunded' ? 'opacity-40 grayscale' : ''}`} />}
@@ -36,8 +35,8 @@ export function PaidBlock({ bounty }: { bounty: BountyDetail }) {
           </div>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-        <ExplorerAnchor href={payout.explorerUrl} label={t('bounty.paid.tx')} />
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-0">
+        <ExplorerAnchor href={payout.explorerUrl} label={t('bounty.paid.tx')} compact />
         {winner && (
           <Link to={`/u/${winner}`} className={LINK}>
             {t('bounty.paid.profile')} →

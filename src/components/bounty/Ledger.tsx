@@ -48,12 +48,7 @@ export function Ledger({ events, judge = null, report = null }: { events: Ledger
   const { t, locale } = useI18n();
   return (
     <section className={`${CARD} flex flex-col gap-3 p-4 sm:p-5`} aria-labelledby="bounty-ledger" data-testid="bounty-ledger">
-      <div className="flex flex-wrap items-center justify-between gap-x-3">
-        <h2 id="bounty-ledger" className={SECTION_TITLE}>{t('bounty.ledger.title')}</h2>
-        <Link to="/verify#trust" className={LINK}>
-          {t('verify.link')} →
-        </Link>
-      </div>
+      <h2 id="bounty-ledger" className={SECTION_TITLE}>{t('bounty.ledger.title')}</h2>
       {events.length === 0 ? (
         <p className="[font:500_14px_Inter] text-[#A0978A]">{t('bounty.ledger.empty')}</p>
       ) : (
@@ -112,7 +107,15 @@ export function Ledger({ events, judge = null, report = null }: { events: Ledger
           })}
         </ol>
       )}
-      <Fold label={t('bounty.fold.how')} testId="bounty-ledger-how">
+      <Fold
+        label={t('bounty.fold.how')}
+        testId="bounty-ledger-how"
+        aside={
+          <Link to="/verify#trust" className={LINK}>
+            {t('verify.link')} →
+          </Link>
+        }
+      >
         <p>{t('bounty.ledger.plain')}</p>
         <p>{t('bounty.ledger.tapHint')}</p>
       </Fold>
