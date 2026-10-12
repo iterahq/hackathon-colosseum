@@ -12,6 +12,7 @@ import {
   sponsorAssetName,
   sponsorAttributes,
   sponsorMetadata,
+  tenantBrand,
   type PrizeTera,
 } from './sponsor-tera';
 
@@ -38,10 +39,43 @@ describe('the brand a sponsor types', () => {
     }
   });
 
-  it('KNOWN LIMIT: a look-alike letter from another alphabet passes the reserved-name check', () => {
-    // Cyrillic capital I (U+0406) reads as "Itera". The check is a word list, not a confusables table; the art labels every
-    // such Tera "SPONSOR TERA · BOUNTY PRIZE" and the metadata says the brand is the sponsor's own text.
-    expect(cleanBrand('\u0406tera')).toBe('\u0406tera');
+  it('refuses a letter of another script, which is how a look-alike name is built', () => {
+    // Cyrillic capital I (U+0406) reads as "Itera"; Greek capital Alpha reads as "A".
+    expect(cleanBrand('\u0406tera')).toBeNull();
+    expect(cleanBrand('\u0391cme Labs')).toBeNull();
+    expect(cleanBrand('Acme \u0661\u0662')).toBeNull();
+    expect(cleanBrand('東京ラボ')).toBeNull();
+    expect(cleanBrand('Çağrı Ünal & Søn')).toBe('Çağrı Ünal & Søn');
+  });
+
+  it('KNOWN LIMIT: a Latin look-alike still passes the word list', () => {
+    // A lowercase L or a digit one for the capital I. The check is a word list, not a confusables table; the art labels
+    // every such Tera "SPONSOR TERA · BOUNTY PRIZE" and the metadata says the brand is the sponsor's own text.
+    expect(cleanBrand('ltera')).toBe('ltera');
+    expect(cleanBrand('1tera Labs')).toBe('1tera Labs');
+    expect(cleanBrand('DevFe11owship')).toBe('DevFe11owship');
+  });
+
+  it('lets only the staff of a tenant use the name its row declares', () => {
+    expect(cleanBrand('DevFellowship')).toBeNull();
+    expect(cleanBrand('DevFellowship', { ownBrands: [] })).toBeNull();
+    expect(cleanBrand('DevFellowship', { ownBrands: ['DevFellowship'] })).toBe('DevFellowship');
+    // Only that exact name: not another name of the team, not a variation of it.
+    expect(cleanBrand('Itera', { ownBrands: ['DevFellowship'] })).toBeNull();
+    expect(cleanBrand('DevFellowship Official', { ownBrands: ['DevFellowship'] })).toBeNull();
+    expect(cleanBrand('devfellowship', { ownBrands: ['DevFellowship'] })).toBeNull();
+    // The alphabet still applies to an entitled name.
+    expect(cleanBrand('<b>DevFellowship', { ownBrands: ['<b>DevFellowship'] })).toBeNull();
+    expect(tenantBrand({ sponsor_brand: 'DevFellowship', logo_url: 'x' })).toBe('DevFellowship');
+    expect(tenantBrand({ sponsor_brand: '<script>' })).toBeNull();
+    expect(tenantBrand({ sponsor_brand: ' DevFellowship ' })).toBeNull();
+    expect(tenantBrand({})).toBeNull();
+    expect(tenantBrand(null)).toBeNull();
+    expect(tenantBrand('DevFellowship')).toBeNull();
+    expect(parsePrizeTera({ brand: 'DevFellowship', accent: '#16a34a', base: 'tera_feliz' })).toEqual({ ok: false, error: 'invalid_prize_tera' });
+    expect(parsePrizeTera({ brand: 'DevFellowship', accent: '#16a34a', base: 'tera_feliz' }, { ownBrands: ['DevFellowship'] })).toEqual({ ok: true, value: { brand: 'DevFellowship', accent: '#16a34a', base: 'tera_feliz' } });
+    // Once posted, the stored prize reads back: who was entitled was decided then.
+    expect(prizeOf({ brand: 'DevFellowship', accent: '#16a34a', base: 'tera_feliz' })).toEqual({ brand: 'DevFellowship', accent: '#16a34a', base: 'tera_feliz' });
   });
 
   it('never lets markup reach the art: the brand is escaped again where it is drawn', () => {

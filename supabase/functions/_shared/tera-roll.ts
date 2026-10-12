@@ -27,18 +27,53 @@ export const ODDS_TOTAL = 10_000;
 
 export const CHEST_TIERS = ['common', 'rare', 'epic', 'legendary', 'mythic', 'primordial'] as const;
 export type ChestTier = (typeof CHEST_TIERS)[number];
-export type EffortLevel = 0 | 1 | 2 | 3;
+export type EffortLevel = 0 | 1 | 2 | 3 | 4;
+/** Level 3 on the day that completes the LAST trail of the program: the only chest that can give the one-of-one. */
+export const CROWN_LEVEL = 4;
+export type OddsTable = Record<number, Record<ChestTier, number>>;
 
 /**
  * The published odds, in parts of 10 000, by effort level. Each row adds up to
- * 10 000. Effort moves the weight upwards; the lowest level cannot reach the
- * one-of-one at all.
+ * 10 000. Effort moves the weight upwards. The one-of-one (primordial) has
+ * weight ZERO on every ordinary day: only level 4 can roll it. This table is
+ * written inside every pool document from version 3 on, so it is committed
+ * with the pool and a chest is always recomputed with the odds it committed to.
  */
-export const ODDS_TABLE: Record<EffortLevel, Record<ChestTier, number>> = {
+export const ODDS_TABLE: OddsTable = {
+  0: { common: 7000, rare: 2500, epic: 450, legendary: 45, mythic: 5, primordial: 0 },
+  1: { common: 6000, rare: 3000, epic: 880, legendary: 100, mythic: 20, primordial: 0 },
+  2: { common: 5000, rare: 3400, epic: 1350, legendary: 210, mythic: 40, primordial: 0 },
+  3: { common: 3800, rare: 3700, epic: 2000, legendary: 400, mythic: 100, primordial: 0 },
+  4: { common: 3800, rare: 3700, epic: 2000, legendary: 400, mythic: 90, primordial: 10 },
+};
+
+/** The odds of the pool documents of versions 1 and 2 (chests opened on 2026-10-12 before the one-of-one rule): levels 1 to 3 could roll the primordial. */
+export const LEGACY_ODDS_TABLE: OddsTable = {
   0: { common: 7000, rare: 2500, epic: 450, legendary: 45, mythic: 5, primordial: 0 },
   1: { common: 6000, rare: 3000, epic: 880, legendary: 100, mythic: 19, primordial: 1 },
   2: { common: 5000, rare: 3400, epic: 1350, legendary: 210, mythic: 36, primordial: 4 },
   3: { common: 3800, rare: 3700, epic: 2000, legendary: 400, mythic: 90, primordial: 10 },
+};
+
+/**
+ * How each earn-only tier is earned, in the words the cards print. `levels`: the effort levels whose odds give the
+ * tier any weight (read from `ODDS_TABLE`, so the sentence and the table cannot drift apart).
+ */
+const levelsOf = (tier: ChestTier) => Object.keys(ODDS_TABLE).map(Number).filter((level) => ODDS_TABLE[level][tier] > 0);
+const ANY_DAY = {
+  pt: 'Sai do baú de qualquer dia carimbado. Quanto mais esforço verificado no dia, maior a chance.',
+  en: 'Comes out of the chest of any stamped day. The more verified effort in the day, the better the odds.',
+};
+export const EARN_ONLY_RULES: Partial<Record<ChestTier, { levels: number[]; how: { pt: string; en: string } }>> = {
+  legendary: { levels: levelsOf('legendary'), how: ANY_DAY },
+  mythic: { levels: levelsOf('mythic'), how: ANY_DAY },
+  primordial: {
+    levels: levelsOf('primordial'),
+    how: {
+      pt: 'Só pode sair de um baú: o do dia que completa a última trilha do programa, com esforço nível 3. Em qualquer outro dia a chance é zero.',
+      en: 'Can come out of one chest only: the one of the day that completes the last trail of the program, at effort level 3. On any other day its odds are zero.',
+    },
+  },
 };
 
 /** The share of server-graded answers a day needs for its effort point. */
@@ -53,27 +88,33 @@ export interface EffortInput {
   clean: boolean;
   /** This day finished the trail: the certification turned gold in the same write. */
   gold: boolean;
+  /** This day finished the LAST trail of the program: every trail of it is gold now. */
+  crown?: boolean;
 }
 
 /** One point each: a day mostly graded by the server, a day with no miss, the day that finishes the trail. */
 export function effortLevel(input: EffortInput): EffortLevel {
   const share = input.gradable > 0 && input.verified / input.gradable >= VERIFIED_SHARE_MIN ? 1 : 0;
-  return (share + (input.clean ? 1 : 0) + (input.gold ? 1 : 0)) as EffortLevel;
+  const level = share + (input.clean ? 1 : 0) + (input.gold ? 1 : 0);
+  // The crown is not a fourth way to earn a point: it is level 3 on the one day that completes the whole program.
+  return (level === 3 && input.gold && input.crown === true ? CROWN_LEVEL : level) as EffortLevel;
 }
 
 /**
  * The effort numbers of a stamped day from the proof its stamp row carries (`verified`, `self_reported`).
  * A day with no server-graded answer has no miss to count and no clean day to reward either.
  */
-export function effortOf(proof: unknown, noServerMiss: boolean, gold: boolean): EffortInput {
+export function effortOf(proof: unknown, noServerMiss: boolean, gold: boolean, crown = false): EffortInput {
   const counts = proof && typeof proof === 'object' ? (proof as Record<string, unknown>) : {};
   const count = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : 0);
   const verified = count(counts.verified);
-  return { verified, gradable: verified + count(counts.self_reported), clean: noServerMiss && verified > 0, gold };
+  return { verified, gradable: verified + count(counts.self_reported), clean: noServerMiss && verified > 0, gold, crown: gold && crown };
 }
 
-export function oddsOf(level: EffortLevel): Array<{ tier: ChestTier; weight: number }> {
-  return CHEST_TIERS.map((tier) => ({ tier, weight: ODDS_TABLE[level][tier] }));
+/** The odds row of a level in a table. A level the table does not have reads as its highest row (the old tables stop at 3). */
+export function oddsOf(level: EffortLevel, table: OddsTable = ODDS_TABLE): Array<{ tier: ChestTier; weight: number }> {
+  const row = table[level] ?? table[Math.max(...Object.keys(table).map(Number))];
+  return CHEST_TIERS.map((tier) => ({ tier, weight: row[tier] }));
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +144,10 @@ export function buildPool(items: readonly PoolItem[]): ChestPool {
 
 /** The pool documents written before earn-only tiers were named in them: their walk may climb into any tier. */
 export const POOL_VERSION_OPEN_WALK = 1;
-export const POOL_VERSION = 2;
+/** Version 2 named the earn-only tiers; its odds are `LEGACY_ODDS_TABLE`. */
+export const POOL_VERSION_LEGACY_ODDS = 2;
+/** Version 3 carries its own odds table, one row per level 0 to 4. */
+export const POOL_VERSION = 3;
 
 /**
  * The exact text whose SHA-256 is committed. Key order is fixed by `CHEST_TIERS`.
@@ -112,34 +156,59 @@ export const POOL_VERSION = 2;
  * that rule, holding every Tera that is for sale would turn each chest into an
  * earn-only Tera, which is buying one.
  */
-export function poolDocument(pool: ChestPool, earnOnly: readonly ChestTier[]): string {
-  return JSON.stringify({ v: POOL_VERSION, tiers: CHEST_TIERS.map((tier) => [tier, pool[tier]]), earn_only: CHEST_TIERS.filter((tier) => earnOnly.includes(tier)) });
+export function poolDocument(pool: ChestPool, earnOnly: readonly ChestTier[], odds: OddsTable = ODDS_TABLE): string {
+  const levels = Object.keys(odds).map(Number).sort((a, b) => a - b);
+  return JSON.stringify({
+    v: POOL_VERSION,
+    tiers: CHEST_TIERS.map((tier) => [tier, pool[tier]]),
+    earn_only: CHEST_TIERS.filter((tier) => earnOnly.includes(tier)),
+    // One row per effort level, in level order; each row is the weights in `CHEST_TIERS` order.
+    odds: levels.map((level) => CHEST_TIERS.map((tier) => odds[level][tier])),
+  });
 }
 
-export function poolHash(pool: ChestPool, earnOnly: readonly ChestTier[]): string {
-  return sha256Hex(poolDocument(pool, earnOnly));
+export function poolHash(pool: ChestPool, earnOnly: readonly ChestTier[], odds: OddsTable = ODDS_TABLE): string {
+  return sha256Hex(poolDocument(pool, earnOnly, odds));
 }
 
 export interface ParsedPool {
   pool: ChestPool;
   /** `null`: a version 1 document, whose walk climbs into any tier. */
   earnOnly: ChestTier[] | null;
+  /** The odds this pool is rolled with: its own from version 3 on, the legacy table before. */
+  odds: OddsTable;
+  version: number;
+}
+
+function parseOdds(raw: unknown): OddsTable | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 9) return null;
+  const table: OddsTable = {};
+  for (let level = 0; level < raw.length; level += 1) {
+    const row = raw[level];
+    if (!Array.isArray(row) || row.length !== CHEST_TIERS.length || !row.every((weight) => Number.isInteger(weight) && weight >= 0)) return null;
+    if ((row as number[]).reduce((total, weight) => total + weight, 0) !== ODDS_TOTAL) return null;
+    table[level] = Object.fromEntries(CHEST_TIERS.map((tier, index) => [tier, (row as number[])[index]])) as Record<ChestTier, number>;
+  }
+  return table;
 }
 
 /** The pool a stored document describes, or `null` when the text is not one. */
 export function parsePoolDocument(text: string): ParsedPool | null {
   try {
-    const parsed = JSON.parse(text) as { v?: unknown; tiers?: unknown; earn_only?: unknown };
-    if ((parsed.v !== POOL_VERSION && parsed.v !== POOL_VERSION_OPEN_WALK) || !Array.isArray(parsed.tiers) || parsed.tiers.length !== CHEST_TIERS.length) return null;
+    const parsed = JSON.parse(text) as { v?: unknown; tiers?: unknown; earn_only?: unknown; odds?: unknown };
+    if ((parsed.v !== POOL_VERSION && parsed.v !== POOL_VERSION_LEGACY_ODDS && parsed.v !== POOL_VERSION_OPEN_WALK) || !Array.isArray(parsed.tiers) || parsed.tiers.length !== CHEST_TIERS.length) return null;
     const pool = {} as ChestPool;
     for (let index = 0; index < CHEST_TIERS.length; index += 1) {
       const entry = parsed.tiers[index];
       if (!Array.isArray(entry) || entry[0] !== CHEST_TIERS[index] || !Array.isArray(entry[1]) || !entry[1].every((key) => typeof key === 'string')) return null;
       pool[CHEST_TIERS[index]] = [...(entry[1] as string[])];
     }
-    if (parsed.v === POOL_VERSION_OPEN_WALK) return { pool, earnOnly: null };
+    if (parsed.v === POOL_VERSION_OPEN_WALK) return { pool, earnOnly: null, odds: LEGACY_ODDS_TABLE, version: POOL_VERSION_OPEN_WALK };
     if (!Array.isArray(parsed.earn_only) || !parsed.earn_only.every((tier) => (CHEST_TIERS as readonly unknown[]).includes(tier))) return null;
-    return { pool, earnOnly: CHEST_TIERS.filter((tier) => (parsed.earn_only as unknown[]).includes(tier)) };
+    const earnOnly = CHEST_TIERS.filter((tier) => (parsed.earn_only as unknown[]).includes(tier));
+    if (parsed.v === POOL_VERSION_LEGACY_ODDS) return { pool, earnOnly, odds: LEGACY_ODDS_TABLE, version: POOL_VERSION_LEGACY_ODDS };
+    const odds = parseOdds(parsed.odds);
+    return odds ? { pool, earnOnly, odds, version: POOL_VERSION } : null;
   } catch {
     return null;
   }
@@ -156,7 +225,7 @@ export interface ChestCommit {
   pool: string;
 }
 
-const COMMIT_SHAPE = /^([1-9][0-9]{0,15})\.([0-3])\.([0-9a-f]{8})$/;
+const COMMIT_SHAPE = /^([1-9][0-9]{0,15})\.([0-4])\.([0-9a-f]{8})$/;
 
 export function commitValue(commit: { slot: number; level: EffortLevel; poolHash: string }): string {
   return `${commit.slot}.${commit.level}.${commit.poolHash.slice(0, 8)}`;
@@ -274,6 +343,8 @@ export interface RollInput {
   unavailable: readonly string[];
   /** The tiers the walk never climbs into (`ParsedPool.earnOnly`). `null` or absent: it climbs anywhere (version 1 pools). */
   earnOnly?: readonly ChestTier[] | null;
+  /** The odds the pool committed to (`ParsedPool.odds`). Absent: the current table. */
+  odds?: OddsTable;
 }
 
 export interface RollResult {
@@ -315,7 +386,7 @@ export function rollChest(input: RollInput): RollResult {
   const steps: string[] = [];
   const tierRoll = Number.parseInt(input.seed.slice(0, 8), 16) % ODDS_TOTAL;
   const startRoll = Number.parseInt(input.seed.slice(8, 16), 16);
-  const odds = oddsOf(input.level);
+  const odds = oddsOf(input.level, input.odds ?? ODDS_TABLE);
   let cumulative = 0;
   let rolled: ChestTier = CHEST_TIERS[0];
   for (const { tier, weight } of odds) {
@@ -371,7 +442,7 @@ export function recomputeChest(input: RecomputeInput): RecomputeResult {
   if (!parsed) return { ok: false, error: 'bad_pool' };
   if (!sha256Hex(input.poolDocument).startsWith(commit.pool)) return { ok: false, error: 'pool_mismatch' };
   const seed = chestSeed(input.blockhash, input.certification, input.day);
-  return { ok: true, seed, ...rollChest({ seed, level: commit.level, pool: parsed.pool, unavailable: input.unavailable, earnOnly: parsed.earnOnly }) };
+  return { ok: true, seed, ...rollChest({ seed, level: commit.level, pool: parsed.pool, unavailable: input.unavailable, earnOnly: parsed.earnOnly, odds: parsed.odds }) };
 }
 
 export const CHEST_FORMULA =

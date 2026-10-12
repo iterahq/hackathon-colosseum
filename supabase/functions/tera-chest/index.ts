@@ -4,7 +4,7 @@ import { loadConfig, serviceClient } from '../_shared/db.ts';
 import { corsHeaders, isUuid, json, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { CHEST_COLUMNS, chestContext, chestOfDay, chestView, chestsEnabled, recomputeView, settleChest, type ChestRow } from '../_shared/tera-chest-store.ts';
-import { CHEST_BLOCK_WINDOW, CHEST_FORMULA, CHEST_SLOT_DISTANCE, ODDS_TABLE, VERIFIED_SHARE_MIN } from '../_shared/tera-roll.ts';
+import { CHEST_BLOCK_WINDOW, CHEST_FORMULA, CHEST_SLOT_DISTANCE, CROWN_LEVEL, EARN_ONLY_RULES, ODDS_TABLE, POOL_VERSION, VERIFIED_SHARE_MIN } from '../_shared/tera-roll.ts';
 
 /** Reads are public and cheap; a settle may send two transactions, so one address gets fewer of those. */
 const READ_RATE: RateLimit = { limit: 120, windowMs: 60_000 };
@@ -19,7 +19,16 @@ const rules = () => ({
   verified_share_min: VERIFIED_SHARE_MIN,
   slot_distance: CHEST_SLOT_DISTANCE,
   block_window: CHEST_BLOCK_WINDOW,
-  levels: ['one point when the server graded at least 75% of the gradable answers of the day', 'one point when the server graded no answer of the day wrong', 'one point for the day that finishes the trail'],
+  levels: [
+    'one point when the server graded at least 75% of the gradable answers of the day',
+    'one point when the server graded no answer of the day wrong',
+    'one point for the day that finishes the trail',
+    'level 4 is level 3 on the day that finishes the LAST trail of the program (every trail gold): the only level that can roll the one-of-one',
+  ],
+  crown_level: CROWN_LEVEL,
+  /** How each earn-only tier is earned, for the cards. `levels`: the effort levels whose odds give the tier any weight. */
+  earn_only: EARN_ONLY_RULES,
+  pool_version: POOL_VERSION,
 });
 
 Deno.serve(async (request) => {

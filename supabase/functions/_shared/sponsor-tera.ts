@@ -34,15 +34,28 @@ export interface PrizeTera {
 const RESERVED_BRANDS = /itera|dev\s*fellowship|\bdfl\b|solana|colosseum|metaplex|phantom|official|oficial|verified|verificad/i;
 const ACCENT = /^#[0-9a-f]{6}$/;
 
+export interface BrandOptions {
+  /**
+   * Names the caller is entitled to although they read as the team's: the `sponsor_brand` of the tenants the caller
+   * is STAFF of, taken from the tenant rows by the server. Never from the request.
+   */
+  ownBrands?: readonly string[];
+  /** `false`: only the alphabet and the length are checked (reading back a brand that was accepted at posting). */
+  reserved?: boolean;
+}
+
 /**
- * The brand as it will be written on the art and on chain: 2 to 24 Unicode
- * letters and digits, spaces and `. & + - _ ! '`. Compatibility forms are
- * folded (NFKC), invisible control and direction characters are dropped and
- * spaces collapse; after that ANY other character (markup, quotes, emoji)
- * refuses the name, as does a name that poses as the team. Nothing is cut or
- * rewritten silently: what is minted is what the sponsor typed, or nothing.
+ * The brand as it will be written on the art and on chain: 2 to 24 LATIN
+ * letters (accents included), ASCII digits, spaces and `. & + - _ ! '`.
+ * Compatibility forms are folded (NFKC), invisible control and direction
+ * characters are dropped and spaces collapse; after that ANY other character
+ * (markup, quotes, emoji, a letter of another script) refuses the name, as
+ * does a name that poses as the team, unless it is the caller's own tenant's.
+ * Nothing is cut or rewritten silently: what is minted is what the sponsor
+ * typed, or nothing. Latin only is the cheap guard against look-alike letters
+ * (a Cyrillic "І" in "Іtera"); it also refuses honest names in other scripts.
  */
-export function cleanBrand(value: unknown): string | null {
+export function cleanBrand(value: unknown, options: BrandOptions = {}): string | null {
   if (typeof value !== 'string' || value.length > 200) return null;
   const brand = value
     .normalize('NFKC')
@@ -52,18 +65,26 @@ export function cleanBrand(value: unknown): string | null {
     .trim();
   const length = [...brand].length;
   if (length < BRAND_MIN || length > BRAND_MAX) return null;
-  if (!/^[\p{L}\p{N} .&+\-_!']+$/u.test(brand) || !/[\p{L}\p{N}]/u.test(brand) || RESERVED_BRANDS.test(brand)) return null;
-  return brand;
+  if (!/^[\p{Script=Latin}0-9 .&+\-_!']+$/u.test(brand) || !/[\p{Script=Latin}0-9]/u.test(brand)) return null;
+  if (options.reserved === false || options.ownBrands?.includes(brand)) return brand;
+  return RESERVED_BRANDS.test(brand) ? null : brand;
+}
+
+/** The `sponsor_brand` a tenant row declares, when it is itself a valid brand. `null` otherwise. */
+export function tenantBrand(branding: unknown): string | null {
+  const declared = branding && typeof branding === 'object' && !Array.isArray(branding) ? (branding as Record<string, unknown>).sponsor_brand : null;
+  const brand = cleanBrand(declared, { reserved: false });
+  return brand !== null && brand === declared ? brand : null;
 }
 
 export type PrizeParse = { ok: true; value: PrizeTera | null } | { ok: false; error: 'invalid_prize_tera' };
 
 /** The optional `prize_tera` of the posting form. Absent or `null`: no prize. Anything malformed refuses the whole form. */
-export function parsePrizeTera(raw: unknown): PrizeParse {
+export function parsePrizeTera(raw: unknown, options: BrandOptions = {}): PrizeParse {
   if (raw === undefined || raw === null) return { ok: true, value: null };
   if (typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: 'invalid_prize_tera' };
   const { brand, accent, base } = raw as Record<string, unknown>;
-  const cleaned = cleanBrand(brand);
+  const cleaned = cleanBrand(brand, options);
   const colour = typeof accent === 'string' ? accent.trim().toLowerCase() : '';
   if (!cleaned || !ACCENT.test(colour) || typeof base !== 'string' || !(PRIZE_BASES as readonly string[]).includes(base)) return { ok: false, error: 'invalid_prize_tera' };
   return { ok: true, value: { brand: cleaned, accent: colour, base: base as PrizeBase } };
@@ -71,7 +92,8 @@ export function parsePrizeTera(raw: unknown): PrizeParse {
 
 /** A stored `bounties.prize_tera`, read back with the same rules (a row edited by hand cannot put markup on the art). */
 export function prizeOf(stored: unknown): PrizeTera | null {
-  const parsed = parsePrizeTera(stored);
+  // Who may use which name was decided when the bounty was posted; here only the shape is checked again.
+  const parsed = parsePrizeTera(stored, { reserved: false });
   return parsed.ok ? parsed.value : null;
 }
 

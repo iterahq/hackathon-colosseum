@@ -337,6 +337,15 @@ describe('funding action', () => {
     const open = bountyActionGet({ bounty: bounty({ status: 'awaiting_funding' }), lang: 'en', missingLamports: 20_005_000n, href: 'https://fn.test/x', blocked: null });
     expect(open).toMatchObject({ type: 'action', title: 'Fund the bounty: Semantic page', links: { actions: [{ type: 'transaction', label: 'Lock 0.020005 SOL in escrow', href: 'https://fn.test/x' }] } });
     expect(open).not.toHaveProperty('disabled');
+    // A bounty with a prize Tera says so, and what part of the total is not escrow, only when this funding charges it.
+    const prized = bounty({ status: 'awaiting_funding', prize_tera: { brand: 'Acme Labs', accent: '#ff8800', base: 'tera_feliz' } });
+    const withPrize = bountyActionGet({ bounty: prized, lang: 'en', missingLamports: 34_005_000n, href: 'https://fn.test/x', blocked: null, prizeLamports: 14_000_000n });
+    expect(withPrize.description).toContain('sponsor Tera ("Acme Labs")');
+    expect(withPrize.description).toContain('0.014 SOL');
+    expect(withPrize.description).toContain('do not come back in a refund');
+    expect(bountyActionGet({ bounty: prized, lang: 'pt', missingLamports: 34_005_000n, href: 'https://fn.test/x', blocked: null, prizeLamports: 14_000_000n }).description).toContain('Tera de patrocinador ("Acme Labs")');
+    expect(bountyActionGet({ bounty: prized, lang: 'en', missingLamports: 20_005_000n, href: 'https://fn.test/x', blocked: null }).description).not.toContain('sponsor Tera');
+    expect(open.description).not.toContain('sponsor Tera');
     const closed = bountyActionGet({ bounty: bounty(), lang: 'pt', missingLamports: 0n, href: 'https://fn.test/x', blocked: 'not_fundable' });
     expect(closed).toMatchObject({ disabled: true, error: { message: 'Esta missão já está financiada ou foi encerrada.' } });
   });

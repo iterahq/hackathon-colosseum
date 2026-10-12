@@ -46,11 +46,9 @@ const form = (stamp, label, prize) => ({
 export async function sponsorPart({ stamp, report, treasury }) {
   const switchRow = await sql(`select value from itera.onchain_config where key = 'prize_tera'`);
   if (!switchRow[0]) throw new Error('onchain_config.prize_tera is missing: apply migration 0352 first');
-  const switchBefore = switchRow[0].value;
-  const setSwitch = (value) => sql(`update itera.onchain_config set value = '${value}', updated_at = now() where key = 'prize_tera'`);
-  if (switchBefore !== 'on') await setSwitch('on');
+  if (switchRow[0].value !== 'on') throw new Error('onchain_config.prize_tera is not on: this script does not flip it, nothing was sent');
 
-  try {
+  {
     const sponsor = await login(wallet(`tera-e2e-s-${stamp}`));
     const learner = await login(wallet(`tera-e2e-l-${stamp}`));
     await tag(sponsor, 'sponsor');
@@ -75,7 +73,25 @@ export async function sponsorPart({ stamp, report, treasury }) {
     await refused('a base outside the short list (an earn-only Tera)', { brand: 'Acme Labs', accent: '#ff8800', base: 'brand_phoenix_full' });
     await refused('a path as the base', { brand: 'Acme Labs', accent: '#ff8800', base: '../../x' });
     await refused('a brand posing as the team', { brand: 'Itera Official', accent: '#ff8800', base });
+    await refused('the name of a tenant this wallet is not staff of', { brand: 'DevFellowship', accent: '#16a34a', base });
+    await refused('a look-alike letter of another script (Cyrillic I)', { brand: '\u0406tera Labs', accent: '#ff8800', base });
     await refused('an uploaded file instead of the three values', { brand: 'Acme Labs', accent: '#ff8800', base, image_url: 'https://evil.example/x.svg', file: 'data:image/svg+xml;base64,AAAA', base_extra: 1, ...{ base: 'https://evil.example/x.svg' } });
+    // A team name is open only to the STAFF of the tenant whose row declares it. The sponsor becomes the instructor of
+    // a throwaway test tenant that declares a name the word list refuses ("Verified ..."), posts under it, and the draft
+    // is deleted. The learner, staff of nothing, is refused the same name.
+    const teamBrand = `Verified E2E ${stamp}`.slice(0, 24);
+    const tenant = (await sql(`insert into itera.tenants (slug, name, is_test, branding) values ('tera-e2e-${stamp}', 'tera-e2e-${stamp}', true, '${JSON.stringify({ sponsor_brand: teamBrand })}'::jsonb) returning id`))[0].id;
+    await refused('a team name before the wallet is staff of that tenant', { brand: teamBrand, accent: '#16a34a', base });
+    await sql(`insert into itera.memberships (user_id, tenant_id, role) select i.user_id, '${tenant}', 'instructor' from itera.identities i where i.provider_subject = '${sponsor.authUid}'`);
+    const asStaff = await post(sponsor, form(stamp, 'team brand', { brand: teamBrand, accent: '#16a34a', base }));
+    check('the staff of a tenant posts under the name its tenant row declares', asStaff.http === 200 && asStaff.j?.prize_tera?.brand === teamBrand, JSON.stringify(asStaff.j?.prize_tera ?? asStaff.j));
+    const asOther = await post(learner, form(stamp, 'team brand', { brand: teamBrand, accent: '#16a34a', base }));
+    check('the same name from a wallet that is not staff of it is refused', asOther.http === 400 && asOther.j?.error === 'invalid_prize_tera', JSON.stringify(asOther.j));
+    const sentByClient = await post(learner, { ...form(stamp, 'team brand', { brand: teamBrand, accent: '#16a34a', base, own_brand: true, staff: true }), tenant_id: tenant, own_brands: [teamBrand], staff: true });
+    check('and saying "I am staff" in the request changes nothing', sentByClient.http === 400 && sentByClient.j?.error === 'invalid_prize_tera');
+    if (asStaff.j?.id) await post(sponsor, { action: 'delete', bounty: asStaff.j.id });
+    await sql(`delete from itera.memberships where tenant_id = '${tenant}'; delete from itera.tenants where id = '${tenant}'`);
+
     const hostilePreview = await fetch(`${FUNCTIONS}/credential-meta/sponsor-preview.svg?brand=${encodeURIComponent('<script>x</script>')}&accent=%23ff8800&base=${base}`);
     check('the public preview refuses the same markup', hostilePreview.status === 400);
 
@@ -90,6 +106,9 @@ export async function sponsorPart({ stamp, report, treasury }) {
     const preview = await fetch(`${FUNCTIONS}/credential-meta/sponsor-preview.svg?brand=${encodeURIComponent(brand)}&accent=%23ff8800&base=${base}`);
     const previewSvg = await preview.text();
     check('the preview is the composed art: the brand as text, the base Tera inlined, no external reference', preview.status === 200 && previewSvg.includes(brand) && previewSvg.includes('data:image/') && !/https?:\/\/(?!www\.w3\.org)/.test(previewSvg) && !previewSvg.includes('<script'), `${previewSvg.length} bytes`);
+
+    const blink = (await get(`bounty-action/${slug}?lang=en`)).j;
+    check('the funding link says the prize, what part of the total is not escrow, and that a refund does not return it', typeof blink?.description === 'string' && blink.description.includes(`sponsor Tera ("${brand}")`) && blink.description.includes('0.014 SOL') && blink.description.includes('do not come back in a refund'), String(blink?.description).slice(-230));
 
     // ---- Funding: the sponsor pays the reward, the rent, the mint cost and the issuing fee, in one transaction ----
     const fund = await post(sponsor, { action: 'fund_tx', bounty: id });
@@ -160,7 +179,5 @@ export async function sponsorPart({ stamp, report, treasury }) {
     // The sponsor returns what it did not spend.
     const left = await balance(sponsor.address);
     if (left > 2_000_000) await send(sponsor, buildTransferMessage({ payer: sponsor.address, recipient: treasury.address, lamports: BigInt(left - 1_000_000), memo: 'tera-e2e: sponsor returns the rest', recentBlockhash: await latestBlockhash() }));
-  } finally {
-    if (process.env.KEEP_SWITCH !== '1') await setSwitch(switchBefore);
   }
 }

@@ -3,25 +3,30 @@
 // EARNED by a stamped day) and the sponsor Tera (a branded prize on a bounty).
 //
 //   source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN
-//   node scripts/hackathon/tera-e2e.mjs            # PART=chest | sponsor | all (default all)
+//   node scripts/hackathon/tera-e2e.mjs            # PART=chest | effort | sponsor | all (default all)
 //
 // CHEST. A throwaway learner stamps day 1: the script reads the commitment `chest:1` from the
 // certification asset AND from the stamp transaction, checks it landed before the slot it names,
 // settles the chest, then recomputes the roll on its own from the RPC (the block at the committed slot)
 // and the published pool, and must get the same Tera. The minted asset must be frozen and carry the
 // origin. Then it tries to break the design: a client that sends a tier, a replayed settle, settles
-// racing, a settle before the committed slot exists, a learner who holds every Tera of a tier, the kill
-// switch off, a day never stamped, somebody else's day.
+// racing, a settle before the committed slot exists, a learner who holds every Tera of a tier, a day
+// never stamped, somebody else's day. With OWN_WRITE_WALLET=<a wallet of an earlier run that holds a
+// stamped day without a commitment> it also proves the commitment by its own write.
+//
+// EFFORT. A learner whose answers are really graded by the `grade` function plays day 1 with no miss:
+// the chest must commit effort level 2 and recompute with the odds row of that level. Needs
+// HACKATHON_DB_PASSWORD too (the authored answers are read with the database password).
 //
 // SPONSOR. A throwaway wallet funded from the treasury posts a bounty with a prize Tera, funds it, the
 // learner delivers, the sponsor approves: the payout mints the branded Tera, frozen, to the paid wallet.
 //
-// Spends about 0.04 devnet SOL of the mint authority and about 0.015 SOL of the treasury (0.06 SOL goes
+// Spends about 0.05 devnet SOL of the mint authority and about 0.015 SOL of the treasury (0.06 SOL goes
 // to the throwaway sponsor, which sends back what it did not spend). Refuses to start when the authority would end
 // below 0.62 SOL or the treasury below 0.25 SOL. Every account it creates is tagged in
 // `itera.test_accounts`; the bounties it posts are marked `is_test`. It never touches the owner's wallet
-// or certification. Both kill switches are left as they were found; the chest switch is OFF for about
-// 15 seconds in the middle of the run (a learner stamping in that window gets the chest by its own write).
+// or certification. It reads the two kill switches and never writes them: with one off it refuses to
+// run that part, because flipping a switch on the live backend changes what a real learner meets.
 import { writeFileSync } from 'node:fs';
 import { base58Bytes } from '../../supabase/functions/_shared/solana-tx.ts';
 import { CHEST_BLOCK_WINDOW, chestSeed, commitLandedInTime, instructionCommits, parseCommit, recomputeChest } from '../../supabase/functions/_shared/tera-roll.ts';
@@ -41,7 +46,6 @@ const tag = (learner, reason) =>
   sql(`insert into itera.test_accounts (user_id, reason) select i.user_id, 'tera-e2e: ${reason}' from itera.identities i where i.provider_subject = '${learner.authUid}' on conflict (user_id) do nothing`);
 const userIdOf = async (learner) => (await sql(`select user_id from itera.identities where provider_subject = '${learner.authUid}' limit 1`))[0].user_id;
 const switchValue = async () => (await sql(`select value from itera.onchain_config where key = 'tera_chest'`))[0]?.value ?? null;
-const setSwitch = (value) => sql(`update itera.onchain_config set value = '${value}', updated_at = now() where key = 'tera_chest'`);
 const attributesOf = async (asset) => {
   const answer = await get(`credential-verify/${asset}?fresh=1`);
   return { answer: answer.j, attributes: new Map((answer.j?.attributes ?? []).map(({ key, value }) => [key, value])) };
@@ -134,7 +138,8 @@ async function chestPart() {
   check('recomputing the roll from public data gives the same Tera', redo.result.ok && redo.result.key === chest.tera.key && redo.result.tier === chest.tier, `${redo.result.key}`);
   check('a tier and a key sent by the client decided nothing', chest.tera.key === redo.result.key && chest.level === commit.level && chest.tera.key !== 'brand_phoenix_full');
   const poolDoc = JSON.parse(redo.published.recompute.pool_document);
-  check('the committed pool names the tiers that are never sold: the walk cannot climb into one', poolDoc.v === 2 && JSON.stringify(poolDoc.earn_only) === JSON.stringify(['legendary', 'mythic', 'primordial']) && JSON.stringify(redo.published.recompute.earn_only) === JSON.stringify(poolDoc.earn_only));
+  check('the committed pool carries its own odds, and no ordinary level gives the one-of-one any weight', poolDoc.v === 3 && poolDoc.odds.length === 5 && poolDoc.odds.slice(0, 4).every((row) => row[5] === 0) && poolDoc.odds[4][5] === 10 && redo.published.recompute.odds_table['3'].primordial === 0);
+  check('the committed pool names the tiers that are never sold: the walk cannot climb into one', poolDoc.v === 3 && JSON.stringify(poolDoc.earn_only) === JSON.stringify(['legendary', 'mythic', 'primordial']) && JSON.stringify(redo.published.recompute.earn_only) === JSON.stringify(poolDoc.earn_only));
   check('the public read needs no session and names the chain inputs', redo.published.recompute.inputs.commit === commitText && redo.published.recompute.inputs.commit_tx === stampTx && redo.published.chest.id === chest.id);
   report.chests[0] = { ...report.chests[0], id: chest.id, tera: chest.tera.key, tier: chest.tier, asset: chest.tera.asset, seed_slot: redo.slot };
 
@@ -204,35 +209,35 @@ async function chestPart() {
   await sql(`delete from itera.avatar_assets where user_id = '${userId}' and chest_id is null and purchase_id is null and serial >= 900000`);
   report.chests.push({ day: 2, id: secondChest.id, tera: secondChest.tera.key, tier: secondChest.tier, rolled_tier: redoSecond.result.ok ? redoSecond.result.rolled_tier : null, asset: secondChest.tera.asset });
 
-  // ---- The kill switch --------------------------------------------------------------------------
-  await setSwitch('off');
-  await sleep(500);
-  const third = await stampDay(learner, 3);
-  check('with the switch off a day is stamped as always', third.row?.state?.days_done === 3, `${third.ms} ms`);
-  const offAttributes = (await attributesOf(certification)).attributes;
-  check('and its write carries no commitment for that day, while the older ones stay on the asset', !offAttributes.has('chest:3') && offAttributes.get('chest:1') === commitText && offAttributes.has('chest:2'));
-  const offSettle = await call('tera-chest', learner, { lesson_id: lessons[2] });
-  check('with the switch off no chest is opened', offSettle.http === 200 && offSettle.j?.enabled === false && offSettle.j?.chest === null);
-  const offList = (await call('tera-chest', learner, null, 'GET')).j;
-  check('and the list says so, with the Teras already earned', offList?.enabled === false && offList?.chests?.length === 2);
-  const offRows = await sql(`select count(*)::int n from itera.tera_chests where user_id = '${userId}'`);
-  check('no row was written for the day stamped with the switch off', offRows[0].n === 2);
-  await setSwitch('on');
-  await sleep(500);
-
-  // ---- A day whose stamp carried no commitment: committed by its own write, BEFORE the slot ------
-  const late = await settle(learner, lessons[2]);
-  const lateChest = late[late.length - 1].j?.chest;
-  check('a stamped day without a commitment gets one by its own write, then settles', lateChest?.status === 'minted' && lateChest?.commit?.via === 'own_write', `${lateChest?.tera?.key}`);
-  const lateTransaction = await transaction(lateChest.commit.tx);
-  check('that write also landed before the slot it names', commitLandedInTime(lateTransaction.slot, parseCommit(lateChest.commit.value)) && lateTransaction.transaction.message.instructions.some((instruction) => instructionCommits(base58Bytes(instruction.data) ?? new Uint8Array(), 3, lateChest.commit.value)), `margin ${lateChest.commit.slot - lateTransaction.slot} slots`);
-  const redoLate = await recompute(lateChest.id);
-  check('and its roll recomputes to the same Tera', redoLate.result.ok && redoLate.result.key === lateChest.tera.key);
-  report.chests.push({ day: 3, id: lateChest.id, tera: lateChest.tera.key, tier: lateChest.tier, via: 'own_write', asset: lateChest.tera.asset });
-
+  // The kill switch is NOT flipped here: this runs against the live backend, where somebody may be stamping. The off
+  // path (a stamp with no commitment, no chest, `enabled: false`) was proven by the runs of 2026-10-12 that did flip it
+  // (docs/onchain-teras.md names the logs). What follows it, a stamped day with no commitment, is proven below when
+  // OWN_WRITE_WALLET names a throwaway wallet that holds such a day.
   const keys = report.chests.map((entry) => entry.tera);
-  check('three chests gave three different Teras', new Set(keys).size === 3, keys.join(', '));
+  check('two chests gave two different Teras', new Set(keys).size === 2, keys.join(', '));
   return { learner, lessons };
+}
+
+/**
+ * A stamped day whose stamp carried no commitment (stamped while the chest was off, or before it existed): asking for
+ * its chest commits it by its own write, BEFORE the slot it names, and it settles like any other. Needs a throwaway
+ * wallet of an earlier run that still holds such a day; without one the checks are skipped and the log says so.
+ */
+async function ownWritePart() {
+  const name = process.env.OWN_WRITE_WALLET;
+  if (!name) return console.log('SKIP  own-write commitment: OWN_WRITE_WALLET is not set');
+  const learner = await login(wallet(name));
+  const pending = await sql(`select s.ref_id as lesson, (s.state->>'day')::int as day from itera.user_achievements s join itera.identities i on i.user_id = s.user_id where i.provider_subject = '${learner.authUid}' and s.achievement_key = 'day_stamp' and s.mint_status = 'minted' and not exists (select 1 from itera.tera_chests c where c.user_id = s.user_id and c.lesson_id = s.ref_id) order by 2 limit 1`);
+  if (!pending[0]) return console.log(`SKIP  own-write commitment: ${name} has no stamped day without a chest left`);
+  const answers = await settle(learner, pending[0].lesson);
+  const chest = answers[answers.length - 1].j?.chest;
+  check('a stamped day without a commitment gets one by its own write, then settles', chest?.status === 'minted' && chest?.commit?.via === 'own_write', `${chest?.tera?.key} (day ${pending[0].day} of ${learner.address})`);
+  const written = await transaction(chest.commit.tx);
+  check('that write also landed before the slot it names', commitLandedInTime(written.slot, parseCommit(chest.commit.value)) && written.transaction.message.instructions.some((instruction) => instructionCommits(base58Bytes(instruction.data) ?? new Uint8Array(), pending[0].day, chest.commit.value)), `margin ${chest.commit.slot - written.slot} slots`);
+  const redo = await recompute(chest.id);
+  check('and its roll recomputes to the same Tera', redo.result.ok && redo.result.key === chest.tera.key);
+  check('a chest opened late never carries the crown level', redo.commit.level <= 3);
+  report.chests.push({ day: pending[0].day, id: chest.id, tera: chest.tera.key, tier: chest.tier, via: 'own_write', asset: chest.tera.asset, wallet: learner.address });
 }
 
 const authority = loadAuthority();
@@ -243,15 +248,23 @@ if (before.authority - AUTHORITY_BUDGET < AUTHORITY_FLOOR || before.treasury - T
 const switchBefore = await switchValue();
 if (switchBefore === null) throw new Error('onchain_config.tera_chest is missing: apply migration 0351 first');
 
+// The switches are read, never written: a run against the live backend must not change what a learner meets.
+if (switchBefore !== 'on') throw new Error('onchain_config.tera_chest is not on: this script does not flip it, nothing was sent');
+
 try {
-  if (switchBefore !== 'on') await setSwitch('on');
-  if (PART === 'all' || PART === 'chest') await chestPart();
+  if (PART === 'all' || PART === 'chest') {
+    await chestPart();
+    await ownWritePart();
+  }
+  if (PART === 'all' || PART === 'effort') {
+    const { effortPart } = await import('./tera-e2e.effort.mjs');
+    await effortPart({ report, recompute, attributesOf, transaction });
+  }
   if (PART === 'all' || PART === 'sponsor') {
     const { sponsorPart } = await import('./tera-e2e.sponsor.mjs');
     await sponsorPart({ stamp, report, treasury });
   }
 } finally {
-  if (process.env.KEEP_SWITCH !== '1') await setSwitch(switchBefore);
   const after = { authority: await balance(authority.address), treasury: await balance(treasury.address) };
   report.spent = { authority_sol: (before.authority - after.authority) / 1e9, treasury_sol: (before.treasury - after.treasury) / 1e9 };
   report.finished_at = new Date().toISOString();

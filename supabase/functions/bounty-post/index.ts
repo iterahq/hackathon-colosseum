@@ -48,7 +48,9 @@ import { BASE_FEE_LAMPORTS, fundsCheck } from '../_shared/purchase-verify.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { RpcError, RpcNodeError, balanceOf, latestBlockhash, rpc, withinMs } from '../_shared/rpc.ts';
 import { decodeSignedTransaction, transactionSignature } from '../_shared/signed-tx.ts';
-import { BRAND_MAX, BRAND_MIN, PRIZE_TOTAL_LAMPORTS, prizeFeeInstruction, prizeOf, prizeQuote } from '../_shared/sponsor-tera.ts';
+import { BRAND_MAX, BRAND_MIN, PRIZE_TOTAL_LAMPORTS, prizeFeeInstruction, prizeOf, prizeQuote, tenantBrand } from '../_shared/sponsor-tera.ts';
+import { staffTenantIds } from '../_shared/staff.ts';
+import { loadMemberships } from '../_shared/staff-store.ts';
 import { prizeBases, prizeEnabled } from '../_shared/sponsor-tera-store.ts';
 import { compileMessage, memoInstruction, type Instruction } from '../_shared/solana-message.ts';
 import { base58Decode, base58Encode, base64Encode, serializeTransaction } from '../_shared/solana-tx.ts';
@@ -99,7 +101,7 @@ async function options(db: IteraClient, cors: Cors): Promise<Response> {
     ...prizeQuote(),
     brand_min_length: BRAND_MIN,
     brand_max_length: BRAND_MAX,
-    brand_allowed: "letters, digits, spaces and . & + - _ ! '",
+    brand_allowed: "Latin letters, digits, spaces and . & + - _ ! '",
     preview_url: `${functionsBase()}/credential-meta/sponsor-preview.svg`,
     transferable: false,
   };
@@ -186,9 +188,21 @@ async function list(db: IteraClient, wallet: string, cors: Cors): Promise<Respon
   );
 }
 
+/**
+ * The team names this caller may post under: the `sponsor_brand` of each tenant the caller is STAFF of, read from the
+ * tenant rows. Empty for everyone else, so a name of the team stays refused. Nothing in the request takes part.
+ */
+async function ownBrandsOf(db: IteraClient, userId: string): Promise<string[]> {
+  const tenantIds = staffTenantIds(await loadMemberships(db, userId));
+  if (tenantIds.length === 0) return [];
+  const { data, error } = await db.from('tenants').select('branding').in('id', tenantIds);
+  if (error) throw new Error(`tenants: ${error.message}`);
+  return [...new Set((data ?? []).flatMap((row) => tenantBrand(row.branding) ?? []))];
+}
+
 async function create(db: IteraClient, caller: Caller, wallet: string, body: Record<string, unknown>, cors: Cors): Promise<Response> {
   const now = new Date();
-  const parsed = parseWalletBounty(body, now, wallet);
+  const parsed = parseWalletBounty(body, now, wallet, await ownBrandsOf(db, caller.iteraUserId));
   if (!parsed.ok) return json({ error: parsed.error }, 400, cors);
   const input = parsed.value;
   const config = await loadConfig(db);
