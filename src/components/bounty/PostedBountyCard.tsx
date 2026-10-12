@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExplorerAnchor, INPUT, LABEL, LINK, Notice, RequirementChip, Reward, StatusChip } from '@/components/bounty/bountyUi';
 import { DirectChip } from '@/components/bounty/DirectParts';
+import { FundingLink } from '@/components/bounty/FundingLink';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useDeleteDraft, useRejectPosted, useWalletBountyTx } from '@/hooks/useBounties';
@@ -51,6 +52,7 @@ function FundAction({ bounty }: { bounty: PostedBounty }) {
       <button type="button" disabled={fund.isPending} onClick={() => fund.mutate({ bounty: bounty.id, onPhase: setPhase })} className={`${BTN_PRIMARY} ${BTN_SMALL} w-full sm:w-auto sm:self-start`} data-testid="bounty-mine-fund">
         {fund.isPending ? t('bounty.working') : t('bounty.mine.lock')}
       </button>
+      {bounty.fundActionUrl && !fund.isSuccess && <FundingLink actionUrl={bounty.fundActionUrl} blinkUrl={bounty.fundBlinkUrl} audience="sponsor" />}
       <DeleteDraftAction bounty={bounty} />
     </div>
   );

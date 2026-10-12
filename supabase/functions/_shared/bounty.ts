@@ -168,20 +168,56 @@ export interface EventRow {
   created_at: string;
 }
 
-export type SignerRole = 'learner' | 'sponsor' | 'itera_treasury' | 'itera_key';
+export type SignerRole = 'learner' | 'sponsor' | 'funder' | 'itera_treasury' | 'itera_key';
 
 /**
  * Whose key signed a step, by the key itself and never by the kind of step: the learner named by the step, the
- * sponsor's wallet, Itera's treasury (it funds the team's own bounties) or Itera's attester key. `null`: no signer recorded.
+ * sponsor's wallet, Itera's treasury (it funds the team's own bounties) or Itera's attester key. `funder`: another
+ * wallet locked the reward of a bounty a wallet posted (the public funding link). `null`: no signer recorded.
  */
 export function signerRole(event: Pick<EventRow, 'kind' | 'wallet' | 'signature' | 'signer'>, bounty: Pick<BountyRow, 'origin' | 'sponsor_wallet' | 'refund_address'>): SignerRole | null {
   const signer = event.signature ? (event.signer ?? null) : null;
   if (!signer) return null;
   if (bounty.origin === 'wallet') {
     if (signer === bounty.sponsor_wallet) return 'sponsor';
+    if (event.kind === 'funded') return 'funder';
   } else if (signer === bounty.refund_address) return 'itera_treasury';
   if ((event.kind === 'accepted' || event.kind === 'withdrawn') && signer === event.wallet) return 'learner';
   return 'itera_key';
+}
+
+export interface SignedTransactionFacts {
+  /** The keys that signed, in the order of the message. */
+  signers: readonly string[];
+  accountKeys: readonly string[];
+  instructions: ReadonlyArray<{ accounts: readonly number[] }>;
+}
+
+/**
+ * The wallet a ledger row of a wallet-posted bounty is signed by: the sponsor's when it signed the transaction;
+ * on the funding step alone, otherwise, the funder the escrow program's `create` names (its first account, the
+ * bounty's own account being the second) when that key signed. `null`: neither can be shown from the transaction.
+ */
+export function stepSigner(tx: SignedTransactionFacts, bounty: Pick<BountyRow, 'sponsor_wallet' | 'escrow_address'>, kind: string): string | null {
+  if (bounty.sponsor_wallet && tx.signers.includes(bounty.sponsor_wallet)) return bounty.sponsor_wallet;
+  if (kind !== 'funded') return null;
+  for (const instruction of tx.instructions) {
+    if (tx.accountKeys[instruction.accounts[1]] !== bounty.escrow_address) continue;
+    const funder = tx.accountKeys[instruction.accounts[0]];
+    if (funder && tx.signers.includes(funder)) return funder;
+  }
+  return null;
+}
+
+export type FundingLinkVerdict = 'ok' | 'not_found' | 'not_fundable';
+
+/**
+ * Whether the public funding link (the Solana Action) may build a transaction for a bounty. A bounty moderation
+ * hid is not offered at all; one that is funded, closed or past its date has nothing left to fund.
+ */
+export function fundingLinkVerdict(bounty: Pick<BountyRow, 'status' | 'expires_at' | 'hidden_at'>, now: Date): FundingLinkVerdict {
+  if (bounty.hidden_at) return 'not_found';
+  return publicStatus(bounty, now) === 'awaiting_funding' ? 'ok' : 'not_fundable';
 }
 
 /** The value `credential.ts` writes in a certification's `trail` attribute. */
@@ -487,6 +523,12 @@ export function bountyActionUrl(functionsBase: string, slug: string, lang?: Lang
   return `${functionsBase}/bounty-action/${slug}${lang ? `?lang=${lang}` : ''}`;
 }
 
+/** The public funding link of a bounty: its Solana Action, and the same Action opened in a Blink client. */
+export function fundingLinks(functionsBase: string, slug: string): { action_url: string; blink_url: string } {
+  const actionUrl = bountyActionUrl(functionsBase, slug);
+  return { action_url: actionUrl, blink_url: dialToUrl(actionUrl) };
+}
+
 /** What anyone may read about a bounty. No user id, no e-mail, no review note. */
 export function bountyView(input: {
   bounty: BountyRow;
@@ -600,10 +642,8 @@ export function bountyView(input: {
     payout: transferView(bounty.payout_signature, bounty.payout_lamports, bounty.paid_at, bounty.paid_wallet),
     refund: transferView(bounty.refund_signature, bounty.refund_lamports, bounty.refunded_at, bounty.refund_address),
     page_url: bountyPageUrl(lang === 'en' && bounty.slug_en ? bounty.slug_en : bounty.slug),
-    fund:
-      bounty.status === 'awaiting_funding' && status !== 'expired' && !byWallet
-        ? { action_url: bountyActionUrl(input.functionsBase, bounty.slug), blink_url: dialToUrl(bountyActionUrl(input.functionsBase, bounty.slug)) }
-        : null,
+    /** The public funding link: any wallet may lock the reward through it. The sponsor, the approver and the refund address stay the ones above. */
+    fund: fundingLinkVerdict(bounty, input.now) === 'ok' ? fundingLinks(input.functionsBase, bounty.slug) : null,
     ...(input.events
       ? {
           events: input.events.map((event) => ({
@@ -782,6 +822,10 @@ const ACTION_TEXT = {
     directDescription: (sponsor: string, invitee: string) =>
       `Missão direta da Itera (devnet), publicada por ${sponsor} para uma única carteira convidada (${invitee}). O valor fica travado numa conta de escrow própria desta missão e o programa recusa qualquer outra carteira. Sem entrega, volta para o patrocinador.`,
     directDoneDescription: 'O valor está travado no escrow. Só a carteira convidada pode aceitar esta missão.',
+    walletDescription: (sponsor: string, wallet: string, trail: string, days: number) =>
+      `Missão paga da Itera (devnet), publicada por ${sponsor} com a carteira ${wallet}. O que você travar aqui fica na conta de escrow DESTA missão, e de nenhuma outra. Só sai para quem tem ${days} dia(s) carimbados de "${trail}" na certificação on-chain e entregar o trabalho, e só a carteira do patrocinador (${wallet}) pode aprovar a entrega. Se ninguém entregar, o valor volta para a carteira do PATROCINADOR (${wallet}), não para a carteira que financiou.`,
+    walletDirectDescription: (sponsor: string, wallet: string, invitee: string) =>
+      `Missão direta da Itera (devnet), publicada por ${sponsor} com a carteira ${wallet} para uma única carteira convidada: ${invitee}. O que você travar aqui fica na conta de escrow DESTA missão, e o programa recusa qualquer outra carteira que tente aceitá-la. Só a carteira do patrocinador (${wallet}) pode aprovar a entrega. Se ninguém entregar, o valor volta para a carteira do PATROCINADOR (${wallet}), não para a carteira que financiou.`,
     label: 'Financiar',
     button: (price: string) => `Travar ${price} no escrow`,
     message: (name: string) => `Escrow da missão: ${name}`,
@@ -805,6 +849,10 @@ const ACTION_TEXT = {
     directDescription: (sponsor: string, invitee: string) =>
       `A direct bounty at Itera (devnet), posted by ${sponsor} for one invited wallet (${invitee}). The amount is locked in an escrow account of this bounty alone and the program refuses any other wallet. With no delivery it returns to the sponsor.`,
     directDoneDescription: 'The amount is locked in escrow. Only the invited wallet can accept this bounty.',
+    walletDescription: (sponsor: string, wallet: string, trail: string, days: number) =>
+      `A paid bounty at Itera (devnet), posted by ${sponsor} with the wallet ${wallet}. What you lock here is held in the escrow account of THIS bounty and no other. It only leaves to a wallet with ${days} stamped day(s) of "${trail}" in its on-chain certification that delivers the work, and only the sponsor's wallet (${wallet}) can approve the delivery. If nobody delivers, the reward returns to the SPONSOR's wallet (${wallet}), not to the wallet that funded it.`,
+    walletDirectDescription: (sponsor: string, wallet: string, invitee: string) =>
+      `A direct bounty at Itera (devnet), posted by ${sponsor} with the wallet ${wallet} for one invited wallet: ${invitee}. What you lock here is held in the escrow account of THIS bounty, and the program refuses any other wallet that tries to accept it. Only the sponsor's wallet (${wallet}) can approve the delivery. If nobody delivers, the reward returns to the SPONSOR's wallet (${wallet}), not to the wallet that funded it.`,
     label: 'Fund',
     button: (price: string) => `Lock ${price} in escrow`,
     message: (name: string) => `Bounty escrow: ${name}`,
@@ -831,6 +879,18 @@ export function bountyActionError(code: BountyActionError, lang: Lang): { messag
 
 export const BOUNTY_ACTION_ICON = `${APP_URL}/mascot/tera-happy.webp`;
 
+/** What the funding link says before anyone signs. A bounty a wallet posted names that wallet in full: it approves, and the refund goes to it, whoever funds. */
+function actionDescription(bounty: BountyRow, lang: Lang): string {
+  const copy = ACTION_TEXT[lang];
+  const trail = pickText(bounty.requirement.trail_title, lang);
+  if (bounty.origin === 'wallet' && bounty.sponsor_wallet) {
+    return bounty.invitee_wallet
+      ? copy.walletDirectDescription(bounty.sponsor_name, bounty.sponsor_wallet, bounty.invitee_wallet)
+      : copy.walletDescription(bounty.sponsor_name, bounty.sponsor_wallet, trail, bounty.requirement.min_days);
+  }
+  return bounty.invitee_wallet ? copy.directDescription(bounty.sponsor_name, shortWallet(bounty.invitee_wallet)) : copy.description(bounty.sponsor_name, trail, bounty.requirement.min_days);
+}
+
 export function bountyActionGet(input: { bounty: BountyRow; lang: Lang; missingLamports: bigint; href: string; blocked: BountyActionError | null }) {
   const copy = ACTION_TEXT[input.lang];
   const { bounty } = input;
@@ -838,9 +898,7 @@ export function bountyActionGet(input: { bounty: BountyRow; lang: Lang; missingL
     type: 'action' as const,
     icon: BOUNTY_ACTION_ICON,
     title: copy.title(pickText(bounty.title_i18n, input.lang)),
-    description: bounty.invitee_wallet
-      ? copy.directDescription(bounty.sponsor_name, shortWallet(bounty.invitee_wallet))
-      : copy.description(bounty.sponsor_name, pickText(bounty.requirement.trail_title, input.lang), bounty.requirement.min_days),
+    description: actionDescription(bounty, input.lang),
     label: copy.label,
     ...(input.blocked ? { disabled: true, error: bountyActionError(input.blocked, input.lang) } : {}),
     links: { actions: [{ type: 'transaction' as const, label: copy.button(solAmount(input.missingLamports)), href: input.href }] },

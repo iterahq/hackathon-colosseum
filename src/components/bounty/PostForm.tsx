@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Field } from '@/components/bounty/CreateBountyForm';
 import { blockingInviteeCode, DirectInviteeBlock } from '@/components/bounty/DirectInviteeBlock';
 import { ExplorerAnchor, INPUT, Notice, SECTION_TITLE } from '@/components/bounty/bountyUi';
+import { FundingLink } from '@/components/bounty/FundingLink';
 import { SponsorFaucet } from '@/components/bounty/SponsorFaucet';
 import { TxErrorNotice, TxPhaseNotice } from '@/components/bounty/TxStatus';
 import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
@@ -141,6 +142,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
         <p className="[font:700_24px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{t('bounty.post.failed.title')}</p>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]">{t('bounty.post.failed.body')}</p>
         <TxErrorNotice error={fund.error} />
+        {created.fundActionUrl && <FundingLink actionUrl={created.fundActionUrl} blinkUrl={created.fundBlinkUrl} audience="sponsor" />}
         <Link to="/bounties/mine" className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-post-retry">
           {t('bounty.post.failed.retry')}
         </Link>

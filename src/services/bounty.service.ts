@@ -4,6 +4,7 @@ import { connectWallet, signAndSendPurchase, WalletSignError } from '@/services/
 import { callShop, ShopCallError } from '@/services/shopTransport';
 import { takePreload } from '@/services/learnerProfile.service';
 import type { PurchaseIntent } from '@/types/shop';
+import { safeHttpsUrl } from '@/utils/bounty';
 import type {
   ApproveResult,
   Bounty,
@@ -162,7 +163,8 @@ export function parseBounty(v: unknown): Bounty | null {
     funding: toMoney(r.funding),
     payout: toMoney(r.payout),
     refund: toMoney(r.refund),
-    fundBlinkUrl: text(fund.blink_url),
+    fundActionUrl: safeHttpsUrl(text(fund.action_url)),
+    fundBlinkUrl: safeHttpsUrl(text(fund.blink_url)),
     direct: r.direct === true && Boolean(text(r.invitee_wallet)),
     inviteeWallet: text(r.invitee_wallet),
     inviteeWalletShort: text(r.invitee_wallet_short) ?? text(r.invitee_wallet),
@@ -213,7 +215,7 @@ export function parseBoard(body: unknown): BountyBoard {
   };
 }
 
-const SIGNED_ROLES = ['learner', 'sponsor', 'itera_treasury', 'itera_key'] as const;
+const SIGNED_ROLES = ['learner', 'sponsor', 'funder', 'itera_treasury', 'itera_key'] as const;
 
 function toSignedRole(value: unknown): LedgerEvent['signedRole'] {
   return (SIGNED_ROLES as readonly unknown[]).includes(value) ? (value as LedgerEvent['signedRole']) : null;
@@ -636,6 +638,8 @@ export async function createPostedBounty(input: CreatePostedInput): Promise<Crea
     inviteeWallet: text(r.invitee_wallet),
     inviteeEligible: typeof r.invitee_eligible === 'boolean' ? r.invitee_eligible : null,
     inviteeReason: INVITEE_REASONS.find((x) => x === r.invitee_reason) ?? null,
+    fundActionUrl: safeHttpsUrl(text(row(r.fund).action_url)),
+    fundBlinkUrl: safeHttpsUrl(text(row(r.fund).blink_url)),
   };
 }
 

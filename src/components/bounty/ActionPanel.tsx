@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD } from '@/components/shop/shopStyles';
 import { DeliverForm } from '@/components/bounty/DeliverForm';
+import { FundingLink } from '@/components/bounty/FundingLink';
 import { JudgeDeliverForm, JudgeProgress } from '@/components/bounty/JudgeParts';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
@@ -166,7 +167,16 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
   const heading = actionTitle(bounty, signedIn && mine.isSuccess ? mine.data : null);
   const title = heading.count === undefined ? t(heading.key, heading.vars) : plural(t, heading.key, heading.count, heading.vars);
 
+  const waiting = bounty.status === 'awaiting_funding' && bounty.fundActionUrl !== null && bounty.postedBy.kind === 'wallet';
+  const fundingPanel = (
+    <Panel title={t('bounty.waiting.title')}>
+      <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-waiting">{t('bounty.waiting.body')}</p>
+      {bounty.fundActionUrl && <FundingLink actionUrl={bounty.fundActionUrl} blinkUrl={bounty.fundBlinkUrl} audience="visitor" sponsorShort={bounty.postedBy.walletShort ?? bounty.postedBy.name} />}
+    </Panel>
+  );
+
   if (!signedIn) {
+    if (waiting) return fundingPanel;
     if (bounty.status !== 'open') return null;
     return (
       <Panel title={title}>
@@ -201,12 +211,14 @@ function PanelView({ bounty, accept, withdraw, judge }: { bounty: BountyDetail; 
     return (
       <Panel title={title}>
         <p className="[font:400_14px/1.5_Inter] text-[#C9BFB0]" data-testid="bounty-sponsor">{t(bounty.status === 'open' ? 'bounty.sponsor.open' : 'bounty.sponsor.body')}</p>
+        {waiting && bounty.fundActionUrl && <FundingLink actionUrl={bounty.fundActionUrl} blinkUrl={bounty.fundBlinkUrl} audience="sponsor" />}
         <Link to="/bounties/mine" className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-sponsor-manage">
           {t('bounty.sponsor.manage')}
         </Link>
       </Panel>
     );
   }
+  if (waiting) return fundingPanel;
   if (status.notInvited) {
     if (bounty.status !== 'open') return null;
     return (

@@ -105,6 +105,8 @@ export interface Bounty {
   funding: BountyMoney | null;
   payout: BountyMoney | null;
   refund: BountyMoney | null;
+  /** The public funding link (a Solana Action) while the bounty waits for its money: any wallet may lock the reward through it. */
+  fundActionUrl: string | null;
   fundBlinkUrl: string | null;
   /** Addressed to one wallet: the escrow program refuses any other. */
   direct: boolean;
@@ -122,7 +124,7 @@ export interface LedgerEvent {
   /** The wallet that signed this step's instruction on chain. Null: not recorded, or the step has no transaction. */
   signedBy: string | null;
   /** Whose key that is, as the server resolved it. Null: an answer from before the server said it. */
-  signedRole: 'learner' | 'sponsor' | 'itera_treasury' | 'itera_key' | null;
+  signedRole: 'learner' | 'sponsor' | 'funder' | 'itera_treasury' | 'itera_key' | null;
   explorerUrl: string | null;
   at: string | null;
 }
@@ -317,6 +319,8 @@ export interface CreatedBounty {
   inviteeWallet: string | null;
   inviteeEligible: boolean | null;
   inviteeReason: InviteeReason | null;
+  fundActionUrl: string | null;
+  fundBlinkUrl: string | null;
 }
 
 export type InviteeReason = 'no_certification' | 'not_enough_days';

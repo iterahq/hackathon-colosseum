@@ -58,6 +58,7 @@ export function eventLabel(kind: string, judge: JudgeInfo | null, report: CheckR
 const SIGNER_CAPTION = {
   learner: 'bounty.ledger.signedLearner',
   sponsor: 'bounty.ledger.signedSponsor',
+  funder: 'bounty.ledger.signedFunder',
   itera_treasury: 'bounty.ledger.signedTreasury',
   itera_key: 'bounty.ledger.signedItera',
 } as const;

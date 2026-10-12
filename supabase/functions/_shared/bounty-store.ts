@@ -7,6 +7,7 @@ import {
   notInvited,
   drainLamports,
   fundingTarget,
+  stepSigner,
   transferMemo,
   transferStep,
   type BountyRow,
@@ -133,24 +134,30 @@ async function mark(
 
 interface NodeTransaction {
   meta: { err: unknown } | null;
-  transaction: { message: { header?: { numRequiredSignatures: number }; accountKeys: Array<string | { pubkey: string }> } };
+  transaction: { message: { header?: { numRequiredSignatures: number }; accountKeys: Array<string | { pubkey: string }>; instructions?: Array<{ accounts?: number[] }> } };
 }
 
 /**
- * Puts the sponsor's wallet on a ledger row of a bounty it posted, once the node shows that wallet signed the transaction
- * of that step. A transaction the node does not know, or one the sponsor did not sign, leaves the row as it was.
+ * Puts on a ledger row of a wallet-posted bounty the wallet the node shows signed the transaction of that step:
+ * the sponsor's, or on the funding step the funder's when another wallet locked the reward (`stepSigner`).
+ * A transaction the node does not know, or one neither signed, leaves the row as it was.
  */
 async function recordSponsorSigner(db: IteraClient, bounty: BountyRow, kind: string, signature: string | null): Promise<void> {
   if (bounty.origin !== 'wallet' || !bounty.sponsor_wallet || !signature) return;
   try {
     const found = await rpc<NodeTransaction | null>('getTransaction', [signature, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
     if (!found || found.meta?.err) return;
-    const signers = found.transaction.message.accountKeys.slice(0, found.transaction.message.header?.numRequiredSignatures ?? 1).map((key) => (typeof key === 'string' ? key : key.pubkey));
-    if (!signers.includes(bounty.sponsor_wallet)) return;
-    const { error } = await db.from('bounty_events').update({ signer: bounty.sponsor_wallet }).eq('bounty_id', bounty.id).eq('kind', kind).eq('signature', signature);
-    if (error) console.error('sponsor signer not recorded', bounty.id, kind, error.message);
+    const accountKeys = found.transaction.message.accountKeys.map((key) => (typeof key === 'string' ? key : key.pubkey));
+    const signer = stepSigner(
+      { signers: accountKeys.slice(0, found.transaction.message.header?.numRequiredSignatures ?? 1), accountKeys, instructions: (found.transaction.message.instructions ?? []).map((entry) => ({ accounts: entry.accounts ?? [] })) },
+      bounty,
+      kind,
+    );
+    if (!signer) return;
+    const { error } = await db.from('bounty_events').update({ signer }).eq('bounty_id', bounty.id).eq('kind', kind).eq('signature', signature);
+    if (error) console.error('step signer not recorded', bounty.id, kind, error.message);
   } catch (error) {
-    console.error('sponsor signer not recorded', bounty.id, kind, error instanceof Error ? error.message : error);
+    console.error('step signer not recorded', bounty.id, kind, error instanceof Error ? error.message : error);
   }
 }
 
