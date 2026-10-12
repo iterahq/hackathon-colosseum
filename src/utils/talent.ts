@@ -14,7 +14,8 @@ export function missionHref(wallet: string): string {
 
 /** The refusal code a call carried, mapped to a message key of the opt-in card. */
 export function optInErrorKey(code: string | null): string {
-  return code === 'invalid_headline' || code === 'wallet_taken' ? `talent.optin.error.${code}` : 'talent.optin.error.generic';
+  const known = ['invalid_headline', 'wallet_taken', 'contact_required', 'invalid_contact', 'profile_private'];
+  return code && known.includes(code) ? `talent.optin.error.${code}` : 'talent.optin.error.generic';
 }
 
 export function parseMinDays(value: string | null): number {

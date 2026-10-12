@@ -46,8 +46,15 @@ describe('TalentCard', () => {
   it('labels the team test account and falls back for a missing name and capabilities', () => {
     show({ teamTest: true, name: null, capabilities: [], bountiesPaid: 0, bountiesPaidLamports: 0 });
     expect(screen.getByTestId('talent-card-team-test')).toHaveTextContent('Conta de teste da equipe');
-    expect(screen.getByTestId('talent-card-name')).toHaveTextContent('Aprendiz da Itera');
+    expect(screen.getByTestId('talent-card-name')).toHaveTextContent('CQzi…AhW');
     expect(screen.getByTestId('talent-card-paid')).toHaveTextContent('Nenhuma missão paga ainda');
     expect(screen.queryByTestId('talent-card-capabilities')).toBeNull();
+  });
+
+  it('draws nothing about a contact for a visitor or a learner, whatever the listing holds', () => {
+    show({ hasContact: true });
+    expect(screen.queryByTestId('contact-reveal')).toBeNull();
+    expect(screen.queryByTestId('contact-show')).toBeNull();
+    expect(screen.getByTestId('talent-card')).not.toHaveTextContent(/contato/i);
   });
 });

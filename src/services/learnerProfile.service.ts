@@ -1,5 +1,7 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
 import { toCircuitShare } from '@/services/circuit.service';
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { isGuestAccessToken } from '@/services/guestSession.service';
 import { toAvatar } from '@/services/shopNormalize';
 import { toTeraOrigin } from '@/services/teraOrigin';
 import { ITERA_V2_GRAPH } from '../../supabase/functions/_shared/capability-graph';
@@ -80,11 +82,33 @@ export function parseEvidence(body: unknown): ClaimEvidence | null {
   };
 }
 
+/**
+ * The session of the signed-in learner, when there is one: a read of a wallet sends it so the OWNER of a private
+ * profile gets their own data. For any other wallet the server answers what a stranger gets. Null: read as a stranger.
+ */
+async function viewerToken(): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  try {
+    const token = (await getSupabase().auth.getSession()).data.session?.access_token ?? null;
+    // A guest session (the first lesson with no account) owns no wallet: it reads as a stranger.
+    return token && !isGuestAccessToken(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+const viewerHeaders = (token: string | null): Record<string, string> => (anonKey ? { apikey: anonKey, Authorization: `Bearer ${token ?? anonKey}` } : {});
+
+/** The answer for a private wallet read by anyone but its owner carries the wallet and nothing else. */
+export const isPrivateStub = (body: unknown): boolean => row(body).private === true && row(body).viewer !== 'owner' && !Array.isArray(row(body).certifications);
+
 export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): LearnerProfile {
   const b = row(body);
   const c = b.companion && typeof b.companion === 'object' ? row(b.companion) : null;
   return {
     wallet: text(b.wallet) ?? wallet,
+    private: b.private === true,
+    viewer: b.viewer === 'owner' ? 'owner' : 'public',
     avatar: toAvatar(b.avatar),
     avatars: rows(b.avatars)
       .filter((r) => text(r.key) && text(r.image_url))
@@ -158,22 +182,33 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
 export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en', { fresh = false }: { fresh?: boolean } = {}): Promise<ProfileLookup> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
   const started = Date.now();
+  const token = await viewerToken();
   const live = () =>
     fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      headers: viewerHeaders(token),
       cache: 'no-store',
     });
-  const res = await ((fresh ? null : takePreload('__iteraProfile', wallet, lang)) ?? live()).catch(live);
+  const preload = fresh ? null : takePreload('__iteraProfile', wallet, lang);
+  let res = await (preload ?? live()).catch(live);
+  // A session the function does not accept must never cost a visitor the page: read again as a stranger.
+  if ((res.status === 401 || res.status === 403) && token) res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, { headers: viewerHeaders(null), cache: 'no-store' });
   if (res.status === 400 || res.status === 404) return { status: 'invalid' };
   if (!res.ok) throw new Error(`learner-profile failed (${res.status})`);
-  const body: unknown = await res.json();
+  let body: unknown = await res.json();
+  // The page asked before the app loaded, as a stranger. A signed-in learner may be the owner: ask again as themselves.
+  if (preload && token && isPrivateStub(body)) {
+    res = await live();
+    if (!res.ok) throw new Error(`learner-profile failed (${res.status})`);
+    body = await res.json();
+  }
+  if (isPrivateStub(body)) return { status: 'private', wallet: text(row(body).wallet) ?? wallet };
   return { status: 'ok', profile: parseProfile(body, wallet, lang), read: parseChainRead((body as { read?: unknown })?.read, Date.now() - started) };
 }
 
 export async function getClaimEvidence(wallet: string, claimId: string): Promise<ClaimEvidence> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
   const res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}/evidence/${encodeURIComponent(claimId)}`, {
-    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+    headers: viewerHeaders(await viewerToken()),
   });
   if (!res.ok) throw new Error(`evidence failed (${res.status})`);
   const parsed = parseEvidence(await res.json());
@@ -215,10 +250,18 @@ export function takePreload(name: '__iteraGraph' | '__iteraProfile' | '__iteraCr
 /** What our tables hold for a wallet, with no chain read: fast, and never `verified` by itself. */
 export async function getWalletGraph(wallet: string, lang: 'pt' | 'en'): Promise<Capabilities | null> {
   if (!url) throw new Error('Supabase not configured.');
-  const fresh = () => fetch(`${url}/functions/v1/capability-graph/${encodeURIComponent(wallet)}?lang=${lang}`);
-  const res = await (takePreload('__iteraGraph', wallet, lang) ?? fresh()).catch(fresh);
+  const token = await viewerToken();
+  const fresh = () => fetch(`${url}/functions/v1/capability-graph/${encodeURIComponent(wallet)}?lang=${lang}`, token ? { headers: viewerHeaders(token) } : undefined);
+  const preload = takePreload('__iteraGraph', wallet, lang);
+  let res = await (preload ?? fresh()).catch(fresh);
   if (res.status === 400) return null;
   if (!res.ok) throw new Error(`capability-graph failed (${res.status})`);
-  const parsed = parseCapabilities(row(await res.json()).capabilities);
+  let body = row(await res.json());
+  if (preload && token && body.private === true) {
+    res = await fresh();
+    if (!res.ok) throw new Error(`capability-graph failed (${res.status})`);
+    body = row(await res.json());
+  }
+  const parsed = parseCapabilities(body.capabilities);
   return parsed && { ...parsed, source: 'database' };
 }

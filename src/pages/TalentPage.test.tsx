@@ -6,7 +6,9 @@ import type { TalentBoard } from '@/types/talent';
 import TalentPage from './TalentPage';
 
 const useTalentBoard = vi.fn();
-vi.mock('@/hooks/useTalent', () => ({ useTalentBoard: (filters: unknown) => useTalentBoard(filters) }));
+const company = vi.hoisted(() => ({ data: undefined as unknown }));
+vi.mock('@/hooks/useTalent', () => ({ useTalentBoard: (filters: unknown) => useTalentBoard(filters), useCompanyAccess: () => company }));
+vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play: vi.fn() }) }));
 vi.mock('@/components/bounty/bountyUi', async (original) => ({ ...(await original<object>()), BountyShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 
 const board = (over: Partial<TalentBoard> = {}): TalentBoard => ({
@@ -65,5 +67,25 @@ describe('TalentPage', () => {
     show('/talent?min_days=9');
     expect(screen.getByTestId('talent-empty')).toHaveTextContent('Ninguém com esse filtro.');
     expect(screen.queryByTestId('talent-empty-cta')).toBeNull();
+  });
+
+  it('a visitor or a learner is told contacts are for companies only, and no card offers one', () => {
+    company.data = undefined;
+    useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board({ learners: board().learners.map((l) => ({ ...l, hasContact: true })) }) });
+    show();
+    expect(screen.getByTestId('talent-contact-rule')).toHaveAttribute('data-company', 'false');
+    expect(screen.getByTestId('talent-contact-rule')).toHaveTextContent('só empresas veem');
+    expect(screen.queryByTestId('contact-show')).toBeNull();
+  });
+
+  it('a company sees how many contacts it may still ask for, and "show contact" only on a listing that has one', () => {
+    company.data = { isCompany: true, via: 'funded_bounty', revealsLeftToday: 7, revealsPerDay: 10 };
+    const [first] = board().learners;
+    useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board({ learners: [{ ...first, hasContact: true }, { ...first, wallet: 'W2222222222222222222222222222222', hasContact: false }] }) });
+    show();
+    expect(screen.getByTestId('talent-contact-rule')).toHaveTextContent('até 10 pessoas por dia (7 restantes hoje)');
+    expect(screen.getAllByTestId('contact-show')).toHaveLength(1);
+    expect(screen.getAllByTestId('contact-none')).toHaveLength(1);
+    company.data = undefined;
   });
 });

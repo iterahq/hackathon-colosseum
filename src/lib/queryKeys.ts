@@ -165,6 +165,12 @@ export const queryKeys = {
     all: ['talent'] as const,
     board: (locale: string, capability: string, minDays: number) => ['talent', 'board', { locale, capability, minDays }] as const,
     mine: (userId: string) => ['talent', 'mine', userId] as const,
+    company: (userId: string) => ['talent', 'company', userId] as const,
+  },
+  // The learner's own privacy choices. Never a contact value: the service keeps only which contacts exist.
+  privacy: {
+    all: ['privacy'] as const,
+    mine: (userId: string) => ['privacy', 'mine', userId] as const,
   },
   // Bounties: the public board and one bounty per language, the learner's status on a bounty, the sponsor's list.
   bounty: {

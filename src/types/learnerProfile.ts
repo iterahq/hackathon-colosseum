@@ -111,6 +111,10 @@ export interface ClaimEvidence {
 }
 
 export interface LearnerProfile {
+  /** The owner switched the public page off (or never switched it on, for a new account). Only the owner ever reads a profile like this. */
+  private?: boolean;
+  /** `owner`: the signed-in learner is looking at their own profile. */
+  viewer?: 'owner' | 'public';
   /** NFT avatars the wallet owns; empty when the backend sends none. */
   avatars: ProfileAvatarNft[];
   wallet: string;
@@ -126,4 +130,5 @@ export interface LearnerProfile {
   capabilities: Capabilities | null;
 }
 
-export type ProfileLookup = { status: 'ok'; profile: LearnerProfile; read?: ChainRead } | { status: 'invalid' };
+/** `private`: the learner keeps the profile page to themselves; a stranger gets the wallet and nothing else. */
+export type ProfileLookup = { status: 'ok'; profile: LearnerProfile; read?: ChainRead } | { status: 'invalid' } | { status: 'private'; wallet: string };

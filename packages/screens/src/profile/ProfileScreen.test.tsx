@@ -112,7 +112,7 @@ describe('ProfileScreen: the identity card', () => {
     const { onEditName, onSave } = setup(ready());
     const name = screen.getByTestId('profile-name-input');
     expect(name).toHaveAttribute('maxlength', '40');
-    expect(name).toHaveAccessibleName('Nome de exibição');
+    expect(name).toHaveAccessibleName('Nome de exibição (opcional)');
     fireEvent.change(name, { target: { value: 'Ana Clara' } });
     expect(onEditName).toHaveBeenCalledWith('Ana Clara');
     fireEvent.keyDown(name, { key: 'Enter' });

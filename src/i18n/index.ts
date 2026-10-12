@@ -35,6 +35,7 @@ import { SOCIAL_MESSAGES } from './socialMessages';
 import { TERA_MESSAGES } from './teraMessages';
 import { WORLD_MESSAGES } from './worldMessages';
 import { TERA_NFT_MESSAGES } from './teraNftMessages';
+import { PRIVACY_MESSAGES } from './privacyMessages';
 import { CATALOG_MESSAGES } from '@iterahq/screens/catalog/messages';
 import { HOME_MESSAGES } from '@iterahq/screens/home/messages';
 import { NOT_FOUND_MESSAGES } from '@iterahq/screens/not-found/messages';
@@ -1261,6 +1262,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...TERA_MESSAGES.pt,
     ...WORLD_MESSAGES.pt,
     ...TERA_NFT_MESSAGES.pt,
+    ...PRIVACY_MESSAGES.pt,
     ...SHOP_MESSAGES.pt,
     ...CRYSTALS_MESSAGES.pt,
     ...UX_MESSAGES.pt,
@@ -2482,6 +2484,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...TERA_MESSAGES.en,
     ...WORLD_MESSAGES.en,
     ...TERA_NFT_MESSAGES.en,
+    ...PRIVACY_MESSAGES.en,
     ...SHOP_MESSAGES.en,
     ...CRYSTALS_MESSAGES.en,
     ...UX_MESSAGES.en,

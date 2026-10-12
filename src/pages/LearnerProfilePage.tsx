@@ -8,6 +8,8 @@ import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
 import { FOCUS_BUILD, FOCUS_LIVES_OFF } from '@/config/focus';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
+import { PrivateProfile } from '@/components/privacy/PrivateProfile';
+import { ProfileVisibilityCard } from '@/components/privacy/ProfileVisibilityCard';
 import { ProfileTeras, hasOrigins } from '@/components/tera/ProfileTeras';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useLearnerProfile, useRecheckProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
@@ -42,7 +44,10 @@ export default function LearnerProfilePage() {
   const loading = valid && query.isPending;
   // Owned here: the graph is on screen before the profile answers, and a node opened then stays open after.
   const [openNode, setOpenNode] = useState<string | null>(null);
-  const capabilities = profile?.capabilities ?? graph.data ?? (valid && lookup?.status !== 'invalid' ? staticCapabilities(locale) : null);
+  // A private profile read by a stranger: one line, and nothing we aggregate (no graph, no avatar, no counts).
+  const hidden = lookup?.status === 'private';
+  const owner = profile?.viewer === 'owner' || (profile != null && story.wallet === profile.wallet);
+  const capabilities = hidden ? null : (profile?.capabilities ?? graph.data ?? (valid && lookup?.status !== 'invalid' ? staticCapabilities(locale) : null));
   const empty = profile && !profile.companion && profile.certifications.length === 0 && profile.medals.length === 0;
 
   return (
@@ -72,6 +77,7 @@ export default function LearnerProfilePage() {
             </button>
           </div>
         )}
+        {hidden && <PrivateProfile />}
         {(!valid || lookup?.status === 'invalid') && (
           <div className="rounded-[14px] border border-[#262320] bg-[#141210] p-5" data-testid="profile-invalid">
             <TeraNote mood="oops" title={t('profile.invalid')} className="!pt-2" />
@@ -98,7 +104,11 @@ export default function LearnerProfilePage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
+                {profile.private ? (
+                  <span className="max-w-[320px] [font:400_13px/1.45_Inter] text-[#A0978A]" data-testid="profile-share-private">{t('privacy.share.private')}</span>
+                ) : (
+                  <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
+                )}
               </div>
               {story.wallet !== profile.wallet && (
                 <div className="flex basis-full flex-col items-start gap-1" data-testid="profile-mission">
@@ -113,6 +123,7 @@ export default function LearnerProfilePage() {
                 </Link>
               </div>
             </section>
+            {owner && <ProfileVisibilityCard />}
             {capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={capabilities} selected={openNode} onSelect={setOpenNode} />}
             {hasOrigins(profile.avatars) && <ProfileTeras items={profile.avatars} headingClass={H2} />}
             {profile.avatars.length > 0 && !hasOrigins(profile.avatars) && (
