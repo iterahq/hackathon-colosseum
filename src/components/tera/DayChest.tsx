@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Confetti } from '@/components/passport/Confetti';
@@ -162,9 +163,9 @@ export function DayChest({ phase, chest, day, still = false, size = 'row' }: Pro
               <Link to="/world" className={`${LINK} whitespace-nowrap ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:700_11px_JetBrains_Mono]`}`} data-testid="day-chest-world" onClick={(e) => e.stopPropagation()}>
                 {t('chest.world')} →
               </Link>
-              <Link to={chestVerifyPath(chest.id)} className={`${LINK} whitespace-nowrap !text-[#A0978A] ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:600_11px_JetBrains_Mono]`}`} data-testid="day-chest-verify" onClick={(e) => e.stopPropagation()}>
+              {!FOCUS_EARN_STORY_OFF && <Link to={chestVerifyPath(chest.id)} className={`${LINK} whitespace-nowrap !text-[#A0978A] ${hero ? '' : `${earnOnly ? '!min-h-7' : '!min-h-8'} ![font:600_11px_JetBrains_Mono]`}`} data-testid="day-chest-verify" onClick={(e) => e.stopPropagation()}>
                 {t('chest.verify')} →
-              </Link>
+              </Link>}
             </span>
           </>
         ) : (

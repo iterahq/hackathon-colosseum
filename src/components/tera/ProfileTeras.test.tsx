@@ -8,6 +8,15 @@ import { OriginBadge, OriginGlyph } from './OriginBadge';
 import { ProfileTeras, hasOrigins } from './ProfileTeras';
 import { TeraOriginPanel } from './TeraOriginPanel';
 
+// These tests describe both builds: `story.off` false is the build that tells the bounty story, true is the focus build.
+const story = vi.hoisted(() => ({ off: false }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_EARN_STORY_OFF() {
+    return story.off;
+  },
+}));
+
 const tera = (key: string, wire: Record<string, unknown> | null): ProfileAvatarNft => ({ key, title: key, tierName: 'Super Tera', serial: 1, verified: true, imageUrl: '/a.webp', explorerUrl: null, rarity: 'rare', asset: `${key}Asset`, origin: wire ? toTeraOrigin({ ...wire, asset: `${key}Asset` }) : null });
 const EARNED = { origin: 'earned', transferable: false, earned: { certification: 'Cert1', trail: 'Week 1 · HTML', day: 2, tier: 'rare', chest_id: 'chest-1' } };
 const BOUGHT = { origin: 'bought', transferable: true };
@@ -47,6 +56,15 @@ describe('ProfileTeras', () => {
     expect(card).toHaveTextContent('preso à carteira');
     expect(within(card).getByTestId('profile-tera-proof')).toHaveAttribute('href', '/c/eAsset');
     expect(within(card).getByTestId('profile-tera-reroll')).toHaveAttribute('href', '/verify?chest=chest-1#chest');
+  });
+
+  it('focus build: the proof link stays, the roll on /verify and the bounty link go', () => {
+    story.off = true;
+    wrap(<ProfileTeras items={[tera('e', EARNED), tera('s', SPONSOR)]} headingClass="" />);
+    expect(screen.getAllByTestId('profile-tera-proof').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('profile-tera-reroll')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('profile-tera-bounty')).not.toBeInTheDocument();
+    story.off = false;
   });
 
   it('a sponsored Tera names the brand and the bounty; a bought one says it can be transferred', () => {

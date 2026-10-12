@@ -4,6 +4,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { LoopPanelBody } from './LoopPanelBody';
 
+// These tests describe both builds: `story.off` false is the build that tells the bounty story, true is the focus build.
+const story = vi.hoisted(() => ({ off: false }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_EARN_STORY_OFF() {
+    return story.off;
+  },
+}));
+
 const state = vi.hoisted(() => ({
   wallet: 'CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya' as string | null,
   loop: {} as Record<string, unknown>,
@@ -86,6 +95,19 @@ describe('LoopPanelBody', () => {
     state.loop = { status: 'ready', capabilities, view: { eligible: [opening], almost: [], instant: null }, retry: vi.fn() };
     mount();
     expect(screen.queryByTestId('loop-instant')).toBeNull();
+  });
+
+  it('focus build: the end of a lesson says what the day proved and nothing about bounties', () => {
+    story.off = true;
+    const opening = { bounty: { ...bounty('judge', 1), title: 'Judge bounty: your first page' }, daysDone: 1, missingDays: 0 };
+    state.loop = { status: 'ready', capabilities, view: { eligible: [opening], almost: [], instant: opening }, retry: vi.fn() };
+    mount();
+    expect(screen.getByTestId('loop-panel')).toHaveAttribute('data-state', 'ready');
+    expect(screen.getAllByTestId('loop-claim').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('loop-instant')).toBeNull();
+    expect(screen.queryByTestId('loop-bounty')).toBeNull();
+    expect(screen.queryByTestId('loop-board-link')).toBeNull();
+    story.off = false;
   });
 
   it('says honestly when no open bounty asks for the trail', () => {

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { RARITY_EDGE } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
 import { txUrl } from '@/lib/explorer';
@@ -41,12 +42,12 @@ function TeraCard({ tera }: { tera: ProfileAvatarNft }) {
               {t('origin.proof')} →
             </Link>
           )}
-          {origin.earned?.chestId && (
+          {!FOCUS_EARN_STORY_OFF && origin.earned?.chestId && (
             <Link to={chestVerifyPath(origin.earned.chestId)} className={LINK} data-testid="profile-tera-reroll">
               {t('origin.reroll')} →
             </Link>
           )}
-          {origin.sponsor?.bountySlug && (
+          {!FOCUS_EARN_STORY_OFF && origin.sponsor?.bountySlug && (
             <Link to={`/bounties/${origin.sponsor.bountySlug}`} className={LINK} data-testid="profile-tera-bounty">
               {t('origin.card.bounty')} →
             </Link>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { txUrl } from '@/lib/explorer';
 import { chestVerifyPath } from '@/services/teraChest.service';
@@ -30,7 +31,7 @@ export function TeraOriginPanel({ origin }: { origin: TeraOrigin }) {
         {!origin.transferable ? ` ${t('origin.card.bound')}` : ''}
       </p>
       <div className="-mb-2 flex flex-col items-start">
-        {earned?.chestId && (
+        {!FOCUS_EARN_STORY_OFF && earned?.chestId && (
           <Link to={chestVerifyPath(earned.chestId)} className={LINK} data-testid="tera-origin-reroll">
             {t('chest.verify')} →
           </Link>
@@ -40,7 +41,7 @@ export function TeraOriginPanel({ origin }: { origin: TeraOrigin }) {
             {t('origin.card.cert')} →
           </Link>
         )}
-        {sponsor?.bountySlug && (
+        {!FOCUS_EARN_STORY_OFF && sponsor?.bountySlug && (
           <Link to={`/bounties/${sponsor.bountySlug}`} className={LINK} data-testid="tera-origin-bounty">
             {t('origin.card.bounty')} →
           </Link>

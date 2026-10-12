@@ -1,4 +1,5 @@
 import { ProfileVisibilityCard } from '@/components/privacy/ProfileVisibilityCard';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { TalentOptIn } from '@/components/talent/TalentOptIn';
 import { useWalletLink } from '@/hooks/useWalletLink';
 import { AvatarPicker } from './AvatarPicker';
@@ -13,7 +14,7 @@ export function ProfileWebSlots() {
       <AvatarPicker />
       <div className="mt-6 flex flex-col gap-6">
         {wallet && <ProfileVisibilityCard />}
-        <TalentOptIn />
+        {!FOCUS_EARN_STORY_OFF && <TalentOptIn />}
       </div>
     </>
   );

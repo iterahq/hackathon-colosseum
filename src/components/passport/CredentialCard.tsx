@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ChainProof } from '@/components/chain/ChainProof';
@@ -138,9 +139,11 @@ export function CredentialCard({ lookup, onRecheck, rechecking = false }: { look
           label={t('passport.credential.explorer')}
           linkClassName="inline-flex min-h-[44px] items-center text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]"
         />
-        <Link to="/verify#trust" className="inline-flex min-h-[44px] items-center text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
-          {t('verify.link')}
-        </Link>
+        {!FOCUS_EARN_STORY_OFF && (
+          <Link to="/verify#trust" className="inline-flex min-h-[44px] items-center text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+            {t('verify.link')}
+          </Link>
+        )}
       </div>
     </motion.section>
   );

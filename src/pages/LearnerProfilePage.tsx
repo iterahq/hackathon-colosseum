@@ -9,7 +9,7 @@ import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
-import { FOCUS_BUILD, FOCUS_LIVES_OFF } from '@/config/focus';
+import { FOCUS_BUILD, FOCUS_EARN_STORY_OFF, FOCUS_LIVES_OFF } from '@/config/focus';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { PrivateProfile } from '@/components/privacy/PrivateProfile';
 import { ProfileVisibilityCard } from '@/components/privacy/ProfileVisibilityCard';
@@ -117,7 +117,7 @@ export default function LearnerProfilePage() {
                   <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
                 )}
               </div>
-              {story.wallet !== profile.wallet && (
+              {!FOCUS_EARN_STORY_OFF && story.wallet !== profile.wallet && (
                 <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-2" data-testid="profile-mission">
                   <Link to={missionHref(profile.wallet)} className={`${TERA_BUTTON} w-full sm:w-auto`} data-testid="profile-mission-cta">{t('bounty.profile.send')}</Link>
                   <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#262320] bg-[#0A0908] px-2.5 [font:700_11px/1_JetBrains_Mono] text-[#C9BFB0]" title={t('bounty.profile.sendHint')} data-testid="profile-mission-hint">
@@ -129,9 +129,11 @@ export default function LearnerProfilePage() {
               )}
               <div className="flex basis-full flex-wrap items-center gap-x-4">
                 <ExplorerLink address={profile.wallet} />
-                <Link to="/verify#evidence" className={`inline-flex min-h-11 items-center rounded [font:500_12px_JetBrains_Mono] text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline ${FOCUS}`}>
-                  {t('verify.link')}
-                </Link>
+                {!FOCUS_EARN_STORY_OFF && (
+                  <Link to="/verify#evidence" className={`inline-flex min-h-11 items-center rounded [font:500_12px_JetBrains_Mono] text-[#A0978A] underline-offset-2 hover:text-[#F4EDE2] hover:underline ${FOCUS}`}>
+                    {t('verify.link')}
+                  </Link>
+                )}
               </div>
             </section>
             {owner && <ProfileVisibilityCard />}
@@ -147,9 +149,9 @@ export default function LearnerProfilePage() {
                 ))}
               </ul>
             )}
-            {story.wallet === profile.wallet && <TalentOptIn />}
+            {!FOCUS_EARN_STORY_OFF && story.wallet === profile.wallet && <TalentOptIn />}
             {!FOCUS_LIVES_OFF && <ProfileGift wallet={profile.wallet} />}
-            {profile.circuit.stampsFunded > 0 && (
+            {!FOCUS_EARN_STORY_OFF && profile.circuit.stampsFunded > 0 && (
               <p className="rounded-[14px] border border-[#262320] bg-[#141210] px-4 py-3 [font:500_14px/1.45_Inter] text-[#C9BFB0]" data-testid="profile-circuit">
                 <span className="text-[#3FD17F]">{t('circuit.name')}</span> · {t('circuit.profile', { n: profile.circuit.stampsFunded.toLocaleString() })}
               </p>

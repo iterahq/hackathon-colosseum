@@ -1,4 +1,5 @@
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { useCompanion } from '@/hooks/useCompanion';
 import { useLoopView } from '@/hooks/useLoopView';
 import { useStampRead } from '@/hooks/useStampRead';
@@ -62,10 +63,10 @@ export function LoopPanelBody({ trail, day, stamp = null }: { trail?: number | n
   }
   return (
     <div className={`${LOOP_PANEL} flex flex-col gap-5`} data-testid="loop-panel" data-state="ready">
-      {loop.view.instant && <InstantBountyLink opening={loop.view.instant} />}
-      <div className="grid gap-6 sm:grid-cols-2">
+      {!FOCUS_EARN_STORY_OFF && loop.view.instant && <InstantBountyLink opening={loop.view.instant} />}
+      <div className={`grid gap-6 ${FOCUS_EARN_STORY_OFF ? '' : 'sm:grid-cols-2'}`}>
         <ProvedToday capabilities={loop.capabilities} trail={trail} day={day} wallet={wallet} />
-        <BountiesOpened view={loop.view} />
+        {!FOCUS_EARN_STORY_OFF && <BountiesOpened view={loop.view} />}
       </div>
     </div>
   );
