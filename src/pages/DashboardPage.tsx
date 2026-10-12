@@ -5,6 +5,7 @@ import { CourseCarousel } from '@/components/dashboard/CourseCarousel';
 import { DashboardEmpty } from '@/components/dashboard/DashboardEmpty';
 import { FeaturedTrail } from '@/components/dashboard/FeaturedTrail';
 import { LiveClassesCard } from '@/components/dashboard/LiveClassesCard';
+import { ComingSoonTrails } from '@/components/dashboard/ComingSoonTrails';
 import { TrailCards } from '@/components/dashboard/TrailCards';
 import { WeeklyGoal } from '@/components/dashboard/WeeklyGoal';
 import { WelcomeStrip } from '@/components/dashboard/WelcomeStrip';
@@ -94,6 +95,7 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+        {!visitor && trails.length > 0 && <ComingSoonTrails trails={dashboard.soon} />}
         {!FOCUS_BUILD && <CourseCarousel courses={video.courses} />}
       </main>
     </div>

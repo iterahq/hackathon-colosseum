@@ -55,6 +55,14 @@ export interface Trail {
   colorIndex: number;
 }
 
+/** A trail that is announced but has no activity yet: shown on the home as "coming soon", never opened. */
+export interface SoonTrail {
+  id: string;
+  programTitle: I18nText;
+  title: I18nText;
+  days: I18nText[];
+}
+
 export interface TrailColor {
   c: string;
   cl: string;
