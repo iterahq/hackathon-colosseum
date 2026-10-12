@@ -12,6 +12,11 @@ import { plural } from '@/utils/bounty';
 import type { BountyDetail } from '@/types/bounty';
 
 const RING = 2 * Math.PI * 26;
+const GRID: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-2 max-sm:[&>li:last-child:nth-child(odd)]:col-span-2 sm:grid-cols-3',
+};
 
 function ProgressRing({ done, min, ready }: { done: number | null; min: number; ready: boolean }) {
   const { t } = useI18n();
@@ -133,7 +138,7 @@ export function SkillQuestCard({ bounty }: { bounty: BountyDetail }) {
         <ProgressRing done={daysDone} min={requirement.minDays} ready={ready} />
       </div>
       {skills ? (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="quest-days">
+        <ul className={`grid gap-2 ${GRID[Math.min(days.length, 3)]}`} data-testid="quest-days">
           {days.map((entry) => {
             const start = offset;
             offset += entry.skills.length;

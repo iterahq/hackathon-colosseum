@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
+import { Chip, ExplorerAnchor, LoadError, Notice, SECTION_TITLE, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { missionSkills } from '@/components/bounty/bountySkills';
 import { judgedDays, lessonOfDay } from '@/components/bounty/questState';
@@ -112,12 +112,16 @@ function Accept({ bounty, status, accept }: { bounty: BountyDetail; status: MyBo
           {t('bounty.accept.proof', { n: status.proof.daysDone })} <ExplorerAnchor href={status.proof.explorerUrl} label={t('bounty.accept.proofLink')} />
         </div>
       )}
-      <p className="[font:400_14px/1.5_Inter] text-[#A0978A]">{t('bounty.accept.hint', { hours: bounty.claimHours })}</p>
-      {bounty.escrow?.custody === 'program' && (
-        <p className="[font:400_13px/1.5_Inter] text-[#A0978A]" data-testid="bounty-accept-signs">
-          {t('bounty.accept.signs')}
-        </p>
-      )}
+      <div className="flex flex-wrap gap-1.5" data-testid="bounty-accept-terms">
+        <Chip>{t('bounty.accept.chip.window', { hours: bounty.claimHours })}</Chip>
+        <Chip>{t('bounty.accept.chip.one')}</Chip>
+        {bounty.escrow?.custody === 'program' && (
+          <span className="contents" data-testid="bounty-accept-signs" title={t('bounty.accept.signs')}>
+            <Chip>{t('bounty.accept.chip.wallet')}</Chip>
+            <Chip>{t('bounty.accept.chip.fee')}</Chip>
+          </span>
+        )}
+      </div>
       {accept.error !== null && !accept.pending && <Notice tone="error">{errorText(t, 'accept', ACCEPT_ERRORS, accept.error)}</Notice>}
       <button type="button" disabled={accept.pending} onClick={() => accept.run(bounty.id)} className={`${BTN_PRIMARY} w-full sm:w-auto sm:self-start`} data-testid="bounty-accept">
         {accept.pending ? stepLabel(t, accept.phase) : t('bounty.accept.cta')}
