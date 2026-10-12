@@ -145,7 +145,12 @@ interface NodeTransaction {
 async function recordSponsorSigner(db: IteraClient, bounty: BountyRow, kind: string, signature: string | null): Promise<void> {
   if (bounty.origin !== 'wallet' || !bounty.sponsor_wallet || !signature) return;
   try {
-    const found = await rpc<NodeTransaction | null>('getTransaction', [signature, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
+    // The node that confirmed a balance may not serve the transaction yet: asked again, briefly.
+    let found: NodeTransaction | null = null;
+    for (let attempt = 0; attempt < 3 && !found; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 700));
+      found = await rpc<NodeTransaction | null>('getTransaction', [signature, { encoding: 'json', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]);
+    }
     if (!found || found.meta?.err) return;
     const accountKeys = found.transaction.message.accountKeys.map((key) => (typeof key === 'string' ? key : key.pubkey));
     const signer = stepSigner(

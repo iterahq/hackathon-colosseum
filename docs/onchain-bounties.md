@@ -206,6 +206,18 @@ a notification to the invitee (the inbox is a read).
   team refused. A wallet's bounty reaches the public board only once its escrow is funded. Any signed-in user can
   report a bounty (`itera.bounty_reports`); Itera's staff hides or restores it in `/bounties/manage`
   (`bounty-sponsor` `moderation` / `hide` / `unhide`). Hiding moves no money: the sponsor can still refund.
+- **Funding link.** A sponsor who posted a bounty and did not fund it can share its Solana Action
+  (`…/functions/v1/bounty-action/<slug>`, shown with a copy button and a `dial.to` preview on `/bounties/mine`, on
+  the post form and on the bounty page, which tells a visitor "This bounty is waiting for funds"). ANY wallet can
+  lock the reward through it, with no account on the site: the program's `create` takes the funder as its own
+  account (the signer that pays), separate from the `sponsor` and `approver` it records and that are in the seeds of
+  the address. So the Action builds `create` for the funding wallet with exactly the terms the bounty was posted
+  with: the same address the page shows, sponsor = approver = refund address = the posting wallet. Nothing in the
+  POST body but `account` is read. The funder buys no right: only the sponsor's wallet approves, and a refund goes
+  to the sponsor, never to the funder; the Action's text says both, in pt and en, and names the invited wallet of a
+  direct bounty in full. A bounty that is funded, closed or past its date builds nothing (`fundingLinkVerdict`); a
+  hidden one answers 404. The ledger's funding step names the wallet that signed and labels it "funder", not
+  "sponsor", when they differ (`stepSigner`, `signerRole`). Proof: `scripts/hackathon/bounty-blink-e2e.mjs`.
 - **The team's own bounties** keep `origin = team`: posted by staff, funded from the treasury, approved by the
   treasury key, and labelled "posted by the Itera team" on the board.
 
@@ -379,9 +391,11 @@ funds through the blink.
 
 ### `GET | POST /bounty-action/<slug>` and `POST /bounty-action/confirm?bounty=<id>` (Solana Action)
 
-`GET` describes the funding; `POST { account }` answers an unsigned transfer `account -> escrow` of what
-the account still lacks, with the memo `itera-bounty:<id>:fund`; the chained `confirm` re-reads the escrow
-balance and opens the bounty. Disabled once the bounty is funded or closed. Nothing in the confirm body
+`GET` describes the funding; `POST { account }` answers an unsigned transaction for `account`: the program's
+`create` with the bounty's own terms (a server-held bounty: a transfer `account -> escrow` of what the account
+still lacks), with the memo `itera-bounty:<id>:fund`; the chained `confirm` re-reads the escrow
+account and opens the bounty. Offered for the team's bounties and for those a wallet posted ("Funding link"
+above). Disabled once the bounty is funded, closed or expired; 404 for a hidden one. Nothing in the confirm body
 is trusted: the balance decides.
 
 ## Trust model
@@ -477,6 +491,7 @@ Run from a clone (devnet; credentials of the hackathon project in the environmen
 ```bash
 source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN
 node scripts/hackathon/bounty-program-e2e.mjs   # the escrow program called directly, 27 checks, ~0.006 SOL of the treasury
+RUN=<label> node scripts/hackathon/bounty-blink-e2e.mjs   # the funding link: another wallet funds, sponsor approves, refund goes to the sponsor, 9 attacks, ~0.03 SOL of the authority
 node scripts/hackathon/bounty-e2e.mjs           # the whole flow through the API, 52 checks, ~0.02 SOL (authority + treasury)
 RUN=<label> node scripts/hackathon/bounty-chain-agrees.mjs   # page vs escrow account at every step, 32 checks, ~0.01 SOL of the treasury
 node scripts/hackathon/bounty-wallet-sponsor-e2e.mjs  # a bounty posted, funded and refunded by an outside wallet, 32 checks, 0.05 SOL of the authority
