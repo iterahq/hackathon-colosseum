@@ -11,8 +11,10 @@ export function ProfileWebSlots() {
   return (
     <>
       <AvatarPicker />
-      {wallet && <ProfileVisibilityCard />}
-      <TalentOptIn />
+      <div className="mt-6 flex flex-col gap-6">
+        {wallet && <ProfileVisibilityCard />}
+        <TalentOptIn />
+      </div>
     </>
   );
 }
