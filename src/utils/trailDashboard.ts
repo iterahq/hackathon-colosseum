@@ -4,7 +4,7 @@
  * one and draws the dashed path with its day nodes.
  */
 import type { I18nText } from '@/types/content';
-import type { ProgressRow, SourceProgram, Trail, TrailColor, TrailDay, TrailStatus } from '@/types/trailDashboard';
+import type { ProgressRow, SoonTrail, SourceProgram, Trail, TrailColor, TrailDay, TrailStatus } from '@/types/trailDashboard';
 
 export { trailPath } from '@/utils/trailPath';
 
@@ -124,6 +124,19 @@ export function buildTrails(programs: readonly SourceProgram[], progress: readon
     }
   }
   return trails;
+}
+
+/** The units that have their days written but no activity yet. `buildTrails` leaves them out, so nothing else counts them. */
+export function comingSoonOf(programs: readonly SourceProgram[]): SoonTrail[] {
+  const soon: SoonTrail[] = [];
+  for (const program of [...programs].sort(programOrder)) {
+    for (const unit of [...program.units].sort((a, b) => a.ordinal - b.ordinal)) {
+      if (unit.lessons.length === 0 || unit.lessons.some((l) => l.activityIds.length > 0)) continue;
+      const days = [...unit.lessons].sort((a, b) => a.ordinal - b.ordinal).map((l) => l.title);
+      soon.push({ id: unit.id, programTitle: program.title, title: unit.title, days });
+    }
+  }
+  return soon;
 }
 
 /** The first open, unfinished trail; among those, the one with the most recent progress. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgressRow, SourceProgram } from '@/types/trailDashboard';
-import { barFill, buildTrails, dayName, currentDayOf, pickFeatured, programLabel, shortName, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
+import { barFill, buildTrails, comingSoonOf, dayName, currentDayOf, pickFeatured, programLabel, shortName, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
 
 const unit = (id: string, ordinal: number, title: string, lessons: Record<string, string[]>) => ({
   id,
@@ -142,5 +142,24 @@ describe('display helpers', () => {
   it('cuts long names with an ellipsis', () => {
     expect(shortName('Componente, props e estado', 18)).toBe('Componente, props…');
     expect(shortName('CSS')).toBe('CSS');
+  });
+});
+
+describe('comingSoonOf', () => {
+  const web3 = program('web3-solana', '2026-10-12T00:00:00Z', [
+    unit('u-nft', 1, 'Semana 2 · Tokens e NFTs', { n1: [], n2: [] }),
+    unit('u-wallet', 0, 'Semana 1 · Carteiras', { w1: [] }),
+    unit('u-empty', 2, 'Semana 3 · Sem dias', {}),
+  ]);
+
+  it('lists, in order, the units whose days have no activity yet, and none of the open ones', () => {
+    const soon = comingSoonOf([web3, v2]);
+    expect(soon.map((trail) => trail.id)).toEqual(['u-wallet', 'u-nft']);
+    expect(soon[1].days).toEqual([{ pt: 'n1' }, { pt: 'n2' }]);
+    expect(soon[0].programTitle).toEqual({ pt: 'web3-solana' });
+  });
+
+  it('keeps those units out of the trails everything else counts', () => {
+    expect(buildTrails([web3, v2], []).map((trail) => trail.id)).toEqual(['u-html', 'u-css', 'u-js']);
   });
 });
