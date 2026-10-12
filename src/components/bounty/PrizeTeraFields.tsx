@@ -41,8 +41,9 @@ export function PrizeTeraFields({ options, value, onChange, strict }: Props) {
       {value && (
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_176px]">
           <div className="flex min-w-0 flex-col gap-3">
-            <Field id="prize-brand" label={t('prize.form.brand')} error={showError && error ? t(`prize.form.err.${error}`, { min: options.brandMin, max: options.brandMax }) : null}>
-              <input id="prize-brand" value={value.brand} maxLength={60} onChange={(event) => onChange({ ...value, brand: event.target.value })} placeholder={t('prize.form.brandPlaceholder')} className={INPUT} aria-invalid={showError} data-testid="prize-brand" />
+            <Field id="prize-brand" label={t('prize.form.brand')} error={showError && error && error !== 'reserved' ? t(`prize.form.err.${error}`, { min: options.brandMin, max: options.brandMax }) : null}>
+              <input id="prize-brand" value={value.brand} maxLength={60} onChange={(event) => onChange({ ...value, brand: event.target.value })} placeholder={t('prize.form.brandPlaceholder')} className={INPUT} aria-invalid={showError && error !== 'reserved'} data-testid="prize-brand" />
+              {error === 'reserved' && <span className="[font:500_13px/1.4_Inter] text-[#F2C66D]" data-testid="prize-brand-team">{t('prize.form.err.reserved')}</span>}
               <span className="[font:400_12px/1.4_Inter] text-[#A0978A]">{t('prize.form.brandHint', { max: options.brandMax })}</span>
             </Field>
             <div className="flex flex-col gap-1.5">
@@ -71,7 +72,7 @@ export function PrizeTeraFields({ options, value, onChange, strict }: Props) {
               {preview && failed !== preview ? (
                 <img key={preview} src={preview} alt={t('prize.name', { brand: value.brand.trim() })} className="h-full w-full object-cover" onError={() => setFailed(preview)} data-testid="prize-preview-art" />
               ) : (
-                <span className="px-3 text-center [font:400_12px/1.4_Inter] text-[#A0978A]">{t(preview ? 'prize.form.previewFailed' : 'prize.form.previewWait')}</span>
+                <span className="px-3 text-center [font:400_12px/1.4_Inter] text-[#A0978A]">{t(error === 'reserved' ? 'prize.form.previewReserved' : preview ? 'prize.form.previewFailed' : 'prize.form.previewWait')}</span>
               )}
             </div>
             <span className="text-center [font:400_11px/1.4_Inter] text-[#A0978A]">{t('prize.form.previewNote')}</span>

@@ -19,6 +19,8 @@ describe('toTeraCatalog', () => {
     );
     expect(catalog?.source).toBe('live');
     expect(catalog?.tiers.map((t) => [t.rarity, t.earnOnly])).toEqual([['common', false], ['mythic', true]]);
+    expect(catalog?.tiers.map((t) => t.how)).toEqual([null, null]);
+    expect(toTeraCatalog({ tiers: [{ rarity: 'primordial', rank: 6, tier_name: { en: 'Primordial Tera' }, earn_only: true, how: { pt: 'Só do último dia.', en: 'Only the last day.' } }], avatars: { a: 'primordial' } }, 'live')?.tiers[0].how).toEqual({ pt: 'Só do último dia.', en: 'Only the last day.' });
     expect(catalog?.avatars).toEqual({ base_lider: 'rare', tera_feliz: 'free' });
   });
 
@@ -59,6 +61,9 @@ describe('the bundled catalog', () => {
     expect(moved).toEqual([]);
     // Priced in the bundled copy and absent from the catalog: only the one Tera that has no catalog row.
     expect(Object.keys(FALLBACK.avatars).filter((key) => !(key in live.avatars))).toEqual(['acc_fogueira']);
-    expect(live.tiers).toEqual(FALLBACK_CATALOG.tiers);
+    const plain = (tiers: typeof live.tiers) => tiers.map(({ rarity, rank, tierName, label, earnOnly }) => ({ rarity, rank, tierName, label, earnOnly }));
+    expect(plain(live.tiers)).toEqual(plain(FALLBACK_CATALOG.tiers));
+    // The live catalog says in its own words how each earn-only tier is earned; the pages print that, never a sentence of their own.
+    for (const tier of live.tiers.filter((t) => t.earnOnly)) expect(tier.how?.pt && tier.how.en, tier.rarity).toBeTruthy();
   }, 12_000);
 });

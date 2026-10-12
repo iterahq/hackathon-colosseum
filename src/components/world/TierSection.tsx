@@ -11,14 +11,18 @@ export const obtainKey = (tier: LoreTier, catalog: TeraCatalog): string | null =
   if (tier === 'free') return 'world.obtain.free';
   const entry = catalog.tiers.find((t) => t.rarity === tier);
   if (!entry) return null;
-  return entry.earnOnly ? (tier === 'primordial' ? 'world.obtain.primordial' : 'world.obtain.earnOnly') : 'world.obtain.shelf';
+  return entry.earnOnly ? 'world.obtain.earnOnly' : 'world.obtain.shelf';
 };
+
+/** How an earn-only tier is earned, as the catalog says it. Null: the catalog has no sentence for it. */
+export const earnHow = (tier: LoreTier, catalog: TeraCatalog, locale: 'pt' | 'en'): string | null => (catalog.source === 'live' ? (catalog.tiers.find((t) => t.rarity === tier && t.earnOnly)?.how?.[locale] ?? null) : null);
 
 export function TierSection({ tier, catalog, onOpen }: { tier: LoreTier; catalog: TeraCatalog; onOpen: (key: string) => void }) {
   const { t, locale } = useI18n();
   const info = TIER_LORE(tier, locale);
   const keys = castKeysOfTier(tier, catalog.avatars);
   const obtain = obtainKey(tier, catalog);
+  const how = earnHow(tier, catalog, locale);
   if (keys.length === 0) return null;
   const solo = keys.length === 1;
   return (
@@ -26,7 +30,7 @@ export function TierSection({ tier, catalog, onOpen }: { tier: LoreTier; catalog
       <div>
         <h3 id={`world-tier-${tier}`} className={H2}>{info.name}</h3>
         <p className="mt-2 max-w-[62ch] [font:400_14px_Inter] leading-relaxed text-[#A0978A]">{info.text}</p>
-        {obtain && <p className="mt-2 max-w-[62ch] [font:600_13px_Inter] leading-relaxed text-[#C9BFB0]" data-testid={`world-obtain-${tier}`}>{t(obtain)}</p>}
+        {obtain && <p className="mt-2 max-w-[62ch] [font:600_13px_Inter] leading-relaxed text-[#C9BFB0]" data-testid={`world-obtain-${tier}`}>{t(obtain)}{how ? ` ${how}` : ''}</p>}
       </div>
       <ul className={`m-0 grid list-none gap-3 p-0 sm:gap-4 ${solo ? 'max-w-[320px] grid-cols-1' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
         {keys.map((key) => {
