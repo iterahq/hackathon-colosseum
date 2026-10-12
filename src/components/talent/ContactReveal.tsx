@@ -58,8 +58,10 @@ export function ContactReveal({ wallet, hasContact, revealsPerDay, onRevealed }:
       <dl className="flex min-w-0 flex-col gap-1.5">
         {CONTACT_FIELDS.filter((field) => contact[field]).map((field) => (
           <div key={field} className="flex min-w-0 items-center gap-2" data-testid="contact-row" data-field={field}>
-            <dt className="w-[72px] flex-none [font:600_11px_JetBrains_Mono] uppercase tracking-[.06em] text-[#A0978A]">{t(`privacy.contact.kind.${field}`)}</dt>
-            <dd className="min-w-0 flex-1 select-all break-all [font:500_13px/1.4_JetBrains_Mono] text-[#F4EDE2]">{contact[field]}</dd>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <dt className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.06em] text-[#A0978A]">{t(`privacy.contact.kind.${field}`)}</dt>
+              <dd className="min-w-0 select-all [font:500_13px/1.4_JetBrains_Mono] text-[#F4EDE2] [overflow-wrap:anywhere]">{contact[field]}</dd>
+            </div>
             <CopyButton value={contact[field] ?? ''} label={t('privacy.reveal.copy')} doneLabel={t('passport.copied')} display="" />
           </div>
         ))}
