@@ -1,3 +1,4 @@
+import { AskingForPreview } from '@/components/bounty/MissionSkills';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { INPUT, LABEL, Notice, SECTION_TITLE } from '@/components/bounty/bountyUi';
@@ -178,6 +179,7 @@ export function CreateBountyForm({ trails }: { trails: SponsorTrail[] }) {
             <input id="bounty-f-reward" inputMode="decimal" placeholder="0.05" value={form.reward} onChange={(e) => patch({ reward: e.target.value })} className={INPUT} aria-invalid={Boolean(errors.reward)} aria-describedby={errors.reward ? 'bounty-f-reward-error' : undefined} />
           </Field>
         </div>
+        <AskingForPreview trail={trail} minDays={wholeNumber(form.minDays)} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="bounty-f-expires" label={t('bounty.form.expires')} error={errors.deadline}>
             <input id="bounty-f-expires" inputMode="numeric" value={form.expiresInDays} onChange={(e) => patch({ expiresInDays: e.target.value })} className={INPUT} />

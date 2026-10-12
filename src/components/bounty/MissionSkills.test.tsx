@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
-import { MissionSkillRow, type SkillRequirement } from './MissionSkills';
+import { AskingForPreview, MissionSkillRow, type SkillRequirement } from './MissionSkills';
 
 const show = (requirement: SkillRequirement | null, max?: number) => render(<I18nProvider><MissionSkillRow requirement={requirement} max={max} /></I18nProvider>);
 
@@ -32,5 +32,27 @@ describe('MissionSkillRow', () => {
   it('renders nothing with no requirement', () => {
     const { container } = show(null);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('AskingForPreview', () => {
+  const trail = { title: { pt: 'Semana 2 · CSS', en: 'Week 2 · CSS' }, totalDays: 5 };
+  const preview = (minDays: number | null, chosen: typeof trail | undefined = trail) => render(<I18nProvider><AskingForPreview trail={chosen} minDays={minDays} /></I18nProvider>);
+
+  it('shows every skill of the days asked, neutral', () => {
+    preview(2);
+    expect(screen.getByTestId('asking-for')).toHaveAttribute('data-count', '4');
+    expect(screen.getAllByTestId('skill-badge').map((badge) => badge.getAttribute('data-claim'))).toEqual(['css-rules', 'css-selectors', 'css-box', 'css-sizing']);
+    expect(screen.getAllByTestId('skill-badge').every((badge) => badge.getAttribute('data-state') === 'neutral')).toBe(true);
+  });
+
+  it('is empty while the days are missing, zero or past the trail, and for a trail outside the graph', () => {
+    for (const days of [null, 0, 6]) {
+      const { container, unmount } = preview(days);
+      expect(container).toBeEmptyDOMElement();
+      unmount();
+    }
+    expect(preview(2, undefined).container).toBeEmptyDOMElement();
+    expect(preview(2, { title: { pt: 'Semana 9', en: 'Week 9' }, totalDays: 5 }).container).toBeEmptyDOMElement();
   });
 });
