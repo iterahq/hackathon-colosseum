@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import { CrystalSection } from '@/components/world/CrystalSection';
-import { FOCUS_SOL_ONLY_SHOP, FOCUS_STARTER_FACES_UNLISTED } from '@/config/focus';
+import { FOCUS_BUILD, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { TeraDialog } from '@/components/world/TeraDialog';
 import { TierSection } from '@/components/world/TierSection';
 import { WorldCollection } from '@/components/world/WorldCollection';
@@ -18,7 +18,7 @@ import { useTeraCatalog } from '@/hooks/useTeraCatalog';
 import { useI18n } from '@/i18n';
 
 /** The tiers the cast lists: a Tera is earned or bought, so the starter faces are not a tier of it. */
-const CAST_TIERS = LORE_TIERS.filter((tier) => !(FOCUS_STARTER_FACES_UNLISTED && tier === 'free'));
+const CAST_TIERS = LORE_TIERS.filter((tier) => !(FOCUS_BUILD && tier === 'free'));
 
 /** /world: the lore of Brasa and the cast of Teras. Public. A signed-in learner sees which Teras the wallet holds: those in colour, every other one locked. */
 export default function WorldPage() {

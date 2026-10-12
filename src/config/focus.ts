@@ -46,7 +46,7 @@ export const FOCUS_PAID_TERAS_OFF = FOCUS_BUILD && (import.meta.env.VITE_PAID_TE
 
 /**
  * A Tera is either earned by studying or bought: the faces every learner starts with are not a category of their own.
- * The shop and the world do not list them and nothing is labelled "free"; the picker of the profile still offers them
- * as the starter faces, so an account with no Tera yet has a picture.
+ * The shop does not list them and nothing is labelled "free" (the world leaves them out of its cast under `FOCUS_BUILD`);
+ * the picker of the profile still offers them as the starter faces, so an account with no Tera yet has a picture.
  */
 export const FOCUS_STARTER_FACES_UNLISTED = FOCUS_BUILD;
