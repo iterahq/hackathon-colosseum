@@ -53,7 +53,8 @@ export interface TalentCard {
   stamped_days: number;
   total_days: number;
   certifications: number;
-  capabilities: Array<{ key: string; title: string }>;
+  /** `graded`: the share the evidence document of that claim states ("10/12"); `null` when it states none. */
+  capabilities: Array<{ key: string; title: string; graded?: string | null }>;
   bounties_paid: number;
   bounties_paid_lamports: number;
   last_stamp_at: string | null;
