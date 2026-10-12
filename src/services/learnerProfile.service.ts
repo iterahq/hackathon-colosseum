@@ -6,7 +6,7 @@ import { toAvatar } from '@/services/shopNormalize';
 import { toTeraOrigin } from '@/services/teraOrigin';
 import { ITERA_V2_GRAPH } from '../../supabase/functions/_shared/capability-graph';
 import { parseChainRead } from '@/types/chainRead';
-import type { Capabilities, CapabilityNode, CapabilityProof, CapabilityStatus, ClaimEvidence, LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
+import type { Capabilities, CapabilityNode, CapabilityProof, CapabilityStatus, ClaimEvidence, ClaimJourney, LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -34,6 +34,7 @@ function parseProof(v: unknown): CapabilityProof | null {
     provenAt: text(p.proven_at),
     assetExplorerUrl: text(p.asset_explorer_url),
     txExplorerUrl: text(p.tx_explorer_url),
+    ...('graded' in p ? { graded: text(p.graded) } : {}),
   };
 }
 
@@ -214,6 +215,37 @@ export async function getClaimEvidence(wallet: string, claimId: string): Promise
   const parsed = parseEvidence(await res.json());
   if (!parsed) throw new Error('evidence malformed');
   return parsed;
+}
+
+const JOURNEY_LIMIT = 40;
+const DOT_LIMIT = 12;
+
+/** Keeps verdicts, modes and counts; anything else an answer might carry is dropped here. */
+export function parseJourney(body: unknown): ClaimJourney {
+  const b = row(body);
+  const activities = rows(b.activities)
+    .slice(0, JOURNEY_LIMIT)
+    .map((r) => {
+      const verdicts = (Array.isArray(r.verdicts) ? r.verdicts : []).slice(0, DOT_LIMIT).map((v) => v === true);
+      return { mode: r.mode === 'server' ? ('server' as const) : ('self_reported' as const), verdicts, tries: Math.max(int(r.tries) ?? 0, verdicts.length) };
+    })
+    .filter((entry) => entry.verdicts.length > 0);
+  return {
+    activities,
+    tries: activities.reduce((total, entry) => total + entry.tries, 0),
+    firstTry: activities.filter((entry) => entry.tries === 1 && entry.verdicts[0]).length,
+  };
+}
+
+/** The attempt track of one proven claim. A private wallet, or a claim with no graded rows, reads as an empty track. */
+export async function getClaimJourney(wallet: string, claimId: string): Promise<ClaimJourney> {
+  if (!url || !anonKey) throw new Error('Supabase not configured.');
+  const res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}/journey/${encodeURIComponent(claimId)}`, {
+    headers: viewerHeaders(await viewerToken()),
+  });
+  if (res.status === 404) return parseJourney(null);
+  if (!res.ok) throw new Error(`journey failed (${res.status})`);
+  return parseJourney(await res.json());
 }
 
 /** The graph with nothing proven, from the model the app ships with: drawn before any answer arrives. */

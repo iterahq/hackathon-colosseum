@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseEvidence, parseProfile } from '@/services/learnerProfile.service';
+import { parseEvidence, parseJourney, parseProfile } from '@/services/learnerProfile.service';
 
 const body = {
   wallet: 'W1',
@@ -58,5 +58,48 @@ describe('parseEvidence', () => {
   it('reads the evidence envelope and rejects an incomplete one', () => {
     expect(parseEvidence({ wallet: 'W', claim: 'a', lesson_id: 'L', evidence: '{}', evidence_hash: 'h', tx_signature: 's', tx_explorer_url: 'u' })).toMatchObject({ claim: 'a', lessonId: 'L', evidence: '{}', evidenceHash: 'h' });
     expect(parseEvidence({ wallet: 'W' })).toBeNull();
+  });
+});
+
+describe('parseJourney', () => {
+  it('keeps verdicts, modes and counts, and nothing else the answer carries', () => {
+    const journey = parseJourney({
+      wallet: 'W',
+      claim: 'html-tags',
+      answer: 'secret',
+      activities: [
+        { mode: 'server', verdicts: [false, true], tries: 2, answer_hash: 'secret', activity_id: 'secret' },
+        { mode: 'self_reported', verdicts: [true], tries: 1 },
+        { mode: 'server', verdicts: [], tries: 0 },
+        { mode: 'server', verdicts: [false, 'yes', true], tries: 9 },
+      ],
+      tries: 999,
+      first_try: 999,
+    });
+    expect(journey).toEqual({
+      activities: [
+        { mode: 'server', verdicts: [false, true], tries: 2 },
+        { mode: 'self_reported', verdicts: [true], tries: 1 },
+        { mode: 'server', verdicts: [false, false, true], tries: 9 },
+      ],
+      tries: 12,
+      firstTry: 1,
+    });
+  });
+
+  it('reads a private stub or a malformed answer as an empty track', () => {
+    expect(parseJourney({ wallet: 'W', private: true, claim: 'html-tags' })).toEqual({ activities: [], tries: 0, firstTry: 0 });
+    expect(parseJourney(null)).toEqual({ activities: [], tries: 0, firstTry: 0 });
+  });
+});
+
+describe('the share of a proof', () => {
+  const proof = { asset: 'AS', attribute: 'claim:a', evidence_hash: 'abcd'.padEnd(64, '0') };
+  const first = (extra: Record<string, unknown>) => parseProfile({ capabilities: { nodes: [{ id: 'a', title: 'A', status: 'verified', proof: { ...proof, ...extra } }] } }, 'W', 'en').capabilities?.nodes[0].proof;
+
+  it('tells a stated share, a stated absence and an answer that did not look apart', () => {
+    expect(first({ graded: '10/12' })?.graded).toBe('10/12');
+    expect(first({ graded: null })?.graded).toBeNull();
+    expect(first({})).not.toHaveProperty('graded');
   });
 });

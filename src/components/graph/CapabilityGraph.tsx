@@ -3,6 +3,8 @@ import { useI18n } from '@/i18n';
 import type { Capabilities } from '@/types/learnerProfile';
 import { graphLayout } from '@/components/graph/graphLayout';
 import { isLit, type NodeView } from '@/components/graph/capabilityView';
+import { nodeTier } from '@/components/graph/evidenceTier';
+import { TierMedal } from '@/components/graph/TierMedal';
 import '@/components/graph/graph.css';
 
 const WIDE_FROM = 860;
@@ -101,6 +103,8 @@ export function CapabilityGraph({ capabilities, views, progress, label, onSelect
           const view = views[node.id] ?? 'open';
           const isNext = capabilities.next === node.id && view === 'open';
           const lit = isLit(view) || view === 'recorded';
+          const tier = view === 'open' ? null : nodeTier(node);
+          const status = t(`graph.status.${view}`);
           return (
             <button
               key={node.id}
@@ -109,8 +113,9 @@ export function CapabilityGraph({ capabilities, views, progress, label, onSelect
               data-node-id={node.id}
               data-view={view}
               data-next={isNext}
+              data-tier={tier ?? undefined}
               aria-haspopup="dialog"
-              aria-label={t('graph.node.aria', { title: node.title, status: t(`graph.status.${view === 'checking' ? 'checking' : view === 'chain' ? 'chain' : view}`) })}
+              aria-label={t('graph.node.aria', { title: node.title, status: tier ? `${status}. ${t(`graph.tier.${tier}`)}` : status })}
               onClick={() => onSelect(node.id)}
               className="graph-node absolute flex flex-col items-center bg-transparent p-0"
               style={{ left: spot.x - layout.labelWidth / 2, top: spot.y - layout.radius, width: layout.labelWidth }}
@@ -119,6 +124,7 @@ export function CapabilityGraph({ capabilities, views, progress, label, onSelect
                 <span className="graph-medal">
                   <Icon view={view} day={node.day} />
                 </span>
+                {tier && <TierMedal tier={tier} className="absolute -bottom-1 -right-1" />}
                 {isNext && <span className="graph-ring" aria-hidden="true" />}
                 {isNext && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#3FD17F] px-2 py-0.5 [font:700_10px/1.2_JetBrains_Mono] tracking-[.08em] text-[#0A0908]">{t('graph.next')}</span>

@@ -10,9 +10,11 @@ import type { Capabilities, CapabilityNode } from '@/types/learnerProfile';
 const chainQuery = vi.fn();
 const evidenceQuery = vi.fn();
 const profileQuery = vi.fn();
+const journeyQuery = vi.fn();
 vi.mock('@/hooks/useChainClaims', () => ({ useChainClaims: () => chainQuery() }));
 vi.mock('@/hooks/useLearnerProfile', () => ({
   useClaimEvidence: () => evidenceQuery(),
+  useClaimJourney: () => journeyQuery(),
   useLearnerProfile: () => profileQuery(),
 }));
 
@@ -40,6 +42,7 @@ describe('CapabilityGraphSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     evidenceQuery.mockReturnValue({ isPending: true, isError: false, data: undefined });
+    journeyQuery.mockReturnValue({ isPending: false, isError: false, data: { activities: [], tries: 0, firstTry: 0 } });
   });
 
   it('lights a node as chain-verified only when the browser read matched', () => {
@@ -112,6 +115,46 @@ describe('CapabilityGraphSection', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent('Verificada na chain');
     expect(rows[1]).toHaveTextContent('Registrada');
+    expect(within(rows[0]).getByTestId('skill-badge')).toHaveAttribute('data-state', 'lit');
+    expect(within(rows[1]).getByTestId('skill-badge')).toHaveAttribute('data-state', 'neutral');
+  });
+
+  it('an unproven prerequisite is a badge with a padlock', () => {
+    chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': '2acb55a6bc0e259f' }), refetch: vi.fn() });
+    show();
+    fireEvent.click(view('d'));
+    const badge = within(screen.getByTestId('graph-prereq')).getByTestId('skill-badge');
+    expect(badge).toHaveAttribute('data-state', 'locked');
+    expect(badge).toHaveTextContent('Ainda não provada');
+  });
+
+  it('draws the evidence tier on a proven node and never on an open one', () => {
+    chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': '2acb55a6bc0e259f' }), refetch: vi.fn() });
+    const tiered: Capabilities = { ...caps, nodes: [node('a', 0, 1, 'verified', [], { proof: proof('a', { graded: '10/12' }) }), node('b', 0, 2, 'recorded', ['a'], { proof: proof('b', { graded: null }) }), ...caps.nodes.slice(2)] };
+    show(tiered);
+    expect(view('a')).toHaveAttribute('data-tier', 'middle');
+    expect(view('a')).toHaveAccessibleName(/Verificada na chain\. Servidor corrigiu parte/);
+    expect(view('b')).toHaveAttribute('data-tier', 'base');
+    expect(view('c')).not.toHaveAttribute('data-tier');
+    expect(within(screen.getByTestId('graph-tier-legend')).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('a profile answer that carries no share draws no medal', () => {
+    chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': '2acb55a6bc0e259f' }), refetch: vi.fn() });
+    show();
+    expect(view('a')).not.toHaveAttribute('data-tier');
+    expect(within(view('a')).queryByTestId('tier-medal')).not.toBeInTheDocument();
+  });
+
+  it('keeps the raw proof rows in the page, under a disclosure that starts closed', () => {
+    chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': '2acb55a6bc0e259f' }), refetch: vi.fn() });
+    show();
+    fireEvent.click(view('a'));
+    const disclosure = screen.getByTestId('graph-proof');
+    expect(disclosure).not.toHaveAttribute('open');
+    expect(within(disclosure).getByTestId('graph-attribute')).toBeInTheDocument();
+    expect(within(disclosure).getByTestId('graph-hash')).toBeInTheDocument();
+    expect(screen.getByTestId('graph-track-empty')).toBeInTheDocument();
   });
 
   it('shows the hash check from the evidence, computed in the browser', async () => {
@@ -125,7 +168,39 @@ describe('CapabilityGraphSection', () => {
     show(matching);
     fireEvent.click(view('a'));
     expect(await screen.findByTestId('graph-hash-ok')).toHaveTextContent('hash confere');
-    expect(screen.getByTestId('graph-evidence')).toHaveTextContent('2 atividades concluídas');
+    expect(screen.getByTestId('graph-evidence-facts')).toHaveTextContent('2 atividades concluídas');
+    expect(screen.getByTestId('graph-evidence')).toHaveAttribute('data-tier', 'base');
+    expect(screen.getByTestId('graph-evidence-graded')).toHaveAttribute('data-version', '1');
+  });
+
+  it('reads the tier from the document whose hash matched, not from the list', async () => {
+    const text = JSON.stringify({ v: 2, completed_at: '2026-10-09T23:23:16.280Z', verified: '10/12', activities: [['x', 't', 'h']] });
+    const { sha256Hex } = await import('@/lib/chainClaims');
+    const hash = await sha256Hex(text);
+    evidenceQuery.mockReturnValue({ isPending: false, isError: false, data: { evidence: text, evidenceHash: hash } });
+    chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': hash.slice(0, 16) }), refetch: vi.fn() });
+    show({ ...caps, nodes: [node('a', 0, 1, 'verified', [], { proof: proof('a', { evidenceHash: hash, onchainValue: hash.slice(0, 16), graded: '12/12' }) }), ...caps.nodes.slice(1)] });
+    fireEvent.click(view('a'));
+    await screen.findByTestId('graph-hash-ok');
+    const card = screen.getByTestId('graph-evidence');
+    expect(card).toHaveAttribute('data-tier', 'middle');
+    expect(card).toHaveAttribute('data-strong', 'true');
+    expect(screen.getByTestId('graph-tier-label')).toHaveTextContent('Servidor corrigiu parte');
+    const bar = screen.getByTestId('graph-evidence-graded');
+    expect(bar).toHaveAttribute('data-version', '2');
+    expect(bar).toHaveTextContent('10/12');
+    expect(bar.querySelectorAll('[data-on="true"]')).toHaveLength(10);
+    expect(bar.querySelectorAll('[data-on="false"]')).toHaveLength(2);
+  });
+
+  it('shows the listed share dimmed while the document is still being checked', () => {
+    chainQuery.mockReturnValue({ isSuccess: true, isError: false, isFetching: false, data: reads({ 'claim:a': '2acb55a6bc0e259f' }), refetch: vi.fn() });
+    show({ ...caps, nodes: [node('a', 0, 1, 'verified', [], { proof: proof('a', { graded: '12/12' }) }), ...caps.nodes.slice(1)] });
+    fireEvent.click(view('a'));
+    const card = screen.getByTestId('graph-evidence');
+    expect(card).toHaveAttribute('data-tier', 'top');
+    expect(card).toHaveAttribute('data-strong', 'false');
+    expect(screen.queryByTestId('graph-hash-ok')).not.toBeInTheDocument();
   });
 
   it('warns when the evidence does not hash to the recorded value', async () => {
@@ -134,6 +209,8 @@ describe('CapabilityGraphSection', () => {
     show();
     fireEvent.click(view('a'));
     expect(await screen.findByTestId('graph-hash-bad')).toBeInTheDocument();
+    expect(screen.getByTestId('graph-evidence')).not.toHaveAttribute('data-tier');
+    expect(screen.queryByTestId('graph-tier-label')).not.toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,7 @@
 import { useI18n } from '@/i18n';
 import type { Capabilities } from '@/types/learnerProfile';
 import type { ChainState, Progress } from '@/components/graph/capabilityView';
+import { TierChips } from '@/components/graph/TierMedal';
 
 interface Props {
   capabilities: Capabilities;
@@ -73,6 +74,7 @@ export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded
         <li className="flex items-center gap-2"><Dot className="border-2 border-[#3a352f] bg-transparent" />{t('graph.legend.open')}</li>
         {hasRecorded && <li className="flex items-center gap-2"><Dot className="border-2 border-[#F2C66D] bg-transparent" />{t('graph.legend.recorded')}</li>}
       </ul>
+      {capabilities.nodes.some((n) => n.proof) && <TierChips testId="graph-tier-legend" className="lg:col-span-2 lg:row-start-3" />}
     </div>
   );
 }
