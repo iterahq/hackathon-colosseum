@@ -10,7 +10,10 @@ import {
   avatarImageUrl,
   avatarMetadata,
   avatarView,
+  FREE_TIER,
   equipVerdict,
+  isEarnOnly,
+  tiersView,
   isSoldOut,
   lowestFreeSerial,
   reservationUntil,
@@ -248,7 +251,31 @@ describe('eligibility and equip', () => {
     expect(equipVerdict(LEADER, new Set())).toEqual({ ok: false, error: 'not_owned' });
     expect(equipVerdict(LEADER, new Set(['base_lider']))).toEqual({ ok: true });
     expect(equipVerdict(undefined, new Set(['x']))).toEqual({ ok: false, error: 'unknown_avatar' });
-    expect(equipVerdict({ ...LEADER, active: false }, new Set(['base_lider']))).toEqual({ ok: false, error: 'unknown_avatar' });
+    expect(equipVerdict({ ...LEADER, active: false }, new Set())).toEqual({ ok: false, error: 'unknown_avatar' });
+    expect(equipVerdict({ ...HAPPY, active: false }, new Set())).toEqual({ ok: false, error: 'unknown_avatar' });
+  });
+
+  it('lets the holder of an earned Tera wear it although its tier is off the shelf', () => {
+    expect(equipVerdict({ ...MYTHIC, active: false }, new Set(['event_space']))).toEqual({ ok: true });
+    const offShelf: AvatarCatalog = { ...catalog, items: new Map([...catalog.items, ['event_space', { ...MYTHIC, active: false }]]) };
+    expect(resolveAvatar(offShelf, 'event_space')?.key).toBe('event_space');
+    expect(resolveAvatar({ ...catalog, items: new Map([...catalog.items, ['tera_feliz', { ...HAPPY, active: false }]]) }, 'tera_feliz')?.key).toBe(DEFAULT_AVATAR_KEY);
+  });
+
+  it('names one source of rarity: the ladder, which tiers are earned only, and the tier of every avatar', () => {
+    const earnOnly: AvatarCatalog = { ...catalog, tiers: new Map([...catalog.tiers, ['mythic', { ...catalog.tiers.get('mythic')!, earn_only: true }]]) };
+    const view = tiersView(earnOnly);
+    expect(view.tiers.map((tier) => [tier.rarity, tier.rank, tier.earn_only])).toEqual([['common', 1, false], ['rare', 2, false], ['mythic', 5, true]]);
+    expect(view.tiers[1]).toMatchObject({ tier_name: { pt: 'Super Tera', en: 'Super Tera' }, label: { pt: 'Raro', en: 'Rare' } });
+    expect(view.avatars).toEqual({ tera_normal: FREE_TIER, tera_feliz: FREE_TIER, base_lider: 'rare', event_space: 'mythic' });
+    expect(isEarnOnly(earnOnly, MYTHIC)).toBe(true);
+    expect(isEarnOnly(earnOnly, LEADER)).toBe(false);
+    const facts = { supply: undefined, own: null, equippedKey: null, royaltyBps: 500 };
+    expect(shopAvatarFields(earnOnly, MYTHIC, 'en', SUPABASE, facts)).toMatchObject({ earn_only: true, for_sale: false });
+    expect(shopAvatarFields(earnOnly, MYTHIC, 'en', SUPABASE, facts)).not.toHaveProperty('transferable');
+    expect(shopAvatarFields(earnOnly, LEADER, 'en', SUPABASE, facts)).toMatchObject({ earn_only: false, for_sale: true, transferable: true, royalty_bps: 500 });
+    expect(shopAvatarFields(earnOnly, HAPPY, 'en', SUPABASE, facts)).toMatchObject({ earn_only: false, for_sale: false, free: true });
+    expect(eligibility('avatar', { refId: GLOBAL_REF, lives: 0, maxLives: 5, owned: false, passportMinted: false, earnOnly: true })).toEqual({ ok: false, error: 'earn_only' });
   });
 
   it('always resolves to an avatar: the stored one, else the default', () => {

@@ -45,7 +45,7 @@ export async function loadAvatarCatalog(db: IteraClient, fresh = false): Promise
   if (!fresh && cached && Date.now() - cached.at < CATALOG_TTL_MS) return cached.catalog;
   const [items, tiers] = await Promise.all([
     db.from('shop_items').select(AVATAR_ITEM_COLUMNS).eq('kind', 'avatar').order('sort').order('key'),
-    db.from('avatar_tiers').select('rarity,rank,tier_name_i18n,label_i18n'),
+    db.from('avatar_tiers').select('rarity,rank,tier_name_i18n,label_i18n,earn_only'),
   ]);
   if (items.error) throw new Error(`shop_items avatars: ${items.error.message}`);
   if (tiers.error) throw new Error(`avatar_tiers: ${tiers.error.message}`);

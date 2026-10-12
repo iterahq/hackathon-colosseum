@@ -44,6 +44,8 @@ export interface AvatarTier {
   rank: number;
   tier_name_i18n: I18n;
   label_i18n: I18n;
+  /** Never for sale at any price: a Tera of this tier comes out of a day chest only. */
+  earn_only?: boolean;
 }
 
 export interface AvatarAssetRow {
@@ -98,6 +100,25 @@ export function isFreeAvatar(item: Pick<AvatarItem, 'price_lamports'>): boolean 
   return item.price_lamports === null || item.price_lamports === undefined;
 }
 
+/** The tier of this avatar is earned, never sold. */
+export function isEarnOnly(catalog: Pick<AvatarCatalog, 'tiers'>, item: Pick<AvatarItem, 'rarity'>): boolean {
+  return catalog.tiers.get(item.rarity)?.earn_only === true;
+}
+
+/** What `/world` and every card name a tier by. A free face has no tier of the ladder: it reads as `free`. */
+export const FREE_TIER = 'free';
+
+/** `GET /credential-meta/tiers`: the ladder and, per avatar key, its tier. The one source of rarity. */
+export function tiersView(catalog: Pick<AvatarCatalog, 'items' | 'tiers'>) {
+  const text = (bag: I18n) => ({ pt: pickText(bag, 'pt'), en: pickText(bag, 'en') });
+  return {
+    tiers: [...catalog.tiers.values()]
+      .sort((a, b) => a.rank - b.rank)
+      .map((tier) => ({ rarity: tier.rarity, rank: tier.rank, tier_name: text(tier.tier_name_i18n), label: text(tier.label_i18n), earn_only: tier.earn_only === true })),
+    avatars: Object.fromEntries([...catalog.items.values()].map((item) => [item.key, isFreeAvatar(item) ? FREE_TIER : item.rarity])),
+  };
+}
+
 /** A row that is the learner's for good: paid for, whether or not the asset is minted yet. */
 export function isOwnedRow(row: Pick<AvatarAssetRow, 'mint_status'> | null | undefined): boolean {
   return Boolean(row) && row?.mint_status !== 'reserved';
@@ -126,7 +147,8 @@ export function rarityLabel(catalog: AvatarCatalog, item: Pick<AvatarItem, 'rari
 /** The avatar to show for a stored key: itself when it is still in the catalog, else the default, else nothing. */
 export function resolveAvatar(catalog: AvatarCatalog, key: string | null | undefined): AvatarItem | null {
   const wanted = key ? catalog.items.get(key) : undefined;
-  if (wanted && wanted.active) return wanted;
+  // A priced avatar off the shelf (an earn-only tier) is still worn by whoever holds it: the callers check the holder.
+  if (wanted && (wanted.active || !isFreeAvatar(wanted))) return wanted;
   return catalog.items.get(DEFAULT_AVATAR_KEY) ?? null;
 }
 
@@ -134,8 +156,11 @@ export type EquipVerdict = { ok: true } | { ok: false; error: 'unknown_avatar' |
 
 /** A free avatar is everyone's; a collectible needs the learner's own paid row. */
 export function equipVerdict(item: AvatarItem | undefined, ownedKeys: ReadonlySet<string>): EquipVerdict {
-  if (!item || !item.active) return { ok: false, error: 'unknown_avatar' };
-  if (isFreeAvatar(item) || ownedKeys.has(item.key)) return { ok: true };
+  if (!item) return { ok: false, error: 'unknown_avatar' };
+  // Off the shelf does not mean gone: an earned Tera of an earn-only tier is worn by its holder.
+  if (ownedKeys.has(item.key)) return { ok: true };
+  if (!item.active) return { ok: false, error: 'unknown_avatar' };
+  if (isFreeAvatar(item)) return { ok: true };
   return { ok: false, error: 'not_owned' };
 }
 
@@ -194,9 +219,11 @@ export function shopAvatarFields(
   item: AvatarItem,
   lang: Lang,
   supabaseUrl: string,
-  facts: { supply: AvatarSupply | undefined; own: AvatarAssetRow | null; equippedKey: string | null; now?: Date },
+  facts: { supply: AvatarSupply | undefined; own: AvatarAssetRow | null; equippedKey: string | null; now?: Date; royaltyBps?: number },
 ) {
   const free = isFreeAvatar(item);
+  const earnOnly = !free && isEarnOnly(catalog, item);
+  const forSale = !free && !earnOnly && item.active;
   const owned = free || isOwnedRow(facts.own);
   // A learner inside their own unpaid hold is not told "sold out": the unit is theirs to pay for.
   const holding = facts.own?.mint_status === 'reserved' && facts.own.reserved_until !== null && Date.parse(facts.own.reserved_until) > Date.now();
@@ -210,6 +237,11 @@ export function shopAvatarFields(
     tier_name: tierName(catalog, item, lang),
     group: item.avatar_group,
     free,
+    /** Never for sale: the card says how it is earned. */
+    earn_only: earnOnly,
+    for_sale: forSale,
+    /** A bought Tera is the buyer's to transfer; the resale fee a marketplace that honours Core pays Itera. */
+    ...(forSale ? { transferable: true, royalty_bps: facts.royaltyBps ?? 0 } : {}),
     price_usd_cents: free ? 0 : item.price_usd_cents,
     price_lamports: free ? 0 : (item.price_lamports as number),
     price_label: free ? (lang === 'pt' ? 'Grátis' : 'Free') : item.price_label,

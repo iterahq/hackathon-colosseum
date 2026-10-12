@@ -12,6 +12,7 @@ export type IneligibleCode =
   | 'recipient_full'
   | 'gift_limit'
   | 'free_item'
+  | 'earn_only'
   | 'sold_out'
   | 'reservation_limit'
   | 'out_of_season';
@@ -35,6 +36,8 @@ export interface EligibilityFacts {
   bonusLives?: number;
   /** Only read for an avatar: it has no price, or its limited supply is all taken. */
   free?: boolean;
+  /** Only read for an avatar: its tier is earned, never sold. */
+  earnOnly?: boolean;
   soldOut?: boolean;
   /** Only read for an avatar that is sold in a season: the window is closed now. */
   outOfSeason?: boolean;
@@ -76,6 +79,7 @@ export function eligibility(kind: ItemKind, facts: EligibilityFacts): Eligibilit
       // A free avatar is everyone's already; a collectible is one per learner while units remain.
       if (!isGlobal) return refuse('invalid_ref');
       if (facts.free) return refuse('free_item');
+      if (facts.earnOnly) return refuse('earn_only');
       if (facts.owned) return refuse('already_owned');
       if (facts.outOfSeason) return refuse('out_of_season');
       return facts.soldOut ? refuse('sold_out') : { ok: true };

@@ -1,7 +1,7 @@
 import { renderArt, type CompanionAvatarArt } from '../_shared/art.ts';
 import { companionAvatarArt } from '../_shared/avatar-image.ts';
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
-import { avatarMetadata, type AvatarAssetRow } from '../_shared/avatars.ts';
+import { avatarMetadata, tiersView, type AvatarAssetRow } from '../_shared/avatars.ts';
 import { parsePreview, previewArtInput } from '../_shared/preview.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import { companionArtInput, companionFromAttributes, companionMetadata, withChainValues, type CompanionSnapshot } from '../_shared/companion.ts';
@@ -112,6 +112,12 @@ Deno.serve(async (request) => {
       if (!isCollectionKind(second) || rest.length > 0) return json({ error: 'not_found' }, 404, cors);
       if (third === undefined) return json(collectionMetadata(second), 200, cached);
       return third === 'image.svg' ? svg(collectionImage(second), cors) : json({ error: 'not_found' }, 404, cors);
+    }
+
+    // The rarity ladder and the tier of every avatar: what `/world` and the cards read. Public, cacheable, no user data.
+    if (first === 'tiers') {
+      if (second !== undefined) return json({ error: 'not_found' }, 404, cors);
+      return json(tiersView(await loadAvatarCatalog(serviceClient())), 200, { ...cors, 'Cache-Control': PREVIEW_CACHE });
     }
 
     // "Try before you buy": the same art as the real endpoints, from the query alone. No user data, no write.

@@ -25,6 +25,7 @@ const INELIGIBLE_STATUS: Record<IneligibleCode, number> = {
   recipient_full: 409,
   gift_limit: 429,
   free_item: 409,
+  earn_only: 409,
   sold_out: 409,
   reservation_limit: 429,
   out_of_season: 409,
