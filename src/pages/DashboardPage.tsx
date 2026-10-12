@@ -74,7 +74,7 @@ export default function DashboardPage() {
         )}
         {!visitor && <ChestCue />}
         {!visitor && <WelcomeStrip trail={featured ?? null} />}
-        {featured && <FeaturedTrail trail={featured} onOpenLesson={openLesson} />}
+        {featured && <FeaturedTrail trail={featured} onOpenLesson={openLesson} onOpenTrail={openTrail} />}
         {!visitor && trails.length > 0 && (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="dashboard-main">
             <TrailCards trails={trails} pages={passport.pages} finished={trails.filter((t) => t.status === 'done').length} onOpen={openTrail} />

@@ -166,7 +166,7 @@ describe('HomeRoute: a member', () => {
     expect(useAchievements).toHaveBeenCalledWith({ enabled: true });
   });
 
-  it('the featured trail shows the current day and Continue opens that lesson', () => {
+  it('the featured trail shows the current day and Continue opens the trail with all its days, never a lesson', () => {
     renderHome();
     const hero = screen.getByTestId('featured-trail');
     expect(hero).toHaveTextContent('HTML · Itera v2');
@@ -174,7 +174,8 @@ describe('HomeRoute: a member', () => {
     expect(hero).toHaveTextContent('Página nasce');
     expect(hero).toHaveTextContent('1 de 3 atividades');
     fireEvent.click(within(hero).getByTestId('featured-continue'));
-    expect(navigate).toHaveBeenLastCalledWith('/lesson/l1');
+    expect(navigate).toHaveBeenLastCalledWith(expect.stringMatching(/^\/program\//));
+    expect(navigate).not.toHaveBeenCalledWith(expect.stringMatching(/^\/lesson\//));
   });
 
   it('a done day of the path can be reviewed and an upcoming one is not openable', () => {
