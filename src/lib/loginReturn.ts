@@ -12,7 +12,9 @@ interface LocationLike {
  * client-controlled, so only a same-origin in-app path passes.
  */
 export function returnPathOf(location: LocationLike): string {
-  const fromState = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  // The query is part of the destination: `/bounties/post?to=<wallet>` without it is another page.
+  const fromState = typeof from?.pathname === 'string' ? `${from.pathname}${typeof from.search === 'string' ? from.search : ''}` : undefined;
   return safeInternalPath(fromState ?? new URLSearchParams(location.search).get('next'));
 }
 
