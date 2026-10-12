@@ -84,7 +84,7 @@ describe('PurchaseDialog', () => {
   it('paid: says how many stamps of other learners the purchase paid for, only when the backend confirmed it', () => {
     const paid = { ...PURCHASE_IDLE, phase: 'paid' as const, explorerUrl: null };
     const { unmount } = show({ ...paid, proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: null, written: [], lives: null, circuitStamps: 110 } }, 'outfit');
-    expect(screen.getByTestId('purchase-circuit')).toHaveTextContent('+110 carimbos pagos pra outros alunos');
+    expect(screen.getByTestId('purchase-circuit')).toHaveTextContent('+110 carimbos cobertos pra outros alunos');
     unmount();
     show({ ...paid, proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: null, written: [], lives: null, circuitStamps: null } }, 'outfit');
     expect(screen.queryByTestId('purchase-circuit')).not.toBeInTheDocument();
