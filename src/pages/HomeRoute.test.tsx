@@ -247,7 +247,7 @@ describe('HomeRoute: a member', () => {
   it('the certifications panel is compact: title, n of total, the link and one thumbnail per trail', () => {
     renderHome();
     const panel = screen.getByTestId('achievements');
-    expect(panel).toHaveTextContent('Certificações do Tera');
+    expect(panel).toHaveTextContent('Certificações');
     expect(panel).toHaveTextContent('0 de 2');
     expect(within(panel).getByRole('link', { name: 'Ver certificações →' })).toHaveAttribute('href', '/passport');
     expect(within(panel).getAllByTestId('passport-card')).toHaveLength(2);
