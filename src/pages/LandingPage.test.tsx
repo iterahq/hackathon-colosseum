@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import LandingPage from './LandingPage';
@@ -32,6 +32,11 @@ const data = vi.hoisted(() => ({
 }));
 vi.mock('@/hooks/useBounties', () => ({ useBountyBoard: () => data.board }));
 vi.mock('@/hooks/useCircuit', () => ({ useCircuit: () => data.circuit }));
+const catalog = vi.hoisted(() => ({ source: 'bundled' as 'bundled' | 'live' }));
+vi.mock('@/hooks/useTeraCatalog', async () => {
+  const { FALLBACK_CATALOG } = await import('@/services/teraCatalog.service');
+  return { useTeraCatalog: () => ({ ...FALLBACK_CATALOG, source: catalog.source }) };
+});
 vi.mock('@/hooks/useLearnerProfile', () => ({ useLearnerProfile: () => data.profile }));
 
 function mount(locale: 'pt' | 'en') {
@@ -96,6 +101,17 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('landing-team')).not.toHaveTextContent(/\d+ (students|learners|followers|years)/);
     expect(screen.queryByTestId('landing-pitch-video')).toBeNull();
     expect(screen.getByTestId('landing-verify')).toHaveAttribute('href', '/verify');
+    localStorage.clear();
+  });
+
+  it('says a rare Tera cannot be bought, once the catalog answers that some tiers are never for sale', () => {
+    mount('en');
+    expect(screen.getByTestId('landing-steps')).not.toHaveTextContent('cannot be bought');
+    cleanup();
+    catalog.source = 'live';
+    mount('en');
+    expect(screen.getByTestId('landing-steps')).toHaveTextContent('Every stamped day also opens a chest with one Tera; the rare ones only come from there and cannot be bought.');
+    catalog.source = 'bundled';
     localStorage.clear();
   });
 
