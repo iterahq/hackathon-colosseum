@@ -51,7 +51,10 @@ describe('LandingPage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Learn.Prove.Earn.');
     expect(screen.getByTestId('landing-cta-wallet')).toHaveAttribute('href', '/login');
     expect(screen.getByTestId('landing-cta-profile')).toHaveAttribute('href', `/u/${EXAMPLE_WALLET}`);
-    expect(screen.getAllByTestId('landing-step')).toHaveLength(3);
+    expect(screen.getAllByTestId('landing-step')).toHaveLength(4);
+    expect(screen.getByTestId('landing-step-link')).toHaveAttribute('href', '/talent');
+    expect(screen.getByTestId('landing-cta-gate')).toHaveAttribute('href', '/verify#gate');
+    expect(screen.getByTestId('landing-hero-talent')).toHaveAttribute('href', '/talent');
     const stats = screen.getAllByTestId('landing-stat').map((s) => s.textContent);
     expect(stats).toEqual([
       '4open bounties',

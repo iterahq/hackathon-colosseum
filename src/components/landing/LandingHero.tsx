@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { FOCUS, LABEL } from '@/components/world/worldStyles';
 import { TRY_PATH } from '@/consts/guestLesson';
 import { useI18n } from '@/i18n';
-import { VERIFY_PATH } from './landingFacts';
+import { GATE_PATH, VERIFY_PATH } from './landingFacts';
 import { EXAMPLE_WALLET, PRIMARY_CTA, SECONDARY_CTA } from './landingStyles';
 
 export function LandingHero() {
@@ -17,6 +17,12 @@ export function LandingHero() {
           <span className="block">{t('landing.h1.earn')}</span>
         </h1>
         <p className="max-w-[46ch] [font:500_clamp(17px,2.2vw,21px)/1.45_Inter] text-[#C9BFB0]" data-testid="landing-lede">{t('landing.lede')}</p>
+        <p className="max-w-[52ch] [font:500_15px/1.5_Inter] text-[#C9BFB0]" data-testid="landing-hero-found">
+          {t('landing.hero.found')}{' '}
+          <Link to="/talent" className={`rounded text-[#F4EDE2] underline underline-offset-4 hover:text-[#3FD17F] ${FOCUS}`} data-testid="landing-hero-talent">
+            {t('landing.hero.talent')}
+          </Link>
+        </p>
         <div className="mt-1 flex flex-wrap gap-3">
           <Link to={TRY_PATH} className={`${PRIMARY_CTA} ${FOCUS}`} data-testid="landing-cta-try">
             {t('landing.cta.try')}
@@ -24,8 +30,8 @@ export function LandingHero() {
           <Link to="/login" className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-wallet">
             {t('landing.cta.wallet')}
           </Link>
-          <Link to={`/u/${EXAMPLE_WALLET}`} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-profile">
-            {t('landing.cta.profile')}
+          <Link to={GATE_PATH} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-gate">
+            {t('landing.cta.gate')}
           </Link>
         </div>
         <p className="max-w-[52ch] [font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="landing-hero-time">
@@ -40,6 +46,9 @@ export function LandingHero() {
           {t('landing.cta.emailTail')}
         </p>
         <p className="flex flex-wrap gap-x-4 gap-y-1 [font:600_13px_JetBrains_Mono] text-[#A0978A]" data-testid="landing-hero-links">
+          <Link to={`/u/${EXAMPLE_WALLET}`} className={`rounded hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-cta-profile">
+            {t('landing.cta.profile')} →
+          </Link>
           <Link to={VERIFY_PATH} className={`rounded hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-verify">
             {t('landing.hero.verify')} →
           </Link>
