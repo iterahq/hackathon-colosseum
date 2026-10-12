@@ -1,4 +1,5 @@
 import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BountyActionPanel } from '@/components/bounty/ActionPanel';
 import { BountyShell, ClampText, ExplorerAnchor, LINK, LoadError, Notice, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
@@ -16,7 +17,7 @@ import { useBounty, useBountyRecord } from '@/hooks/useBounties';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 import { addressUrl } from '@/lib/explorer';
-import { formatWhen } from '@/utils/bounty';
+import { formatWhen, safeHttpsUrl } from '@/utils/bounty';
 import type { BountyDetail } from '@/types/bounty';
 
 function Block({ title, children }: { title: string; children: string }) {
@@ -28,25 +29,50 @@ function Block({ title, children }: { title: string; children: string }) {
   );
 }
 
-function PostedBy({ bounty }: { bounty: BountyDetail }) {
+export function PostedBy({ bounty }: { bounty: BountyDetail }) {
   const { t } = useI18n();
+  const [more, setMore] = useState(false);
   const { postedBy } = bounty;
+  if (postedBy.kind !== 'wallet' || !postedBy.wallet) {
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1" data-testid="bounty-posted-by">
+        <span className={`${MONO_LABEL} text-[#A0978A]`}>
+          {postedBy.kind === 'team'
+            ? t('bounty.card.postedTeam', { name: postedBy.name })
+            : t(postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: postedBy.name, wallet: postedBy.walletShort ?? '' })}
+        </span>
+      </div>
+    );
+  }
+  const explorer = safeHttpsUrl(addressUrl(postedBy.wallet));
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="bounty-posted-by">
-      <span className={`${MONO_LABEL} text-[#A0978A]`}>
-        {postedBy.kind === 'team'
-          ? t('bounty.card.postedTeam', { name: postedBy.name })
-          : t(postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: postedBy.name, wallet: postedBy.walletShort ?? '' })}
-      </span>
-      {postedBy.kind === 'wallet' && postedBy.wallet && (
-        <>
-          <Link to={`/u/${postedBy.wallet}`} className={LINK}>{t('bounty.mine.profile')} →</Link>
-          <ExplorerAnchor href={addressUrl(postedBy.wallet)} />
-        </>
-      )}
-      {postedBy.kind === 'wallet' && bounty.writtenIn && (
-        <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-written-in">{t(`bounty.detail.writtenIn.${bounty.writtenIn}`)}</span>
-      )}
+    <div className="flex min-w-0 max-w-full flex-col" data-testid="bounty-posted-by" data-team-test={postedBy.teamTest}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={`shrink-0 rounded-full border px-2 py-1 [font:600_10px/1_JetBrains_Mono] uppercase tracking-[.08em] ${postedBy.teamTest ? 'border-[#F2C66D]/60 text-[#F2C66D]' : 'border-[#2E2A25] text-[#A0978A]'}`}
+          title={t(postedBy.teamTest ? 'bounty.card.postedTeamWallet' : 'bounty.card.postedWallet', { name: postedBy.name, wallet: postedBy.walletShort ?? '' })}
+          data-testid="bounty-posted-tag"
+        >
+          {t(postedBy.teamTest ? 'bounty.posted.tag.team' : 'bounty.posted.tag.outside')}
+        </span>
+        <span className="min-w-0 truncate [font:700_13px_Inter] text-[#F4EDE2]" title={postedBy.name}>{postedBy.name}</span>
+        <Link to={`/u/${postedBy.wallet}`} className={`${LINK} shrink-0`} title={t('bounty.mine.profile')} data-testid="bounty-posted-profile">
+          {postedBy.walletShort ?? postedBy.wallet}
+        </Link>
+        {explorer && (
+          <a href={explorer} target="_blank" rel="noopener noreferrer" aria-label={t('bounty.explorer')} title={t('bounty.explorer')} className={`${LINK} w-7 shrink-0 justify-center`} data-testid="bounty-posted-explorer">
+            ↗
+          </a>
+        )}
+        <button type="button" aria-expanded={more} aria-controls="bounty-posted-more" onClick={() => setMore((current) => !current)} className={`${LINK} shrink-0 !text-[#A0978A]`} data-testid="bounty-posted-more-toggle">
+          {t(more ? 'bounty.posted.less' : 'bounty.posted.more')}
+        </button>
+      </div>
+      <div id="bounty-posted-more" hidden={!more} className="flex-wrap items-center gap-x-3 gap-y-0 pb-1 [&:not([hidden])]:flex" data-testid="bounty-posted-more">
+        <Link to={`/u/${postedBy.wallet}`} className={LINK}>{t('bounty.mine.profile')} →</Link>
+        <ExplorerAnchor href={addressUrl(postedBy.wallet)} compact />
+        {bounty.writtenIn && <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-written-in">{t(`bounty.detail.writtenIn.${bounty.writtenIn}`)}</span>}
+      </div>
     </div>
   );
 }
