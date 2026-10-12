@@ -1,5 +1,6 @@
 import type { Locale } from '@/i18n';
 import raw from './teraLore.json';
+import FALLBACK_TIERS from './teraTiers.json';
 
 type Bag = { pt?: string; en?: string };
 type Lore = typeof raw;
@@ -73,24 +74,14 @@ export function CRYSTAL_LORE(locale: Locale) {
   return { name: pick(c.name, locale), line: pick(c.line, locale), text: pick(c.text, locale), earn };
 }
 
-/** The tier each cast member is shown under on /world (the lore file groups them by chapter, not by key). A lore grouping: it is not `shop_items.rarity`. */
-const TIER_OF: Record<string, LoreTier> = {
-  brand_phoenix_full: 'primordial',
-  special_arco_iris: 'mythic', event_space: 'mythic',
-  special_dourado: 'legendary', special_prata: 'legendary', special_verde_neon: 'legendary', special_azul_eletrico: 'legendary',
-  special_roxo_estelar: 'legendary', special_vermelho_lava: 'legendary', special_preto_cosmico: 'legendary',
-  base_guerreiro: 'epic', base_sombrio: 'epic', base_sabedoria: 'epic', base_evoluido: 'epic', event_halloween: 'epic', event_natal: 'epic', event_verao: 'epic',
-  base_lider: 'rare', base_mistico: 'rare', base_natural: 'rare', base_livre: 'rare',
-  base_focado: 'rare', base_estudioso: 'rare', base_determinado: 'rare', base_disciplinado: 'rare', base_focado_no_objetivo: 'rare',
-  base_criativo: 'rare', base_analitico: 'rare',
-  color_roxo: 'rare', color_dourado: 'rare', acc_oculos_codificador: 'rare', rarity_comum: 'rare',
-  lang_javascript: 'rare', lang_python: 'rare', lang_solidity: 'rare', lang_rust: 'rare', rarity_raro: 'rare',
-  base_iniciante: 'common', acc_cyber_chip: 'common', acc_oculos_tech: 'common', acc_capuz_web3: 'common', acc_chain_link: 'common',
-  acc_programador: 'common', acc_fogueira: 'common', color_azul: 'common', acc_cibernetico: 'common', acc_capuz_verde: 'common',
-  rarity_epico: 'epic',
-  rarity_lendario: 'legendary',
+export type TierMap = Readonly<Record<string, string>>;
+
+const PAID_TIERS: ReadonlySet<string> = new Set(['common', 'rare', 'epic', 'legendary', 'mythic', 'primordial']);
+
+/** The tier a cast member is shown under on /world: its rarity in the catalog (`avatars`, the bundled copy when none is passed). A Tera the catalog does not price is a free mood. */
+export const loreTierOf = (key: string, avatars: TierMap = FALLBACK_TIERS.avatars): LoreTier => {
+  const rarity = Object.prototype.hasOwnProperty.call(avatars, key) ? avatars[key] : '';
+  return PAID_TIERS.has(rarity) ? (rarity as LoreTier) : 'free';
 };
 
-export const loreTierOf = (key: string): LoreTier => TIER_OF[key] ?? 'free';
-
-export const loreKeysOfTier = (tier: LoreTier): string[] => LORE_KEYS.filter((k) => loreTierOf(k) === tier);
+export const loreKeysOfTier = (tier: LoreTier, avatars?: TierMap): string[] => LORE_KEYS.filter((k) => loreTierOf(k, avatars) === tier);

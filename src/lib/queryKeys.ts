@@ -191,6 +191,9 @@ export const queryKeys = {
   referral: {
     mine: (userId: string) => ['referral', userId] as const,
   },
+  tera: {
+    catalog: ['tera', 'catalog'] as const,
+  },
   circuit: {
     all: ['circuit'] as const,
     counter: (wallet: string) => ['circuit', wallet] as const,

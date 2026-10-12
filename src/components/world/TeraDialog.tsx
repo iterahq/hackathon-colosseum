@@ -1,14 +1,14 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { loreOf, loreRelated, loreTierOf, TIER_LORE } from '@/content/teraLore';
+import { loreOf, loreRelated, loreTierOf, TIER_LORE, type TierMap } from '@/content/teraLore';
 import { useI18n } from '@/i18n';
 import { TeraPortrait } from './TeraPortrait';
 import { FOCUS, LABEL } from './worldStyles';
 
 /** One Tera's story and quote, with links to its kin. Radix traps focus and closes on Esc. */
-export function TeraDialog({ avatarKey, onSelect, onClose }: { avatarKey: string | null; onSelect: (key: string) => void; onClose: () => void }) {
+export function TeraDialog({ avatarKey, avatars, onSelect, onClose }: { avatarKey: string | null; avatars?: TierMap; onSelect: (key: string) => void; onClose: () => void }) {
   const { t, locale } = useI18n();
   const lore = avatarKey ? loreOf(avatarKey, locale) : null;
-  const tier = avatarKey ? loreTierOf(avatarKey) : 'free';
+  const tier = avatarKey ? loreTierOf(avatarKey, avatars) : 'free';
   const related = avatarKey ? loreRelated(avatarKey, locale) : [];
   return (
     <Dialog.Root open={Boolean(lore)} onOpenChange={(open) => !open && onClose()}>
