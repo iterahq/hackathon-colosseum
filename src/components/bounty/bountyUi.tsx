@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChainProof } from '@/components/chain/ChainProof';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
@@ -163,6 +164,38 @@ export function BountyShell({ children, width = 960 }: { children: ReactNode; wi
         </header>
       )}
       <main className={`mx-auto flex w-full ${max} flex-col gap-6 px-4 pt-4 sm:px-8 sm:pt-8 ${signedIn ? 'pb-28 sm:pb-16' : 'pb-16'}`}>{children}</main>
+    </div>
+  );
+}
+
+/** One collapsed disclosure: what it holds stays in the page (and in a find-in-page), one tap away. */
+export function Fold({ label, children, testId, className = '' }: { label: string; children: ReactNode; testId?: string; className?: string }) {
+  return (
+    <details className={`group/fold min-w-0 ${className}`} data-testid={testId}>
+      <summary className={`flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 rounded [font:700_13px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] [&::-webkit-details-marker]:hidden ${FOCUS}`}>
+        <ChevronRight aria-hidden className="h-4 w-4 shrink-0 transition-transform group-open/fold:rotate-90" />
+        {label}
+      </summary>
+      <div className="flex min-w-0 flex-col gap-2.5 pb-1 pt-1 [font:400_13px/1.55_Inter] text-[#A0978A] [overflow-wrap:anywhere]">{children}</div>
+    </details>
+  );
+}
+
+const CLAMP_FROM = 360;
+
+/** Text somebody else wrote, whole on a wide screen; on a phone a long one shows its first lines and a "show more". */
+export function ClampText({ children, testId }: { children: string; testId?: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const long = children.length > CLAMP_FROM || children.split('\n').length > 8;
+  return (
+    <div className="flex min-w-0 flex-col items-start" data-testid={testId} data-clamped={long && !open}>
+      <p className={`whitespace-pre-line [font:400_15px/1.6_Inter] text-[#C9BFB0] [overflow-wrap:anywhere] ${long && !open ? 'max-sm:line-clamp-6' : ''}`}>{children}</p>
+      {long && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen((current) => !current)} className={`${LINK} sm:hidden`} data-testid="clamp-toggle">
+          {t(open ? 'bounty.text.less' : 'bounty.text.more')}
+        </button>
+      )}
     </div>
   );
 }

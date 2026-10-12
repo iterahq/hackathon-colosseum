@@ -1,7 +1,7 @@
 import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link, useParams } from 'react-router-dom';
 import { BountyActionPanel } from '@/components/bounty/ActionPanel';
-import { BountyShell, ExplorerAnchor, LINK, LoadError, Notice, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
+import { BountyShell, ClampText, ExplorerAnchor, LINK, LoadError, Notice, Reward, SECTION_TITLE, Skeleton, StatusChip } from '@/components/bounty/bountyUi';
 import { DirectChip, DirectNotice } from '@/components/bounty/DirectParts';
 import { EscrowPanel } from '@/components/bounty/EscrowPanel';
 import { HeldNotice } from '@/components/bounty/HeldNotice';
@@ -23,7 +23,7 @@ function Block({ title, children }: { title: string; children: string }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className={SECTION_TITLE}>{title}</h2>
-      <p className="whitespace-pre-line [font:400_15px/1.6_Inter] text-[#C9BFB0] [overflow-wrap:anywhere]">{children}</p>
+      <ClampText>{children}</ClampText>
     </section>
   );
 }

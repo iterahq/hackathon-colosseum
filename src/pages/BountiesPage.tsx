@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { BountyCard } from '@/components/bounty/BountyCard';
 import { InviteInbox } from '@/components/bounty/InviteInbox';
 import { JudgeBoardBlock } from '@/components/bounty/JudgeParts';
-import { BountyShell, LINK, LoadError, Skeleton } from '@/components/bounty/bountyUi';
+import { BountyShell, Fold, LINK, LoadError, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TeraNote } from '@/components/tera/TeraNote';
 import { useBountyBoard, useBountySession } from '@/hooks/useBounties';
@@ -10,16 +10,16 @@ import { useIsBountyStaff } from '@/hooks/useIsBountyStaff';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
 import { formatWhen, hiddenTestsLine, plural, sortBounties } from '@/utils/bounty';
-import { daysFooter, judgePaidHint, openHint } from '@/utils/bountyJudge';
+import { daysFooter, judgeBoardTitle, judgePaidHint, openHint } from '@/utils/bountyJudge';
 import { localizeDecimal } from '@/utils/shopPrice';
 import type { BountyStats } from '@/types/bounty';
 
-function Stat({ label, value, hint, testId }: { label: string; value: string; hint: string; testId: string }) {
+function Stat({ label, value, source, testId }: { label: string; value: string; source: string; testId: string }) {
   return (
-    <div className={`${CARD} flex min-w-0 flex-col gap-1 p-4`} data-testid={testId}>
-      <span className={`${MONO_LABEL} text-[#A0978A]`}>{label}</span>
-      <span className="[font:700_34px/1_'Barlow_Condensed'] text-[#3FD17F] [overflow-wrap:anywhere]">{value}</span>
-      <span className="[font:400_12px/1.4_Inter] text-[#A0978A]">{hint}</span>
+    <div className={`${CARD} flex min-w-0 flex-col gap-1 p-3 sm:p-4`} data-testid={testId}>
+      <span className="[font:600_10px/1.2_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A] sm:text-[11px]">{label}</span>
+      <span className="[font:700_34px/1_'Barlow_Condensed'] text-[#3FD17F] [overflow-wrap:anywhere] max-sm:text-[26px]">{value}</span>
+      <span className="[font:500_10px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid={`${testId}-source`}>{source}</span>
     </div>
   );
 }
@@ -45,6 +45,8 @@ export default function BountiesPage() {
   const items = board.data ? sortBounties(board.data.bounties) : [];
   const hiddenTests = hiddenTestsLine(t, stats, items.length);
   const footer = stats ? daysFooter(t, stats) : null;
+  const teamPaid = Boolean(stats) && ((stats?.rehearsalPaidCount ?? 0) > 0 || (stats?.judgeTeamTestPaidCount ?? 0) > 0);
+  const judgeLine = board.data && (board.data.stats.judgePaidCount > 0 || board.data.judge.latest.length > 0) ? judgeBoardTitle(t, { outside: board.data.stats.judgePaidCount, teamTests: board.data.stats.judgeTeamTestPaidCount ?? 0, listed: board.data.judge.latest.length }) : null;
 
   return (
     <BountyShell>
@@ -72,21 +74,21 @@ export default function BountiesPage() {
           </Link>
         )}
       </section>
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t('bounty.stats.aria')}>
-        <Stat testId="bounty-stat-locked" label={t('bounty.stats.locked')} value={stats ? localizeDecimal(stats.lockedSol, locale) : '—'} hint={t('bounty.stats.lockedHint')} />
-        <Stat testId="bounty-stat-paid" label={t('bounty.stats.paid')} value={stats ? localizeDecimal(stats.paidSol, locale) : '—'} hint={(stats && judgePaidHint(t, stats)) ?? paidHint(stats, t)} />
-        <Stat testId="bounty-stat-open" label={t('bounty.stats.open')} value={stats ? String(stats.openCount) : '—'} hint={stats ? openHint(t, { bounties: items.filter((item) => item.status === 'open').length, places: stats.openCount, held: stats.heldCount }) : t('bounty.stats.openHint')} />
+      <section className="flex flex-col gap-1" aria-label={t('bounty.stats.aria')}>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <Stat testId="bounty-stat-locked" label={t('bounty.stats.short.locked')} value={stats ? localizeDecimal(stats.lockedSol, locale) : '—'} source={t('bounty.stats.source.chain')} />
+          <Stat testId="bounty-stat-paid" label={t('bounty.stats.short.paid')} value={stats ? localizeDecimal(stats.paidSol, locale) : '—'} source={stats ? plural(t, teamPaid ? 'bounty.stats.source.paidTeam' : 'bounty.stats.source.paid', stats.paidCount) : t('bounty.stats.source.chain')} />
+          <Stat testId="bounty-stat-open" label={t('bounty.stats.short.open')} value={stats ? String(stats.openCount) : '—'} source={stats && stats.heldCount > 0 ? t('bounty.stats.source.held', { held: stats.heldCount }) : t('bounty.stats.source.now')} />
+        </div>
+        <Fold label={t('bounty.fold.numbers')} testId="bounty-stats-how">
+          {board.data?.readAt && <p data-testid="bounty-read-at">{t('bounty.stats.readAt', { time: formatWhen(board.data.readAt, locale) })}</p>}
+          <p data-testid="bounty-stat-locked-hint"><strong className="text-[#C9BFB0]">{t('bounty.stats.locked')}:</strong> {t('bounty.stats.lockedHint')}</p>
+          <p data-testid="bounty-stat-paid-hint"><strong className="text-[#C9BFB0]">{t('bounty.stats.paid')}:</strong> {(stats && judgePaidHint(t, stats)) ?? paidHint(stats, t)}</p>
+          <p data-testid="bounty-stat-open-hint"><strong className="text-[#C9BFB0]">{t('bounty.stats.open')}:</strong> {stats ? openHint(t, { bounties: items.filter((item) => item.status === 'open').length, places: stats.openCount, held: stats.heldCount }) : t('bounty.stats.openHint')}</p>
+          {hiddenTests && <p data-testid="bounty-hidden-tests">{hiddenTests}</p>}
+          {judgeLine && <p data-testid="bounty-judge-counters">{judgeLine}</p>}
+        </Fold>
       </section>
-      {board.data?.readAt && (
-        <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-read-at">
-          {t('bounty.stats.readAt', { time: formatWhen(board.data.readAt, locale) })}
-        </p>
-      )}
-      {hiddenTests && (
-        <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]" data-testid="bounty-hidden-tests">
-          {hiddenTests}
-        </p>
-      )}
       {board.data && <JudgeBoardBlock judge={board.data.judge} paidCount={board.data.stats.judgePaidCount} teamTestCount={board.data.stats.judgeTeamTestPaidCount ?? 0} />}
       {board.isPending && (
         <div className="flex flex-col gap-3" aria-busy="true" data-testid="bounty-loading">
@@ -112,8 +114,13 @@ export default function BountiesPage() {
           ))}
         </ul>
       )}
-      <p className="border-t border-[#262320] pt-5 [font:400_13px/1.55_Inter] text-[#A0978A]" data-testid="bounty-custody">{t('bounty.custody')}</p>
-      {footer && <p className="[font:400_13px/1.55_Inter] text-[#A0978A]" data-testid="bounty-days-footer">{footer}</p>}
+      <Fold label={t('bounty.fold.how')} testId="bounty-how" className="border-t border-[#262320] pt-3">
+        <p data-testid="bounty-custody">{t('bounty.custody')}</p>
+        {footer && <p data-testid="bounty-days-footer">{footer}</p>}
+        <Link to="/verify#gate" className={LINK} data-testid="bounty-how-gate">
+          {t('verify.link')} →
+        </Link>
+      </Fold>
     </BountyShell>
   );
 }
