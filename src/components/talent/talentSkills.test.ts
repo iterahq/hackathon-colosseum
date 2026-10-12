@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TalentLearner } from '@/types/talent';
-import { advancedFirst, capabilityTier, cardTierCounts, inTrail, learnersOfTrail, parseTrail } from './talentSkills';
+import { advancedFirst, capabilityTier, cardTierCounts, inTrail, learnersOfTrail, parseTrail, provenTrails } from './talentSkills';
 
 const cap = (key: string, graded?: string | null) => ({ key, title: key, ...(graded === undefined ? {} : { graded }) });
 const learner = (wallet: string, keys: string[]): TalentLearner => ({
@@ -25,13 +25,15 @@ describe('talent skills', () => {
   it('gives a tier only when the board stated a share or its absence', () => {
     expect(capabilityTier(cap('a', '12/12'))).toBe('top');
     expect(capabilityTier(cap('a', '10/12'))).toBe('middle');
-    expect(capabilityTier(cap('a', null))).toBe('base');
-    expect(capabilityTier(cap('a', 'nonsense'))).toBe('base');
+    expect(capabilityTier(cap('a', '0/12'))).toBe('base');
+    expect(capabilityTier(cap('a', null))).toBeNull();
+    expect(capabilityTier(cap('a', 'nonsense'))).toBeNull();
     expect(capabilityTier(cap('a'))).toBeNull();
   });
 
   it('counts a card per tier, and nothing for a board that carries no share', () => {
-    expect(cardTierCounts([cap('a', '10/12'), cap('b', '10/12'), cap('c', null)])).toEqual({ top: 0, middle: 2, base: 1 });
+    expect(cardTierCounts([cap('a', '10/12'), cap('b', '10/12'), cap('c', '0/12'), cap('d', null)])).toEqual({ top: 0, middle: 2, base: 1 });
+    expect(cardTierCounts([cap('a', null), cap('b', null)])).toBeNull();
     expect(cardTierCounts([cap('a'), cap('b')])).toBeNull();
     expect(cardTierCounts([])).toBeNull();
   });
@@ -42,5 +44,10 @@ describe('talent skills', () => {
     expect(learnersOfTrail(all, 'js')).toEqual([]);
     expect(learnersOfTrail(all, '')).toHaveLength(3);
     expect(inTrail(all[1].capabilities, 'html').map((entry) => entry.key)).toEqual(['html-tags']);
+  });
+
+  it('names only the trails somebody proved a skill of', () => {
+    expect([...provenTrails([cap('html-tags'), cap('html-form'), cap('js-console')])]).toEqual(['html', 'js']);
+    expect(provenTrails([]).size).toBe(0);
   });
 });

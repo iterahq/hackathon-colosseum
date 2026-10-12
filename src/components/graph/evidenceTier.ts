@@ -34,16 +34,19 @@ export function evidenceShare(evidence: string): EvidenceShare | null {
   }
 }
 
-/** Who checked the answers behind a proof: the server all of them, some of them, or none it can show. Never a grade of the learner. */
-export function tierOf(share: EvidenceShare | null): EvidenceTier {
-  if (!share || share.graded <= 0 || share.total <= 0) return 'base';
+/**
+ * Who checked the answers behind a proof: the server all of them, some of them, or none. Never a grade of the learner.
+ * `null` when the evidence states no share at all (a version 1 document): saying nothing is not the weakest tier.
+ */
+export function tierOf(share: EvidenceShare | null): EvidenceTier | null {
+  if (!share) return null;
+  if (share.graded <= 0 || share.total <= 0) return 'base';
   return share.graded >= share.total ? 'top' : 'middle';
 }
 
-/** The tier of a node from the share its list entry carries; `null` when the node is unproven or the answer says nothing about shares. */
+/** The tier of a node from the share its list entry carries; `null` when the node is unproven or its evidence states no share. */
 export function nodeTier(node: CapabilityNode): EvidenceTier | null {
-  if (!node.proof || node.proof.graded === undefined) return null;
-  return tierOf(parseShare(node.proof.graded));
+  return node.proof ? tierOf(parseShare(node.proof.graded)) : null;
 }
 
 export function tierCounts(nodes: readonly CapabilityNode[]): Record<EvidenceTier, number> | null {

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useI18n } from '@/i18n';
 import type { Capabilities } from '@/types/learnerProfile';
 import type { ChainState, Progress } from '@/components/graph/capabilityView';
+import { nodeTier } from '@/components/graph/evidenceTier';
 import { TierChips } from '@/components/graph/TierMedal';
 
 interface Props {
@@ -22,12 +24,21 @@ export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded
   const { t } = useI18n();
   const total = capabilities.total;
   const ratio = Math.min(1, proven / Math.max(1, total));
+  const [legend, setLegend] = useState(false);
+  const hasMedals = capabilities.nodes.some((n) => nodeTier(n) !== null);
 
   return (
     <div className="flex flex-col gap-4 rounded-[14px] border border-[#262320] bg-[#141210] p-4 sm:px-6 sm:py-5 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-x-10 lg:gap-y-3" data-testid="graph-header">
       <div className="flex items-center justify-between gap-4 lg:justify-start lg:gap-5">
         <div className="min-w-0">
-          <h2 id="graph-heading" className="[font:700_12px_JetBrains_Mono] uppercase tracking-[.18em] text-[#A0978A]">{t('graph.title')}</h2>
+          <div className="flex items-center gap-1">
+            <h2 id="graph-heading" className="[font:700_12px_JetBrains_Mono] uppercase tracking-[.18em] text-[#A0978A]">{t('graph.title')}</h2>
+            {hasMedals && (
+              <button type="button" onClick={() => setLegend((open) => !open)} aria-expanded={legend} aria-controls="graph-tier-legend" aria-label={t('graph.tier.help')} title={t('graph.tier.help')} className="-my-3 grid h-11 w-11 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]" data-testid="graph-tier-help">
+                <span className={`grid h-5 w-5 place-items-center rounded-full border [font:700_11px/1_JetBrains_Mono] ${legend ? 'border-[#3FD17F] text-[#3FD17F]' : 'border-[#3a352f] text-[#A0978A]'}`} aria-hidden="true">?</span>
+              </button>
+            )}
+          </div>
           <p className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="[font:700_60px/1_'Barlow_Condensed'] text-[#3FD17F] max-sm:text-[52px]" data-testid="graph-counter">{t('graph.counter', { n: proven, total })}</span>
             <span className="max-w-[11rem] [font:600_14px/1.3_Inter] text-[#F4EDE2] lg:max-w-none lg:whitespace-nowrap">{t('graph.counterLabel')}</span>
@@ -74,7 +85,11 @@ export function GraphHeader({ capabilities, chain, proven, progress, hasRecorded
         <li className="flex items-center gap-2"><Dot className="border-2 border-[#3a352f] bg-transparent" />{t('graph.legend.open')}</li>
         {hasRecorded && <li className="flex items-center gap-2"><Dot className="border-2 border-[#F2C66D] bg-transparent" />{t('graph.legend.recorded')}</li>}
       </ul>
-      {capabilities.nodes.some((n) => n.proof) && <TierChips testId="graph-tier-legend" className="lg:col-span-2 lg:row-start-3" />}
+      {hasMedals && (
+        <div id="graph-tier-legend" hidden={!legend} className="lg:col-span-2 lg:row-start-3">
+          <TierChips testId="graph-tier-legend" />
+        </div>
+      )}
     </div>
   );
 }

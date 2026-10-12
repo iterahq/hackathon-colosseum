@@ -27,10 +27,16 @@ describe('tierOf', () => {
     expect(tierOf({ graded: 1, total: 12 })).toBe('middle');
   });
 
-  it('is base when the server graded none, or the evidence states no share', () => {
+  it('is base only when a stated share says the server graded none', () => {
     expect(tierOf({ graded: 0, total: 12 })).toBe('base');
     expect(tierOf({ graded: 0, total: 0 })).toBe('base');
-    expect(tierOf(null)).toBe('base');
+    expect(tierOf(parseShare('0/12'))).toBe('base');
+  });
+
+  it('is no tier at all when the evidence states no share', () => {
+    expect(tierOf(null)).toBeNull();
+    expect(tierOf(parseShare(null))).toBeNull();
+    expect(tierOf(parseShare('nonsense'))).toBeNull();
   });
 });
 
@@ -47,13 +53,15 @@ describe('tiers of a graph', () => {
   it('gives a proven node a tier and an unproven one none', () => {
     expect(nodeTier(node('a', '12/12'))).toBe('top');
     expect(nodeTier(node('b', '10/12'))).toBe('middle');
-    expect(nodeTier(node('c', null))).toBe('base');
+    expect(nodeTier(node('c', null))).toBeNull();
+    expect(nodeTier(node('c2', '0/12'))).toBe('base');
     expect(nodeTier(node('d', undefined))).toBeNull();
     expect(nodeTier(node('e', '12/12', false))).toBeNull();
   });
 
   it('counts proven nodes per tier, and nothing when no node states a share', () => {
-    expect(tierCounts([node('a', '12/12'), node('b', '10/12'), node('c', '10/12'), node('d', null), node('e', null, false)])).toEqual({ top: 1, middle: 2, base: 1 });
+    expect(tierCounts([node('a', '12/12'), node('b', '10/12'), node('c', '10/12'), node('d', '0/12'), node('v1', null), node('e', null, false)])).toEqual({ top: 1, middle: 2, base: 1 });
     expect(tierCounts([node('a', undefined), node('e', null, false)])).toBeNull();
+    expect(tierCounts([node('v1', null), node('v1b', null)])).toBeNull();
   });
 });

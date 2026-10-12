@@ -109,11 +109,19 @@ describe('TalentPage', () => {
     expect(trail('css')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getAllByTestId('talent-filter-skill').map((chip) => chip.getAttribute('data-skill'))).toEqual(['css-rules']);
     expect(useTalentBoard).toHaveBeenLastCalledWith({ capability: '', minDays: 0 });
-    fireEvent.click(trail('js'));
-    expect(screen.getByTestId('talent-empty')).toHaveTextContent('Ninguém com esse filtro.');
-    expect(screen.queryByTestId('talent-empty-cta')).toBeNull();
+    expect(screen.getAllByTestId('talent-filter-trail').map((tab) => tab.getAttribute('data-trail'))).toEqual(['', 'html', 'css']);
     fireEvent.click(screen.getByTestId('talent-filter-clear'));
     expect(screen.getAllByTestId('talent-card')).toHaveLength(2);
+  });
+
+  it('offers no tab for a trail nobody proved, and a direct link to one still shows the empty state', () => {
+    useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board() });
+    show('/talent?trail=js');
+    expect(screen.getByTestId('talent-empty')).toHaveTextContent('Ninguém com esse filtro.');
+    expect(screen.queryByTestId('talent-empty-cta')).toBeNull();
+    expect(screen.getAllByTestId('talent-filter-trail').map((tab) => tab.getAttribute('data-trail'))).toEqual(['', 'html', 'js']);
+    fireEvent.click(screen.getByTestId('talent-filter-clear'));
+    expect(screen.getAllByTestId('talent-filter-trail').map((tab) => tab.getAttribute('data-trail'))).toEqual(['', 'html']);
   });
 
   it('a skill badge, in the filter row or on a card, filters by that skill and a second tap lifts it', () => {

@@ -53,13 +53,15 @@ export function TierBar({ share, tier }: { share: EvidenceShare; tier: EvidenceT
   );
 }
 
-/** The three tiers, one chip each, with an optional count in front of the name. */
+/** Without `counts`: the legend, the three tiers with their names. With `counts`: only the tiers somebody holds; nothing when none does. */
 export function TierChips({ counts, compact = false, testId, className = '' }: { counts?: Record<EvidenceTier, number> | null; compact?: boolean; testId: string; className?: string }) {
   const { t } = useI18n();
+  const shown = counts ? TIERS.filter((tier) => counts[tier] > 0) : TIERS;
+  if (shown.length === 0) return null;
   return (
     <ul className={`flex flex-wrap gap-x-2 gap-y-1.5 ${className}`} aria-label={t('graph.tier.legend')} data-testid={testId}>
-      {TIERS.map((tier) => (
-        <li key={tier} className={`inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#262320] bg-[#0A0908] py-0.5 pl-0.5 pr-2.5 ${counts && counts[tier] === 0 ? 'opacity-55' : ''}`} title={t(`graph.tier.${tier}`)} data-tier={tier} data-count={counts ? counts[tier] : undefined}>
+      {shown.map((tier) => (
+        <li key={tier} className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#262320] bg-[#0A0908] py-0.5 pl-0.5 pr-2.5" title={t(`graph.tier.${tier}`)} data-tier={tier} data-count={counts ? counts[tier] : undefined}>
           <TierMedal tier={tier} />
           {counts && <span className="[font:700_13px/1_JetBrains_Mono]" style={{ color: TIER_COLOR[tier] }}>{counts[tier]}</span>}
           <span className={compact ? 'sr-only' : '[font:500_11px/1_JetBrains_Mono] text-[#C9BFB0]'}>{t(`graph.tier.${tier}`)}</span>
