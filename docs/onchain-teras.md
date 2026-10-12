@@ -178,7 +178,7 @@ bounded to 1.2 s; past that the stamp goes out as it always did.
 
 ## The bought Tera
 
-> The hackathon build hides this shelf (`FOCUS_PAID_TERAS_OFF` in `src/config/focus.ts`): the three tiers for sale are not listed or offered in the UI. Build with `VITE_PAID_TERAS=on` to bring it back; the server, the `purchase-*` functions and every Tera already bought are unchanged.
+> Since the call of 2026-10-12 the shelf is ON by default: the shop lists the three tiers for sale, priced in SOL, and the world says a tier is earned by studying or bought. Build with `VITE_PAID_TERAS=off` (`FOCUS_PAID_TERAS_OFF` in `src/config/focus.ts`) to hide it again; the server, the `purchase-*` functions and every Tera already bought are the same either way. The faces every learner starts with are not listed in the shop or the world (`FOCUS_STARTER_FACES_UNLISTED`): a Tera is earned or bought. `node scripts/hackathon/demo-e2e.mjs` clicks the whole path (a day, its chest, the world, the balance, one purchase) with a throwaway wallet.
 
 Unchanged purchase rail (see [`onchain-purchases.md`](onchain-purchases.md), "Tera avatars"): minted with no freeze
 plugin, so its owner can transfer it. Tera, Super Tera and Mega Tera are for sale.

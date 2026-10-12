@@ -20,7 +20,7 @@ describe('the Tera shelf', () => {
     tera('ardo', { rarity: 'epic', tierName: 'Mega Tera', transferable: true, royaltyBps: 500, supply: { minted: 0, max: 100 } }, { priceLabel: 'US$ 10.00 ≈ 0.055 SOL' }),
   ];
   const [shelf] = shelvesOfArcade(teras);
-  const groups = groupsOf(shelf, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false);
+  const groups = groupsOf(shelf, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false, false);
 
   it('lists the three tiers for sale, then ONE earn-only group rarest first, then the free faces', () => {
     expect(groups.map((g) => [g.id, g.items.map((i) => i.key)])).toEqual([
@@ -38,10 +38,16 @@ describe('the Tera shelf', () => {
     expect(royaltyPercent(250)).toBe('2.5');
   });
 
+  it('in a shop that takes SOL only, names the SOL price of the tier and its cap, nothing else', () => {
+    const sol = groupsOf(shelf, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false, true);
+    expect(sol[0].note).toBe('0.055 SOL · arcade.capEach:100');
+    expect(sol[1].note).toBe('0.0055 SOL · arcade.capEach:500');
+  });
+
   it('keeps saying a tier is transferable when the learner holds one of its Teras, earned and bound', () => {
     const held = tera('nuno', { transferable: false, royaltyBps: 0 }, { owned: true });
     const [mixed] = shelvesOfArcade([held, tera('pipo', { transferable: true, royaltyBps: 500 })]);
-    const [common] = groupsOf(mixed, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false);
+    const [common] = groupsOf(mixed, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false, false);
     expect(common.note).toContain('shelf.transferable · shelf.fee:5');
   });
 
@@ -103,7 +109,9 @@ describe('arcadeModel', () => {
 
   it('says the crystal price when crystals are on, the short USD price otherwise, and the state when owned', () => {
     expect(tileLine(base({ priceCrystals: 2500 }), t)).toEqual({ text: '2.5k', tone: 'price', crystal: true });
-    expect(tileLine(base({ priceLabel: 'US$ 100.00 ≈ 0.5 SOL' }), t)).toEqual({ text: 'US$ 100', tone: 'price', crystal: false });
+    expect(tileLine(base({ priceLabel: 'US$ 100.00 ≈ 0.5 SOL' }), t, 'en', false)).toEqual({ text: 'US$ 100', tone: 'price', crystal: false });
+    expect(tileLine(base({ priceLabel: 'US$ 100.00 ≈ 0.5 SOL' }), t, 'en', true)).toEqual({ text: '0.5 SOL', tone: 'price', crystal: false });
+    expect(tileLine(base({ priceLabel: 'US$ 0.20 ≈ 0.0011 SOL' }), t, 'pt', true).text).toBe('0,0011 SOL');
     expect(tileLine(base({ owned: true, equipped: true }), t).tone).toBe('equipped');
     expect(tileLine(base({ kind: 'border', forSale: false }), t).tone).toBe('muted');
   });

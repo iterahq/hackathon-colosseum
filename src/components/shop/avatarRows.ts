@@ -27,6 +27,9 @@ export interface AvatarRows {
 
 export const shortPrice = (label: string): string => label.split('≈')[0].trim();
 
+/** The SOL part of the backend price label ("0.0011 SOL"); the whole label when it names no SOL amount. */
+export const solPrice = (label: string): string => label.split('≈')[1]?.trim() || label.trim();
+
 export function rowsOf(items: readonly ShopItem[]): AvatarRows {
   const avatars = items.filter((i) => i.kind === 'avatar' && i.avatar);
   const paid = avatars.filter((i) => !i.avatar?.free);
