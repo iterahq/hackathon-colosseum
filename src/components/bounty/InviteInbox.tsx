@@ -2,6 +2,7 @@ import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link } from 'react-router-dom';
 import { Reward } from '@/components/bounty/bountyUi';
 import { DirectChip } from '@/components/bounty/DirectParts';
+import { MissionSkillRow } from '@/components/bounty/MissionSkills';
 import { CARD, FOCUS, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useInvitedInbox } from '@/hooks/useInvites';
 import { useI18n } from '@/i18n';
@@ -19,13 +20,14 @@ export function InviteRow({ bounty, now }: { bounty: Bounty; now: number }) {
         className={`flex w-full min-w-0 flex-col gap-2 rounded-[12px] border border-[#2E2A25] bg-[#0A0908] p-3.5 transition-colors hover:border-[#3FD17F] sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${FOCUS}`}
         data-testid="invite-row"
       >
-        <span className="flex min-w-0 flex-col gap-1">
+        <span className="flex min-w-0 flex-col gap-1.5">
           <span className="[font:700_22px/1.1_'Barlow_Condensed'] text-[#F4EDE2] [overflow-wrap:anywhere]">{bounty.title}</span>
           <span className={`${MONO_LABEL} text-[#A0978A] [overflow-wrap:anywhere]`}>
             {t('bounty.inbox.sponsor', { name: bounty.postedBy.name })}
             {' · '}
             {left === null ? t('bounty.inbox.noDate') : t('bounty.inbox.left', { time: formatRemaining(left) })}
           </span>
+          <MissionSkillRow requirement={bounty.requirement} />
         </span>
         <span className="flex min-w-0 flex-wrap items-center gap-3">
           <Reward sol={bounty.rewardSol} />

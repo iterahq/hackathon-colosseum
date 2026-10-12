@@ -1,7 +1,8 @@
 import { PrizeTeraTag } from '@/components/bounty/PrizeTera';
 import { Link } from 'react-router-dom';
 import { JudgeCaption, JudgeChip } from '@/components/bounty/JudgeParts';
-import { RehearsalChip, Reward, RequirementChip, StatusChip } from '@/components/bounty/bountyUi';
+import { RehearsalChip, Reward, StatusChip } from '@/components/bounty/bountyUi';
+import { MissionSkillRow } from '@/components/bounty/MissionSkills';
 import { CARD, FOCUS, MONO_LABEL } from '@/components/shop/shopStyles';
 import { useI18n } from '@/i18n';
 import { formatWhen } from '@/utils/bounty';
@@ -46,8 +47,8 @@ export function BountyCard({ bounty }: { bounty: Bounty }) {
           <Reward sol={bounty.rewardSol} />
           <PrizeTeraTag bounty={bounty} link={false} />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <RequirementChip trail={bounty.requirement.trail} minDays={bounty.requirement.minDays} />
+        <MissionSkillRow requirement={bounty.requirement} />
+        <div className="flex flex-wrap items-center gap-2 empty:hidden">
           {bounty.status === 'paid' && bounty.claim && (
             <span className="[font:700_12px_JetBrains_Mono] text-[#F4EDE2]">{t(bounty.rehearsal ? 'bounty.card.paidToRehearsal' : 'bounty.card.paidTo', { wallet: bounty.claim.walletShort })}</span>
           )}

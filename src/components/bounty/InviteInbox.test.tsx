@@ -10,7 +10,7 @@ vi.mock('@/hooks/useInvites', () => ({ useInvitedInbox: () => useInvitedInbox() 
 
 const NOW = Date.parse('2026-10-11T00:00:00Z');
 const row = (over: Partial<Bounty> = {}) =>
-  ({ id: 'b1', slug: 'bakery-table', title: 'Accessible table', rewardSol: '0.01', direct: true, status: 'open', expiresAt: '2026-10-13T06:00:00Z', postedBy: { name: 'Bakery Co' }, ...over }) as Bounty;
+  ({ id: 'b1', slug: 'bakery-table', title: 'Accessible table', rewardSol: '0.01', direct: true, status: 'open', expiresAt: '2026-10-13T06:00:00Z', postedBy: { name: 'Bakery Co' }, requirement: { program: 'itera-v2', unitId: 'u1', trail: 'Week 1 · HTML', minDays: 2, totalDays: 5 }, ...over }) as Bounty;
 const show = () => render(<I18nProvider><MemoryRouter><InviteInbox now={NOW} /></MemoryRouter></I18nProvider>);
 
 describe('InviteInbox', () => {
@@ -26,6 +26,8 @@ describe('InviteInbox', () => {
     expect(item).toHaveTextContent('faltam 2d 6h');
     expect(item).toHaveTextContent('0,01');
     expect(screen.getByTestId('invite-inbox')).toHaveTextContent('Enviadas para você');
+    expect(screen.getAllByTestId('skill-badge').map((badge) => badge.getAttribute('data-claim'))).toEqual(['html-nesting', 'html-attrs']);
+    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('+2');
     expect(screen.queryByTestId('invite-inbox-unchecked')).toBeNull();
   });
 
