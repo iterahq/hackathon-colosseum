@@ -4,6 +4,7 @@ import { InviteCard } from '@/components/gift/InviteCard';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { LearnerAvatar as AvatarPicture } from '@/components/avatar/LearnerAvatar';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
+import { WalletBalance } from '@/components/wallet/WalletBalance';
 import { useI18n } from '@/i18n';
 import type { LearnerAvatar } from '@/types/avatar';
 import type { CompanionState, LivesState, ShopItem } from '@/types/shop';
@@ -83,6 +84,7 @@ export function ShopArcade({ items, actions, avatar, lives, companion, wallet, w
               {t('shop.pay.balance', { n: formatCount(balance, locale) })}
             </span>
           )}
+          <WalletBalance variant="line" />
           <span className={`${MONO_LABEL} !text-[9px] text-[#8A8175]`} data-testid="shop-devnet-note">{t('shop.devnetNote')}</span>
         </section>
         {!wallet && walletKnown && (

@@ -3,10 +3,19 @@ import { AppTopBar } from '@/components/header/AppTopBar';
 import '@/components/dashboard/dashboard.css';
 import { ProfileWebSlots } from '@/components/profile/ProfileWebSlots';
 import { profileScreenIcon, profileScreenImage } from '@/components/profile/profileScreenParts';
+import { WalletBalance } from '@/components/wallet/WalletBalance';
 import { APP_GRID_STYLE } from '@/consts/headerShell';
 import { useProfileScreen } from '@/hooks/useProfileScreen';
 
-const header = <AppTopBar />;
+/** The wallet comes first on the profile, as in a wallet app: what the learner holds, and the way to spend it. */
+const header = (
+  <>
+    <AppTopBar />
+    <div className="mx-auto w-full max-w-2xl px-4 pt-6 empty:hidden md:pt-8">
+      <WalletBalance />
+    </div>
+  </>
+);
 
 /**
  * Web host of the universal profile screen: the shared top bar and grid around it, the screen's own body inside.

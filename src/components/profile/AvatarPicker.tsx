@@ -18,10 +18,13 @@ export function AvatarPicker() {
   const { outfit } = useCompanion();
   const equipAvatar = useEquipAvatar();
   const equipOutfit = useEquipOutfit();
-  const [tab, setTab] = useState<LookTab>('faces');
+  const [picked, setTab] = useState<LookTab | null>(null);
   // The focus build wears what is owned and the free faces; it never counts what a paid tier would add.
   const look = buildProfileLook(focusShopItems(shop.data ?? [], 'wardrobe'), current, outfit);
   const tabs = shownLookTabs(look);
+  // Until the learner picks a tab the picker opens on the one that holds what is worn: a Tera just bought is on screen at once.
+  const home: LookTab = look.looks.some((a) => a.key === current.key) ? 'looks' : look.gearAvatars.some((a) => a.key === current.key) ? 'gear' : 'faces';
+  const tab = picked ?? home;
   const shown = tabs.includes(tab) ? tab : 'faces';
   // The stage says how the worn Tera was obtained: the shop row knows it even when the companion block does not.
   const worn = current.origin ?? [...look.faces, ...look.looks, ...look.gearAvatars].find((a) => a.key === current.key)?.origin ?? null;

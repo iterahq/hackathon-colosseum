@@ -1,6 +1,9 @@
 /** Strings of "Vincular carteira" (linking a Solana wallet to an e-mail account). */
 export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'wallet.balance.title': 'Saldo da carteira',
+    'wallet.balance.label': 'Saldo',
+    'wallet.balance.shop': 'Usar na loja',
     'wallet.link.cta': 'Vincular carteira',
     'wallet.link.title': 'Vincular carteira',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
@@ -35,6 +38,9 @@ export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wallet.chip.linked': 'carteira vinculada',
   },
   en: {
+    'wallet.balance.title': 'Wallet balance',
+    'wallet.balance.label': 'Balance',
+    'wallet.balance.shop': 'Spend it in the Shop',
     'wallet.link.cta': 'Link wallet',
     'wallet.link.title': 'Link wallet',
     // not-commerce: a cryptographic signature or a devnet bounty payout in the text, not a price or a subscription
