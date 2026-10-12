@@ -1,5 +1,5 @@
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, loadSupply, mintAvatar, supabaseUrl } from './avatar-store.ts';
-import { avatarImageUrl, earnedAttributes, isOwnedRow, lowestFreeSerial, teraProof, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
+import { avatarImageUrl, earnedAttributes, isEarnOnly, isOwnedRow, lowestFreeSerial, teraProof, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
 import type { Lang } from './art.ts';
 import { markClaimsWritten } from './claims-store.ts';
 import { onchainAttributes, pickText, explorerUrl, type AchievementRow, type CatalogEntry } from './credential.ts';
@@ -88,7 +88,8 @@ const storedPools = new Set<string>();
 /** The pool a chest opened now commits to, stored by its hash so it can be served for as long as a chest names it. */
 async function currentPool(db: IteraClient): Promise<{ hash: string; pool: ChestPool }> {
   const catalog = await loadAvatarCatalog(db);
-  const pool = buildPool([...catalog.items.values()]);
+  // On the shelf, or of a tier that is earned only: a Tera retired from a tier that is sold is not given either.
+  const pool = buildPool([...catalog.items.values()].filter((item) => item.active || isEarnOnly(catalog, item)));
   const hash = poolHash(pool);
   if (!storedPools.has(hash)) {
     const { error } = await db.from('tera_chest_pools').upsert({ hash, document: poolDocument(pool) }, { onConflict: 'hash', ignoreDuplicates: true });
