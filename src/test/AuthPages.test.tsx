@@ -80,11 +80,12 @@ describe('FIX A — audience-neutral hero copy', () => {
   });
 });
 
-describe('subscription-gated auth — login page', () => {
-  it('renders the login page with the sign-in form', () => {
+describe('wallet-only sign-in — login page', () => {
+  it('renders the login page with one wallet action and no form', () => {
     renderAt('/login');
     expect(screen.getByTestId('login-page')).toBeInTheDocument();
-    expect(screen.getByTestId('login-form')).toBeInTheDocument();
+    expect(screen.getByTestId('install-phantom')).toBeInTheDocument();
+    expect(screen.queryByTestId('login-form')).not.toBeInTheDocument();
   });
 
   it('does NOT have a Google OAuth button', () => {
@@ -92,33 +93,20 @@ describe('subscription-gated auth — login page', () => {
     expect(screen.queryByTestId('oauth-google')).not.toBeInTheDocument();
   });
 
-  it('DOES link to /signup — the self-serve door the funnel needs', () => {
+  it('does NOT link to /signup: the e-mail door is reachable by URL only', () => {
     renderAt('/login');
-    expect(screen.getByTestId('goto-signup')).toBeInTheDocument();
+    expect(screen.queryByTestId('goto-signup')).not.toBeInTheDocument();
   });
 
-  it('DOES have a DFL login button (oauth-dfl testId present)', () => {
+  it('does NOT have a DFL login button', () => {
     renderAt('/login');
-    expect(screen.getByTestId('oauth-dfl')).toBeInTheDocument();
+    expect(screen.queryByTestId('oauth-dfl')).not.toBeInTheDocument();
   });
 
-
-  it('signs in via signInWithPassword and navigates on success (no regression)', async () => {
-    signInWithPassword.mockResolvedValue({ error: null });
+  it('does NOT offer password sign-in', () => {
     renderAt('/login');
-
-    fireEvent.change(screen.getByTestId('email-input'), {
-      target: { value: 'old@user.dev' },
-    });
-    fireEvent.change(screen.getByTestId('password-input'), {
-      target: { value: 'mypassword' },
-    });
-    fireEvent.click(screen.getByTestId('submit-login'));
-
-    await waitFor(() =>
-      expect(signInWithPassword).toHaveBeenCalledWith('old@user.dev', 'mypassword')
-    );
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
+    expect(screen.queryByTestId('email-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('submit-login')).not.toBeInTheDocument();
   });
 });
 

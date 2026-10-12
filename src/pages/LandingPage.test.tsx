@@ -30,6 +30,7 @@ const data = vi.hoisted(() => ({
     },
   } as Record<string, unknown>,
 }));
+vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ signInWithSolana: vi.fn() }) }));
 vi.mock('@/hooks/useBounties', () => ({ useBountyBoard: () => data.board }));
 vi.mock('@/hooks/useCircuit', () => ({ useCircuit: () => data.circuit }));
 const catalog = vi.hoisted(() => ({ source: 'bundled' as 'bundled' | 'live' }));

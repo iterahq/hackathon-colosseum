@@ -71,7 +71,6 @@ const program: CatalogProgram = {
 };
 
 const SURFACES: [name: string, element: ReactElement, affordance: string][] = [
-  ['the login page', <LoginPage />, 'goto-signup'],
   ['the header of an account without access', <AppHeader />, 'nav-subscribe-cta'],
   ['a locked program', <LockedProgramView program={program} />, 'program-locked-subscribe'],
   ['the visitor banner', <VisitorBanner />, 'visitor-banner-cta'],
@@ -117,12 +116,13 @@ describe('commerce affordances per surface', () => {
     expect(container.textContent).not.toMatch(FORBIDDEN);
   });
 
-  it('the login page keeps password reset and the code login inside the shell', () => {
-    surface.value = 'shell';
-    mount(<LoginPage />);
-    expect(screen.getByTestId('login-form')).toBeInTheDocument();
-    expect(screen.getByTestId('goto-otp')).toBeInTheDocument();
-    expect(screen.getByText('Esqueci minha senha')).toBeInTheDocument();
+  it.each(['web', 'shell', 'pending'] as const)('the login page is wallet-only on the %s surface: no sign-up or subscribe link', (value) => {
+    surface.value = value;
+    const { container } = mount(<LoginPage />);
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('login-form')).not.toBeInTheDocument();
+    expect(commerceLinks(container)).toHaveLength(0);
+    expect(container.textContent).not.toMatch(FORBIDDEN);
   });
 
   it('the guest end card keeps its way to the login inside the shell', () => {

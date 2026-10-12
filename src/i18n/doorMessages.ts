@@ -2,6 +2,7 @@
 export const DOOR_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'door.title': 'Entrar na Itera',
+    'door.connect': 'Conectar carteira',
     'door.subtitle': 'Sua carteira é sua conta, sua certificação e seu inventário. Nada a pagar.',
     'door.wallet.continue': 'Continuar com {wallet}',
     'door.wallet.free': 'Sem e-mail, sem cartão, sem SOL: o servidor paga cada gravação na chain.',
@@ -56,6 +57,7 @@ export const DOOR_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   },
   en: {
     'door.title': 'Enter Itera',
+    'door.connect': 'Connect Wallet',
     'door.subtitle': 'Your wallet is your account, your certification and your inventory. Nothing to pay.',
     'door.wallet.continue': 'Continue with {wallet}',
     'door.wallet.free': 'No e-mail, no card, no SOL: the server pays every write on chain.',
