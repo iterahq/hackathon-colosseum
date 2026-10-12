@@ -7,9 +7,10 @@ import { countOf } from '@/utils/plural';
 interface Props {
   trail: Trail;
   onOpenLesson: (lessonId: string) => void;
+  onOpenTrail: (trail: Trail) => void;
 }
 
-export function FeaturedTrail({ trail, onOpenLesson }: Props) {
+export function FeaturedTrail({ trail, onOpenLesson, onOpenTrail }: Props) {
   const { t, tText } = useI18n();
   const color = colorOfTrail(trail);
   const current = currentDayOf(trail);
@@ -69,12 +70,11 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
           <button
             type="button"
             data-testid="featured-continue"
-            disabled={!current}
-            onClick={() => current && onOpenLesson(current.id)}
+            onClick={() => onOpenTrail(trail)}
             className="mt-2 h-[60px] w-full rounded-xl border-0 border-b-[6px] [font:700_26px_'Barlow_Condensed'] transition-transform duration-75 active:translate-y-[5px] active:border-b-[1px] sm:w-[360px]"
             style={{ background: color.c, color: color.ink, borderBottomColor: color.cd }}
           >
-            {fresh ? t('dash.hero.startDay1') : t('dash.hero.continue')}
+            {fresh ? t('dash.trail.start') : t('dash.hero.continue')}
           </button>
         </div>
         <div className="relative">

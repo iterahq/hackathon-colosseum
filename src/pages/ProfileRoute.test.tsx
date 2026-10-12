@@ -77,12 +77,12 @@ describe('ProfileRoute (web host of the universal profile screen)', () => {
     expect(screen.queryByTestId('profile-avatar-option')).not.toBeInTheDocument();
   });
 
-  it('shows the "Meu Tera" picker with the default face marked and three tabs', async () => {
+  it('shows the "Meu Tera" picker with the default face marked, and no tabs while faces are all there is to wear', async () => {
     renderPage();
     await screen.findByTestId('profile-name-input');
     const options = screen.getAllByTestId('avatar-option');
     expect(options[0]).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
   });
 
   it('saves the edited name without touching the photo column', async () => {
