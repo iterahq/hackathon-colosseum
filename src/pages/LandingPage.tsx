@@ -1,3 +1,4 @@
+import { FOCUS_PAID_TERAS_OFF } from '@/config/focus';
 import { LandingExample } from '@/components/landing/LandingExample';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 import { LandingHeader } from '@/components/landing/LandingHeader';
@@ -29,7 +30,7 @@ export default function LandingPage() {
         <LandingStory />
         <ol className="grid list-none gap-4 p-0 md:grid-cols-2 lg:grid-cols-4" data-testid="landing-steps">
           <LandingStep label={t('landing.step.learn.label')} title={t('landing.step.learn.title')} body={t('landing.step.learn.body')} accent="#3FD17F" />
-          <LandingStep label={t('landing.step.prove.label')} title={t('landing.step.prove.title')} body={earnOnly ? `${t('landing.step.prove.body')} ${t('landing.step.prove.chest')}` : t('landing.step.prove.body')} accent="#F2C94C" />
+          <LandingStep label={t('landing.step.prove.label')} title={t('landing.step.prove.title')} body={earnOnly ? `${t('landing.step.prove.body')} ${t(FOCUS_PAID_TERAS_OFF ? 'landing.step.prove.chestOnly' : 'landing.step.prove.chest')}` : t('landing.step.prove.body')} accent="#F2C94C" />
           <LandingStep label={t('landing.step.earn.label')} title={t('landing.step.earn.title')} body={older ? `${t('landing.step.earn.body')} ${t('landing.step.earn.older')}` : t('landing.step.earn.body')} accent="#9B8CFF" />
           <LandingStep label={t('landing.step.found.label')} title={t('landing.step.found.title')} body={t('landing.step.found.body')} accent="#5FB8FF" link={{ to: '/talent', label: t('landing.step.found.link') }} />
         </ol>

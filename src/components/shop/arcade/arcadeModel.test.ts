@@ -20,7 +20,7 @@ describe('the Tera shelf', () => {
     tera('ardo', { rarity: 'epic', tierName: 'Mega Tera', transferable: true, royaltyBps: 500, supply: { minted: 0, max: 100 } }, { priceLabel: 'US$ 10.00 ≈ 0.055 SOL' }),
   ];
   const [shelf] = shelvesOfArcade(teras);
-  const groups = groupsOf(shelf, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en');
+  const groups = groupsOf(shelf, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false);
 
   it('lists the three tiers for sale, then ONE earn-only group rarest first, then the free faces', () => {
     expect(groups.map((g) => [g.id, g.items.map((i) => i.key)])).toEqual([
@@ -41,8 +41,14 @@ describe('the Tera shelf', () => {
   it('keeps saying a tier is transferable when the learner holds one of its Teras, earned and bound', () => {
     const held = tera('nuno', { transferable: false, royaltyBps: 0 }, { owned: true });
     const [mixed] = shelvesOfArcade([held, tera('pipo', { transferable: true, royaltyBps: 500 })]);
-    const [common] = groupsOf(mixed, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en');
+    const [common] = groupsOf(mixed, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en', false);
     expect(common.note).toContain('shelf.transferable · shelf.fee:5');
+  });
+
+  it('with the paid shelf off, a tier row of an owned Tera says whose it is and nothing about price or resale', () => {
+    const [mine] = shelvesOfArcade([tera('pipo', { transferable: true, royaltyBps: 500 }, { owned: true })]);
+    const [common] = groupsOf(mine, (key) => key, 'en', true);
+    expect(common.note).toBe('shelf.owned.note');
   });
 
   it('says the cap of a tier per Tera and never adds the caps up', () => {

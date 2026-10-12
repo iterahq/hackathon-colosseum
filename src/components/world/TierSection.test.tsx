@@ -11,7 +11,8 @@ describe('obtainKey', () => {
 
   it('tells a tier on the shelf from one that is never for sale', () => {
     expect(obtainKey('free', live)).toBe('world.obtain.free');
-    for (const tier of ['common', 'rare', 'epic'] as const) expect(obtainKey(tier, live)).toBe('world.obtain.shelf');
+    for (const tier of ['common', 'rare', 'epic'] as const) expect(obtainKey(tier, live, false)).toBe('world.obtain.shelf');
+    for (const tier of ['common', 'rare', 'epic'] as const) expect(obtainKey(tier, live, true)).toBe('world.obtain.chest');
     for (const tier of ['legendary', 'mythic', 'primordial'] as const) expect(obtainKey(tier, live)).toBe('world.obtain.earnOnly');
   });
 

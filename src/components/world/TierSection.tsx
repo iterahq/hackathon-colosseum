@@ -1,17 +1,19 @@
 import { TIER_LORE, loreOf, type LoreTier } from '@/content/teraLore';
 import type { TeraCatalog } from '@/types/tera';
 import { castKeysOfTier } from './castArt';
+import { FOCUS_PAID_TERAS_OFF } from '@/config/focus';
 import { useI18n } from '@/i18n';
 import { TeraPortrait } from './TeraPortrait';
 import { FOCUS, H2, PANEL } from './worldStyles';
 
 /** How the Teras of a tier are obtained, said only once the live catalog answered: a free face, a tier on the shelf, or a tier that is never for sale. */
-export const obtainKey = (tier: LoreTier, catalog: TeraCatalog): string | null => {
+export const obtainKey = (tier: LoreTier, catalog: TeraCatalog, paidOff: boolean = FOCUS_PAID_TERAS_OFF): string | null => {
   if (catalog.source !== 'live') return null;
   if (tier === 'free') return 'world.obtain.free';
   const entry = catalog.tiers.find((t) => t.rarity === tier);
   if (!entry) return null;
-  return entry.earnOnly ? 'world.obtain.earnOnly' : 'world.obtain.shelf';
+  if (entry.earnOnly) return 'world.obtain.earnOnly';
+  return paidOff ? 'world.obtain.chest' : 'world.obtain.shelf';
 };
 
 /** How an earn-only tier is earned, as the catalog says it. Null: the catalog has no sentence for it. */
