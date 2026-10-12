@@ -39,7 +39,7 @@ describe('the order of the live missions', () => {
 
   it('tells a tester card only by a wallet poster and a title that starts with Judge test', () => {
     expect(boardTier(judgeTest('x'))).toBe(2);
-    expect(boardTier({ ...judgeTest('x'), postedBy: { kind: 'team' } as never })).toBe(0);
+    expect(boardTier({ ...judgeTest('x'), postedBy: { kind: 'team' } })).toBe(0);
     expect(boardTier({ ...sponsor('x', 1), title: 'A page for a judge test lab' })).toBe(0);
     expect(boardTier(judgeOwn('j'))).toBe(1);
   });

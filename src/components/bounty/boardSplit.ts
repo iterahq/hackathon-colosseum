@@ -2,7 +2,7 @@ import type { Bounty, BountyStatus } from '@/types/bounty';
 
 const LIVE: readonly BountyStatus[] = ['open', 'claimed', 'submitted', 'paying'];
 
-type BoardItem = Pick<Bounty, 'status' | 'rehearsal'> & Partial<Pick<Bounty, 'title' | 'rewardLamports' | 'judge' | 'postedBy'>>;
+type BoardItem = Pick<Bounty, 'status' | 'rehearsal'> & Partial<Pick<Bounty, 'title' | 'rewardLamports'>> & { judge?: unknown; postedBy?: Pick<Bounty['postedBy'], 'kind'> };
 
 /**
  * Where an open mission sits on the board: 0 a mission of the team or of a sponsor, 1 the judge's own mission, 2 a
