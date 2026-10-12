@@ -580,6 +580,11 @@ node scripts/hackathon/gift-browser.mjs --base http://localhost:8080 --out /tmp/
 
 ## Tera avatars (profile pictures: free icons and collectible NFTs)
 
+> **2026-10-12:** this section describes the BOUGHT Tera. A Tera can now also be earned (the day chest) or be the prize
+> of a bounty; both are soulbound and live in the same collection. The tiers and prices below are the first catalog:
+> the live ones follow migration `0350_tera_one_rarity.sql`, Legendary and above are earn-only, and the collection
+> carries a 5% Royalties plugin. See [`onchain-teras.md`](onchain-teras.md).
+
 Migration `0142_nft_avatars.sql`. Pure rules in `_shared/avatars.ts` and `_shared/preview.ts`, database
 and mint in `_shared/avatar-store.ts`, picture fetch in `_shared/avatar-image.ts`. Everything here is
 additive: the items, the certification path and the lives behave as before.

@@ -225,7 +225,7 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
   Nothing secret goes in a `VITE_*` variable.
 - Edge function secrets: `SOLANA_AUTHORITY_SECRET`, `SOLANA_TREASURY_SECRET`, `SOLANA_RPC_URL`
   (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase).
-- Migrations: `db/migrations/` (hackathon ones are 0110 to 0210). Functions: `supabase/functions/`, deployed with
+- Migrations: `db/migrations/` (hackathon ones are 0110 to 0352). Functions: `supabase/functions/`, deployed with
   `supabase functions deploy <name> --project-ref <ref> --use-api`.
 - Unit tests of the on-chain modules (no network, no secrets): `npx vitest run --config vitest.supabase.config.ts`.
 - `scripts/hackathon/*.mjs` are end-to-end scripts against the deployed devnet backend (passport, purchase, gift,
@@ -249,6 +249,11 @@ For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev
   upgradeable by one key. There is no dispute path: a rejected delivery reopens the bounty and the learner sees the
   sponsor's note. Rewards are devnet SOL. An approved delivery is a human judgement, not a proof.
 - Avatar transfers are not tracked for equip, and the new holder gets no row. Avatar refunds are manual.
+- Teras: an earned Tera's roll can be recomputed by anyone, but one key writes every commitment (it could commit a day
+  twice; every write is public), the effort level and the list of Teras a learner already holds are our server's word,
+  and devnet prunes old blocks. The 5% resale fee is a Core Royalties plugin: a marketplace that honours it pays, a
+  plain transfer does not. The escrow program knows nothing about a bounty's prize Tera: our server mints it after the
+  payout and only if the funding paid for it. See [`docs/onchain-teras.md`](docs/onchain-teras.md).
 - Some public functions have no per-IP rate limit (`credential-verify`, `credential-meta`, `learner-profile`; the
   Blink endpoint caps unpaid intents but has no per-IP limit). The public devnet RPC is rate limited.
 - Assets minted before the security pass keep the internal learner id in their `learner` attribute until their next
