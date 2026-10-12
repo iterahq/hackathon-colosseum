@@ -349,7 +349,7 @@ const App = () => (
                 {/* Tera's world: public lore page, readable without a session. */}
                 <Route path="/world" element={<LazyRoute><WorldPage /></LazyRoute>} />
                 <Route path="/u/:wallet" element={<LazyRoute><LearnerProfilePage /></LazyRoute>} />
-                <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
+                {!FOCUS_BUILD && <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />}
                 <Route path="/bounties" element={<LazyRoute><BountiesPage /></LazyRoute>} />
                 <Route path="/talent" element={<LazyRoute><TalentPage /></LazyRoute>} />
                 <Route path="/bounties/manage" element={<RequireAuth><LazyRoute><BountyManagePage /></LazyRoute></RequireAuth>} />
@@ -642,7 +642,7 @@ const App = () => (
                   }
                 />
 
-                <Route path="/prototipo/cena" element={<LazyRoute><ScenePrototypePage /></LazyRoute>} />
+                {!FOCUS_BUILD && <Route path="/prototipo/cena" element={<LazyRoute><ScenePrototypePage /></LazyRoute>} />}
                 <Route path="*" element={<LazyRoute><NotFoundRoute /></LazyRoute>} />
               </Routes>
               </RouteErrorBoundary>

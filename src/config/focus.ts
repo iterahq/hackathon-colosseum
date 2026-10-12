@@ -9,8 +9,11 @@
  */
 export const FOCUS_BUILD = (import.meta.env.VITE_FOCUS_BUILD as string | undefined) !== 'off';
 
-/** Learner routes a focus build sends to the dashboard. Staff routes are not here on purpose. */
-export const FOCUS_HIDDEN_PATHS = ['/catalog', '/course/:slug', '/subscribe', '/subscribe/return'] as const;
+/**
+ * Learner routes a focus build sends to the dashboard. Staff routes are not here on purpose.
+ * `/gift/:wallet` offers one thing, the life gift, and lives are off; `/prototipo/cena` is an inherited prototype.
+ */
+export const FOCUS_HIDDEN_PATHS = ['/catalog', '/course/:slug', '/subscribe', '/subscribe/return', '/gift/:wallet', '/prototipo/cena'] as const;
 
 /** The one thing the learner collects: days stamped and capabilities proven. XP, level and streak stay out of the story. */
 export const FOCUS_ONE_PROGRESS_STORY = FOCUS_BUILD;

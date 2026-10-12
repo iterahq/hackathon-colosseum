@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { RequireAuth } from '@/auth/RequireAuth';
+import { FOCUS_BUILD, FOCUS_HIDDEN_PATHS } from '@/config/focus';
 import { returnPathOf } from '@/lib/loginReturn';
 
 const authState = { session: null as unknown, loading: false, configured: true };
@@ -17,7 +18,8 @@ const routeOf = (path: string): string => {
 };
 
 const ACCOUNT_ONLY = ['/bounties/manage', '/bounties/post', '/bounties/mine'];
-const PUBLIC_ON_PURPOSE = ['/bounties', '/bounties/:slug', '/u/:wallet', '/c/:asset', '/verify', '/talent', '/try', '/world', '/gift/:wallet'];
+const PUBLIC_ON_PURPOSE = ['/bounties', '/bounties/:slug', '/u/:wallet', '/c/:asset', '/verify', '/talent', '/try', '/world'];
+const FOCUS_HIDDEN = ['/gift/:wallet', '/prototipo/cena'];
 const WALLET = 'BpdhX8hnhXCHexMJd9T51evueJZurttWfhEKELnrKeq1';
 
 function Login() {
@@ -66,5 +68,32 @@ describe('account-only bounty routes', () => {
     authState.session = { access_token: 'header.payload.signature' };
     visit(`/bounties/post?to=${WALLET}`);
     expect(screen.getByTestId('page')).toBeInTheDocument();
+  });
+});
+
+describe('surfaces a focus build hides', () => {
+  it('is a focus build unless the build says otherwise', () => {
+    expect(FOCUS_BUILD).toBe(true);
+  });
+
+  it.each(FOCUS_HIDDEN)('%s is sent to the dashboard, and its page is mounted only outside a focus build', (path) => {
+    expect(FOCUS_HIDDEN_PATHS).toContain(path);
+    expect(routeOf(path)).toMatch(/^\s*\{!FOCUS_BUILD && <Route /);
+  });
+
+  it('one line of App.tsx turns every hidden path into a redirect home', () => {
+    expect(APP).toContain('{FOCUS_BUILD && FOCUS_HIDDEN_PATHS.map((path) => <Route key={path} path={path} element={<Navigate to="/" replace />} />)}');
+  });
+
+  it('a hidden path lands on "/" and never renders its page', () => {
+    render(
+      <MemoryRouter initialEntries={['/gift/BpdhX8hnhXCHexMJd9T51evueJZurttWfhEKELnrKeq1']}>
+        <Routes>
+          <Route path="/" element={<div data-testid="home" />} />
+          {FOCUS_HIDDEN_PATHS.map((path) => <Route key={path} path={path} element={<Navigate to="/" replace />} />)}
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('home')).toBeInTheDocument();
   });
 });
