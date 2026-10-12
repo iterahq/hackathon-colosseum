@@ -37,7 +37,10 @@ describe('ChestSection', () => {
     expect(screen.getByTestId('verify-chest')).toHaveTextContent('Confira um baú você mesmo');
     expect(screen.getByTestId('verify-chest')).toHaveTextContent('A conta, em palavras');
     const rows = within(screen.getByTestId('chest-odds')).getAllByRole('row');
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
+    // Only the last level gives the one-of-one any weight.
+    expect(rows.slice(1, 5).every((row) => row.textContent?.endsWith('0'))).toBe(true);
+    expect(rows[5]).toHaveTextContent(/10$/);
     expect(rows[1]).toHaveTextContent('070002500450455' + '0');
     expect(mocks.getChest).not.toHaveBeenCalled();
   });

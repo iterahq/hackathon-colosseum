@@ -1,3 +1,4 @@
+import { EarnHow } from './EarnHow';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArtZoom } from '@/components/artviewer';
@@ -117,7 +118,11 @@ export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false
           </div>
           <div className="flex flex-none flex-col gap-2 border-t border-[#262320] p-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:flex-row-reverse sm:px-6">
             {action.id === 'earn' ? (
-              <p data-testid="tryon-action" data-action="earn" className="flex items-center [font:600_14px/1.4_Inter] text-[#F2C66D] sm:flex-1">{action.label}</p>
+              <p data-testid="tryon-action" data-action="earn" className="flex items-center [font:600_14px/1.4_Inter] text-[#F2C66D] sm:flex-1">
+                <span>
+                  {action.label} <EarnHow rarity={offer?.rarity ?? null} />
+                </span>
+              </p>
             ) : action.id === 'buy' ? (
               <PayButtons item={item} action={action} testId="tryon-action" labels="full" walletLabel={action.label} autoFocus stack className="sm:flex-1" keyClass="!min-h-12 !px-3 ![font:700_14px_Inter]" />
             ) : (

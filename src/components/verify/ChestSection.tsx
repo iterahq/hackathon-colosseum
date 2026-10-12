@@ -15,7 +15,7 @@ const CELL = 'border-t border-[#2E2A25] px-2 py-2 text-right [font:500_12px_JetB
 const HEAD = 'px-2 py-2 text-right [font:600_10px/1.3_JetBrains_Mono] uppercase tracking-wider text-[#8F8779]';
 const SUBTITLE = "[font:700_18px/1.2_'Barlow_Condensed'] text-[#F4EDE2]";
 const TAG = 'ml-1.5 inline-block whitespace-nowrap rounded-full border px-1.5 py-[1px] [font:600_9px_JetBrains_Mono] uppercase tracking-[.08em]';
-const LEVELS = [0, 1, 2, 3] as const;
+const LEVELS = Object.keys(ODDS_TABLE).map(Number).sort((a, b) => a - b) as Array<keyof typeof ODDS_TABLE>;
 
 type Outcome =
   | { state: 'done'; chest: Chest; recompute: ChestRecompute; result: ChestRecomputed }
@@ -133,6 +133,12 @@ function Recompute() {
               {done.result.level}
               <Source chain />
             </RawField>
+            {done.chest.odds.length > 0 && (
+              <RawField label={t('verify.chest.field.odds')} testId="chest-committed-odds">
+                {done.chest.odds.map((entry) => `${entry.tier} ${entry.weight}`).join(' · ')}
+                <Source chain={false} />
+              </RawField>
+            )}
             <RawField label={t('verify.chest.field.pool')}>
               {t('verify.chest.field.poolValue')}
               <Source chain={false} />

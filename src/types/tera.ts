@@ -6,6 +6,8 @@ export interface TeraTier {
   label: { pt: string; en: string };
   /** Never for sale: the tier only comes out of the chest of a stamped day. */
   earnOnly: boolean;
+  /** How an earn-only tier is earned, in the server's own words; absent in the bundled copy and for a tier on sale. */
+  how?: { pt: string; en: string } | null;
 }
 
 export interface TeraCatalog {

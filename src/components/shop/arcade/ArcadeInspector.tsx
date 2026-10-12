@@ -14,6 +14,7 @@ import { TryOnStage } from '../TryOnStage';
 import { ArcadeArt } from './ArcadeTile';
 import { localizePriceLabel } from '@/utils/shopPrice';
 import { royaltyPercent } from './arcadeModel';
+import { EarnHow } from '../EarnHow';
 
 const TRYABLE: readonly ShopItem['kind'][] = ['avatar', 'outfit', 'ink', 'frame'];
 const TOGGLE = `min-h-9 flex-1 rounded-[8px] px-3 [font:700_12px_JetBrains_Mono] uppercase tracking-[.06em] ${FOCUS}`;
@@ -34,7 +35,7 @@ function Action({ item, action, testId, labels, locale, className = '' }: { item
   if (action.id === 'earn') {
     return (
       <p data-testid={testId} data-action="earn" className={`${labels === 'full' ? '[font:600_14px/1.4_Inter]' : 'max-w-[148px] [font:600_11px/1.3_Inter]'} text-[#F2C66D] ${className}`}>
-        {action.label}
+        {action.label} <EarnHow rarity={item.avatar?.rarity ?? null} />
       </p>
     );
   }

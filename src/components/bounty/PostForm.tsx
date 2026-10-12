@@ -15,7 +15,7 @@ import { shortAddress, txUrl } from '@/lib/explorer';
 import { bountyErrorCode } from '@/services/bounty.service';
 import { lamportsToSol, POST_TEXT_LIMITS, validatePostForm, type PostField, type PostFormValues, type PostTextField } from '@/utils/bounty';
 import type { BountyLang, CreatedBounty, PostOptions, PrizeTeraInput, TxPhase } from '@/types/bounty';
-import { brandError, isAccent, tidyBrand } from '@/utils/prizeTera';
+import { brandBlocks, brandError, isAccent, tidyBrand } from '@/utils/prizeTera';
 
 const CREATE_CODES = ['invalid_prize_tera', 'prize_unavailable', 'invalid_sponsor', 'invalid_text', 'invalid_reward', 'invalid_requirement', 'invalid_deadline', 'too_many_today', 'too_many_live', 'invalid_invitee', 'own_invitee', 'direct_unavailable'];
 const LANG_NAMES: Record<BountyLang, string> = { pt: 'Português', en: 'English' };
@@ -51,7 +51,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
   const [acknowledged, setAcknowledged] = useState(false);
   const prizeOptions = options.prizeTera ?? null;
   const [prize, setPrize] = useState<PrizeTeraInput | null>(null);
-  const prizeBad = Boolean(prize && prizeOptions && (brandError(prize.brand, prizeOptions.brandMin, prizeOptions.brandMax) || !isAccent(prize.accent) || !prize.base));
+  const prizeBad = Boolean(prize && prizeOptions && (brandBlocks(brandError(prize.brand, prizeOptions.brandMin, prizeOptions.brandMax)) || !isAccent(prize.accent) || !prize.base));
   const [created, setCreated] = useState<CreatedBounty | null>(null);
   const [phase, setPhase] = useState<TxPhase | null>(null);
   const trail = trails.find((x) => x.unitId === unitId) ?? trails[0];

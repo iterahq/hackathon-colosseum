@@ -58,10 +58,14 @@ describe('PrizeTeraFields', () => {
     fireEvent.click(screen.getByTestId('prize-toggle'));
     fireEvent.change(screen.getByTestId('prize-brand'), { target: { value: '<b>Acme</b>' } });
     await wait();
-    expect(screen.getByRole('alert')).toHaveTextContent('Sem emoji, aspas ou código.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Sem emoji, aspas, código ou letras de outro alfabeto.');
     expect(screen.queryByTestId('prize-preview-art')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByTestId('prize-brand'), { target: { value: 'Itera Official' } });
-    expect(screen.getByRole('alert')).toHaveTextContent('Use o nome da sua marca.');
+    fireEvent.change(screen.getByTestId('prize-brand'), { target: { value: 'DevFellowship' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByTestId('prize-brand-team')).toHaveTextContent('Só passa se a sua conta for da equipe daquele time');
+    expect(screen.getByTestId('prize-brand')).not.toHaveAttribute('aria-invalid', 'true');
+    await wait();
+    expect(screen.getByTestId('prize-preview')).toHaveTextContent('A prévia pública não desenha nome de time.');
   });
 
   it('an empty name is only called short after a submit attempt', () => {

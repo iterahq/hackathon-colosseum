@@ -19,7 +19,8 @@ function toTier(v: unknown): TeraTier | null {
   const rarity = text(r.rarity);
   const name = both(r.tier_name);
   if (!rarity || !name.en) return null;
-  return { rarity, rank: typeof r.rank === 'number' ? r.rank : 0, tierName: name, label: both(r.label), earnOnly: r.earn_only === true };
+  const how = both(r.how);
+  return { rarity, rank: typeof r.rank === 'number' ? r.rank : 0, tierName: name, label: both(r.label), earnOnly: r.earn_only === true, how: how.en ? how : null };
 }
 
 /** Null when the body is not a catalog (no tier, or no Tera listed): the caller keeps the bundled copy. */
