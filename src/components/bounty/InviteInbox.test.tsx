@@ -26,8 +26,8 @@ describe('InviteInbox', () => {
     expect(item).toHaveTextContent('faltam 2d 6h');
     expect(item).toHaveTextContent('0,01');
     expect(screen.getByTestId('invite-inbox')).toHaveTextContent('Enviadas para você');
-    expect(screen.getAllByTestId('skill-badge').map((badge) => badge.getAttribute('data-claim'))).toEqual(['html-skeleton', 'html-nesting', 'html-attrs']);
-    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('+1');
+    expect(screen.getAllByTestId('skill-badge').map((badge) => badge.getAttribute('data-claim'))).toEqual(['html-nesting', 'html-attrs']);
+    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('+2');
     expect(screen.queryByTestId('invite-inbox-unchecked')).toBeNull();
   });
 

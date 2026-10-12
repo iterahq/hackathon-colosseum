@@ -10,8 +10,8 @@ export interface SkillRequirement {
   minDays: number;
 }
 
-/** A requirement as skills: the trail and its days in one small line, then up to `max` badges and a `+N`. */
-export function MissionSkillRow({ requirement, max = 3 }: { requirement: SkillRequirement | null | undefined; max?: number }) {
+/** A requirement as skills: the trail and its days in one small line, then up to `max` badges (two fit one line of a phone card) and a `+N`. */
+export function MissionSkillRow({ requirement, max = 2 }: { requirement: SkillRequirement | null | undefined; max?: number }) {
   const { t, locale } = useI18n();
   if (!requirement) return null;
   const skills = missionSkills(requirement, locale);

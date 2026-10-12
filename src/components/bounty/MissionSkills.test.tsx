@@ -18,9 +18,9 @@ describe('MissionSkillRow', () => {
   it('keeps the latest skills and counts the ones left out', () => {
     show({ program: 'itera-v2', trail: 'Semana 2 · CSS', minDays: 3 });
     expect(screen.getByTestId('mission-skills')).toHaveAttribute('data-count', '6');
-    expect(screen.getAllByTestId('skill-badge')).toHaveLength(3);
-    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('+3');
-    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('e mais 3 skills');
+    expect(screen.getAllByTestId('skill-badge')).toHaveLength(2);
+    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('+4');
+    expect(screen.getByTestId('mission-skills-more')).toHaveTextContent('e mais 4 skills');
   });
 
   it('falls back to the plain requirement chip for a trail outside the graph', () => {
