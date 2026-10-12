@@ -35,4 +35,11 @@ describe('talent service parsers', () => {
     expect(parseStatus({ may_list: false, reason: 'nothing_proven' })).toMatchObject({ listed: false, mayList: false, reason: 'nothing_proven' });
     expect(parseStatus({ reason: 'weird' }).reason).toBeNull();
   });
+
+describe('the share of a skill on a card', () => {
+  it('tells a stated share, a stated absence and a board that did not say apart, and keeps nothing else', () => {
+    const learner = parseLearner({ wallet: 'W1', capabilities: [{ key: 'a', title: 'A', graded: '10/12', evidence: 'secret' }, { key: 'b', title: 'B', graded: null }, { key: 'c', title: 'C' }] });
+    expect(learner?.capabilities).toEqual([{ key: 'a', title: 'A', graded: '10/12' }, { key: 'b', title: 'B', graded: null }, { key: 'c', title: 'C' }]);
+  });
+});
 });

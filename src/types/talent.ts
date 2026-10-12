@@ -3,6 +3,8 @@ import type { ContactField } from '@/types/privacy';
 export interface TalentCapability {
   key: string;
   title: string;
+  /** The share the evidence document of this skill states ("10/12"); `null`: it states none; absent: the board did not say. */
+  graded?: string | null;
 }
 
 export interface TalentAvatar {

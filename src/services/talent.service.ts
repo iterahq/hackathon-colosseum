@@ -13,7 +13,8 @@ const rows = (v: unknown): Row[] => (Array.isArray(v) ? v.map(row) : []);
 const text = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 const int = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-const toCapabilities = (v: unknown): TalentCapability[] => rows(v).flatMap((r) => (text(r.key) && text(r.title) ? [{ key: String(r.key), title: String(r.title) }] : []));
+const toCapabilities = (v: unknown): TalentCapability[] =>
+  rows(v).flatMap((r) => (text(r.key) && text(r.title) ? [{ key: String(r.key), title: String(r.title), ...('graded' in r ? { graded: text(r.graded) } : {}) }] : []));
 
 export function parseLearner(v: unknown): TalentLearner | null {
   const r = row(v);

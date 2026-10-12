@@ -4,6 +4,8 @@ import { BountyShell, LoadError, Skeleton } from '@/components/bounty/bountyUi';
 import { BTN_PRIMARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TalentCard } from '@/components/talent/TalentCard';
 import { TalentFilters } from '@/components/talent/TalentFilters';
+import { learnersOfTrail, parseTrail, type TalentTrail } from '@/components/talent/talentSkills';
+import { skillFamily } from '@/components/skills/skillIcon';
 import { TeraNote } from '@/components/tera/TeraNote';
 import { useCompanyAccess, useTalentBoard } from '@/hooks/useTalent';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -20,14 +22,16 @@ export default function TalentPage() {
   const [params, setParams] = useSearchParams();
   const filters: Filters = { capability: params.get('capability') ?? '', minDays: parseMinDays(params.get('min_days')) };
   const board = useTalentBoard(filters);
-  const filtered = filters.capability !== '' || filters.minDays > 0;
-  const setFilters = (next: Filters) => {
+  const trail = parseTrail(params.get('trail'));
+  const filtered = filters.capability !== '' || filters.minDays > 0 || trail !== '';
+  const setFilters = (next: Filters, nextTrail: TalentTrail | '' = trail) => {
     const query = new URLSearchParams();
+    if (nextTrail) query.set('trail', nextTrail);
     if (next.capability) query.set('capability', next.capability);
     if (next.minDays > 0) query.set('min_days', String(next.minDays));
     setParams(query, { replace: true });
   };
-  const learners = board.data?.learners ?? [];
+  const learners = learnersOfTrail(board.data?.learners ?? [], trail);
   const company = useCompanyAccess().data ?? null;
   // The count the server sent back with the last contact shown, so the line above the cards stays true without another read.
   const [left, setLeft] = useState<number | null>(null);
@@ -43,7 +47,7 @@ export default function TalentPage() {
       <p className="max-w-[680px] rounded-[12px] border border-[#2E2A25] bg-[#141210] px-3 py-2 [font:400_13px/1.5_Inter] text-[#C9BFB0]" data-testid="talent-contact-rule" data-company={company?.isCompany === true}>
         {company?.isCompany ? t('privacy.board.company', { max: company.revealsPerDay, left: left ?? company.revealsLeftToday }) : t('privacy.board.visitor')}
       </p>
-      <TalentFilters filters={filters} capabilities={board.data?.capabilities ?? []} onChange={setFilters} />
+      <TalentFilters filters={filters} trail={trail} capabilities={board.data?.capabilities ?? []} onChange={setFilters} />
       <p className="[font:500_12px/1.5_JetBrains_Mono] text-[#A0978A]" data-testid="talent-source">
         {t('talent.source')}
         {board.data?.readAt ? ` ${t('talent.readAt', { time: formatWhen(board.data.readAt, locale) })}.` : ''}
@@ -74,7 +78,7 @@ export default function TalentPage() {
         <ul className="grid gap-4 sm:grid-cols-2 min-[1100px]:grid-cols-3" data-testid="talent-list">
           {learners.map((learner) => (
             <li key={learner.wallet} className="flex min-w-0">
-              <TalentCard learner={learner} company={company} onRevealed={setLeft} />
+              <TalentCard learner={learner} company={company} onRevealed={setLeft} activeSkill={filters.capability} onPickSkill={(key) => setFilters({ ...filters, capability: filters.capability === key ? '' : key }, skillFamily(key) === trail ? trail : '')} />
             </li>
           ))}
         </ul>

@@ -88,4 +88,44 @@ describe('TalentPage', () => {
     expect(screen.getAllByTestId('contact-none')).toHaveLength(1);
     company.data = undefined;
   });
+
+  it('a trail keeps only the people who proved a skill of it, without asking the server again', () => {
+    const [first] = board().learners;
+    const data = board({
+      capabilities: [{ key: 'html-tags', title: 'Reads HTML' }, { key: 'css-rules', title: 'Writes CSS' }],
+      learners: [{ ...first, capabilities: [{ key: 'html-tags', title: 'Reads HTML' }] }, { ...first, wallet: 'W2222222222222222222222222222222', capabilities: [{ key: 'html-tags', title: 'Reads HTML' }, { key: 'css-rules', title: 'Writes CSS' }] }],
+    });
+    useTalentBoard.mockReturnValue({ isPending: false, isError: false, data });
+    show();
+    expect(screen.getAllByTestId('talent-card')).toHaveLength(2);
+    const trail = (key: string) => screen.getAllByTestId('talent-filter-trail').find((tab) => tab.getAttribute('data-trail') === key)!;
+    fireEvent.click(trail('css'));
+    expect(screen.getAllByTestId('talent-card')).toHaveLength(1);
+    expect(trail('css')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByTestId('talent-filter-skill').map((chip) => chip.getAttribute('data-skill'))).toEqual(['css-rules']);
+    expect(useTalentBoard).toHaveBeenLastCalledWith({ capability: '', minDays: 0 });
+    fireEvent.click(trail('js'));
+    expect(screen.getByTestId('talent-empty')).toHaveTextContent('Ninguém com esse filtro.');
+    expect(screen.queryByTestId('talent-empty-cta')).toBeNull();
+    fireEvent.click(screen.getByTestId('talent-filter-clear'));
+    expect(screen.getAllByTestId('talent-card')).toHaveLength(2);
+  });
+
+  it('a skill badge, in the filter row or on a card, filters by that skill and a second tap lifts it', () => {
+    const [first] = board().learners;
+    useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board({ learners: [{ ...first, capabilities: [{ key: 'html-tags', title: 'Reads HTML' }] }] }) });
+    show();
+    fireEvent.click(screen.getByTestId('talent-filter-skill'));
+    expect(useTalentBoard).toHaveBeenLastCalledWith({ capability: 'html-tags', minDays: 0 });
+    expect(screen.getByTestId('talent-filter-skill')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('talent-card-skill'));
+    expect(useTalentBoard).toHaveBeenLastCalledWith({ capability: '', minDays: 0 });
+  });
+
+  it('ignores a trail in the address that is not one', () => {
+    useTalentBoard.mockReturnValue({ isPending: false, isError: false, data: board() });
+    show('/talent?trail=%3Cscript%3E');
+    expect(screen.getAllByTestId('talent-card')).toHaveLength(1);
+    expect(screen.queryByTestId('talent-filter-clear')).toBeNull();
+  });
 });
