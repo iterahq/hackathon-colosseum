@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { OriginGlyph } from '@/components/tera/OriginBadge';
 import { useI18n } from '@/i18n';
 import { loreOf } from '@/lib/teraLoreSafe';
 import type { LearnerAvatar as Avatar } from '@/types/avatar';
@@ -37,7 +38,7 @@ export function LookPanel({ tab, look, currentKey, busy, onAvatar, onOutfit }: P
   const avatarChips = (list: Avatar[]) =>
     list.map((a) => (
       <li key={a.key}>
-        <LookChip label={name(a)} title={a.tierName !== a.title ? `${name(a)} · ${a.tierName}` : name(a)} on={a.key === currentKey} disabled={busy} rarity={a.rarity} testId="avatar-option" onPick={() => onAvatar(a)}>
+        <LookChip label={name(a)} title={a.tierName !== a.title ? `${name(a)} · ${a.tierName}` : name(a)} on={a.key === currentKey} disabled={busy} rarity={a.rarity} testId="avatar-option" mark={a.origin ? <OriginGlyph origin={a.origin} /> : undefined} onPick={() => onAvatar(a)}>
           <LearnerAvatar avatar={a} size="lg" className="!h-14 !w-14 sm:!h-16 sm:!w-16" />
         </LookChip>
       </li>

@@ -38,6 +38,7 @@ const toAvatar = (item: ShopItem): LearnerAvatar => {
     chipUrl: a.chipUrl,
     assetAddress: a.assetAddress,
     allowsOutfit: a.allowsOutfit,
+    origin: a.origin ?? null,
   };
 };
 

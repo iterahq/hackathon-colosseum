@@ -5,6 +5,7 @@ import '@/components/dashboard/dashboard.css';
 import { PassportGraph } from '@/components/graph/PassportGraph';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
+import { PassportTeras } from '@/components/tera/PassportTeras';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { PassportFullCard } from '@/components/passport/PassportFullCard';
@@ -92,6 +93,7 @@ export default function PassportPage() {
             </div>
           )}
         </section>
+        <PassportTeras wallet={view.walletAddress} headingClass={H2} />
         <section className="flex flex-col gap-3" aria-labelledby="passport-medals">
           <h2 id="passport-medals" className={H2}>
             {t('passport.medals')}

@@ -1,3 +1,4 @@
+import type { TeraOrigin } from '@/types/tera';
 import type { ChainRead } from '@/types/chainRead';
 import type { PublicEndorsement } from '@/types/endorsement';
 import type { I18nText } from '@/types/content';
@@ -159,6 +160,8 @@ export interface CredentialVerification {
   snapshot?: { source: string; mirrored_at: string | null } | null;
   /** Parsed companion state, when the function sends it. */
   companion?: Record<string, unknown> | null;
+  /** Tera assets only: which Tera it is and how it was obtained. */
+  tera?: { key: string; name: string; rarity: string; tierName: string; serial: number | null; imageUrl: string | null; origin: TeraOrigin | null } | null;
 }
 
 /** What the public page draws: the verification, or the reason there is none. */

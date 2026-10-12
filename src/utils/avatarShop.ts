@@ -45,7 +45,7 @@ export function avatarState(item: ShopItem): AvatarState {
 export function avatarOf(item: ShopItem): LearnerAvatar | null {
   const offer = item.avatar;
   if (!offer) return null;
-  return { key: item.key, title: item.title, rarity: offer.rarity, tierName: offer.tierName, imageUrl: offer.imageUrl, thumbUrl: offer.thumbUrl, chipUrl: offer.chipUrl, assetAddress: offer.assetAddress, allowsOutfit: offer.allowsOutfit };
+  return { key: item.key, title: item.title, rarity: offer.rarity, tierName: offer.tierName, imageUrl: offer.imageUrl, thumbUrl: offer.thumbUrl, chipUrl: offer.chipUrl, assetAddress: offer.assetAddress, allowsOutfit: offer.allowsOutfit, origin: offer.origin ?? null };
 }
 
 /** "12/25", or the word for an unlimited tier. */

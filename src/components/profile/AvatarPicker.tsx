@@ -23,12 +23,14 @@ export function AvatarPicker() {
   const look = buildProfileLook(focusShopItems(shop.data ?? [], 'wardrobe'), current, outfit);
   const tabs = shownLookTabs(look);
   const shown = tabs.includes(tab) ? tab : 'faces';
+  // The stage says how the worn Tera was obtained: the shop row knows it even when the companion block does not.
+  const worn = current.origin ?? [...look.faces, ...look.looks, ...look.gearAvatars].find((a) => a.key === current.key)?.origin ?? null;
   const busy = equipAvatar.isPending || equipOutfit.isPending;
   return (
     <section className="mt-6 rounded-3xl border border-[#262320] bg-[#141210] p-5 md:p-8" data-testid="avatar-picker">
       <h2 className="font-mono text-xs uppercase tracking-wider text-[#A0978A]">{t('avatar.look.title')}</h2>
       <div className="mt-4 flex flex-col gap-6 md:flex-row md:gap-8">
-        <LookStageCard avatar={current} outfit={outfit} />
+        <LookStageCard avatar={worn ? { ...current, origin: worn } : current} outfit={outfit} />
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {tabs.length > 1 && <LookTabs tab={shown} tabs={tabs} counts={look.owned} onTab={setTab} />}
           <LookPanel tab={shown} look={look} currentKey={current.key} busy={busy} onAvatar={(a) => equipAvatar.mutate(a)} onOutfit={(k) => equipOutfit.mutate(k)} />
