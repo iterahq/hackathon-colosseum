@@ -34,7 +34,7 @@ function ProgressRing({ done, min, ready }: { done: number | null; min: number; 
       data-min={min}
     >
       <svg viewBox="0 0 64 64" className={`h-full w-full -rotate-90 ${ready ? 'drop-shadow-[0_0_10px_rgba(63,209,127,.55)]' : ''}`} aria-hidden>
-        <circle cx="32" cy="32" r="26" fill="none" stroke={judged ? '#2E2A25' : '#F2C66D'} strokeOpacity={judged ? 1 : 0.45} strokeWidth="6" strokeDasharray={judged ? undefined : '3 5'} />
+        <circle cx="32" cy="32" r="26" fill="none" stroke={judged ? '#2E2A25' : '#5E574E'} strokeWidth="6" strokeDasharray={judged ? undefined : '3 5'} />
         {judged && counted > 0 && (
           <motion.circle
             cx="32"
@@ -53,7 +53,7 @@ function ProgressRing({ done, min, ready }: { done: number | null; min: number; 
       </svg>
       <span className="absolute inset-0 grid place-items-center">
         <span className="flex flex-col items-center leading-none">
-          <span className={`[font:700_22px/1_'Barlow_Condensed'] ${ready ? 'text-[#3FD17F]' : judged ? 'text-[#F4EDE2]' : 'text-[#F2C66D]'}`}>{judged ? `${counted}/${min}` : min}</span>
+          <span className={`[font:700_22px/1_'Barlow_Condensed'] ${ready ? 'text-[#3FD17F]' : 'text-[#F4EDE2]'}`}>{judged ? `${counted}/${min}` : min}</span>
           <span className="mt-0.5 [font:600_8px/1_JetBrains_Mono] uppercase tracking-[.1em] text-[#A0978A]">{plural(t, 'bounty.quest.days', min)}</span>
         </span>
       </span>
