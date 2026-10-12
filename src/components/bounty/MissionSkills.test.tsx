@@ -37,7 +37,7 @@ describe('MissionSkillRow', () => {
 
 describe('AskingForPreview', () => {
   const trail = { title: { pt: 'Semana 2 · CSS', en: 'Week 2 · CSS' }, totalDays: 5 };
-  const preview = (minDays: number | null, chosen: typeof trail | undefined = trail) => render(<I18nProvider><AskingForPreview trail={chosen} minDays={minDays} /></I18nProvider>);
+  const preview = (minDays: number | null, chosen: typeof trail | null = trail) => render(<I18nProvider><AskingForPreview trail={chosen ?? undefined} minDays={minDays} /></I18nProvider>);
 
   it('shows every skill of the days asked, neutral', () => {
     preview(2);
@@ -52,7 +52,7 @@ describe('AskingForPreview', () => {
       expect(container).toBeEmptyDOMElement();
       unmount();
     }
-    expect(preview(2, undefined).container).toBeEmptyDOMElement();
+    expect(preview(2, null).container).toBeEmptyDOMElement();
     expect(preview(2, { title: { pt: 'Semana 9', en: 'Week 9' }, totalDays: 5 }).container).toBeEmptyDOMElement();
   });
 });
