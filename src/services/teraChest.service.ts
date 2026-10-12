@@ -69,11 +69,11 @@ export function toRecompute(v: unknown): ChestRecompute | null {
   return { formula, inputs, poolDocument: text(r.pool_document), unavailable: list(r.unavailable), held: list(itera.held), exhausted: list(itera.exhausted), fromChain: list(r.from_chain), steps: list(r.steps) };
 }
 
-/** The signed-in learner's chests, newest first. `enabled: false` on any failure. */
-export async function getMyChests(): Promise<ChestList> {
+/** The signed-in learner's chests, newest first, with the trail named in `lang`. `enabled: false` on any failure. */
+export async function getMyChests(lang: 'pt' | 'en'): Promise<ChestList> {
   if (!isSupabaseConfigured) return NO_CHESTS;
   try {
-    const { data, error } = await getSupabase().functions.invoke('tera-chest', { method: 'GET' });
+    const { data, error } = await getSupabase().functions.invoke(`tera-chest?lang=${lang}`, { method: 'GET' });
     return error ? NO_CHESTS : toChestList(data);
   } catch {
     return NO_CHESTS;
@@ -81,10 +81,10 @@ export async function getMyChests(): Promise<ChestList> {
 }
 
 /** Settles or polls the chest of the day `lessonId` stamped. Idempotent on the backend. Null: no chest (yet, or ever). */
-export async function settleChest(lessonId: string): Promise<Chest | null> {
+export async function settleChest(lessonId: string, lang: 'pt' | 'en'): Promise<Chest | null> {
   if (!isSupabaseConfigured) return null;
   try {
-    const { data, error } = await getSupabase().functions.invoke('tera-chest', { body: { lesson_id: lessonId } });
+    const { data, error } = await getSupabase().functions.invoke(`tera-chest?lang=${lang}`, { body: { lesson_id: lessonId } });
     return error ? null : toChest(row(data).chest);
   } catch {
     return null;

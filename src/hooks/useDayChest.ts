@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
+import { useLocale } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import { NO_CHESTS, getMyChests, settleChest } from '@/services/teraChest.service';
@@ -16,7 +17,9 @@ function useLearnerId(): string | null {
 /** The learner's chests and whether the feature is on. A read: it never opens a chest. `fresh` reads again on mount. */
 export function useMyChestsQuery(fresh = false) {
   const userId = useLearnerId();
-  return useQuery({ queryKey: queryKeys.tera.chests(userId ?? ''), queryFn: getMyChests, enabled: Boolean(userId), retry: false, staleTime: 60_000, ...(fresh ? { refetchOnMount: 'always' as const } : {}) });
+  // The chest names its trail: it is read in the language on screen.
+  const locale = useLocale();
+  return useQuery({ queryKey: queryKeys.tera.chests(userId ?? '', locale), queryFn: () => getMyChests(locale), enabled: Boolean(userId), retry: false, staleTime: 60_000, ...(fresh ? { refetchOnMount: 'always' as const } : {}) });
 }
 
 /** Asked early (with the lesson) so its end already knows whether chests are on. */
@@ -45,6 +48,7 @@ export interface DayChestState {
 export function useDayChest(lessonId: string | undefined, active: boolean, mode: 'stamped' | 'found' = 'stamped'): DayChestState {
   const userId = useLearnerId();
   const queryClient = useQueryClient();
+  const locale = useLocale();
   const list = useMyChestsQuery(mode === 'found');
   const featureOn = (list.data ?? NO_CHESTS).enabled;
   const known = mode === 'found' ? chestOfLesson(list.data?.chests ?? [], lessonId) : null;
@@ -53,8 +57,8 @@ export function useDayChest(lessonId: string | undefined, active: boolean, mode:
   // A day found again asks the server only for a chest that already exists and is still opening, or after the click.
   const ask = mode === 'stamped' || asked || (known !== null && !settled);
   const query = useQuery({
-    queryKey: queryKeys.tera.dayChest(userId ?? '', lessonId ?? ''),
-    queryFn: () => settleChest(lessonId as string),
+    queryKey: queryKeys.tera.dayChest(userId ?? '', lessonId ?? '', locale),
+    queryFn: () => settleChest(lessonId as string, locale),
     enabled: Boolean(userId && lessonId && active && featureOn && ask),
     retry: false,
     staleTime: Infinity,

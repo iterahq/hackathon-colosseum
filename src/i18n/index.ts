@@ -2637,3 +2637,8 @@ export function useI18n(): I18nState {
   if (!ctx) throw new Error('useI18n must be used within <I18nProvider>');
   return ctx;
 }
+
+/** The language on screen, for a hook that only passes it on to a read: outside the provider (a unit test of the hook) it is the startup locale. */
+export function useLocale(): Locale {
+  return useContext(I18nCtx)?.locale ?? detectLocale();
+}
