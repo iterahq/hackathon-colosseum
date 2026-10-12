@@ -38,6 +38,13 @@ describe('the Tera shelf', () => {
     expect(royaltyPercent(250)).toBe('2.5');
   });
 
+  it('keeps saying a tier is transferable when the learner holds one of its Teras, earned and bound', () => {
+    const held = tera('nuno', { transferable: false, royaltyBps: 0 }, { owned: true });
+    const [mixed] = shelvesOfArcade([held, tera('pipo', { transferable: true, royaltyBps: 500 })]);
+    const [common] = groupsOf(mixed, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en');
+    expect(common.note).toContain('shelf.transferable · shelf.fee:5');
+  });
+
   it('gives the earn-only group no price: only how it is earned', () => {
     const earn = groups[3];
     expect(earn.note).toBe('shelf.earn.note');

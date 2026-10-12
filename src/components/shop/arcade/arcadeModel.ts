@@ -51,10 +51,12 @@ export interface ArcadeGroup {
 /** What a resale pays Itera, as a whole or one-decimal percentage: 500 -> "5". */
 export const royaltyPercent = (bps: number): string => String(Math.round(bps / 10) / 10);
 
-/** " · transferable · resale pays 5% to Itera" for a tier whose Teras can change hands; the fee only once it is set on chain. */
+/** " · transferable · resale pays 5% to Itera" for a tier whose Teras on sale can change hands; the fee only once it is set on chain. */
 function resaleNote(items: readonly ShopItem[], t: Translate): string {
-  if (!items.length || !items.every((i) => i.avatar?.transferable)) return '';
-  const bps = Math.min(...items.map((i) => i.avatar?.royaltyBps ?? 0));
+  // What the tier sells: a Tera of it the learner already holds (earned in a chest, bound) says nothing about the ones for sale.
+  const sale = items.filter((i) => !i.owned && i.avatar?.transferable);
+  if (sale.length === 0) return '';
+  const bps = Math.min(...sale.map((i) => i.avatar?.royaltyBps ?? 0));
   return ` · ${t('shelf.transferable')}${bps > 0 ? ` · ${t('shelf.fee', { pct: royaltyPercent(bps) })}` : ''}`;
 }
 
