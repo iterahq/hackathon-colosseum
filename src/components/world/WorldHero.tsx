@@ -27,7 +27,7 @@ export function WorldHero({ nav = true }: { nav?: boolean }) {
             {t('world.cta')}
           </a>
         </div>
-        <img src="/mascot/tera-happy.webp" alt="" draggable={false} width={240} height={300} className="h-[200px] w-40 shrink-0 object-contain sm:h-[280px] sm:w-56" />
+        <img src="/mascot/tera-hero.webp" alt="" draggable={false} width={640} height={640} className="h-44 w-44 shrink-0 object-contain sm:h-64 sm:w-64" />
       </div>
     </header>
   );
