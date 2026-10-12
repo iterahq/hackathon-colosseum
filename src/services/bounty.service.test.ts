@@ -32,6 +32,13 @@ describe('parseBounty', () => {
     expect(b?.funding?.signature).toBe('sig');
     expect(b?.payout).toBeNull();
     expect(b?.fundBlinkUrl).toBeNull();
+    expect(b?.fundActionUrl).toBeNull();
+  });
+  it('reads the public funding link and drops one that is not https', () => {
+    const b = parseBounty({ ...bounty, status: 'awaiting_funding', fund: { action_url: 'https://fn.test/bounty-action/faq', blink_url: 'https://dial.to/?action=x' } });
+    expect(b?.fundActionUrl).toBe('https://fn.test/bounty-action/faq');
+    expect(b?.fundBlinkUrl).toBe('https://dial.to/?action=x');
+    expect(parseBounty({ ...bounty, fund: { action_url: 'javascript:alert(1)', blink_url: 'http://dial.to' } })).toMatchObject({ fundActionUrl: null, fundBlinkUrl: null });
   });
   it('reads who posted it, who approves and the flags', () => {
     const b = parseBounty({

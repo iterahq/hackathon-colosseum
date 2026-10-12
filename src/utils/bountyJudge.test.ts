@@ -98,6 +98,8 @@ describe('signerCaptionKey', () => {
     expect(signerCaptionKey({ kind: 'accepted', wallet: LEARNER, signedBy: LEARNER, signedRole: 'learner' })).toBe('bounty.ledger.signedLearner');
     expect(signerCaptionKey({ kind: 'funded', wallet: LEARNER, signedBy: LEARNER, signedRole: 'sponsor' })).toBe('bounty.ledger.signedSponsor');
     expect(signerCaptionKey({ kind: 'rejected', wallet: LEARNER, signedBy: TREASURY, signedRole: 'itera_key' })).toBe('bounty.ledger.signedItera');
+    expect(signerCaptionKey({ kind: 'funded', wallet: null, signedBy: LEARNER, signedRole: 'funder' })).toBe('bounty.ledger.signedFunder');
+    for (const locale of ['pt', 'en'] as const) expect(resources[locale]['bounty.ledger.signedFunder']).toContain('{wallet}');
   });
 
   it('without the role, a learner step signed by the wallet it names is the learner`s', () => {

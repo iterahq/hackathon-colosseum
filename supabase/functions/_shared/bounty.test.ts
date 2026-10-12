@@ -9,6 +9,8 @@ import {
   bountyActionCompleted,
   bountyActionGet,
   bountyActionPost,
+  fundingLinkVerdict,
+  stepSigner,
   bountyView,
   checkEligibility,
   drainLamports,
@@ -666,5 +668,85 @@ describe('signerRole', () => {
     expect(signerRole({ kind: 'funded', wallet: SPONSOR, signature: 'S', signer: SPONSOR }, byWallet)).toBe('sponsor');
     expect(signerRole({ kind: 'paid', wallet: LEARNER, signature: 'S', signer: null }, team)).toBeNull();
     expect(signerRole({ kind: 'created', wallet: null, signature: null, signer: TREASURY }, team)).toBeNull();
+  });
+
+  it('calls another wallet that locked the reward the funder, never the sponsor', () => {
+    expect(signerRole({ kind: 'funded', wallet: null, signature: 'S', signer: LEARNER }, byWallet)).toBe('funder');
+    expect(signerRole({ kind: 'paid', wallet: LEARNER, signature: 'S', signer: TREASURY }, byWallet)).toBe('itera_key');
+    expect(signerRole({ kind: 'funded', wallet: null, signature: 'S', signer: LEARNER }, team)).toBe('itera_key');
+  });
+});
+
+describe('stepSigner', () => {
+  const SPONSOR = 'HWAGk3qYQ6m3Vd8m5oH9o9bM1c8r1cFz2G9w3z9tFHBP';
+  const FUNDER = 'CreJgdt1nhqgqqxNkFXgLFokCucdTwKQWProuhcH7X4W';
+  const ESCROW = 'AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA';
+  const row = { sponsor_wallet: SPONSOR, escrow_address: ESCROW };
+  const create = { accounts: [0, 1, 2, 2, 3, 4] };
+
+  it('names the sponsor whenever its wallet signed', () => {
+    expect(stepSigner({ signers: [SPONSOR], accountKeys: [SPONSOR, ESCROW], instructions: [{ accounts: [0, 1, 0, 0] }] }, row, 'funded')).toBe(SPONSOR);
+    expect(stepSigner({ signers: [FUNDER, SPONSOR], accountKeys: [FUNDER, SPONSOR, ESCROW], instructions: [] }, row, 'paid')).toBe(SPONSOR);
+  });
+
+  it('names the funder of the create instruction on the funding step alone', () => {
+    const tx = { signers: [FUNDER], accountKeys: [FUNDER, ESCROW, SPONSOR, 'collection', 'system'], instructions: [create, { accounts: [] }] };
+    expect(stepSigner(tx, row, 'funded')).toBe(FUNDER);
+    expect(stepSigner(tx, row, 'paid')).toBeNull();
+    expect(stepSigner(tx, row, 'refunded')).toBeNull();
+  });
+
+  it('names nobody when the funder did not sign or the instruction is about another account', () => {
+    expect(stepSigner({ signers: ['fee-payer'], accountKeys: ['fee-payer', ESCROW, FUNDER], instructions: [{ accounts: [2, 1] }] }, row, 'funded')).toBeNull();
+    expect(stepSigner({ signers: [FUNDER], accountKeys: [FUNDER, 'another-escrow', SPONSOR], instructions: [create] }, row, 'funded')).toBeNull();
+    expect(stepSigner({ signers: [FUNDER], accountKeys: [FUNDER], instructions: [{ accounts: [0, 9] }] }, row, 'funded')).toBeNull();
+  });
+});
+
+describe('funding link', () => {
+  const SPONSOR = 'HWAGk3qYQ6m3Vd8m5oH9o9bM1c8r1cFz2G9w3z9tFHBP';
+  const posted = (overrides: Partial<BountyRow> = {}) => bounty({ status: 'awaiting_funding', origin: 'wallet', sponsor_wallet: SPONSOR, refund_address: SPONSOR, approver_address: SPONSOR, sponsor_name: 'Padaria Sol', ...overrides });
+
+  it('is offered only while a visible bounty waits for its money', () => {
+    expect(fundingLinkVerdict(posted(), NOW)).toBe('ok');
+    expect(fundingLinkVerdict(bounty({ status: 'awaiting_funding' }), NOW)).toBe('ok');
+    expect(fundingLinkVerdict(posted({ status: 'open' }), NOW)).toBe('not_fundable');
+    expect(fundingLinkVerdict(posted({ status: 'refunded' }), NOW)).toBe('not_fundable');
+    expect(fundingLinkVerdict(posted({ expires_at: '2026-10-01T00:00:00Z' }), NOW)).toBe('not_fundable');
+    expect(fundingLinkVerdict(posted({ hidden_at: '2026-10-10T00:00:00Z' }), NOW)).toBe('not_found');
+    expect(fundingLinkVerdict(posted({ status: 'open', hidden_at: '2026-10-10T00:00:00Z' }), NOW)).toBe('not_found');
+  });
+
+  it('gives the page the link of a bounty a wallet posted, and none once hidden or funded', () => {
+    const view = (row: BountyRow) => bountyView({ bounty: row, claim: null, lang: 'en', now: NOW, functionsBase: 'https://fn.test/functions/v1' });
+    expect(view(posted()).fund).toEqual({
+      action_url: 'https://fn.test/functions/v1/bounty-action/semantic-landing',
+      blink_url: `https://dial.to/?action=${encodeURIComponent('solana-action:https://fn.test/functions/v1/bounty-action/semantic-landing')}&cluster=devnet`,
+    });
+    expect(view(posted({ hidden_at: '2026-10-10T00:00:00Z' })).fund).toBeNull();
+    expect(view(posted({ status: 'open' })).fund).toBeNull();
+  });
+
+  it('tells the funder, in both languages, who approves and where the money returns', () => {
+    const en = bountyActionGet({ bounty: posted(), lang: 'en', missingLamports: 20_000_000n, href: 'https://fn.test/x', blocked: null }).description;
+    expect(en).toContain('Padaria Sol');
+    expect(en).toContain('THIS bounty');
+    expect(en).toContain(`only the sponsor's wallet (${SPONSOR}) can approve`);
+    expect(en).toContain(`returns to the SPONSOR's wallet (${SPONSOR}), not to the wallet that funded it`);
+    expect(en).toContain('stamped day');
+    const pt = bountyActionGet({ bounty: posted(), lang: 'pt', missingLamports: 20_000_000n, href: 'https://fn.test/x', blocked: null }).description;
+    expect(pt).toContain('DESTA missão');
+    expect(pt).toContain(`só a carteira do patrocinador (${SPONSOR}) pode aprovar`);
+    expect(pt).toContain(`volta para a carteira do PATROCINADOR (${SPONSOR}), não para a carteira que financiou`);
+  });
+
+  it('names the invited wallet in full on a direct bounty a wallet posted', () => {
+    for (const lang of ['en', 'pt'] as const) {
+      const text = bountyActionGet({ bounty: posted({ invitee_wallet: OTHER }), lang, missingLamports: 20_000_000n, href: 'https://fn.test/x', blocked: null }).description;
+      expect(text).toContain(OTHER);
+      expect(text).toContain(SPONSOR);
+      expect(text).toMatch(/not to the wallet that funded it|não para a carteira que financiou/);
+      expect(text).not.toMatch(/stamped day|dia\(s\) carimbados/);
+    }
   });
 });

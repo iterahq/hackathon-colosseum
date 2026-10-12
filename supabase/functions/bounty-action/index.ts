@@ -9,8 +9,8 @@ import {
   bountyActionPost,
   bountyActionUrl,
   fundingCost,
+  fundingLinkVerdict,
   fundingTarget,
-  publicStatus,
   transferMemo,
   type BountyActionError,
   type BountyRow,
@@ -41,10 +41,6 @@ function answer(body: unknown, status = 200): Response {
 
 const refuse = (code: BountyActionError, lang: Lang, status: number) => answer(bountyActionError(code, lang), status);
 
-function fundable(bounty: BountyRow): boolean {
-  return publicStatus(bounty, new Date()) === 'awaiting_funding';
-}
-
 async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
   return answer(
     bountyActionGet({
@@ -53,7 +49,7 @@ async function describe(bounty: BountyRow, lang: Lang): Promise<Response> {
       // The label is the only thing here that needs the node: without it the button shows the reward alone.
       missingLamports: fundingCost(bounty, bounty.escrow_kind === 'program' ? await escrowRentLamports(bounty.escrow_gated, Boolean(bounty.invitee_wallet)).catch(() => 0n) : 0n),
       href: bountyActionUrl(functionsBase(), bounty.slug, lang),
-      blocked: fundable(bounty) ? null : 'not_fundable',
+      blocked: fundingLinkVerdict(bounty, new Date()) === 'ok' ? null : 'not_fundable',
     }),
   );
 }
@@ -63,7 +59,7 @@ async function build(db: IteraClient, bounty: BountyRow, request: Request, lang:
   const account = body?.account;
   if (!isEd25519Address(account) || account === bounty.escrow_address) return refuse('invalid_account', lang, 400);
   // Decided from our table alone: a closed bounty costs the node nothing.
-  if (!fundable(bounty)) return refuse('not_fundable', lang, 400);
+  if (fundingLinkVerdict(bounty, new Date()) !== 'ok') return refuse('not_fundable', lang, 400);
 
   let message: Uint8Array;
   if (bounty.escrow_kind === 'program') {
@@ -120,7 +116,8 @@ Deno.serve(async (request) => {
     }
     if (rest.length > 0 || !first || !(isUuid(first) || SLUG.test(first))) return refuse('not_found', lang, 404);
     const bounty = await loadBounty(db, isUuid(first) ? { id: first } : { slug: first });
-    if (!bounty) return refuse('not_found', lang, 404);
+    // A bounty moderation hid is answered like one that does not exist: its words are not offered to any wallet.
+    if (!bounty || fundingLinkVerdict(bounty, new Date()) === 'not_found') return refuse('not_found', lang, 404);
     if (request.method === 'GET') return await describe(bounty, lang);
     if (request.method === 'POST') return await build(db, bounty, request, lang);
     return refuse('invalid_body', lang, 405);

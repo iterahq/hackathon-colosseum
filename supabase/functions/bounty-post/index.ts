@@ -26,6 +26,7 @@ import {
   WALLET_MIN_REWARD_LAMPORTS,
   WALLET_POSTS_PER_DAY,
   bountyView,
+  fundingLinks,
   parseWalletBounty,
   publicStatus,
   slugify,
@@ -241,9 +242,10 @@ async function create(db: IteraClient, caller: Caller, wallet: string, body: Rec
   if (error) throw new Error(`bounties insert: ${error.message}`);
   const { error: eventError } = await db.from('bounty_events').insert({ bounty_id: id, kind: 'created', wallet });
   if (eventError) console.error('bounty created event not written', id, eventError.message);
-  if (!input.invitee_wallet || !standing) return json({ created: true, id, slug, direct: false }, 200, cors);
+  const fund = fundingLinks(functionsBase(), slug);
+  if (!input.invitee_wallet || !standing) return json({ created: true, id, slug, direct: false, fund }, 200, cors);
   return json(
-    { created: true, id, slug, direct: true, invitee_wallet: input.invitee_wallet, invitee_known: standing.known_learner, invitee_eligible: standing.eligible, invitee_reason: standing.reason, invitee_proof: standing.proof, invite_enforced_by: 'program' },
+    { created: true, id, slug, direct: true, fund, invitee_wallet: input.invitee_wallet, invitee_known: standing.known_learner, invitee_eligible: standing.eligible, invitee_reason: standing.reason, invitee_proof: standing.proof, invite_enforced_by: 'program' },
     200,
     cors,
   );
