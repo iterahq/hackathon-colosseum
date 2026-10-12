@@ -23,6 +23,8 @@ interface Props {
   chest?: ReactNode;
   /** A chest row will follow the chain row: the page is drawn a little smaller on a short screen, so the way out stays in view. */
   compact?: boolean;
+  /** The chest is the big thing of this screen: once it is drawn the view glides to it, and follows it as it opens. */
+  chestFocus?: boolean;
   /** Shown under the ceremony, inside its own scroll: the ceremony covers the whole screen, so anything outside it is never seen. */
   footer?: ReactNode;
   onRetry?: () => void;
@@ -41,7 +43,7 @@ const GRID = {
 } as const;
 
 /** Full-screen stamp ceremony of a finished day: the page lands, Tera stamps it, the chain row follows. */
-export function StampCeremony({ model, preparing = false, colorIndex, actions, chest, compact = false, footer, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
+export function StampCeremony({ model, preparing = false, colorIndex, actions, chest, compact = false, chestFocus = false, footer, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
   const { t } = useI18n();
   const reduce = Boolean(useReducedMotion());
   const sound = usePassportSound();
@@ -135,7 +137,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, c
             />
           )}
         </div>
-        {settled && model.status === 'minted' && chest}
+        {settled && model.status === 'minted' && chest && (chestFocus ? <ChestSpot>{chest}</ChestSpot> : chest)}
         <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked}>
           {locked ? (
             <button type="button" disabled data-testid="ceremony-actions-waiting" className={`mt-6 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-full px-6 opacity-50 ${TACTILE_CTA}`}>
@@ -158,4 +160,22 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, c
       )}
     </div>
   );
+}
+
+/** Holds the chest and brings it to the middle of the screen when it appears and each time it grows (sealed, then opened). */
+function ChestSpot({ children }: { children: ReactNode }) {
+  const spot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = spot.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    let seen = 0;
+    const observer = new ResizeObserver(() => {
+      const height = node.offsetHeight;
+      if (height > seen + 8) node.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      seen = Math.max(seen, height);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return <div ref={spot} className="w-full" data-testid="ceremony-chest-spot">{children}</div>;
 }

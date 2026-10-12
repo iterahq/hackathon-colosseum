@@ -27,13 +27,15 @@ interface SlotProps {
   active: boolean;
   /** A day finished earlier, found again: its chest is looked up, and a day with none is only offered behind a button. */
   still?: boolean;
+  /** `hero`: the chest and what comes out of it are the big thing on the screen. */
+  size?: 'row' | 'hero';
 }
 
-function Slot({ lessonId, day, active, still = false }: SlotProps) {
+function Slot({ lessonId, day, active, still = false, size = 'row' }: SlotProps) {
   const { t } = useI18n();
   const { wallet } = useWalletLink();
   const state = useDayChest(lessonId, active, still ? 'found' : 'stamped');
-  if (state.phase) return <DayChest phase={state.phase} chest={state.chest} day={day} still={still && !state.justOpened} />;
+  if (state.phase) return <DayChest phase={state.phase} chest={state.chest} day={day} still={still && !state.justOpened} size={size} />;
   if (!still || !wallet) return null;
   if (state.nothing) return <p className="[font:500_13px/1.4_Inter] text-[#A0978A]" data-testid="day-chest-none" role="status">{t('chest.none')}</p>;
   if (!state.canOpen && !state.opening) return null;

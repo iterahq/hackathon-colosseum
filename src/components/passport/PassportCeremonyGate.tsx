@@ -81,7 +81,8 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
         outfit={outfit}
         hasWallet={Boolean(link.wallet) || link.pending}
         compact={chests}
-        chest={preparing ? undefined : <DayChestSlot lessonId={lessonId} day={view.model.day} active={view.model.status === 'minted'} />}
+        chestFocus={chests}
+        chest={preparing ? undefined : <DayChestSlot lessonId={lessonId} day={view.model.day} active={view.model.status === 'minted'} size="hero" />}
         footer={preparing ? undefined : <LoopPanel trail={trail} day={day} stamp={confirmedStamp(view.model, trail, day)} />}
       />
     </div>
