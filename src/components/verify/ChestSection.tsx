@@ -32,7 +32,7 @@ function OddsTable() {
   const catalog = useTeraCatalog();
   const name = (tier: string) => catalog.tiers.find((entry) => entry.rarity === tier)?.tierName[locale] ?? tier;
   return (
-    <div className="overflow-x-auto rounded-xl border border-[#2E2A25]" data-testid="chest-odds">
+    <div tabIndex={0} className="overflow-x-auto rounded-xl border border-[#2E2A25]" data-testid="chest-odds">
       <table className="w-full min-w-[520px] border-collapse">
         <thead>
           <tr>

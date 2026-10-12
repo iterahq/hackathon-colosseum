@@ -14,7 +14,7 @@ const TD = 'py-2 pr-3 align-top [font:500_12px/1.5_JetBrains_Mono] text-[#F4EDE2
 function Instructions({ idl }: { idl: EscrowIdl }) {
   const { t, locale } = useI18n();
   return (
-    <div className="max-w-full overflow-x-auto" data-testid="idl-instructions">
+    <div tabIndex={0} className="max-w-full overflow-x-auto" data-testid="idl-instructions">
       <table className="w-full min-w-[560px] border-collapse">
         <thead>
           <tr className="border-b border-[#262320]">
@@ -42,7 +42,7 @@ function Instructions({ idl }: { idl: EscrowIdl }) {
 function Layout({ rows, testId }: { rows: ReadonlyArray<{ field: string; offset: number; length: number }>; testId: string }) {
   const { t } = useI18n();
   return (
-    <div className="max-w-full overflow-x-auto" data-testid={testId}>
+    <div tabIndex={0} className="max-w-full overflow-x-auto" data-testid={testId}>
       <table className="w-full min-w-[320px] border-collapse">
         <thead>
           <tr className="border-b border-[#262320]">
