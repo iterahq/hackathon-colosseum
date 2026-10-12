@@ -3,8 +3,9 @@
 // the lesson player, with a brand-new wallet, then proves the certification (UI + API + chain).
 //   flock /tmp/hk/orch/locks/browser.lock node scripts/hackathon/clicked-day.mjs \
 //     --wallet-file /tmp/hk/orch/graph-clicked-day/wallet.json [--out DIR] [--lang pt|en] [--stop-after N] [--verify-only] [--guest]
-//     [--viewport 1440x900] [--end-viewport 390x844] [--home-first] [--chest]
-// `--chest` follows the chest of the day on the stamp screen (sealed, then the Tera), and looks for it again after a reload.
+//     [--viewport 1440x900] [--end-viewport 390x844] [--home-first] [--chest] [--chest-also 390x844]
+// `--chest` follows the chest of the day on the stamp screen (sealed, then the Tera), and looks for it again after a reload;
+// `--chest-also` shoots the opened chest at a second window size too.
 // `--end-viewport` resizes the window before the last activity, so the stamp screen is seen at that size.
 // `--home-first` opens the dashboard before the lesson, as a person who has just signed in does.
 // `--guest` plays the landing's first path: the whole day at /try with NO session (answers kept in the browser),
@@ -33,6 +34,7 @@ const GUEST = args.includes('--guest');
 const HOME_FIRST = args.includes('--home-first');
 const CHEST = args.includes('--chest');
 const size = (text) => (/^\d+x\d+$/.test(text ?? '') ? { width: Number(text.split('x')[0]), height: Number(text.split('x')[1]) } : null);
+const CHEST_ALSO = size(option('chest-also', ''));
 const VIEWPORT = size(option('viewport', '')) ?? { width: 1280, height: 900 };
 const END_VIEWPORT = size(option('end-viewport', ''));
 const GUEST_ANSWERS_KEY = 'itera.guest.day1.v1';
@@ -456,6 +458,9 @@ async function runLesson(wallet, activities) {
         const chest = page.getByTestId('day-chest');
         const phases = [];
         const started = Date.now();
+        // The robot scrolled down to the panel under the ceremony: back to what a learner sees first.
+        const toTop = () => page.getByTestId('stamp-ceremony').evaluate((el) => el.scrollTo(0, 0)).catch(() => {});
+        await toTop();
         while (Date.now() - started < 60_000) {
           const phase = await chest.getAttribute('data-phase').catch(() => null);
           if (phase && phase !== phases[phases.length - 1]) {
@@ -468,10 +473,20 @@ async function runLesson(wallet, activities) {
           await page.waitForTimeout(250);
         }
         proof('chest: the row appeared under the stamp and ended on the Tera', phases[phases.length - 1] === 'revealed', phases.join(' -> ') || 'no chest row');
+        if (CHEST_ALSO) {
+          const before = page.viewportSize();
+          await page.setViewportSize(CHEST_ALSO);
+          await toTop();
+          await page.waitForTimeout(600);
+          await shot(page, `chest-revealed-${CHEST_ALSO.width}x${CHEST_ALSO.height}`);
+          if (before) await page.setViewportSize(before);
+          await toTop();
+          await page.waitForTimeout(300);
+        }
         const box = await chest.boundingBox().catch(() => null);
         const next = await page.locator('[data-testid="lesson-next-cta"], [data-testid="lesson-finish-cta"]').first().boundingBox().catch(() => null);
         const view = page.viewportSize();
-        proof('chest: the next-lesson button is still inside the screen, below the chest', Boolean(box && next && view && next.y >= box.y + box.height && next.y + next.height <= view.height), `chest ${box ? Math.round(box.y) : '?'}-${box ? Math.round(box.y + box.height) : '?'} · button ${next ? Math.round(next.y) : '?'}-${next ? Math.round(next.y + next.height) : '?'} · screen ${view?.height}`);
+        proof('chest: the next-lesson button is still inside the screen, below the chest', Boolean(box && next && view && box.y >= 0 && next.y >= box.y + box.height && next.y + next.height <= view.height), `chest ${box ? Math.round(box.y) : '?'}-${box ? Math.round(box.y + box.height) : '?'} · button ${next ? Math.round(next.y) : '?'}-${next ? Math.round(next.y + next.height) : '?'} · screen ${view?.height}`);
         const inner = await chest.evaluate((el) => [el.scrollHeight, el.clientHeight, el.scrollWidth, el.clientWidth]).catch(() => null);
         proof('chest: nothing scrolls inside the row', Boolean(inner && inner[0] <= inner[1] && inner[2] <= inner[3]), String(inner));
         const verify = await page.getByTestId('day-chest-verify').getAttribute('href').catch(() => null);
