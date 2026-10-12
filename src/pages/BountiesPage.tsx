@@ -64,9 +64,9 @@ export default function BountiesPage() {
         <p className="max-w-[640px] [font:400_16px/1.4_Inter] text-[#C9BFB0]" data-testid="bounty-hero-line">{t('bounty.hero.line')}</p>
         <ol className="grid max-w-[640px] grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-1.5" aria-label={t('bounty.fold.how')} data-testid="bounty-hero-steps">
           {HERO_STEPS.map(({ id, Icon }, index) => (
-            <li key={id} className="flex min-w-0 items-center gap-1.5" title={t(`bounty.hero.step.${id}.full`)}>
+            <li key={id} className="flex min-w-0 items-center gap-1.5 max-sm:items-stretch" title={t(`bounty.hero.step.${id}.full`)}>
               {index > 0 && <span aria-hidden className="[font:700_13px_JetBrains_Mono] text-[#5E574E] max-sm:hidden">→</span>}
-              <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[12px] border border-[#2E2A25] bg-[#141210] max-sm:flex-col max-sm:px-1.5 max-sm:py-2 max-sm:text-center sm:h-8 sm:rounded-full sm:pl-1 sm:pr-2.5">
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[12px] border border-[#2E2A25] bg-[#141210] max-sm:flex-col max-sm:justify-center max-sm:px-1.5 max-sm:py-2 max-sm:text-center sm:h-8 sm:rounded-full sm:pl-1 sm:pr-2.5">
                 <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#3FD17F]/60 bg-[#3FD17F]/10 text-[#3FD17F] max-sm:h-8 max-sm:w-8">
                   <Icon aria-hidden className="h-3 w-3 max-sm:h-4 max-sm:w-4" strokeWidth={2.4} />
                 </span>
