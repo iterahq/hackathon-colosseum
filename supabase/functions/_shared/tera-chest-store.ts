@@ -28,7 +28,9 @@ import {
   rollChest,
   withChests,
   chestsOf,
+  CHEST_TIERS,
   type ChestPool,
+  type ParsedPool,
   type EffortInput,
   type EffortLevel,
 } from './tera-roll.ts';
@@ -88,23 +90,25 @@ const storedPools = new Set<string>();
 /** The pool a chest opened now commits to, stored by its hash so it can be served for as long as a chest names it. */
 async function currentPool(db: IteraClient): Promise<{ hash: string; pool: ChestPool }> {
   const catalog = await loadAvatarCatalog(db);
+  // The tiers that are never sold are named in the committed document: the walk never climbs into one.
+  const earnOnly = CHEST_TIERS.filter((tier) => catalog.tiers.get(tier)?.earn_only === true);
   // On the shelf, or of a tier that is earned only: a Tera retired from a tier that is sold is not given either.
   const pool = buildPool([...catalog.items.values()].filter((item) => item.active || isEarnOnly(catalog, item)));
-  const hash = poolHash(pool);
+  const hash = poolHash(pool, earnOnly);
   if (!storedPools.has(hash)) {
-    const { error } = await db.from('tera_chest_pools').upsert({ hash, document: poolDocument(pool) }, { onConflict: 'hash', ignoreDuplicates: true });
+    const { error } = await db.from('tera_chest_pools').upsert({ hash, document: poolDocument(pool, earnOnly) }, { onConflict: 'hash', ignoreDuplicates: true });
     if (error) throw new Error(`tera_chest_pools: ${error.message}`);
     storedPools.add(hash);
   }
   return { hash, pool };
 }
 
-async function loadPool(db: IteraClient, hash: string): Promise<{ pool: ChestPool; document: string }> {
+async function loadPool(db: IteraClient, hash: string): Promise<ParsedPool & { document: string }> {
   const { data, error } = await db.from('tera_chest_pools').select('document').eq('hash', hash).maybeSingle();
   if (error) throw new Error(`tera_chest_pools: ${error.message}`);
-  const pool = data ? parsePoolDocument(data.document as string) : null;
-  if (!data || !pool) throw new Error(`pool ${hash.slice(0, 8)} is not stored`);
-  return { pool, document: data.document as string };
+  const parsed = data ? parsePoolDocument(data.document as string) : null;
+  if (!data || !parsed) throw new Error(`pool ${hash.slice(0, 8)} is not stored`);
+  return { ...parsed, document: data.document as string };
 }
 
 const confirmedSlot = () => rpc<number>('getSlot', [{ commitment: 'confirmed' }]);
@@ -353,7 +357,7 @@ async function chestAsset(db: IteraClient, chestId: string): Promise<AvatarAsset
 async function rollAndReserve(db: IteraClient, chest: ChestRow, catalog: AvatarCatalog): Promise<{ chest: ChestRow; asset: AvatarAssetRow | null }> {
   const known = await chestAsset(db, chest.id);
   if (known) return { chest, asset: known };
-  const { pool } = await loadPool(db, chest.pool_hash);
+  const { pool, earnOnly } = await loadPool(db, chest.pool_hash);
   for (let attempt = 0; attempt < SERIAL_ATTEMPTS; attempt += 1) {
     const [rows, supply] = await Promise.all([
       db.from('avatar_assets').select('item_key,mint_status').eq('user_id', chest.user_id),
@@ -365,7 +369,7 @@ async function rollAndReserve(db: IteraClient, chest: ChestRow, catalog: AvatarC
     // A key the pool names and the catalog no longer has cannot be minted.
     const gone = Object.values(pool).flat().filter((key) => !catalog.items.has(key)).sort();
     const unavailable = [...new Set([...held, ...exhausted, ...gone])].sort();
-    const result = rollChest({ seed: chest.seed as string, level: chest.level as EffortLevel, pool, unavailable });
+    const result = rollChest({ seed: chest.seed as string, level: chest.level as EffortLevel, pool, unavailable, earnOnly });
     const roll = { held, exhausted, gone, unavailable, steps: result.steps, rolled_tier: result.rolled_tier, tier_roll: result.tier_roll, start_roll: result.start_roll };
     if (!result.key || !result.tier) {
       return { chest: await patchChest(db, chest.id, { status: 'failed', error: 'nothing_left_to_give', roll, claimed_at: null }), asset: null };
@@ -592,7 +596,7 @@ export function chestView(chest: ChestRow, context: ChestContext, lang: Lang, re
 /** The `Recompute` of the contract: every input of the roll, where each comes from, and the pool document the commitment names. */
 export async function recomputeView(db: IteraClient, chest: ChestRow, context: ChestContext) {
   const certification = context.certifications.get(chest.certification_id);
-  const { pool, document } = await loadPool(db, chest.pool_hash);
+  const { pool, earnOnly, document } = await loadPool(db, chest.pool_hash);
   return {
     formula: CHEST_FORMULA,
     inputs: {
@@ -618,6 +622,8 @@ export async function recomputeView(db: IteraClient, chest: ChestRow, context: C
       `getBlocks(${chest.commit_slot}, ${chest.commit_slot + CHEST_BLOCK_WINDOW})[0] -> the seed slot; getBlock(that slot).blockhash`,
     ],
     pool,
+    /** The tiers the walk never climbs into; `null` on the first pools, whose walk climbs anywhere. */
+    earn_only: earnOnly,
     pool_document: document,
     odds_table: ODDS_TABLE,
     unavailable: chest.roll?.unavailable ?? [],

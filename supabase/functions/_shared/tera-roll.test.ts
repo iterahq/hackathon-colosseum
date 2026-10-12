@@ -36,6 +36,9 @@ const POOL: ChestPool = {
   mythic: ['m1'],
   primordial: ['p1'],
 };
+const EARN_ONLY = ['legendary', 'mythic', 'primordial'] as const;
+/** A pool document as the first chests committed to it: no earn-only list, a walk that climbs anywhere. */
+const V1_DOCUMENT = '{"v":1,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]]}';
 /** A seed whose first 8 hex characters are `tier` and next 8 are `start`. */
 const seedOf = (tier: number, start: number) => `${tier.toString(16).padStart(8, '0')}${start.toString(16).padStart(8, '0')}${'0'.repeat(48)}`;
 
@@ -86,13 +89,16 @@ describe('pool', () => {
   });
 
   it('hashes one exact document, and reads it back', () => {
-    const document = poolDocument(POOL);
-    expect(document).toBe('{"v":1,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]]}');
-    expect(poolHash(POOL)).toBe(sha256Hex(document));
-    expect(parsePoolDocument(document)).toEqual(POOL);
+    const document = poolDocument(POOL, EARN_ONLY);
+    expect(document).toBe('{"v":2,"tiers":[["common",["c1","c2","c3"]],["rare",["r1","r2"]],["epic",["e1"]],["legendary",["l1","l2"]],["mythic",["m1"]],["primordial",["p1"]]],"earn_only":["legendary","mythic","primordial"]}');
+    expect(poolHash(POOL, EARN_ONLY)).toBe(sha256Hex(document));
+    expect(parsePoolDocument(document)).toEqual({ pool: POOL, earnOnly: EARN_ONLY });
+    expect(parsePoolDocument(V1_DOCUMENT)).toEqual({ pool: POOL, earnOnly: null });
     expect(parsePoolDocument('{"v":2,"tiers":[]}')).toBeNull();
+    expect(parsePoolDocument(document.replace('"earn_only":["legendary","mythic","primordial"]', '"earn_only":["gold"]'))).toBeNull();
     expect(parsePoolDocument('not json')).toBeNull();
-    expect(poolHash({ ...POOL, rare: ['r2', 'r1'] })).not.toBe(poolHash(POOL));
+    expect(poolHash({ ...POOL, rare: ['r2', 'r1'] }, EARN_ONLY)).not.toBe(poolHash(POOL, EARN_ONLY));
+    expect(poolHash(POOL, ['mythic', 'primordial'])).not.toBe(poolHash(POOL, EARN_ONLY));
   });
 });
 
@@ -198,17 +204,37 @@ describe('seed and roll', () => {
     expect(() => rollChest({ ...input, seed: 'abc' })).toThrow();
   });
 
-  it('walks past what the learner holds, then to the lower tiers, then to the higher ones', () => {
-    expect(tierWalk('epic')).toEqual(['epic', 'rare', 'common', 'legendary', 'mythic', 'primordial']);
-    expect(tierWalk('common')).toEqual(['common', 'rare', 'epic', 'legendary', 'mythic', 'primordial']);
-    const roll = (unavailable: string[]) => rollChest({ seed: seedOf(7000, 1), level: 0, pool: POOL, unavailable });
+  it('walks past what the learner holds, then to the lower tiers, then to the higher tiers that are for sale', () => {
+    expect(tierWalk('epic', EARN_ONLY)).toEqual(['epic', 'rare', 'common']);
+    expect(tierWalk('common', EARN_ONLY)).toEqual(['common', 'rare', 'epic']);
+    expect(tierWalk('mythic', EARN_ONLY)).toEqual(['mythic', 'legendary', 'epic', 'rare', 'common']);
+    const roll = (unavailable: string[]) => rollChest({ seed: seedOf(7000, 1), level: 0, pool: POOL, unavailable, earnOnly: EARN_ONLY });
     expect(roll([]).key).toBe('r2');
     expect(roll(['r2']).key).toBe('r1');
     expect(roll(['r1', 'r2'])).toMatchObject({ rolled_tier: 'rare', tier: 'common', key: 'c2' });
     expect(roll(['r1', 'r2', 'c1', 'c2', 'c3'])).toMatchObject({ tier: 'epic', key: 'e1' });
+  });
+
+  it('never lets a learner buy the way into an earn-only tier: holding everything that is sold empties the chest instead', () => {
+    const forSale = [...POOL.common, ...POOL.rare, ...POOL.epic];
+    const bought = rollChest({ seed: seedOf(0, 0), level: 3, pool: POOL, unavailable: forSale, earnOnly: EARN_ONLY });
+    expect(bought).toMatchObject({ rolled_tier: 'common', tier: null, key: null });
+    expect(bought.steps[bought.steps.length - 1]).toBe('nothing left in any tier the walk may enter');
+    // The same learner still gets an earn-only Tera when the seed itself rolls one.
+    expect(rollChest({ seed: seedOf(9990, 0), level: 3, pool: POOL, unavailable: forSale, earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', tier: 'primordial', key: 'p1' });
+    // And a rolled earn-only tier with nothing left walks DOWN, through the earn-only tiers below it.
+    expect(rollChest({ seed: seedOf(9990, 0), level: 3, pool: POOL, unavailable: ['p1'], earnOnly: EARN_ONLY })).toMatchObject({ rolled_tier: 'primordial', tier: 'mythic', key: 'm1' });
+  });
+
+  it('keeps the walk of the first pools (version 1) as it was, so the chests rolled then recompute the same', () => {
+    expect(tierWalk('epic')).toEqual(['epic', 'rare', 'common', 'legendary', 'mythic', 'primordial']);
+    const forSale = [...POOL.common, ...POOL.rare, ...POOL.epic];
+    expect(rollChest({ seed: seedOf(0, 0), level: 0, pool: POOL, unavailable: forSale })).toMatchObject({ rolled_tier: 'common', tier: 'legendary', key: 'l1' });
+    const commit = commitValue({ slot: 510164365, level: 0, poolHash: sha256Hex(V1_DOCUMENT) });
+    const old = recomputeChest({ blockhash: 'HASH', certification: 'CERT', day: 1, commit, poolDocument: V1_DOCUMENT, unavailable: forSale });
+    expect(old.ok && old.tier !== null && ['legendary', 'mythic', 'primordial', 'epic', 'rare', 'common'].includes(old.tier)).toBe(true);
     const everything = Object.values(POOL).flat();
-    expect(roll(everything)).toMatchObject({ rolled_tier: 'rare', tier: null, key: null });
-    expect(roll(everything.filter((key) => key !== 'p1'))).toMatchObject({ tier: 'primordial', key: 'p1' });
+    expect(rollChest({ seed: seedOf(7000, 1), level: 0, pool: POOL, unavailable: everything })).toMatchObject({ rolled_tier: 'rare', tier: null, key: null });
   });
 
   it('spreads many seeds over the tiers about as the table says', () => {
@@ -227,8 +253,8 @@ describe('seed and roll', () => {
   });
 
   it('recomputes a chest from public inputs and refuses a pool that is not the committed one', () => {
-    const document = poolDocument(POOL);
-    const commit = commitValue({ slot: 510164365, level: 1, poolHash: poolHash(POOL) });
+    const document = poolDocument(POOL, EARN_ONLY);
+    const commit = commitValue({ slot: 510164365, level: 1, poolHash: poolHash(POOL, EARN_ONLY) });
     const input = { blockhash: 'HASH', certification: 'CERT', day: 2, commit, poolDocument: document, unavailable: ['c1'] };
     const result = recomputeChest(input);
     expect(result.ok).toBe(true);
@@ -236,7 +262,8 @@ describe('seed and roll', () => {
       expect(result.seed).toBe(chestSeed('HASH', 'CERT', 2));
       expect(result.key).toBe(rollChest({ seed: result.seed, level: 1, pool: POOL, unavailable: ['c1'] }).key);
     }
-    expect(recomputeChest({ ...input, poolDocument: poolDocument({ ...POOL, common: ['c3', 'c2', 'c1'] }) })).toEqual({ ok: false, error: 'pool_mismatch' });
+    expect(recomputeChest({ ...input, poolDocument: poolDocument({ ...POOL, common: ['c3', 'c2', 'c1'] }, EARN_ONLY) })).toEqual({ ok: false, error: 'pool_mismatch' });
+    expect(recomputeChest({ ...input, poolDocument: poolDocument(POOL, []) })).toEqual({ ok: false, error: 'pool_mismatch' });
     expect(recomputeChest({ ...input, commit: 'x' })).toEqual({ ok: false, error: 'bad_commit' });
     expect(recomputeChest({ ...input, poolDocument: '{}' })).toEqual({ ok: false, error: 'bad_pool' });
   });

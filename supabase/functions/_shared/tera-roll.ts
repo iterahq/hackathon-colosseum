@@ -101,27 +101,45 @@ export function buildPool(items: readonly PoolItem[]): ChestPool {
   return pool;
 }
 
-/** The exact text whose SHA-256 is committed. Key order is fixed by `CHEST_TIERS`. */
-export function poolDocument(pool: ChestPool): string {
-  return JSON.stringify({ v: CHEST_VERSION, tiers: CHEST_TIERS.map((tier) => [tier, pool[tier]]) });
+/** The pool documents written before earn-only tiers were named in them: their walk may climb into any tier. */
+export const POOL_VERSION_OPEN_WALK = 1;
+export const POOL_VERSION = 2;
+
+/**
+ * The exact text whose SHA-256 is committed. Key order is fixed by `CHEST_TIERS`.
+ * `earnOnly` names the tiers that are never sold: the walk may reach one only by
+ * ROLLING it (or a tier above it), never by climbing from a tier below. Without
+ * that rule, holding every Tera that is for sale would turn each chest into an
+ * earn-only Tera, which is buying one.
+ */
+export function poolDocument(pool: ChestPool, earnOnly: readonly ChestTier[]): string {
+  return JSON.stringify({ v: POOL_VERSION, tiers: CHEST_TIERS.map((tier) => [tier, pool[tier]]), earn_only: CHEST_TIERS.filter((tier) => earnOnly.includes(tier)) });
 }
 
-export function poolHash(pool: ChestPool): string {
-  return sha256Hex(poolDocument(pool));
+export function poolHash(pool: ChestPool, earnOnly: readonly ChestTier[]): string {
+  return sha256Hex(poolDocument(pool, earnOnly));
+}
+
+export interface ParsedPool {
+  pool: ChestPool;
+  /** `null`: a version 1 document, whose walk climbs into any tier. */
+  earnOnly: ChestTier[] | null;
 }
 
 /** The pool a stored document describes, or `null` when the text is not one. */
-export function parsePoolDocument(text: string): ChestPool | null {
+export function parsePoolDocument(text: string): ParsedPool | null {
   try {
-    const parsed = JSON.parse(text) as { v?: unknown; tiers?: unknown };
-    if (parsed.v !== CHEST_VERSION || !Array.isArray(parsed.tiers) || parsed.tiers.length !== CHEST_TIERS.length) return null;
+    const parsed = JSON.parse(text) as { v?: unknown; tiers?: unknown; earn_only?: unknown };
+    if ((parsed.v !== POOL_VERSION && parsed.v !== POOL_VERSION_OPEN_WALK) || !Array.isArray(parsed.tiers) || parsed.tiers.length !== CHEST_TIERS.length) return null;
     const pool = {} as ChestPool;
     for (let index = 0; index < CHEST_TIERS.length; index += 1) {
       const entry = parsed.tiers[index];
       if (!Array.isArray(entry) || entry[0] !== CHEST_TIERS[index] || !Array.isArray(entry[1]) || !entry[1].every((key) => typeof key === 'string')) return null;
       pool[CHEST_TIERS[index]] = [...(entry[1] as string[])];
     }
-    return pool;
+    if (parsed.v === POOL_VERSION_OPEN_WALK) return { pool, earnOnly: null };
+    if (!Array.isArray(parsed.earn_only) || !parsed.earn_only.every((tier) => (CHEST_TIERS as readonly unknown[]).includes(tier))) return null;
+    return { pool, earnOnly: CHEST_TIERS.filter((tier) => (parsed.earn_only as unknown[]).includes(tier)) };
   } catch {
     return null;
   }
@@ -254,6 +272,8 @@ export interface RollInput {
   pool: ChestPool;
   /** Teras this chest cannot give: the ones the learner holds already and the ones whose edition is used up. */
   unavailable: readonly string[];
+  /** The tiers the walk never climbs into (`ParsedPool.earnOnly`). `null` or absent: it climbs anywhere (version 1 pools). */
+  earnOnly?: readonly ChestTier[] | null;
 }
 
 export interface RollResult {
@@ -271,10 +291,14 @@ export interface RollResult {
 
 const SEED_SHAPE = /^[0-9a-f]{64}$/;
 
-/** The tiers tried, in order: the rolled one, then each lower one, then each higher one. */
-export function tierWalk(rolled: ChestTier): ChestTier[] {
+/**
+ * The tiers tried, in order: the rolled one, then each lower one, then each
+ * higher one that is NOT earn-only. An earn-only tier is given only when the
+ * seed rolled it or a tier above it.
+ */
+export function tierWalk(rolled: ChestTier, earnOnly: readonly ChestTier[] | null = null): ChestTier[] {
   const index = CHEST_TIERS.indexOf(rolled);
-  return [rolled, ...CHEST_TIERS.slice(0, index).reverse(), ...CHEST_TIERS.slice(index + 1)];
+  return [rolled, ...CHEST_TIERS.slice(0, index).reverse(), ...CHEST_TIERS.slice(index + 1).filter((tier) => !earnOnly?.includes(tier))];
 }
 
 /**
@@ -283,7 +307,8 @@ export function tierWalk(rolled: ChestTier): ChestTier[] {
  * `start_roll` = the next 8 hex characters as an integer; inside a tier the walk
  * starts at `start_roll mod (size of the tier)` and moves forward, wrapping,
  * past every unavailable Tera. A tier with nothing left hands over to the next
- * tier of `tierWalk`. No chest is empty while one Tera is left anywhere.
+ * tier of `tierWalk`. No chest is empty while one Tera is left in a tier the
+ * walk may enter.
  */
 export function rollChest(input: RollInput): RollResult {
   if (!SEED_SHAPE.test(input.seed)) throw new Error('rollChest: the seed must be 64 lowercase hex characters');
@@ -305,7 +330,7 @@ export function rollChest(input: RollInput): RollResult {
   steps.push(`start_roll = 0x${input.seed.slice(8, 16)} = ${startRoll}`);
 
   const blocked = new Set(input.unavailable);
-  for (const tier of tierWalk(rolled)) {
+  for (const tier of tierWalk(rolled, input.earnOnly ?? null)) {
     const keys = input.pool[tier] ?? [];
     if (keys.length === 0) {
       steps.push(`${tier}: empty tier`);
@@ -320,7 +345,7 @@ export function rollChest(input: RollInput): RollResult {
     }
     steps.push(`${tier}: all ${keys.length} unavailable`);
   }
-  steps.push('nothing left in any tier');
+  steps.push('nothing left in any tier the walk may enter');
   return { rolled_tier: rolled, tier: null, key: null, tier_roll: tierRoll, start_roll: startRoll, steps };
 }
 
@@ -342,14 +367,14 @@ export type RecomputeResult = ({ ok: true; seed: string } & RollResult) | { ok: 
 export function recomputeChest(input: RecomputeInput): RecomputeResult {
   const commit = parseCommit(input.commit);
   if (!commit) return { ok: false, error: 'bad_commit' };
-  const pool = parsePoolDocument(input.poolDocument);
-  if (!pool) return { ok: false, error: 'bad_pool' };
+  const parsed = parsePoolDocument(input.poolDocument);
+  if (!parsed) return { ok: false, error: 'bad_pool' };
   if (!sha256Hex(input.poolDocument).startsWith(commit.pool)) return { ok: false, error: 'pool_mismatch' };
   const seed = chestSeed(input.blockhash, input.certification, input.day);
-  return { ok: true, seed, ...rollChest({ seed, level: commit.level, pool, unavailable: input.unavailable }) };
+  return { ok: true, seed, ...rollChest({ seed, level: commit.level, pool: parsed.pool, unavailable: input.unavailable, earnOnly: parsed.earnOnly }) };
 }
 
 export const CHEST_FORMULA =
   'seed = sha256("itera-chest:v1|" + blockhash + "|" + certification + "|" + day); ' +
   'tier = cumulative odds of the committed level at (int(seed[0..8]) mod 10000); ' +
-  'tera = first available key walking the tier of the committed pool from (int(seed[8..16]) mod size)';
+  'tera = first available key walking the tier of the committed pool from (int(seed[8..16]) mod size); a tier with nothing left hands over to the lower tiers, then to the higher tiers that are for sale, never up into an earn-only tier';
