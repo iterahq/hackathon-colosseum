@@ -10,11 +10,11 @@ vi.mock('@/services/circuit.service', () => ({ getCircuit: (wallet: string | nul
 
 const counter = (over: Partial<CircuitCounter> = {}): CircuitCounter => ({ lamports: 1_100_000, stampsFunded: 220, purchases: 2, asOf: null, purchaseLamports: 2_200_000, sharePercent: 50, stampFeeLamports: 5000, outside: null, shop: null, treasury: 'T', authority: null, treasuryExplorerUrl: 'https://explorer.solana.com/address/T?cluster=devnet', authorityExplorerUrl: null, stampsIssued: null, wallet: null, ...over });
 
-const show = (wallet: string | null) =>
+const show = (wallet: string | null, compact = false) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <I18nProvider>
-        <CircuitStrip wallet={wallet} />
+        <CircuitStrip wallet={wallet} compact={compact} />
       </I18nProvider>
     </QueryClientProvider>
   );
@@ -48,5 +48,23 @@ describe('CircuitStrip', () => {
     show(null);
     await vi.waitFor(() => expect(getCircuit).toHaveBeenCalled());
     expect(screen.queryByTestId('circuit-strip')).toBeNull();
+  });
+
+  it('with the paid shelf off it is one chip that links to the chain proof and keeps the sentence for a tooltip and a screen reader', async () => {
+    getCircuit.mockResolvedValue(counter({ wallet: { lamports: 0, stampsFunded: 0 } }));
+    show('WALLET', true);
+    const chip = await screen.findByTestId('circuit-strip');
+    expect(chip).toHaveAttribute('data-compact', 'true');
+    expect(chip.tagName).toBe('A');
+    expect(chip).toHaveAttribute('href', 'https://explorer.solana.com/address/T?cluster=devnet');
+    expect(chip).toHaveAttribute('title', expect.stringContaining('220'));
+    expect(chip).toHaveTextContent('Circuito');
+  });
+
+  it('the chip is plain text when there is no address to link', async () => {
+    getCircuit.mockResolvedValue(counter({ treasuryExplorerUrl: null }));
+    show(null, true);
+    const chip = await screen.findByTestId('circuit-strip');
+    expect(chip.tagName).toBe('SPAN');
   });
 });

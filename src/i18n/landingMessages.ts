@@ -32,6 +32,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.model.label': 'Quem paga',
     // not-commerce: devnet test money (the page says nothing here has real value)
     'landing.model.line': 'Aprender é grátis: a Itera paga a taxa de rede de cada carimbo. Patrocinadores travam SOL na chain para as missões. Uma loja de centavos ajuda a pagar os carimbos: o servidor da Itera move metade de cada compra, numa transferência pública, para a chave que paga as taxas.',
+    'landing.model.lineNoShop': 'Aprender é grátis: a Itera paga a taxa de rede de cada carimbo. Patrocinadores travam SOL na chain para as missões.',
     'landing.model.build': 'Cópia do hackathon: Solana devnet, nada é cobrado, nenhum dinheiro real circula.',
     'landing.team.label': 'Quem fez',
     'landing.team.line': 'Feita por {samuel} (construtor da Itera) e {tainan} (tech lead), da comunidade',
@@ -67,6 +68,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.live.stampsIssued.one': 'carimbo gravado na chain',
     'landing.live.stampsIssued.many': 'carimbos gravados na chain',
     'landing.live.stampsIssuedHint': 'taxa de rede paga pela Itera, com ajuda da loja',
+    'landing.live.stampsIssuedHintPlain': 'taxa de rede paga pela Itera',
     'landing.live.purchases.one': 'compra na loja',
     'landing.live.purchases.many': 'compras na loja',
     'landing.live.purchasesHint': 'na devnet, testes do time incluídos',
@@ -118,6 +120,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.model.label': 'Who pays',
     // not-commerce: devnet test money (the page says nothing here has real value)
     'landing.model.line': "Learning is free: Itera pays the network fee of every stamp. Sponsors lock SOL on chain for bounties. A cent-sized shop helps fund the stamps: Itera's server moves half of each purchase, in a public transfer, to the key that pays the fees.",
+    'landing.model.lineNoShop': 'Learning is free: Itera pays the network fee of every stamp. Sponsors lock SOL on chain for bounties.',
     'landing.model.build': 'Hackathon copy: Solana devnet, nothing is charged, no real money moves.',
     'landing.team.label': 'Who built it',
     'landing.team.line': 'Built by {samuel} (builder of Itera) and {tainan} (tech lead), from the community',
@@ -153,6 +156,7 @@ export const LANDING_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'landing.live.stampsIssued.one': 'stamp written on chain',
     'landing.live.stampsIssued.many': 'stamps written on chain',
     'landing.live.stampsIssuedHint': 'network fee paid by Itera, with help from the shop',
+    'landing.live.stampsIssuedHintPlain': 'network fee paid by Itera',
     'landing.live.purchases.one': 'shop purchase',
     'landing.live.purchases.many': 'shop purchases',
     'landing.live.purchasesHint': "on devnet, the team's test runs included",

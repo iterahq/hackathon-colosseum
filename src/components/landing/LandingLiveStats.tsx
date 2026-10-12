@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOCUS_PAID_TERAS_OFF } from '@/config/focus';
 import { useBountyBoard } from '@/hooks/useBounties';
 import { useCircuit } from '@/hooks/useCircuit';
 import { useI18n } from '@/i18n';
@@ -13,6 +14,7 @@ import { LandingStat } from './LandingStat';
  * A failed read shows nothing, never a made-up number.
  */
 export function LandingLiveStats() {
+  const paidOff = FOCUS_PAID_TERAS_OFF;
   const { t, locale } = useI18n();
   const board = useBountyBoard();
   const circuit = useCircuit(null);
@@ -22,7 +24,7 @@ export function LandingLiveStats() {
   const readAt = readAtLabel([board.data?.readAt, counter?.asOf], locale);
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="landing-stats">
+      <div className={`grid grid-cols-2 gap-3 ${paidOff ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`} data-testid="landing-stats">
         {(board.isPending || stats) && (
           <>
             <LandingStat value={stats ? stats.openCount : null} label={t('landing.live.bountiesOpen')} />
@@ -33,9 +35,9 @@ export function LandingLiveStats() {
         {(circuit.isPending || counter) && (
           <>
             {(!counter || counter.stampsIssued !== null) && (
-              <LandingStat value={counter ? (counter.stampsIssued ?? 0).toLocaleString(numberLocale) : null} label={plural(t, 'landing.live.stampsIssued', counter?.stampsIssued ?? 0)} hint={counter ? t('landing.live.stampsIssuedHint') : null} testId="landing-stamps-hint" />
+              <LandingStat value={counter ? (counter.stampsIssued ?? 0).toLocaleString(numberLocale) : null} label={plural(t, 'landing.live.stampsIssued', counter?.stampsIssued ?? 0)} hint={counter ? t(paidOff ? 'landing.live.stampsIssuedHintPlain' : 'landing.live.stampsIssuedHint') : null} testId="landing-stamps-hint" />
             )}
-            <LandingStat value={counter ? counter.purchases.toLocaleString(numberLocale) : null} label={plural(t, 'landing.live.purchases', counter?.purchases ?? 0)} hint={counter ? t('landing.live.purchasesHint') : null} testId="landing-purchases-hint" />
+            {!paidOff && <LandingStat value={counter ? counter.purchases.toLocaleString(numberLocale) : null} label={plural(t, 'landing.live.purchases', counter?.purchases ?? 0)} hint={counter ? t('landing.live.purchasesHint') : null} testId="landing-purchases-hint" />}
           </>
         )}
       </div>
