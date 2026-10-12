@@ -1,3 +1,4 @@
+import { AskingForPreview } from '@/components/bounty/MissionSkills';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Field } from '@/components/bounty/CreateBountyForm';
@@ -221,6 +222,7 @@ export function PostForm({ options, balanceLamports, initialInvitee = null }: { 
           <input id="bounty-p-hours" type="number" inputMode="numeric" min="1" value={values.claimHours} onChange={(e) => patch({ claimHours: e.target.value })} className={INPUT} aria-invalid={Boolean(message('claimHours'))} data-testid="bounty-post-hours" />
         </Field>
       </div>
+      <AskingForPreview trail={trail} minDays={check.minDays} />
       {prizeOptions && <PrizeTeraFields options={prizeOptions} value={prize} onChange={setPrize} strict={attempted} />}
       <dl className="flex flex-col gap-1.5 rounded-[12px] border border-[#2E2A25] bg-[#0A0908] p-3.5" data-testid="bounty-post-cost">
         <dt className={`${MONO_LABEL} text-[#A0978A]`}>{t('bounty.post.cost')}</dt>
