@@ -193,6 +193,9 @@ export const queryKeys = {
   },
   tera: {
     catalog: ['tera', 'catalog'] as const,
+    chests: (userId: string) => ['tera', 'chests', userId] as const,
+    dayChest: (userId: string, lessonId: string) => ['tera', 'day-chest', userId, lessonId] as const,
+    chest: (id: string) => ['tera', 'chest', id] as const,
   },
   circuit: {
     all: ['circuit'] as const,

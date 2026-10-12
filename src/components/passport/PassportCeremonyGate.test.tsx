@@ -26,6 +26,14 @@ vi.mock('@/hooks/usePassport', () => ({
 }));
 
 vi.mock('@/components/loop/LoopPanel', () => ({ LoopPanel: () => null }));
+const chest = vi.hoisted(() => ({ seen: [] as Array<{ lessonId?: string; active: boolean }> }));
+vi.mock('@/hooks/useDayChest', () => ({
+  useMyChests: () => ({ enabled: false, chests: [] }),
+  useDayChest: (lessonId: string | undefined, active: boolean) => {
+    chest.seen.push({ lessonId, active });
+    return { phase: null, chest: null };
+  },
+}));
 const PREVIEW = { day: 5, totalDays: 5, stampedBefore: 4, trailTitle: 'HTML', colorIndex: 1 };
 
 function show(view: LessonEndView | null, props: Partial<Parameters<typeof PassportCeremonyGate>[0]> = {}) {
@@ -103,6 +111,16 @@ describe('PassportCeremonyGate', () => {
     show({ kind: 'card', note: 'stampLater' });
     expect(screen.getByTestId('lesson-complete-note')).toHaveTextContent('Seu dia está salvo; o carimbo on-chain entra na próxima vez.');
     expect(screen.getByTestId('lesson-next-cta')).toBeInTheDocument();
+  });
+
+  it('asks for the chest of a day found again, and not for a day whose stamp is still owed', () => {
+    chest.seen.length = 0;
+    const first = show({ kind: 'card', note: null });
+    expect(chest.seen.at(-1)).toEqual({ lessonId: 'l5', active: true });
+    expect(screen.queryByTestId('day-chest')).not.toBeInTheDocument();
+    first.unmount();
+    show({ kind: 'card', note: 'stampLater' });
+    expect(chest.seen.at(-1)).toEqual({ lessonId: 'l5', active: false });
   });
 
   it('nothing to say: the plain card exactly as before', () => {

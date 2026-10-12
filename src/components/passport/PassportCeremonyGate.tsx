@@ -6,6 +6,8 @@ import { usePassport, usePassportPrefetch } from '@/hooks/usePassport';
 import { useI18n } from '@/i18n';
 import { confirmedStamp, preparingModel } from '@/utils/lessonEnd';
 import { LoopPanel } from '@/components/loop/LoopPanel';
+import { DayChestPrefetch, DayChestSlot } from '@/components/tera/DayChestSlot';
+import { useMyChests } from '@/hooks/useDayChest';
 import { LessonHeldNotice } from './HeldStampNotice';
 import { StampCeremony } from './StampCeremony';
 
@@ -49,6 +51,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
   const passport = usePassport({ lessonId, fresh, done: doneCount, total });
   const { outfit } = useCompanion();
   const link = useWalletLink();
+  const chests = useMyChests().enabled;
   const { view } = passport;
   if (view.kind === 'hold') return <div className="min-h-[60svh]" data-testid="lesson-end-hold" aria-busy="true" />;
   if (view.kind === 'incomplete') {
@@ -59,6 +62,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
       <div className="flex flex-col gap-4">
         {view.note === 'pendingReview' && <LessonHeldNotice reason={view.reason} minSeconds={view.minSeconds} clearsBy={view.clearsBy} onReview={onReview} />}
         <LessonCompleteCard doneCount={doneCount} total={total} nextLessonId={nextLessonId} onReview={onReview} note={view.note === 'stampLater' ? t('lessonEnd.stampLater') : undefined} fill={false} />
+        <DayChestSlot lessonId={lessonId} day={day ?? 0} active={!view.note} still />
         <LoopPanel trail={trail} day={day} />
       </div>
     );
@@ -76,6 +80,8 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
         onConnect={passport.connect}
         outfit={outfit}
         hasWallet={Boolean(link.wallet) || link.pending}
+        compact={chests}
+        chest={preparing ? undefined : <DayChestSlot lessonId={lessonId} day={view.model.day} active={view.model.status === 'minted'} />}
         footer={preparing ? undefined : <LoopPanel trail={trail} day={day} stamp={confirmedStamp(view.model, trail, day)} />}
       />
     </div>
@@ -97,7 +103,7 @@ export function PassportCeremonyGate(props: GateProps) {
 
 function Prefetch() {
   usePassportPrefetch();
-  return null;
+  return <DayChestPrefetch />;
 }
 
 /** Mounted with the lesson: reads the trails early so the end of the lesson knows which day this is. */

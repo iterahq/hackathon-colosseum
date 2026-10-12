@@ -19,6 +19,10 @@ interface Props {
   colorIndex: number;
   /** The lesson's own next/finish buttons, kept at the bottom and replaced by a muted "stamping" button until the ceremony resolves. */
   actions?: ReactNode;
+  /** The chest of the day, drawn under the chain row once the stamp is confirmed on chain. It never holds the actions. */
+  chest?: ReactNode;
+  /** A chest row will follow the chain row: the page is drawn a little smaller on a short screen, so the way out stays in view. */
+  compact?: boolean;
   /** Shown under the ceremony, inside its own scroll: the ceremony covers the whole screen, so anything outside it is never seen. */
   footer?: ReactNode;
   onRetry?: () => void;
@@ -37,7 +41,7 @@ const GRID = {
 } as const;
 
 /** Full-screen stamp ceremony of a finished day: the page lands, Tera stamps it, the chain row follows. */
-export function StampCeremony({ model, preparing = false, colorIndex, actions, footer, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
+export function StampCeremony({ model, preparing = false, colorIndex, actions, chest, compact = false, footer, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
   const { t } = useI18n();
   const reduce = Boolean(useReducedMotion());
   const sound = usePassportSound();
@@ -72,7 +76,8 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, f
     : last
       ? t('passport.ceremony.headline.last')
       : t(hasWallet || model.status === 'minted' ? 'passport.ceremony.headline.day' : 'passport.ceremony.headline.dayDone', { n: day });
-  const width = typeof window !== 'undefined' && window.innerWidth < 400 ? 260 : 300;
+  const base = typeof window !== 'undefined' && window.innerWidth < 400 ? 260 : 300;
+  const width = compact && typeof window !== 'undefined' && window.innerHeight < 980 ? base - 40 : base;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden text-[#F4EDE2]" style={GRID} role="dialog" aria-modal="true" aria-label={headline} data-testid="stamp-ceremony" data-step={step} data-phase={preparing ? 'preparing' : 'resolved'}>
@@ -128,6 +133,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, f
             />
           )}
         </div>
+        {settled && model.status === 'minted' && chest}
         <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked}>
           {locked ? (
             <button type="button" disabled data-testid="ceremony-actions-waiting" className={`mt-6 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-full px-6 opacity-50 ${TACTILE_CTA}`}>
