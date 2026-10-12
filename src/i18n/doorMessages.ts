@@ -103,7 +103,7 @@ export const DOOR_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'try.intro': 'No account and no wallet yet. Your answers stay in this browser; at the end you sign in and they become a stamp on chain.',
     'try.close': 'Leave',
     'try.done.title': 'Day 1 done: {n} of {total} right',
-    'try.done.server': 'Of your right answers, the server graded {server}; {browser} are gestures this browser checked and {reading} are reading steps.',
+    'try.done.server': 'Right answers graded by the server: {server}. Gestures checked by this browser: {browser}. Reading steps: {reading}.',
     'try.done.gate': 'The stamp on chain only comes when every answer is right. Sign in to keep what you did: the right answers are sent again under your account, and you redo only what was missed.',
     'try.done.wallet': 'Sign in with a wallet and stamp it',
     'try.done.email': 'Create an account with e-mail',
