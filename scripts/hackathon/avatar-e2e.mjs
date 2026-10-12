@@ -382,7 +382,7 @@ async function main(keys) {
   try {
     psql(
       `insert into itera.shop_items (key, kind, price_lamports, price_usd_cents, price_label, title_i18n, description_i18n, active, sort, rarity, avatar_group, supply_cap, image_key)
-       values (:'key', 'avatar', 1100000, 20, 'US$ 0.20 ≈ 0.0011 SOL', '{"pt": "Teste", "en": "Test"}', '{}', true, 99999, 'mythic', 'event', 1, 'event_space');
+       values (:'key', 'avatar', 1100000, 20, 'US$ 0.20 ≈ 0.0011 SOL', '{"pt": "Teste", "en": "Test"}', '{}', true, 99999, 'epic', 'event', 1, 'event_space');
        insert into itera.avatar_assets (user_id, item_key, serial, mint_status) values (:'holder'::uuid, :'key', 1, 'pending');`,
       { key: TEST_ITEM, holder: email.userId },
     );

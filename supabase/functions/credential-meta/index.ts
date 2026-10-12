@@ -37,7 +37,7 @@ const COLLECTION_TEXT: Record<CollectionKind, string> = {
   passports: "Tera's Certifications: one soulbound page per learner and trail, stamped by Tera for every completed day.",
   medals: 'Soulbound medals for learning milestones at Itera.',
   companions: 'Tera, the soulbound study companion: lives, level and outfit mirror the learning at Itera.',
-  avatars: 'Collectible Tera avatars: profile pictures in a rarity pyramid, numbered and transferable (not soulbound).',
+  avatars: 'Tera avatars, numbered, in a rarity pyramid. A bought Tera is a collectible its owner can transfer, with a 5% resale fee to Itera on marketplaces that honour Core royalties. A Tera earned by a stamped day or given as a bounty prize is soulbound.',
 };
 
 function isCollectionKind(value: string | undefined): value is CollectionKind {
