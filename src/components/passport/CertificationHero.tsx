@@ -29,8 +29,8 @@ export function CertificationHero({ page, action }: Props) {
   const total = Math.max(1, page.totalDays);
 
   return (
-    <section className="grid items-center gap-6 rounded-[20px] border border-[#262320] bg-[radial-gradient(ellipse_at_30%_0%,#16221b_0%,#141210_60%)] p-4 sm:p-8 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-10" data-testid="certification-hero" data-state={state}>
-      <div className="flex justify-center">
+    <section className="grid grid-cols-[minmax(0,1fr)] items-center gap-6 rounded-[20px] border border-[#262320] bg-[radial-gradient(ellipse_at_30%_0%,#16221b_0%,#141210_60%)] p-4 sm:p-8 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] md:gap-10" data-testid="certification-hero" data-state={state}>
+      <div className="flex min-w-0 justify-center">
         {art ? (
           <PassportArt src={art} title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysStamped} variant={pageVariant(page)} width={460} ribbon={t('passport.ribbon')} />
         ) : (
