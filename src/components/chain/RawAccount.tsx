@@ -21,9 +21,7 @@ function DecodedAsset({ asset, data }: { asset: CoreAsset; data: Uint8Array }) {
             : t('verify.raw.frozenNo')}
         </RawField>
         <RawField label={t('verify.raw.assetName')}>{asset.name}</RawField>
-        <div className="sm:col-span-2">
-          <RawField label={t('verify.raw.assetUri')}>{asset.uri}</RawField>
-        </div>
+        <RawField label={t('verify.raw.assetUri')} className="sm:col-span-2">{asset.uri}</RawField>
       </RawFields>
       <RawSubtitle>{t('verify.raw.assetPlugins')}</RawSubtitle>
       <ul className="flex flex-col gap-1 [font:500_12px/1.4_JetBrains_Mono] text-[#C9BFB0]">

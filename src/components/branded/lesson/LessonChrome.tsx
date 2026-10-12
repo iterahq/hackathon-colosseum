@@ -121,7 +121,7 @@ export function LessonChrome({
 
       {stepText && (
         <p
-          className="pointer-events-none absolute left-1/2 top-2.5 max-sm:top-1.5 h-9 -translate-x-1/2 flex items-center whitespace-nowrap text-xs text-muted-foreground max-sm:text-[11px]"
+          className="pointer-events-none absolute left-1/2 top-2.5 max-sm:top-1.5 h-9 -translate-x-1/2 flex items-center whitespace-nowrap text-xs text-foreground/70 max-sm:text-[11px]"
           data-testid="lesson-step"
           data-step={step?.n}
           data-total={step?.total}

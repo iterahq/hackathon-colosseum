@@ -30,9 +30,6 @@ export function LandingHero() {
           <Link to="/login" className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-wallet">
             {t('landing.cta.wallet')}
           </Link>
-          <Link to={GATE_PATH} className={`${SECONDARY_CTA} ${FOCUS}`} data-testid="landing-cta-gate">
-            {t('landing.cta.gate')}
-          </Link>
         </div>
         <p className="max-w-[52ch] [font:500_14px/1.5_Inter] text-[#C9BFB0]" data-testid="landing-hero-time">
           {t('landing.hero.time')}
@@ -54,6 +51,9 @@ export function LandingHero() {
           </Link>
           <Link to="/bounties" className={`rounded hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-hero-bounties">
             {t('landing.hero.bounties')} →
+          </Link>
+          <Link to={GATE_PATH} className={`rounded hover:text-[#F4EDE2] ${FOCUS}`} data-testid="landing-cta-gate">
+            {t('landing.cta.gate')} →
           </Link>
         </p>
       </div>

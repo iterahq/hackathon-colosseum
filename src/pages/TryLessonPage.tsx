@@ -53,7 +53,7 @@ export default function TryLessonPage() {
     <div className="group/lesson flex min-h-screen flex-col bg-background text-foreground" data-testid="try-page">
       <LessonChrome progressPct={lesson.progressPct} muted={lesson.muted} onToggleMuted={lesson.toggleMuted} onClose={() => navigate('/')} lives={null} step={lesson.finished ? null : { n: lesson.index + 1, total: lesson.total, day: 1 }} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-32 pt-16 sm:pt-4">
-        <p className="rounded-xl border border-evergreen/30 bg-evergreen-soft/20 px-4 py-2 text-xs text-muted-foreground" data-testid="try-intro">
+        <p className="rounded-xl border border-evergreen/30 bg-evergreen-soft/20 px-4 py-2 text-xs text-foreground/70" data-testid="try-intro">
           <span className="mr-2 font-mono uppercase tracking-wider text-evergreen-hi">{t('try.eyebrow')}</span>
           {t('try.intro')}
         </p>

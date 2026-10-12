@@ -20,7 +20,7 @@ import type { InjectedWallet } from '@/types/solanaWallet';
 import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
 import { PHANTOM_INSTALL_URL, detectInjectedWallets, isMobileBrowser } from '@/utils/solanaWallets';
 
-const LINK = 'text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline';
+const LINK = 'text-xs text-foreground/70 touch-hit underline-offset-2 hover:underline';
 const PRIMARY = 'inline-flex min-h-12 w-full items-center justify-center rounded-md bg-evergreen px-4 text-sm font-medium text-obsidiana';
 const OUTLINE = 'inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground';
 
@@ -110,28 +110,28 @@ export default function AuthPage() {
               {t('door.wallet.continue', { wallet: wallet.name })}
             </Button>
           ))}
-          <p className="text-center text-xs text-muted-foreground" data-testid="web3-solana-why">
+          <p className="text-center text-xs text-foreground/70" data-testid="web3-solana-why">
             {t('door.wallet.free')}
           </p>
-          <p className="text-center text-[11px] text-muted-foreground">{t('door.wallet.devnet')}</p>
-          <p className="mt-2 text-center text-xs text-muted-foreground">{t('door.email.lead')}</p>
+          <p className="text-center text-[11px] text-foreground/70">{t('door.wallet.devnet')}</p>
+          <p className="mt-2 text-center text-xs text-foreground/70">{t('door.email.lead')}</p>
           {signUp}
         </div>
       ) : (
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/60 p-4" data-testid="no-wallet">
           <p className="font-display text-base font-bold text-foreground">{t('door.noWallet.title')}</p>
-          <p className="text-sm text-muted-foreground">{t(mobile ? 'door.noWallet.mobile' : 'door.noWallet.desktop')}</p>
+          <p className="text-sm text-foreground/70">{t(mobile ? 'door.noWallet.mobile' : 'door.noWallet.desktop')}</p>
           {mobile && (
             <a href={phantomHref} className={PRIMARY} data-testid="open-in-phantom">
               {t('door.noWallet.openPhantom')}
             </a>
           )}
-          <p className="text-xs text-muted-foreground">{t('door.email.lead')}</p>
+          <p className="text-xs text-foreground/70">{t('door.email.lead')}</p>
           {signUp}
           <a href={PHANTOM_INSTALL_URL} target="_blank" rel="noreferrer" className={mobile ? `text-center ${LINK}` : OUTLINE} data-testid="install-phantom">
             {t('door.noWallet.install')}
           </a>
-          <p className="text-xs text-muted-foreground">{t('door.noWallet.others')}</p>
+          <p className="text-xs text-foreground/70">{t('door.noWallet.others')}</p>
           <Link to={TRY_PATH} className="text-center text-sm font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="try-first-lesson">
             {t('door.noWallet.tryFirst')}
           </Link>
@@ -185,7 +185,7 @@ export default function AuthPage() {
               {busy ? t('common.loading') : t('auth.signIn')}
             </Button>
             <WebOnly>
-              <p className="text-center text-xs text-muted-foreground">
+              <p className="text-center text-xs text-foreground/70">
                 {t('door.other.noAccount')}{' '}
                 <Link to={signupHref(from)} state={returnState(from)} className="font-medium text-foreground touch-hit underline-offset-2 hover:underline" data-testid="goto-signup-link">
                   {t('door.other.createEmail')}

@@ -42,13 +42,13 @@ export function AuthShell({ title, subtitle, testId, children, sidePanel }: Auth
               </div>
             )}
             <h1 className="font-display text-xl font-bold text-foreground">{title}</h1>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+            {subtitle && <p className="text-sm text-foreground/70">{subtitle}</p>}
           </div>
           {children}
           <button
             type="button"
             onClick={toggleLocale}
-            className="mt-4 w-full text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
+            className="mt-4 w-full text-center text-xs text-foreground/70 touch-hit underline-offset-2 hover:underline"
             data-testid="locale-toggle"
           >
             {t('locale.switch')}

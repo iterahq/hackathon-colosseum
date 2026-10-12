@@ -5,9 +5,9 @@ import { useI18n } from '@/i18n';
 
 export const RAW_BOX = 'flex w-full min-w-0 basis-full flex-col gap-3 rounded-[12px] border border-[#262320] bg-[#0A0908] p-3';
 
-export function RawField({ label, children, testId }: { label: string; children: ReactNode; testId?: string }) {
+export function RawField({ label, children, testId, className = '' }: { label: string; children: ReactNode; testId?: string; className?: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5" data-testid={testId}>
+    <div className={`flex min-w-0 flex-col gap-0.5 ${className}`} data-testid={testId}>
       <dt className={`${MONO_LABEL} text-[#A0978A]`}>{label}</dt>
       <dd className="min-w-0 break-all [font:500_12px/1.45_JetBrains_Mono] text-[#F4EDE2]">{children}</dd>
     </div>
