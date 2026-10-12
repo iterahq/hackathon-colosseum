@@ -3,6 +3,7 @@ import { claimsByRow } from './claims-store.ts';
 import { withCosmetics, type CosmeticPurchase } from './cosmetics.ts';
 import type { IteraClient } from './db.ts';
 import { withEndorsements, type Endorsement } from './endorsement.ts';
+import { withChests } from './tera-roll.ts';
 
 interface TrailRow {
   /** Present on rows read whole; the endorsements of a certification are keyed by it. */
@@ -55,16 +56,42 @@ export async function restoreCosmetics<Row extends TrailRow>(db: IteraClient, ro
   const passports = rows.filter((row) => row.achievement_key === 'trail_pass');
   if (passports.length === 0) return rows;
   const rowIds = passports.flatMap((row) => (row.id ? [row.id] : []));
-  const [paid, endorsed, claims] = await Promise.all([
+  const [paid, endorsed, claims, chests] = await Promise.all([
     paidCosmetics(db, [...new Set(passports.map((row) => row.user_id))]),
     endorsementsByRow(db, rowIds),
     claimsByRow(db, rowIds),
+    chestCommitsByRow(db, rowIds),
   ]);
   return rows.map((row) => {
     if (row.achievement_key !== 'trail_pass') return row;
     const worn = withCosmetics(row, paid.get(trailKey(row.user_id, row.ref_id)) ?? []);
-    return row.id ? withClaims(withEndorsements(worn, endorsed.get(row.id) ?? []), claims.get(row.id) ?? []) : worn;
+    return row.id ? withChests(withClaims(withEndorsements(worn, endorsed.get(row.id) ?? []), claims.get(row.id) ?? []), chests.get(row.id) ?? new Map()) : worn;
   });
+}
+
+/**
+ * The day-chest commitments of these certification rows, from the table of
+ * record: row id -> day -> the `chest:<day>` value. They ride in `state` like
+ * the claims, so a later stamp, ink or endorsement keeps them on the asset.
+ * Never throws: a failed read means "none", and the next write puts them back.
+ */
+export async function chestCommitsByRow(db: IteraClient, rowIds: string[]): Promise<Map<string, Map<number, string>>> {
+  const byRow = new Map<string, Map<number, string>>();
+  if (rowIds.length === 0) return byRow;
+  try {
+    const { data, error } = await db.from('tera_chests').select('certification_id,day,commit_value,status,commit_tx').in('certification_id', rowIds);
+    if (error) throw new Error(error.message);
+    for (const entry of (data ?? []) as Array<{ certification_id: string; day: number; commit_value: string; status: string; commit_tx: string | null }>) {
+      // A chest that failed before any commitment reached the chain has nothing to keep there.
+      if (entry.status === 'failed' && entry.commit_tx === null) continue;
+      const days = byRow.get(entry.certification_id) ?? new Map<number, string>();
+      days.set(entry.day, entry.commit_value);
+      byRow.set(entry.certification_id, days);
+    }
+  } catch (error) {
+    console.error('tera chests: commitments unavailable', error instanceof Error ? error.message : error);
+  }
+  return byRow;
 }
 
 /**

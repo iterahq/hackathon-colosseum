@@ -1,5 +1,5 @@
 import { loreView } from './lore.ts';
-import { avatarImageUrl, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
+import { avatarImageUrl, isTransferable, originOf, teraProof, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
 import { endorsementsOf } from './endorsement.ts';
 import type { Lang } from './art.ts';
 import { companionChainImageUrl, companionFromAttributes, companionImageUrl, type CompanionValues } from './companion.ts';
@@ -98,13 +98,23 @@ export function profileAvatars(input: {
   catalog: AvatarCatalog;
   rows: AvatarAssetRow[];
   onchain: Map<string, OnchainAsset>;
+  /** The `earned` block of each earned Tera, by chest id. */
+  earned?: ReadonlyMap<string, unknown>;
 }) {
   const { wallet, lang, catalog, config } = input;
   return input.rows.flatMap((row) => {
     const item = catalog.items.get(row.item_key);
     if (!item || !row.asset_address) return [];
+    const origin = originOf(row);
+    const onchain = input.onchain.get(row.asset_address);
     return [
       {
+        origin,
+        transferable: isTransferable(origin),
+        proof: teraProof(row.asset_address),
+        ...(origin === 'earned' && row.chest_id && input.earned?.has(row.chest_id) ? { earned: input.earned.get(row.chest_id) } : {}),
+        /** What the chain says: an earned Tera is frozen for good, a bought one is not. */
+        frozen: onchain?.frozen ?? null,
         key: item.key,
         title: pickText(item.title_i18n, lang),
         lore: loreView(item.key, lang),

@@ -25,6 +25,7 @@ import { inBackground, syncMirror } from '../_shared/companion-store.ts';
 import { MEDALS_MINTED } from '../_shared/focus.ts';
 import { reconcileCrystals } from '../_shared/crystals-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
+import { chestsEnabled, planStampCommits, saveStampCommits, settleOpenChests, withPlannedCommits } from '../_shared/tera-chest-store.ts';
 import { referralNote } from '../_shared/referral.ts';
 
 const TIME_ZONE = 'America/Sao_Paulo';
@@ -288,8 +289,16 @@ async function runJob(
   const collection = await collectionAddress(db, sdk, chain, kind, config);
   // Read again right before the write: a cosmetic bought while this call ran must not be wiped by the stamp.
   // The row in memory may predate the claim that stored the wallet: the asset names the wallet it is minted to.
-  const [anchor] = await restoreCosmetics(db, [{ ...job.anchor, wallet_address: job.anchor.wallet_address ?? wallet }]);
+  // The day chest: each day this write stamps commits a future slot in the same attribute list. Planned beside the read
+  // above, bounded in time, and `null` (the stamp as it always was) when the chest is off or anything about it fails.
+  const dayRows = job.type === 'create_medal' ? [] : job.rows.filter((row) => row.achievement_key === 'day_stamp' && row.mint_status !== 'minted');
+  const [[restored], planned] = await Promise.all([
+    restoreCosmetics(db, [{ ...job.anchor, wallet_address: job.anchor.wallet_address ?? wallet }]),
+    planStampCommits(db, config, { userId: job.anchor.user_id, certification: job.anchor, dayRows }),
+  ]);
+  const anchor = planned && planned.length > 0 ? withPlannedCommits(restored, planned) : restored;
   const attributes = onchainAttributes(anchor, anchorCatalog);
+  const chestsSaved = planned && planned.length > 0 ? saveStampCommits(db, job.anchor.user_id, job.anchor.id, planned, attributes) : null;
 
   let asset = job.anchor.asset_address;
   let signature: string | null;
@@ -327,6 +336,7 @@ async function runJob(
     }
   }
 
+  if (chestsSaved) await chestsSaved;
   const mintedAt = new Date().toISOString();
   await settle(db, job, (row) => {
     const { mint_error: _cleared, mint_attempts: _spent, ...state } = row.id === anchor.id ? anchor.state : row.state;
@@ -348,16 +358,18 @@ async function mintPending(
   rows: AchievementRow[],
   catalog: Map<string, CatalogEntry>,
   maxJobs: number,
-): Promise<{ attempted: number; remaining: number; blocked: MintBlock | null; touched: Set<string> }> {
+): Promise<{ attempted: number; remaining: number; blocked: MintBlock | null; touched: Set<string>; chests: boolean }> {
   const medalKeys = new Set([...catalog.values()].filter((entry) => entry.kind === 'streak' || entry.kind === 'milestone').map((entry) => entry.key));
   // In the focus build a finished day writes the certification and nothing else to the wallet: medals stay as records.
   const jobs = planMintJobs(rows, MEDALS_MINTED ? medalKeys : new Set());
   const touched = new Set<string>();
+  let chests = false;
   const outcome = (attempted: number, done: number, blocked: MintBlock | null) => ({
     attempted,
     remaining: jobs.length - done,
     blocked,
     touched,
+    chests,
   });
   if (jobs.length === 0) return outcome(0, 0, null);
   if (!caller.wallet) return outcome(0, 0, 'no_wallet');
@@ -379,6 +391,7 @@ async function mintPending(
   }
 
   const config = await loadConfig(db);
+  chests = chestsEnabled(config);
 
   const startedAt = Date.now();
   let attempted = 0;
@@ -547,6 +560,8 @@ Deno.serve(async (request) => {
     const mint = await mintPending(db, caller, rows, catalog, maxJobs);
     // After this learner's own mints, so the two do not compete for the node.
     if (inviterToSettle) inBackground(settleInviter(db, inviterToSettle, catalog));
+    // The chests the stamps of this call opened are settled after the answer left: a chest never holds or fails a stamp.
+    if (mint.chests && mint.attempted > 0) inBackground(loadConfig(db).then((config) => settleOpenChests(db, config, (caller as Caller).iteraUserId)));
     if (mint.touched.size > 0) rows = await loadRows(db, caller.iteraUserId);
 
     const updatedIds = new Set([...stored.changed, ...mint.touched].filter((id) => !stored.created.has(id)));

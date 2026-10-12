@@ -3,6 +3,7 @@ import { companionAvatarArt } from '../_shared/avatar-image.ts';
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
 import { avatarMetadata, tiersView, type AvatarAssetRow } from '../_shared/avatars.ts';
 import { parsePreview, previewArtInput } from '../_shared/preview.ts';
+import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import { companionArtInput, companionFromAttributes, companionMetadata, withChainValues, type CompanionSnapshot } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
@@ -145,7 +146,10 @@ Deno.serve(async (request) => {
       const catalog = await loadAvatarCatalog(db);
       const item = data ? catalog.items.get((data as AvatarAssetRow).item_key) : undefined;
       if (!data || !item) return json({ error: 'not_found' }, 404, cors);
-      return json(avatarMetadata(catalog, item, data as AvatarAssetRow, langOf(request, 'en'), supabaseUrl()), 200, cached);
+      const row = data as AvatarAssetRow;
+      const lang = langOf(request, 'en');
+      const earned = row.origin === 'earned' && row.chest_id ? ((await earnedBlocks(db, [row], lang)).get(row.chest_id) ?? null) : null;
+      return json(avatarMetadata(catalog, item, row, lang, supabaseUrl(), earned), 200, cached);
     }
 
     if (first === 'companion') {
