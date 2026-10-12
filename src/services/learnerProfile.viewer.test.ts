@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = vi.hoisted(() => ({ token: null as string | null }));
+vi.mock('@/services/guestSession.service', () => ({ isGuestAccessToken: (token: string) => token.startsWith('guest') }));
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
   getSupabase: () => ({ auth: { getSession: async () => ({ data: { session: session.token ? { access_token: session.token } : null } }) } }),
@@ -61,6 +62,20 @@ describe('reading a wallet as its owner or as a stranger', () => {
     const lookup = await getLearnerProfile('W1', 'pt');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer owner-jwt');
+    expect(lookup.status).toBe('ok');
+  });
+
+  it('a guest session reads as a stranger, and a session the function refuses falls back to the anon key', async () => {
+    const { getLearnerProfile } = await load();
+    session.token = 'guest-token';
+    fetchMock.mockResolvedValue(answer(STUB));
+    await getLearnerProfile('W1', 'pt');
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer anon');
+    session.token = 'stale-jwt';
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) }).mockResolvedValueOnce(answer({ wallet: 'W1', private: false, viewer: 'public', certifications: [], medals: [] }));
+    const lookup = await getLearnerProfile('W1', 'pt');
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer anon');
     expect(lookup.status).toBe('ok');
   });
 

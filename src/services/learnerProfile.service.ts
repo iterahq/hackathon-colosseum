@@ -1,6 +1,7 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
 import { toCircuitShare } from '@/services/circuit.service';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { isGuestAccessToken } from '@/services/guestSession.service';
 import { toAvatar } from '@/services/shopNormalize';
 import { toTeraOrigin } from '@/services/teraOrigin';
 import { ITERA_V2_GRAPH } from '../../supabase/functions/_shared/capability-graph';
@@ -88,7 +89,9 @@ export function parseEvidence(body: unknown): ClaimEvidence | null {
 async function viewerToken(): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
   try {
-    return (await getSupabase().auth.getSession()).data.session?.access_token ?? null;
+    const token = (await getSupabase().auth.getSession()).data.session?.access_token ?? null;
+    // A guest session (the first lesson with no account) owns no wallet: it reads as a stranger.
+    return token && !isGuestAccessToken(token) ? token : null;
   } catch {
     return null;
   }
@@ -187,6 +190,8 @@ export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en', { fre
     });
   const preload = fresh ? null : takePreload('__iteraProfile', wallet, lang);
   let res = await (preload ?? live()).catch(live);
+  // A session the function does not accept must never cost a visitor the page: read again as a stranger.
+  if ((res.status === 401 || res.status === 403) && token) res = await fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, { headers: viewerHeaders(null), cache: 'no-store' });
   if (res.status === 400 || res.status === 404) return { status: 'invalid' };
   if (!res.ok) throw new Error(`learner-profile failed (${res.status})`);
   let body: unknown = await res.json();
