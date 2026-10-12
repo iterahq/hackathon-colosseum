@@ -2,8 +2,9 @@
  * The ONE place a purchase touches the injected Solana wallet (Phantom and compatibles). No web3
  * library: the backend builds a legacy transaction, the wallet signs and sends it.
  *
- * Proven only against a scripted Phantom so far (see /tmp/hk/orch/PHANTOM-TEST.md for the manual run). Two
- * attempts, each logged (`[wallet] attempt <name>`), and whatever the provider answers is carried in
+ * Run against the real Phantom extension (26.33, devnet): its `request` deserializes `params.message` as a whole
+ * serialized TRANSACTION, signature slots included; the bare message fails with "Reached end of buffer
+ * unexpectedly" before any prompt. Two attempts, each logged (`[wallet] attempt <name>`), and whatever the provider answers is carried in
  * `WalletSignError.detail` so the failed state shows it.
  */
 import { assembleSignedTransaction, base64Decode, base64Encode, bytesOf, normalizeSignOnlyAnswer } from '@/services/walletEncoding';
@@ -78,23 +79,24 @@ async function sent(answer: Promise<unknown>): Promise<WalletSigned> {
 }
 
 /**
- * 1. `request` — what Phantom's injected provider sends internally for a legacy transaction: the
- *    serialized MESSAGE in base58. Phantom's own `signAndSendTransaction(transaction)` is this same
- *    request behind a web3.js object, so it is not tried again on failure (it would only prompt twice).
+ * 1. `request` — the unsigned TRANSACTION in base58, which is what Phantom reads from `params.message`.
+ *    Phantom's own `signAndSendTransaction(transaction)` is this same request behind a web3.js object,
+ *    so it is not tried again on failure (it would only prompt twice).
  * 2. `sign` — FALLBACK, only after 1 failed for another reason than a rejection, an empty wallet or a
- *    dead blockhash: the wallet signs the message and does not send; the signed transaction goes to
+ *    dead blockhash: the wallet signs the same transaction and does not send; it goes to
  *    `purchase-submit`, which broadcasts on devnet whatever network the wallet itself is set to.
  */
 function attemptsFor(provider: SolanaProvider, intent: PurchaseIntent): Attempt[] {
   const messageBytes = intent.messageBase64 ? base64Decode(intent.messageBase64) : null;
+  const unsigned = intent.transactionBase58 || intent.messageBase58;
   const attempts: Attempt[] = [
-    { name: 'request', run: () => sent(provider.request({ method: 'signAndSendTransaction', params: { message: intent.messageBase58 || intent.transactionBase58 } })) },
+    { name: 'request', run: () => sent(provider.request({ method: 'signAndSendTransaction', params: { message: unsigned } })) },
   ];
-  if (messageBytes && intent.messageBase58) {
+  if (messageBytes && unsigned) {
     attempts.push({
       name: 'sign',
       run: async () => {
-        const answer = normalizeSignOnlyAnswer(await provider.request({ method: 'signTransaction', params: { message: intent.messageBase58 } }));
+        const answer = normalizeSignOnlyAnswer(await provider.request({ method: 'signTransaction', params: { message: unsigned } }));
         if (!answer) throw new WalletSignError('failed', 'The wallet signed but answered neither a signature nor a transaction.');
         const signed = answer.kind === 'signature' ? assembleSignedTransaction(answer.signature, messageBytes) : answer.transaction;
         return { kind: 'signed', signedTransaction: base64Encode(signed) };

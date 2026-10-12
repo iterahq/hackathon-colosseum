@@ -54,12 +54,12 @@ describe('classifyWalletError', () => {
 });
 
 describe('signAndSendPurchase', () => {
-  it('sends the transaction MESSAGE through the request form', async () => {
+  it('sends the whole unsigned TRANSACTION through the request form: Phantom cannot read a bare message', async () => {
     quiet();
     const request = vi.fn().mockResolvedValue({ signature: 'SIG' });
     install({ request });
     await expect(signAndSendPurchase(intent)).resolves.toEqual({ kind: 'sent', signature: 'SIG' });
-    expect(request).toHaveBeenCalledWith({ method: 'signAndSendTransaction', params: { message: 'MSG58' } });
+    expect(request).toHaveBeenCalledWith({ method: 'signAndSendTransaction', params: { message: 'TX58' } });
   });
 
   it('fails with no_wallet when nothing is injected', async () => {
@@ -113,7 +113,7 @@ describe('signAndSendPurchase', () => {
     });
     install({ request });
     const result = await signAndSendPurchase(intent);
-    expect(request).toHaveBeenLastCalledWith({ method: 'signTransaction', params: { message: 'MSG58' } });
+    expect(request).toHaveBeenLastCalledWith({ method: 'signTransaction', params: { message: 'TX58' } });
     expect(result.kind).toBe('signed');
     const bytes = base64Decode((result as { signedTransaction: string }).signedTransaction);
     expect(Array.from(bytes.slice(0, 2))).toEqual([1, 7]);
