@@ -1,4 +1,4 @@
-import { avatarImageUrl, includesOf, isFreeAvatar, isOwnedRow, isSoldOut, reservationUntil, tierName, type AvatarAssetRow } from './avatars.ts';
+import { avatarImageUrl, includesOf, isEarnOnly, isFreeAvatar, isOwnedRow, isSoldOut, reservationUntil, tierName, type AvatarAssetRow } from './avatars.ts';
 import { loadAvatarCatalog, loadAvatarRow, loadSupply, mintAvatar, reserve, supabaseUrl } from './avatar-store.ts';
 import { GLOBAL_REF } from './awards.ts';
 import { withClaims } from './claims.ts';
@@ -281,8 +281,11 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
   avatar: {
     async canBuy({ db, userId, item, refId }) {
       if (refId !== GLOBAL_REF) return eligibility('avatar', { ...NO_FACTS, refId });
-      const avatar = (await loadAvatarCatalog(db, true)).items.get(item.key);
+      const catalog = await loadAvatarCatalog(db, true);
+      const avatar = catalog.items.get(item.key);
       if (!avatar || isFreeAvatar(avatar)) return eligibility('avatar', { ...NO_FACTS, refId, free: true });
+      // Whatever `active` says: a tier that is earned is not sold through any door.
+      if (isEarnOnly(catalog, avatar)) return eligibility('avatar', { ...NO_FACTS, refId, earnOnly: true });
       const [own, supply] = await Promise.all([loadAvatarRow(db, userId, item.key), loadSupply(db)]);
       const holding = own?.mint_status === 'reserved' && own.reserved_until !== null && Date.parse(own.reserved_until) > Date.now();
       return eligibility('avatar', { ...NO_FACTS, refId, owned: isOwnedRow(own), outOfSeason: !inSeason(seasonData(avatar.effect), new Date()), soldOut: !holding && isSoldOut(avatar, supply.get(item.key)) });

@@ -1,5 +1,5 @@
 import { loadAvatarCatalog, loadAvatarRows, loadSupply, supabaseUrl } from '../_shared/avatar-store.ts';
-import { includedWithMap, shopAvatarFields, type AvatarAssetRow, type AvatarCatalog, type AvatarSupply } from '../_shared/avatars.ts';
+import { includedWithMap, isEarnOnly, isFreeAvatar, shopAvatarFields, type AvatarAssetRow, type AvatarCatalog, type AvatarSupply } from '../_shared/avatars.ts';
 import { resolveCaller } from '../_shared/caller.ts';
 import { ensureCompanion, inventoryWith, loadStats, readInventory, type InventoryEntry } from '../_shared/companion-store.ts';
 import { pickText } from '../_shared/credential.ts';
@@ -44,6 +44,8 @@ Deno.serve(async (request) => {
     const { data, error } = itemsResult;
     if (error) throw new Error(`shop_items: ${error.message}`);
     const shelf = (data ?? []) as ShopItem[];
+    // The resale fee is stated only once the Royalties plugin is on the collection (the key is written by the script that adds it).
+    const royaltyBps = Number.parseInt(config.avatar_royalty_bps ?? '', 10) || 0;
 
     let inventory: InventoryEntry[] = [];
     let level: number | null = null;
@@ -82,7 +84,7 @@ Deno.serve(async (request) => {
           const avatar = avatars.catalog.items.get(item.key);
           if (avatar) {
             const own = avatarRows.find((row) => row.item_key === item.key) ?? null;
-            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar }), ...resolvedCurrencies(accept, item), art: item.art, owned_refs: [] };
+            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar, royaltyBps }), ...resolvedCurrencies(accept, item), art: item.art, owned_refs: [] };
           }
         }
         const held = inventory.filter((entry) => entry.item_key === item.key);
@@ -131,7 +133,16 @@ Deno.serve(async (request) => {
           owned_refs: held.map((entry) => entry.ref_id),
         };
       });
-    return json(items, 200, { ...cors, 'Cache-Control': 'private, no-store' });
+    // The Teras of the earn-only tiers are off the shelf (`active = false`) and still listed: the card says how each is earned.
+    const earned = avatars
+      ? [...avatars.catalog.items.values()]
+          .filter((avatar) => !avatar.active && !isFreeAvatar(avatar) && isEarnOnly(avatars.catalog, avatar))
+          .map((avatar) => {
+            const own = avatarRows.find((row) => row.item_key === avatar.key) ?? null;
+            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(avatar.key), own, equippedKey: wornAvatar }), accepts: [], sol_enabled: false, crystals_enabled: false, art: {}, owned_refs: [] };
+          })
+      : [];
+    return json([...items, ...earned], 200, { ...cors, 'Cache-Control': 'private, no-store' });
   } catch (error) {
     console.error('shop-items failed', error);
     return json({ error: 'internal_error' }, 500, cors);
