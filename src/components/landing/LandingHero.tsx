@@ -61,7 +61,9 @@ export function LandingHero() {
         src="/mascot/tera-happy.webp"
         alt=""
         draggable={false}
-        className="h-36 w-36 shrink-0 rounded-full bg-[#141210] object-cover ring-2 ring-[#3FD17F] sm:h-52 sm:w-52 md:h-64 md:w-64"
+        width={240}
+        height={300}
+        className="h-[180px] w-36 shrink-0 object-contain sm:h-[260px] sm:w-52 md:h-[320px] md:w-64"
       />
     </section>
   );
