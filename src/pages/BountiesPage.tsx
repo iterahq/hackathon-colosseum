@@ -1,15 +1,16 @@
-import { Coins, Lock, ShieldCheck } from 'lucide-react';
+import { ChevronRight, Coins, Lock, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BountyCard } from '@/components/bounty/BountyCard';
 import { InviteInbox } from '@/components/bounty/InviteInbox';
 import { JudgeBoardBlock } from '@/components/bounty/JudgeParts';
 import { BountyShell, Fold, LINK, LoadError, Skeleton } from '@/components/bounty/bountyUi';
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
+import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS, MONO_LABEL } from '@/components/shop/shopStyles';
 import { TeraNote } from '@/components/tera/TeraNote';
 import { useBountyBoard, useBountySession } from '@/hooks/useBounties';
 import { useIsBountyStaff } from '@/hooks/useIsBountyStaff';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useI18n } from '@/i18n';
+import { splitBoard } from '@/components/bounty/boardSplit';
 import { formatWhen, hiddenTestsLine, plural, sortBounties } from '@/utils/bounty';
 import { daysFooter, judgeBoardTitle, judgePaidHint, openHint } from '@/utils/bountyJudge';
 import { localizeDecimal } from '@/utils/shopPrice';
@@ -50,6 +51,7 @@ export default function BountiesPage() {
   const staff = useIsBountyStaff();
   const stats = board.data?.stats;
   const items = board.data ? sortBounties(board.data.bounties) : [];
+  const { live, closed } = splitBoard(items);
   const hiddenTests = hiddenTestsLine(t, stats, items.length);
   const footer = stats ? daysFooter(t, stats) : null;
   const teamPaid = Boolean(stats) && ((stats?.rehearsalPaidCount ?? 0) > 0 || (stats?.judgeTeamTestPaidCount ?? 0) > 0);
@@ -128,14 +130,32 @@ export default function BountiesPage() {
           <TeraNote mood="neutral" title={t('bounty.empty.title')} body={t('bounty.empty.body')} className="!pt-2" />
         </div>
       )}
-      {items.length > 0 && (
+      {live.length > 0 && (
         <ul className="grid gap-4 sm:grid-cols-2 min-[1536px]:grid-cols-3" data-testid="bounty-list">
-          {items.map((bounty) => (
+          {live.map((bounty) => (
             <li key={bounty.id} className="flex min-w-0">
               <BountyCard bounty={bounty} />
             </li>
           ))}
         </ul>
+      )}
+      {board.data && items.length > 0 && live.length === 0 && (
+        <p className="[font:500_14px_Inter] text-[#A0978A]" data-testid="bounty-none-open">{t('bounty.board.noneOpen')}</p>
+      )}
+      {closed.length > 0 && (
+        <details className="group/closed min-w-0" data-testid="bounty-closed" data-count={closed.length}>
+          <summary className={`flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-[14px] border border-[#262320] bg-[#141210] px-4 [font:700_22px/1_'Barlow_Condensed'] text-[#C9BFB0] hover:border-[#5E574E] [&::-webkit-details-marker]:hidden ${FOCUS}`}>
+            <ChevronRight aria-hidden className="h-5 w-5 shrink-0 transition-transform group-open/closed:rotate-90" />
+            {t('bounty.board.closed', { n: closed.length })}
+          </summary>
+          <ul className="grid gap-4 pt-4 sm:grid-cols-2 min-[1536px]:grid-cols-3" data-testid="bounty-closed-list">
+            {closed.map((bounty) => (
+              <li key={bounty.id} className="flex min-w-0">
+                <BountyCard bounty={bounty} />
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       <Fold label={t('bounty.fold.how')} testId="bounty-how" className="border-t border-[#262320] pt-3">
         <ol className="flex list-decimal flex-col gap-1 pl-5 text-[#C9BFB0]" data-testid="bounty-hero-sub">
