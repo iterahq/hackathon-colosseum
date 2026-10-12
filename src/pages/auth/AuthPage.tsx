@@ -52,7 +52,13 @@ export default function AuthPage() {
           Supabase is not configured (VITE_SUPABASE_* missing).
         </p>
       )}
-      <img src="/mascot/tera-hero.webp" alt="" width={220} height={220} className="mx-auto mb-6 h-[220px] w-[220px] object-contain" data-testid="login-art" />
+      <div className="relative mx-auto mb-6 flex h-[260px] w-full items-end justify-center">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-1/2 h-24 w-56 -translate-x-1/2 rounded-full bg-[#3FD17F]/30 blur-2xl"
+        />
+        <img src="/mascot/tera-body.webp" alt="" width={186} height={260} className="relative h-[260px] w-[186px] object-contain" data-testid="login-art" />
+      </div>
       <ConnectWalletButton
         className={PRIMARY}
         testId="web3-solana"
