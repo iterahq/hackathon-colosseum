@@ -6,11 +6,27 @@ import { toPublicEndorsements } from '@/services/endorsement.service';
 import type { CredentialLookup, CredentialVerification } from '@/types/achievements';
 import { parseChainRead } from '@/types/chainRead';
 import { takePreload } from '@/services/learnerProfile.service';
+import { toTeraOrigin } from '@/services/teraOrigin';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 const text = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
+
+function parseTera(b: Record<string, unknown>): CredentialVerification['tera'] {
+  const a = b.avatar && typeof b.avatar === 'object' ? (b.avatar as Record<string, unknown>) : null;
+  if (!a || !text(a.key)) return null;
+  const lore = a.lore && typeof a.lore === 'object' ? (a.lore as Record<string, unknown>) : {};
+  return {
+    key: String(a.key),
+    name: text(lore.name) ?? text(b.name) ?? String(a.key),
+    rarity: text(a.rarity) ?? '',
+    tierName: text(a.tier_name) ?? '',
+    serial: typeof a.serial === 'number' ? a.serial : null,
+    imageUrl: text(b.image_url),
+    origin: toTeraOrigin({ ...a, asset: b.asset }),
+  };
+}
 
 export function parseCredential(body: unknown, asset: string): CredentialVerification {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
@@ -39,6 +55,7 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
     endorsements: toPublicEndorsements(b.endorsements),
     snapshot: b.snapshot && typeof b.snapshot === 'object' ? { source: text((b.snapshot as Record<string, unknown>).source) ?? 'chain', mirrored_at: text((b.snapshot as Record<string, unknown>).mirrored_at) } : null,
     companion: b.companion && typeof b.companion === 'object' ? (b.companion as Record<string, unknown>) : null,
+    tera: parseTera(b),
   };
 }
 

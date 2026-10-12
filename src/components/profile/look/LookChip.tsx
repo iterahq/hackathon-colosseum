@@ -10,12 +10,14 @@ interface Props {
   disabled?: boolean;
   rarity?: string;
   testId?: string;
+  /** A small mark over the picture (the origin of an NFT Tera). */
+  mark?: ReactNode;
   onPick: () => void;
   children: ReactNode;
 }
 
 /** One round chip: the picture, a small name under it, a check badge and a highlighted tile when worn. */
-export function LookChip({ label, title, on, disabled, rarity, testId, onPick, children }: Props) {
+export function LookChip({ label, title, on, disabled, rarity, testId, mark, onPick, children }: Props) {
   return (
     <button
       type="button"
@@ -34,6 +36,7 @@ export function LookChip({ label, title, on, disabled, rarity, testId, onPick, c
             <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5l2.2 2.2 4.8-5" /></svg>
           </span>
         )}
+        {mark && <span className="absolute -left-0.5 -top-0.5">{mark}</span>}
         {rarity && rarity !== 'common' && !on && <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-full" style={{ background: RARITY_DOT[rarity] ?? NEUTRAL_DOT }} />}
       </span>
       <span className="line-clamp-2 w-full text-center font-mono text-[10px] leading-tight text-[#C9BFB0] [hyphens:auto] [overflow-wrap:anywhere] sm:text-[11px]">{label}</span>

@@ -8,6 +8,7 @@ import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
 import { FOCUS_BUILD, FOCUS_LIVES_OFF } from '@/config/focus';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
+import { ProfileTeras, hasOrigins } from '@/components/tera/ProfileTeras';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
 import { useLearnerProfile, useRecheckProfile, useWalletGraph } from '@/hooks/useLearnerProfile';
 import { useProgressStory } from '@/hooks/useProgressStory';
@@ -113,7 +114,8 @@ export default function LearnerProfilePage() {
               </div>
             </section>
             {capabilities && <CapabilityGraphSection wallet={profile.wallet} capabilities={capabilities} selected={openNode} onSelect={setOpenNode} />}
-            {profile.avatars.length > 0 && (
+            {hasOrigins(profile.avatars) && <ProfileTeras items={profile.avatars} headingClass={H2} />}
+            {profile.avatars.length > 0 && !hasOrigins(profile.avatars) && (
               <ul className="flex flex-wrap gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-3" aria-label={t('profile.avatars')} data-testid="profile-avatars">
                 {profile.avatars.map((a) => (
                   <li key={`${a.key}-${a.serial ?? ''}`} className="flex items-center gap-2 [font:500_12px_JetBrains_Mono] text-[#C9BFB0]">

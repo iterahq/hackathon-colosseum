@@ -6,6 +6,7 @@ import PassportPage from '@/pages/PassportPage';
 import type { PassportMedal, PassportPageData } from '@/types/achievements';
 
 const view = vi.fn();
+vi.mock('@/components/tera/PassportTeras', () => ({ PassportTeras: ({ wallet }: { wallet: string | null }) => <div data-testid="passport-teras" data-wallet={wallet ?? ''} /> }));
 vi.mock('@/components/talent/TalentOptIn', () => ({ TalentOptIn: () => <div data-testid="talent-optin" /> }));
 vi.mock('@/components/graph/PassportGraph', () => ({ PassportGraph: ({ wallet }: { wallet: string | null }) => <div data-testid="passport-graph" data-wallet={wallet ?? ''} /> }));
 vi.mock('@/hooks/usePassportView', () => ({ usePassportView: () => view() }));
@@ -68,6 +69,7 @@ describe('PassportPage', () => {
     view.mockReturnValue({ ...base, walletAddress: '7xKpQrstuvwxyz3Fa', pages: [page()], medals: [] });
     show();
     expect(screen.getByTestId('passport-graph')).toHaveAttribute('data-wallet', '7xKpQrstuvwxyz3Fa');
+    expect(screen.getByTestId('passport-teras')).toHaveAttribute('data-wallet', '7xKpQrstuvwxyz3Fa');
   });
 
   it('nothing earned: one empty page and the way to day 1', () => {

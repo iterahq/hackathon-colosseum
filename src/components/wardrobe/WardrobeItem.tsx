@@ -8,6 +8,8 @@ interface Props {
   title: string;
   /** One quiet line under the title (tier, "NFT", where it shows). */
   sub?: string | null;
+  /** Under the quiet line: the origin of a Tera and the link to its proof. */
+  extra?: ReactNode;
   action: ItemAction;
   /** `pending`: a small progress mark inside the button. `failed`: the button says so for a moment. Neither changes the tile's size. */
   status?: 'pending' | 'failed' | null;
@@ -18,13 +20,14 @@ interface Props {
 }
 
 /** One owned thing in the wardrobe: its picture, its name and the ONE thing to do with it. */
-export function WardrobeItem({ itemKey, art, title, sub, action, status = null, failedLabel = '', previewing = false }: Props) {
+export function WardrobeItem({ itemKey, art, title, sub, extra, action, status = null, failedLabel = '', previewing = false }: Props) {
   const inUse = action.id === 'inuse' || action.id === 'unequip';
   return (
     <article data-testid="wardrobe-item" data-item={itemKey} data-action={action.id} data-status={status ?? undefined} data-previewing={previewing || undefined} className={`${CARD} flex min-w-0 flex-col items-center gap-2 border-b-[5px] p-3 text-center ${inUse || previewing ? 'border-b-[#3FD17F]' : 'border-b-[#2E2A25]'}`}>
       <span className="flex h-[92px] items-center justify-center">{art}</span>
       <span className="line-clamp-2 [font:700_20px/1.05_'Barlow_Condensed'] text-[#F4EDE2]">{title}</span>
       {sub && <span className="[font:600_10px_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A]">{sub}</span>}
+      {extra}
       <button
         type="button"
         disabled={action.disabled}

@@ -1,4 +1,5 @@
 import type { AvatarBorder } from '@/types/crystals';
+import type { TeraOrigin } from '@/types/tera';
 
 /** The learner's profile picture: a free icon or an NFT avatar. `avatar` of `companion` / `learner-profile`, kind `avatar` of `shop-items`. */
 export type AvatarRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'primordial';
@@ -18,6 +19,8 @@ export interface LearnerAvatar {
   assetAddress: string | null;
   /** Only the free expression icons take the outfit layer on top; a painted avatar is shown as it is. */
   allowsOutfit: boolean;
+  /** An NFT Tera the learner holds: earned, bought or sponsored. Absent for a free face or while the backend says nothing. */
+  origin?: TeraOrigin | null;
   /** The learner's profile border, drawn over the art's own ring; null or absent keeps the ring as it is. */
   border?: AvatarBorder | null;
 }
@@ -52,6 +55,8 @@ export interface AvatarOffer {
   supply: { minted: number; max: number | null };
   assetAddress: string | null;
   allowsOutfit: boolean;
+  /** Set on a Tera the caller holds: earned, bought or sponsored. */
+  origin?: TeraOrigin | null;
   /** Never for sale at any price: the tier only comes out of the chest of a stamped day. */
   earnOnly?: boolean;
   /** A bought Tera can be sent to another wallet or resold. */

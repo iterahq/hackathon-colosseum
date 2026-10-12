@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArtViewer } from '@/components/artviewer/ArtViewer';
 import { LookStage } from '@/components/wardrobe/LookStage';
+import { TeraOriginLine } from '@/components/tera/TeraOriginLine';
 import { useI18n } from '@/i18n';
 import { loreOf } from '@/lib/teraLoreSafe';
 import type { LearnerAvatar } from '@/types/avatar';
@@ -19,6 +20,7 @@ export function LookStageCard({ avatar, outfit }: { avatar: LearnerAvatar; outfi
       <LookStage avatar={avatar} outfit={outfit} className="!h-[150px] !w-[150px] md:!h-[220px] md:!w-[220px]" />
       <h3 className="[font:700_28px/1_'Barlow_Condensed'] text-[#F4EDE2]" data-testid="look-name">{name}</h3>
       <span className="rounded-full border border-[#262320] px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#A0978A]">{avatar.tierName}</span>
+      {avatar.origin && <TeraOriginLine origin={avatar.origin} />}
       {lore?.epithet && <p className="max-w-full truncate font-sans text-sm text-[#C9BFB0]">{lore.epithet}</p>}
       <div className="flex gap-4 font-mono text-xs text-[#3FD17F]">
         {lore && (

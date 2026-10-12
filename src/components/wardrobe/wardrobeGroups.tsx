@@ -1,3 +1,4 @@
+import { TeraOriginLine } from '@/components/tera/TeraOriginLine';
 import type { Locale } from '@/i18n';
 import type { ReactNode } from 'react';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
@@ -61,7 +62,7 @@ export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, 
         <div className={GRID}>
           {avatars.map((item) => {
             const face = avatarOf(item);
-            return face && <WardrobeItem key={item.key} itemKey={item.key} art={<LearnerAvatar avatar={face} size="lg" />} title={loreOf(item.key, locale)?.name ?? item.title} sub={item.avatar?.free ? null : `${item.avatar?.tierName} · NFT`} action={itemAction(item, actions, t)} status={marks[item.key] ?? null} failedLabel={t('wardrobe.equipFailed')} />;
+            return face && <WardrobeItem key={item.key} itemKey={item.key} art={<LearnerAvatar avatar={face} size="lg" />} title={loreOf(item.key, locale)?.name ?? item.title} sub={item.avatar?.free ? null : `${item.avatar?.tierName} · NFT`} extra={item.avatar?.origin ? <TeraOriginLine origin={item.avatar.origin} /> : undefined} action={itemAction(item, actions, t)} status={marks[item.key] ?? null} failedLabel={t('wardrobe.equipFailed')} />;
           })}
         </div>
       ),

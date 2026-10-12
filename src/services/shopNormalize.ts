@@ -21,6 +21,7 @@ import { DEFAULT_MAX_LIVES, DEFAULT_REGEN_SECONDS } from '@/utils/lives';
 import { priceLabel } from '@/utils/shopPrice';
 import { toPurchaseCircuit } from '@/services/circuit.service';
 import { toGift } from '@/services/gift.service';
+import { toTeraOrigin } from '@/services/teraOrigin';
 
 type Row = Record<string, unknown>;
 const row = (v: unknown): Row => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Row) : {});
@@ -88,6 +89,7 @@ export function toAvatar(v: unknown): LearnerAvatar {
     chipUrl: chipOf(r, imageUrl),
     assetAddress: orNull(r.asset_address),
     allowsOutfit: allowsOutfit(r),
+    origin: toTeraOrigin(r),
   };
 }
 
@@ -137,6 +139,7 @@ function toAvatarOffer(r: Row): AvatarOffer | null {
     supply: { minted: num(supply.minted), max: typeof supply.max === 'number' ? supply.max : null },
     assetAddress: orNull(r.asset_address),
     allowsOutfit: allowsOutfit(r),
+    origin: r.owned === true ? toTeraOrigin(r) : null,
     earnOnly: r.earn_only === true,
     transferable: r.transferable === true,
     royaltyBps: Math.max(0, num(r.royalty_bps)),

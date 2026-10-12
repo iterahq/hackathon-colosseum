@@ -1,6 +1,7 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
 import { toCircuitShare } from '@/services/circuit.service';
 import { toAvatar } from '@/services/shopNormalize';
+import { toTeraOrigin } from '@/services/teraOrigin';
 import { ITERA_V2_GRAPH } from '../../supabase/functions/_shared/capability-graph';
 import { parseChainRead } from '@/types/chainRead';
 import type { Capabilities, CapabilityNode, CapabilityProof, CapabilityStatus, ClaimEvidence, LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
@@ -95,6 +96,9 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
         verified: r.verified === true,
         imageUrl: String(r.image_url),
         explorerUrl: text(r.explorer_url),
+        rarity: text(r.rarity),
+        asset: text(r.asset),
+        origin: toTeraOrigin(r),
       })),
     verifiedCount: int(b.verified_count) ?? 0,
     companion:

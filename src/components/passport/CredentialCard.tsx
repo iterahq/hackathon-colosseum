@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ChainProof } from '@/components/chain/ChainProof';
+import { OriginBadge } from '@/components/tera/OriginBadge';
 import { useI18n } from '@/i18n';
 import { shortAddress } from '@/lib/explorer';
 import type { CredentialLookup } from '@/types/achievements';
@@ -78,6 +79,20 @@ export function CredentialCard({ lookup, onRecheck, rechecking = false }: { look
             {companion.level != null && <Row label={t('passport.credential.level')}>{companion.level}</Row>}
             {companion.xp != null && <Row label={t('passport.credential.xp')}>{companion.xp}</Row>}
             {companion.streak != null && <Row label={t('passport.credential.streak')}>{companion.streak}</Row>}
+          </>
+        ) : data.tera ? (
+          <>
+            <Row label={t('origin.row.name')}>
+              {data.tera.name}
+              {data.tera.serial ? ` #${data.tera.serial}` : ''}
+            </Row>
+            {data.tera.tierName && <Row label={t('origin.row.tier')}>{data.tera.tierName}</Row>}
+            {data.tera.origin && (
+              <Row label={t('origin.row.origin')}>
+                <OriginBadge origin={data.tera.origin} transfer={false} />
+              </Row>
+            )}
+            {date && <Row label={t('passport.credential.date')}>{date}</Row>}
           </>
         ) : (
           <>

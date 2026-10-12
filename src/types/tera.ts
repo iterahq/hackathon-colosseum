@@ -61,3 +61,16 @@ export interface ChestList {
   enabled: boolean;
   chests: Chest[];
 }
+
+export type TeraOriginKind = 'earned' | 'bought' | 'sponsor';
+
+/** How a Tera was obtained, whether it can change hands, and where anyone checks it. */
+export interface TeraOrigin {
+  kind: TeraOriginKind;
+  transferable: boolean;
+  proof: { asset: string; explorerUrl: string | null } | null;
+  /** Earned: the certification and day whose chest gave it. */
+  earned: { certification: string; trail: string; day: number; tier: string; chestId: string } | null;
+  /** Sponsored: the brand that funded it and the bounty that paid it. */
+  sponsor: { brand: string; accent: string; bountySlug: string; bountyTitle: string; payoutTx: string } | null;
+}

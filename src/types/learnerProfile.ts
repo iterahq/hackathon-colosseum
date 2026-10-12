@@ -1,3 +1,4 @@
+import type { TeraOrigin } from '@/types/tera';
 import type { ChainRead } from '@/types/chainRead';
 import type { LearnerAvatar } from '@/types/avatar';
 import type { CircuitShare } from '@/types/circuit';
@@ -52,6 +53,11 @@ export interface ProfileAvatarNft {
   verified: boolean;
   imageUrl: string;
   explorerUrl: string | null;
+  /** Rarity key of its tier, when the backend sends it. */
+  rarity?: string | null;
+  asset?: string | null;
+  /** Earned, bought or sponsored; null while the backend says nothing about it. */
+  origin?: TeraOrigin | null;
 }
 
 export type CapabilityStatus = 'verified' | 'recorded' | 'open';
