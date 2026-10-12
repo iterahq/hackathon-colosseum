@@ -10,7 +10,7 @@ interface Props {
   onTab: (tab: LookTab) => void;
 }
 
-/** Segmented tablist with roving tabindex: arrows, Home and End move and select. */
+/** Segmented tablist with roving tabindex: arrows, Home and End move and select. Each tab is as wide as its label asks, so the longest one ("Accessories") is not cut. */
 export function LookTabs({ tab, tabs: LOOK_TABS = ALL_LOOK_TABS, counts, onTab }: Props) {
   const { t } = useI18n();
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -37,7 +37,7 @@ export function LookTabs({ tab, tabs: LOOK_TABS = ALL_LOOK_TABS, counts, onTab }
           tabIndex={tab === id ? 0 : -1}
           onClick={() => onTab(id)}
           data-testid={`look-tab-${id}`}
-          className={`flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-[10px] px-1.5 font-sans text-[13px] font-semibold sm:gap-1.5 sm:px-2 sm:text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F] ${tab === id ? 'bg-[#262320] text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'}`}
+          className={`flex min-h-11 min-w-0 flex-auto items-center justify-center gap-1 rounded-[10px] px-1.5 font-sans text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F] ${tab === id ? 'bg-[#262320] text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'}`}
         >
           <span className="min-w-0 truncate">{t(`avatar.look.tab.${id}`)}</span>
           <span className="shrink-0 font-mono text-[11px] text-[#A0978A]">{counts[id]}</span>

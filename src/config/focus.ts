@@ -63,3 +63,10 @@ export const FOCUS_EARN_STORY_OFF = FOCUS_BUILD;
  * day's FIRST activity only, and a day mixes several kinds, so it described the day wrongly.
  */
 export const FOCUS_DAY_KIND_LABEL_OFF = FOCUS_BUILD;
+
+/**
+ * The Circuit (half of every purchase funds the stamps of other learners) is not part of the story a viewer is told:
+ * the "+N stamps covered for other learners" line of the purchase dialog and the Circuit chip under the shop are
+ * hidden. The server still moves the share; only the two mentions go.
+ */
+export const FOCUS_CIRCUIT_OFF = FOCUS_BUILD;
