@@ -188,7 +188,7 @@ describe('StampCeremony', () => {
     plain.unmount();
     show(model('minted', { txSignature: 'sig', newMedals: medals }), { compact: true });
     settle();
-    expect(screen.getByTestId('ceremony-medals')).toHaveTextContent('Early birdFirst stamp');
+    expect(screen.getByTestId('ceremony-medals')).toHaveTextContent('EBEarly birdD1First stamp');
     expect(screen.getAllByTestId('ceremony-medal')[1]).toHaveAttribute('aria-label', 'Nova medalha: First stamp');
     expect(screen.getByTestId('ceremony-links').className).toContain('flex-wrap');
   });
