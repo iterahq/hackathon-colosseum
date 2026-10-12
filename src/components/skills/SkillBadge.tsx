@@ -41,7 +41,7 @@ const SHELL: Record<SkillBadgeState, string> = {
 const DISC: Record<SkillBadgeState, string> = {
   lit: 'border-[#3FD17F] bg-[radial-gradient(circle_at_50%_28%,#266E45,#0F2A1B_72%)] text-[#8DFFBC] shadow-[0_0_14px_rgba(63,209,127,.45)]',
   locked: 'border-[#3A352F] bg-[#141210] text-[#7A7268]',
-  neutral: 'border-[#F2C66D]/55 bg-[radial-gradient(circle_at_50%_28%,#3A2E12,#141210_72%)] text-[#F2C66D]',
+  neutral: 'border-[#5E574E] bg-[#141210] text-[#C9BFB0]',
 };
 
 const TILE_LABEL: Record<SkillBadgeState, string> = { lit: 'text-[#F4EDE2]', locked: 'text-[#A0978A]', neutral: 'text-[#C9BFB0]' };
