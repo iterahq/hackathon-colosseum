@@ -38,6 +38,11 @@ async function fetchDataUri(url: string, maxBytes: number): Promise<string | nul
   return data;
 }
 
+/** A published picture of the avatars bucket as a data URI (same cache and limits as the companion card). */
+export function fetchPictureDataUri(url: string, maxBytes: number): Promise<string | null> {
+  return fetchDataUri(url, maxBytes);
+}
+
 /**
  * What the companion card draws for an avatar key. The default avatar is the
  * built-in Tera (no fetch, the card every learner had before avatars). Any

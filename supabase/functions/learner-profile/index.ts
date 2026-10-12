@@ -12,6 +12,7 @@ import { explorerUrl, pickText, type AchievementRow, type CatalogEntry } from '.
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
 import { regenerate } from '../_shared/lives.ts';
+import { bountiesOf, sponsorProfileEntry, sponsorTerasOfWallet } from '../_shared/sponsor-tera-store.ts';
 import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { PROFILE_ASSET_LIMIT, buildProfile, isVerified, profileAvatars, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
@@ -40,7 +41,8 @@ const RATE: RateLimit = { limit: 120, windowMs: 60_000 };
 
 /** Everything a wallet earned, with its assets read from the chain now. Throws `RpcError` when the node did not answer. */
 async function build(db: ReturnType<typeof serviceClient>, wallet: string, lang: 'pt' | 'en') {
-  const [walletAvatars, config, achievements, companions, catalogRows] = await Promise.all([
+  const [sponsorRows, walletAvatars, config, achievements, companions, catalogRows] = await Promise.all([
+    sponsorTerasOfWallet(db, wallet),
     loadWalletAvatars(db, wallet),
     loadConfig(db),
     // Stamps and completions live inside their certification's asset: they own none.
@@ -73,6 +75,7 @@ async function build(db: ReturnType<typeof serviceClient>, wallet: string, lang:
     ...(achievements.data ?? []).map((row) => row.asset_address as string),
     ...(companionRow ? [companionRow.asset_address as string] : []),
     ...(walletAvatars?.rows ?? []).map((row) => row.asset_address as string),
+    ...sponsorRows.map((row) => row.asset_address as string),
   ];
   const collections = [config.collection_passports, config.collection_medals, config.collection_companions, config.collection_avatars].filter(Boolean);
   const now = new Date();
@@ -125,7 +128,10 @@ async function build(db: ReturnType<typeof serviceClient>, wallet: string, lang:
   const avatars = walletAvatars
     ? profileAvatars({ wallet, lang, supabaseUrl: supabaseUrl(), config, catalog: walletAvatars.catalog, rows: walletAvatars.rows, onchain, earned: await earnedBlocks(db, walletAvatars.rows, lang) })
     : [];
-  return { ...profile, capabilities, avatar, avatars, circuit };
+  // The prize Teras of bounties this wallet was paid for: listed with the others, told apart by `origin: "sponsor"`.
+  const sponsorBounties = sponsorRows.length > 0 ? await bountiesOf(db, sponsorRows).catch(() => new Map()) : new Map();
+  const sponsored = sponsorRows.map((row) => sponsorProfileEntry(row, sponsorBounties.get(row.bounty_id), onchain.get(row.asset_address as string), config, lang));
+  return { ...profile, capabilities, avatar, avatars: [...avatars, ...sponsored], circuit };
 }
 
 Deno.serve(async (request) => {

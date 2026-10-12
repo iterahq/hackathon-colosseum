@@ -3,12 +3,14 @@ import { companionAvatarArt } from '../_shared/avatar-image.ts';
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
 import { avatarMetadata, tiersView, type AvatarAssetRow } from '../_shared/avatars.ts';
 import { parsePreview, previewArtInput } from '../_shared/preview.ts';
+import { parsePrizeTera, sponsorArt, sponsorImageUrl, sponsorMetadata, type PrizeTera } from '../_shared/sponsor-tera.ts';
+import { basePicture, bountiesOf, sponsorTeraById } from '../_shared/sponsor-tera-store.ts';
 import { earnedBlocks } from '../_shared/tera-chest-store.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import { companionArtInput, companionFromAttributes, companionMetadata, withChainValues, type CompanionSnapshot } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
 import { loadCredential } from '../_shared/credential-store.ts';
-import { APP_URL, artInput, buildMetadata } from '../_shared/credential.ts';
+import { APP_URL, artInput, buildMetadata, pickText } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
@@ -135,6 +137,33 @@ Deno.serve(async (request) => {
       if (!preview) return json({ error: 'invalid_type' }, 400, cors);
       const avatar = preview.type === 'companion' ? await avatarArt(db, preview.avatar) : null;
       return svg(renderArt(previewArtInput(preview, avatar)), cors, PREVIEW_CACHE);
+    }
+
+    // The composed art of a sponsor Tera before it exists: what the sponsor will fund, from three checked values and nothing else.
+    if (first === 'sponsor-preview.svg') {
+      if (second !== undefined) return json({ error: 'not_found' }, 404, cors);
+      const query = new URL(request.url).searchParams;
+      const parsed = parsePrizeTera({ brand: query.get('brand'), accent: query.get('accent'), base: query.get('base') });
+      if (!parsed.ok || !parsed.value) return json({ error: 'invalid_prize_tera' }, 400, cors);
+      return svg(sponsorArt({ prize: parsed.value, picture: await basePicture(parsed.value.base) }), cors, PREVIEW_CACHE);
+    }
+
+    // A minted sponsor Tera, keyed by its row id: the brand, the bounty and the payout. Nothing about the person but the wallet-owned asset.
+    if (first === 'sponsor') {
+      const wantsSponsorImage = third === 'image.svg';
+      if (!second || !isUuid(second) || rest.length > 0 || (third !== undefined && !wantsSponsorImage)) return json({ error: 'not_found' }, 404, cors);
+      const db = serviceClient();
+      const row = await sponsorTeraById(db, second);
+      if (!row) return json({ error: 'not_found' }, 404, cors);
+      const bounty = (await bountiesOf(db, [row])).get(row.bounty_id);
+      const prize: PrizeTera = { brand: row.brand, accent: row.accent, base: row.base as PrizeTera['base'] };
+      const title = pickText(bounty?.title_i18n, 'en');
+      if (wantsSponsorImage) return svg(sponsorArt({ prize, picture: await basePicture(row.base), caption: title, edition: { number: row.edition, size: row.edition_size } }), cors);
+      return json(
+        sponsorMetadata({ prize, edition: row.edition, editionSize: row.edition_size, asset: row.asset_address, imageUrl: sponsorImageUrl(functionsBase(), row.id), bountyTitle: title, bountySlug: bounty?.slug ?? '', payoutSignature: row.payout_signature }),
+        200,
+        cached,
+      );
     }
 
     // A minted collectible avatar, keyed by its row id: catalog entry and serial, nothing about the owner.

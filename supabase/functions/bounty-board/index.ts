@@ -8,6 +8,8 @@ import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
 import { callerAddress, takeRate, tooMany, type RateLimit } from '../_shared/ratelimit.ts';
 import { RpcError, withinMs } from '../_shared/rpc.ts';
+import { prizeQuote } from '../_shared/sponsor-tera.ts';
+import { issuePrizeTera, prizeBases, prizeEnabled } from '../_shared/sponsor-tera-store.ts';
 
 const FUNCTION = 'bounty-board';
 const SLUG = /^[a-z0-9][a-z0-9-]{2,62}$/;
@@ -93,6 +95,9 @@ async function board(db: IteraClient, request: Request, cors: Record<string, str
         days_by_attester_count: live.filter((bounty) => !(bounty.escrow_kind === 'program' && bounty.escrow_gated)).length,
       },
       judge: { paid_count: judged.count, team_test_paid_count: judged.team_test_count, latest: judged.latest },
+      // The few base Teras a sponsor may pick for a prize Tera, and what the prize costs. Empty while the prize is switched off.
+      prize_tera_bases: prizeEnabled(config) ? prizeBases(lang) : [],
+      prize_tera_quote: prizeQuote(),
       bounties: listed.map((bounty) =>
         bountyView({ bounty, claim: bounty.claim_id ? (claims.get(bounty.claim_id) ?? null) : null, lang, now, functionsBase: functionsBase(), programId: config.bounty_escrow_program, rehearsal: rehearsals.has(bounty.id), teamTestSponsor: teamTests.has(bounty.id), judgeSlots: slots.get(bounty.id) }),
       ),
@@ -134,6 +139,8 @@ async function detail(db: IteraClient, request: Request, found: BountyRow | null
     await chainStep(recordWalletPayout(db, bounty.id), 'payout not recorded');
     bounty = (await loadBounty(db, { id: bounty.id })) ?? bounty;
   }
+  // A paid bounty whose prize Tera is still owed (the mint failed, or the switch was off then): this read tries again, after the answer.
+  if (bounty.status === 'paid' && bounty.prize_tera && !bounty.prize_asset) inBackground(issuePrizeTera(db, bounty.id));
   return await detailAnswer(db, request, bounty, claims, chainRead, cors);
 }
 

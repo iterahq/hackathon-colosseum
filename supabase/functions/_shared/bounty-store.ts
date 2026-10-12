@@ -21,11 +21,11 @@ import { readAssets } from './chain-read.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { findPayment, type SignatureInfo } from './gift.ts';
 import { BASE_FEE_LAMPORTS } from './purchase-verify.ts';
-import { rpc } from './rpc.ts';
+import { rpc, withinMs } from './rpc.ts';
 import { TransferBroadcastError, signatureFate, treasuryAddress } from './treasury.ts';
 
 export const BOUNTY_COLUMNS =
-  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by,escrow_gated,auto_check,template_key,invitee_wallet';
+  'id,slug,tenant_id,sponsor_name,title_i18n,summary_i18n,brief_i18n,deliverable_i18n,requirement,reward_lamports,escrow_kind,escrow_address,refund_address,status,claim_id,claim_hours,expires_at,funded_at,funded_lamports,funding_signature,transfer_signature,transfer_sent_at,transfer_lamports,paid_at,paid_wallet,payout_lamports,payout_signature,refunded_at,refund_lamports,refund_signature,created_at,origin,sponsor_wallet,approver_address,slug_en,source_lang,hidden_at,hidden_reason,delivery_mirror_url,created_by,escrow_gated,auto_check,template_key,invitee_wallet,prize_tera,prize_fee_signature,prize_issued,prize_asset';
 export const CLAIM_COLUMNS =
   'id,bounty_id,user_id,wallet,proof_asset,proof,status,accepted_at,deadline_at,submission_url,submission_note,submitted_at,reviewed_at,review_note,submission_code,check_report';
 const EVENT_COLUMNS = 'id,bounty_id,kind,wallet,lamports,signature,signer,created_at';
@@ -34,6 +34,8 @@ const EVENT_LIMIT = 60;
 const ESCROW_HISTORY = 20;
 const CERTIFICATION_LIMIT = 20;
 const FRESH_CLAIM_MS = 90_000;
+/** How long the payout's own answer waits for the prize Tera to be minted. */
+const PRIZE_MINT_WAIT_MS = 12_000;
 
 export const PROGRAM_SLUG = 'itera-v2';
 
@@ -232,7 +234,13 @@ export async function refreshFunding(db: IteraClient, bounty: BountyRow, known?:
     signature = history.filter((entry) => entry.err === null).at(-1)?.signature ?? null;
   }
   if (await mark(db, bounty.id, ['awaiting_funding'], 'open', { wallet: known?.wallet ?? null, lamports: locked, signature })) await recordSponsorSigner(db, bounty, 'funded', signature);
-  return (await loadBounty(db, { id: bounty.id })) ?? bounty;
+  const opened = (await loadBounty(db, { id: bounty.id })) ?? bounty;
+  // A bounty with a prize Tera: whether the transaction that funded it also paid for the prize is read from that transaction.
+  if (opened.prize_tera && !opened.prize_fee_signature && opened.funding_signature) {
+    const { verifyPrizeFee } = await import('./sponsor-tera-store.ts');
+    if (await verifyPrizeFee(db, opened, await loadConfig(db))) return (await loadBounty(db, { id: bounty.id })) ?? opened;
+  }
+  return opened;
 }
 
 /** Whether the wallet an escrow account names is one whose claim on this bounty our tables have already released, with no live one. */
@@ -607,7 +615,16 @@ export async function recordWalletPayout(db: IteraClient, bountyId: string, revi
     if (data !== 'ok') return (await loadBounty(db, { id: bountyId }))?.status ?? null;
   }
   await settleTransfer(db, bounty.id);
-  return (await loadBounty(db, { id: bountyId }))?.status ?? null;
+  const settled = await loadBounty(db, { id: bountyId });
+  // The prize Tera is minted in the settlement that records the payout. It waits a bounded time: a slow mint finishes
+  // after the answer, and a failed one is tried again by the next read of the bounty. It never undoes the payout.
+  if (settled?.status === 'paid' && settled.prize_tera && !settled.prize_asset) {
+    const { issuePrizeTera } = await import('./sponsor-tera-store.ts');
+    const issue = issuePrizeTera(db, settled.id);
+    inBackground(issue);
+    await withinMs(issue, PRIZE_MINT_WAIT_MS);
+  }
+  return settled?.status ?? null;
 }
 
 /**
