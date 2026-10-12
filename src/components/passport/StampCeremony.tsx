@@ -19,6 +19,8 @@ interface Props {
   colorIndex: number;
   /** The lesson's own next/finish buttons, kept at the bottom and replaced by a muted "stamping" button until the ceremony resolves. */
   actions?: ReactNode;
+  /** Shown under the ceremony, inside its own scroll: the ceremony covers the whole screen, so anything outside it is never seen. */
+  footer?: ReactNode;
   onRetry?: () => void;
   onLater?: () => void;
   onConnect?: () => void;
@@ -35,7 +37,7 @@ const GRID = {
 } as const;
 
 /** Full-screen stamp ceremony of a finished day: the page lands, Tera stamps it, the chain row follows. */
-export function StampCeremony({ model, preparing = false, colorIndex, actions, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
+export function StampCeremony({ model, preparing = false, colorIndex, actions, footer, onRetry, onLater, onConnect, outfit = null, hasWallet = true }: Props) {
   const { t } = useI18n();
   const reduce = Boolean(useReducedMotion());
   const sound = usePassportSound();
@@ -75,7 +77,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden text-[#F4EDE2]" style={GRID} role="dialog" aria-modal="true" aria-label={headline} data-testid="stamp-ceremony" data-step={step} data-phase={preparing ? 'preparing' : 'resolved'}>
       {last && step >= 5 && !reduce && <Confetti accent={color.c} />}
-      <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col items-center gap-5 px-4 pb-8 pt-8">
+      <div className={`mx-auto flex w-full max-w-[480px] flex-col items-center gap-5 px-4 pb-8 pt-8 ${footer ? '' : 'min-h-full'}`}>
         <span className="[font:500_13px_JetBrains_Mono]" style={{ color: color.cl }}>
           {t('passport.ceremony.step', { n: day, total: Math.max(totalDays, day), trail: model.trailTitle })}
         </span>
@@ -141,6 +143,11 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
           </Link>
         )}
       </div>
+      {footer && (
+        <div className="mx-auto w-full max-w-[760px] px-4 pb-10" data-testid="ceremony-footer">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
