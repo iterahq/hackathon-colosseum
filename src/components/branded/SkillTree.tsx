@@ -20,6 +20,7 @@ import { buildSections } from '@/utils/buildSections';
 import { hexAlpha } from '@/utils/hexAlpha';
 import { toneForUnit } from './skillTreeUnitPalette';
 import { kindLabelKey } from './skillTreeKindLabel';
+import { FOCUS_DAY_KIND_LABEL_OFF } from '@/config/focus';
 import { SkillTreeUnitHeader } from './SkillTreeUnitHeader';
 import { SkillTreePathNode } from './SkillTreePathNode';
 import { SkillTreeCallout } from './SkillTreeCallout';
@@ -297,7 +298,7 @@ export function SkillTree({
                 day={placement.day}
                 dayLabel={t('journey.day', { n: placement.day })}
                 title={tText(node.lesson.title)}
-                kindLabel={t(kindLabelKey(lessonKind(node.lesson)))}
+                kindLabel={FOCUS_DAY_KIND_LABEL_OFF ? '' : t(kindLabelKey(lessonKind(node.lesson)))}
                 tone={tone}
                 primary={isPrimary}
                 activitiesDone={countDone(node.lesson)}

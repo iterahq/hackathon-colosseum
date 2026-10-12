@@ -6,6 +6,14 @@ import { SkillTree } from './SkillTree';
 import { UNIT_PALETTE } from './skillTreeUnitPalette';
 import type { ProgramDetail, Activity } from '@/types/content';
 
+const flags = vi.hoisted(() => ({ kindLabelOff: true }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_DAY_KIND_LABEL_OFF() {
+    return flags.kindLabelOff;
+  },
+}));
+
 const act = (id: string, status: Activity['status']): Activity => ({
   id,
   lessonId: 'l',
@@ -71,12 +79,20 @@ describe('SkillTree', () => {
     });
   });
 
-  it('shows a continuous day number, the lesson title and the kind label under each node', () => {
+  it('shows a continuous day number and the lesson title under each node, and no kind label in the focus build', () => {
     renderTree();
     expect(screen.getByText('Dia 1')).toBeInTheDocument();
     expect(screen.getByText('Dia 3')).toBeInTheDocument();
     expect(screen.getAllByText('Lesson 1').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Documento')).toBeNull();
+    expect(screen.queryByTestId('node-kind')).toBeNull();
+  });
+
+  it('a build that keeps the kind label shows the kind of the first activity under each node', () => {
+    flags.kindLabelOff = false;
+    renderTree();
     expect(screen.getAllByText('Documento').length).toBe(3);
+    flags.kindLabelOff = true;
   });
 
   it('renders the callout only for the first current node and opens its lesson', () => {
