@@ -52,7 +52,7 @@ export function TalentFilters({ filters, trail, capabilities, onChange }: Props)
         </label>
       </div>
       {(skills.length > 0 || (filters.capability !== '' && !known)) && (
-        <ul className="flex flex-wrap items-center gap-x-1.5" aria-label={t('talent.filters.capability')} data-testid="talent-filter-capability">
+        <ul className="flex flex-wrap items-center gap-x-1.5 max-sm:-mx-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none]" aria-label={t('talent.filters.capability')} data-testid="talent-filter-capability">
           {filters.capability !== '' && !known && (
             <li>
               <button type="button" aria-pressed className={`inline-flex min-h-11 items-center rounded-full ${FOCUS}`} onClick={() => onChange({ ...filters, capability: '' }, trail)} data-testid="talent-filter-skill" data-skill={filters.capability}>
@@ -63,7 +63,7 @@ export function TalentFilters({ filters, trail, capabilities, onChange }: Props)
           {skills.map((entry) => {
             const on = filters.capability === entry.key;
             return (
-              <li key={entry.key} className="min-w-0 max-w-full">
+              <li key={entry.key} className="min-w-0 max-w-full max-sm:shrink-0">
                 <button type="button" aria-pressed={on} aria-label={t('talent.filters.skill', { title: entry.title })} className={`inline-flex min-h-11 max-w-full items-center rounded-full ${FOCUS}`} onClick={() => onChange({ ...filters, capability: on ? '' : entry.key }, trail)} data-testid="talent-filter-skill" data-skill={entry.key}>
                   <SkillBadge claimId={entry.key} title={skillShortTitle(entry.key, locale, entry.title)} hint={entry.title} state={on ? 'lit' : 'neutral'} />
                 </button>

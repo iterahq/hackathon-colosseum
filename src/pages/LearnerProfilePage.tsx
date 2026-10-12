@@ -1,4 +1,5 @@
 import { TalentOptIn } from '@/components/talent/TalentOptIn';
+import { Lock } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CapabilityGraphSection } from '@/components/graph/CapabilityGraphSection';
@@ -117,9 +118,13 @@ export default function LearnerProfilePage() {
                 )}
               </div>
               {story.wallet !== profile.wallet && (
-                <div className="flex basis-full flex-col items-start gap-1" data-testid="profile-mission">
+                <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-2" data-testid="profile-mission">
                   <Link to={missionHref(profile.wallet)} className={`${TERA_BUTTON} w-full sm:w-auto`} data-testid="profile-mission-cta">{t('bounty.profile.send')}</Link>
-                  <span className="[font:400_12px/1.4_Inter] text-[#A0978A]">{t('bounty.profile.sendHint')}</span>
+                  <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#262320] bg-[#0A0908] px-2.5 [font:700_11px/1_JetBrains_Mono] text-[#C9BFB0]" title={t('bounty.profile.sendHint')} data-testid="profile-mission-hint">
+                    <Lock aria-hidden className="h-3.5 w-3.5 text-[#F2C66D]" strokeWidth={2.4} />
+                    <span aria-hidden="true">{t('talent.profile.walletOnly')}</span>
+                    <span className="sr-only">{t('bounty.profile.sendHint')}</span>
+                  </span>
                 </div>
               )}
               <div className="flex basis-full flex-wrap items-center gap-x-4">
