@@ -175,6 +175,24 @@ describe('StampCeremony', () => {
     }
   });
 
+  it('with a chest to come, the explorer links share one line and the medals one row; without one nothing changes', () => {
+    const medals = [
+      { key: 'a', title: 'Early bird', glyph: 'EB', kind: 'milestone' as const, credentialId: null },
+      { key: 'b', title: 'First stamp', glyph: 'D1', kind: 'milestone' as const, credentialId: null },
+    ];
+    const plain = show(model('minted', { txSignature: 'sig', newMedals: medals }));
+    settle();
+    expect(screen.queryByTestId('ceremony-medals')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('ceremony-medal')[0]).toHaveTextContent('Nova medalha: Early bird');
+    expect(screen.getByTestId('ceremony-links').className).toBe('contents');
+    plain.unmount();
+    show(model('minted', { txSignature: 'sig', newMedals: medals }), { compact: true });
+    settle();
+    expect(screen.getByTestId('ceremony-medals')).toHaveTextContent('Early birdFirst stamp');
+    expect(screen.getAllByTestId('ceremony-medal')[1]).toHaveAttribute('aria-label', 'Nova medalha: First stamp');
+    expect(screen.getByTestId('ceremony-links').className).toContain('flex-wrap');
+  });
+
   it('draws what follows the ceremony inside the dialog, where a full-screen ceremony can still be scrolled to it', () => {
     render(
       <I18nProvider>

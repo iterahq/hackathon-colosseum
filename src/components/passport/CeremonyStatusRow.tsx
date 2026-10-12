@@ -23,6 +23,8 @@ interface Props {
   onConnect?: () => void;
   /** False for an account with no wallet: the minting state reads "saving", with no network line. */
   hasWallet?: boolean;
+  /** A chest row follows: the explorer links share one line and the medals one row, so the way out stays in view. */
+  compact?: boolean;
 }
 
 const BTN =
@@ -59,7 +61,7 @@ function useSentSignature(waiting: boolean): string | null {
 }
 
 /** Under the page: what the chain is doing, and the one or two actions that fit that state. */
-export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, goldTrail = null, accent, accentDark, locked, onRetry, onLater, onConnect, hasWallet = true }: Props) {
+export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, goldTrail = null, accent, accentDark, locked, onRetry, onLater, onConnect, hasWallet = true, compact = false }: Props) {
   const { t, locale } = useI18n();
   const reduce = useReducedMotion();
   const href = chainUrl(txSignature, assetAddress);
@@ -94,12 +96,12 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, g
         <>
           <span className={`${line} text-[#3FD17F]`}>{t('passport.ceremony.minted')}</span>
           {href && (
-            <>
+            <span className={compact ? '-my-2 flex flex-wrap items-center justify-center gap-x-3' : 'contents'} data-testid="ceremony-links">
               <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
                 {t('passport.viewTx')}
               </a>
-              <ChainProof kind={txSignature ? 'tx' : 'address'} value={txSignature ?? assetAddress ?? ''} raw={false} primary={false} className="justify-center" />
-            </>
+              <ChainProof kind={txSignature ? 'tx' : 'address'} value={txSignature ?? assetAddress ?? ''} raw={false} primary={false} compact={compact} className="justify-center" />
+            </span>
           )}
         </>
       )}
@@ -108,12 +110,23 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, g
           {t('passport.ceremony.gold', { trail: goldTrail })}
         </span>
       )}
-      {medals.map((m) => (
-        <span key={m.key} className="flex items-center gap-2.5 [font:700_14px_JetBrains_Mono] text-[#F2C66D]" data-testid="ceremony-medal">
-          <MedalArt glyph={m.glyph} title={m.title} kind={m.kind} credentialId={m.credentialId} earned accent={accent} accentDark={accentDark} size={40} lang={locale} />
-          {t('passport.ceremony.newMedal', { title: m.title })}
+      {!compact &&
+        medals.map((m) => (
+          <span key={m.key} className="flex items-center gap-2.5 [font:700_14px_JetBrains_Mono] text-[#F2C66D]" data-testid="ceremony-medal">
+            <MedalArt glyph={m.glyph} title={m.title} kind={m.kind} credentialId={m.credentialId} earned accent={accent} accentDark={accentDark} size={40} lang={locale} />
+            {t('passport.ceremony.newMedal', { title: m.title })}
+          </span>
+        ))}
+      {compact && medals.length > 0 && (
+        <span className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1" data-testid="ceremony-medals">
+          {medals.map((m) => (
+            <span key={m.key} className="flex items-center gap-2 [font:700_13px_JetBrains_Mono] text-[#F2C66D]" data-testid="ceremony-medal" aria-label={t('passport.ceremony.newMedal', { title: m.title })}>
+              <MedalArt glyph={m.glyph} title={m.title} kind={m.kind} credentialId={m.credentialId} earned accent={accent} accentDark={accentDark} size={32} lang={locale} />
+              {m.title}
+            </span>
+          ))}
         </span>
-      ))}
+      )}
       {status === 'pending' && <span className={`${line} text-[#C9BFB0]`}>{t('passport.ceremony.pending')}</span>}
       {status === 'failed' && (
         <>
