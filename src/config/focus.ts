@@ -28,16 +28,25 @@ export const FOCUS_SOL_ONLY_SHOP = FOCUS_BUILD;
 export const FOCUS_LIVES_OFF = FOCUS_BUILD;
 
 /**
- * The shop sells what the certification shows (the inks and frames of the credential) and lists the Teras: the free
- * faces and the earn-only tiers, with no price. The wardrobe and the profile wear only what is free or owned.
+ * The shop sells the Teras (the three tiers for sale; the earn-only tiers are listed with no price) and what the
+ * certification shows (the inks and frames of the credential). The wardrobe and the profile wear only what is owned or
+ * a starter face.
  */
 export const FOCUS_SHOP_KINDS: ReadonlySet<string> = new Set(['avatar', 'ink', 'frame']);
 export const FOCUS_SHOP_ONLY = FOCUS_BUILD;
 
 /**
- * The paid Tera shelf is off: the three tiers for sale (Tera, Super Tera, Mega Tera) leave the shop, and with them the
- * "transferable" and "resale fee" wording there, on the landing and in the world. A Tera a wallet already bought stays
- * in its wardrobe and on its profile. Only the UI changes: the routes, the `purchase-*` functions and the chest are as
- * they were. A build with `VITE_PAID_TERAS=on` brings the shelf back.
+ * The paid Tera shelf is ON (call of 2026-10-12: the demo buys an avatar with SOL): the three tiers for sale (Tera,
+ * Super Tera, Mega Tera) are listed and bought in the shop. A build with `VITE_PAID_TERAS=off` hides them again, and
+ * with them the "transferable" and "resale fee" wording there, on the landing and in the world; a Tera a wallet already
+ * bought stays in its wardrobe and on its profile. Only the UI changes: the routes, the `purchase-*` functions and the
+ * chest are the same either way.
  */
-export const FOCUS_PAID_TERAS_OFF = FOCUS_BUILD && (import.meta.env.VITE_PAID_TERAS as string | undefined) !== 'on';
+export const FOCUS_PAID_TERAS_OFF = FOCUS_BUILD && (import.meta.env.VITE_PAID_TERAS as string | undefined) === 'off';
+
+/**
+ * A Tera is either earned by studying or bought: the faces every learner starts with are not a category of their own.
+ * The shop and the world do not list them and nothing is labelled "free"; the picker of the profile still offers them
+ * as the starter faces, so an account with no Tera yet has a picture.
+ */
+export const FOCUS_STARTER_FACES_UNLISTED = FOCUS_BUILD;

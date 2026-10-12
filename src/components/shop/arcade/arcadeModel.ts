@@ -1,8 +1,8 @@
-import { FOCUS_PAID_TERAS_OFF } from '@/config/focus';
-import { localizePriceLabel } from '@/utils/shopPrice';
+import { FOCUS_PAID_TERAS_OFF, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
+import { localizeDecimal, localizePriceLabel } from '@/utils/shopPrice';
 import type { ShopItem } from '@/types/shop';
 import { avatarState } from '@/utils/avatarShop';
-import { ROW_ORDER, featuredOf, isOffSeason, rowsOf, shortPrice } from '../avatarRows';
+import { ROW_ORDER, featuredOf, isOffSeason, rowsOf, shortPrice, solPrice } from '../avatarRows';
 import { crystalsEnabled, formatCount } from '../pay';
 import { RARITY_EDGE } from '../shopStyles';
 import type { ShopSection } from '../ShopTabs';
@@ -82,7 +82,7 @@ function resaleNote(items: readonly ShopItem[], t: Translate): string {
   return ` · ${t('shelf.transferable')}${bps > 0 ? ` · ${t('shelf.fee', { pct: royaltyPercent(bps) })}` : ''}`;
 }
 
-export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string, paidOff: boolean = FOCUS_PAID_TERAS_OFF): ArcadeGroup[] {
+export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string, paidOff: boolean = FOCUS_PAID_TERAS_OFF, solOnly: boolean = FOCUS_SOL_ONLY_SHOP): ArcadeGroup[] {
   if (shelf.id === 'avatars') {
     // A Tera of an earn-only tier has no price: the three tiers share one group that says how they are earned.
     const earnOnly = (i: ShopItem) => i.avatar?.earnOnly === true;
@@ -91,6 +91,8 @@ export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string, paidO
       const crystals = row.priceCrystals != null ? ` · ${t('shop.crystals', { n: formatCount(row.priceCrystals, locale) })}` : '';
       const supply = tierSupply(row.items, t);
       if (paidOff) return { id: row.rarity, title: row.tierName, note: t('shelf.owned.note'), edge: RARITY_EDGE[row.rarity], items: row.items };
+      // A shop that takes SOL only names the price the wallet pays, and leaves the resale terms to the card of the Tera.
+      if (solOnly) return { id: row.rarity, title: row.tierName, note: `${localizeDecimal(solPrice(row.items[0]?.priceLabel ?? row.priceShort), locale)} · ${supply}`, edge: RARITY_EDGE[row.rarity], items: row.items };
       return { id: row.rarity, title: row.tierName, note: `${localizePriceLabel(row.priceShort, locale)}${crystals} · ${supply}${resaleNote(row.items, t)}`, edge: RARITY_EDGE[row.rarity], items: row.items };
     });
     const rank = (i: ShopItem) => ROW_ORDER.indexOf(i.avatar?.rarity ?? 'common');
@@ -121,8 +123,8 @@ export function compactCount(n: number): string {
 
 export type TileTone = 'price' | 'mine' | 'equipped' | 'free' | 'muted' | 'earn';
 
-/** The one short line under a tile: what it costs or what it already is. */
-export function tileLine(item: ShopItem, t: Translate, locale = 'en'): { text: string; tone: TileTone; crystal: boolean } {
+/** The one short line under a tile: what it costs (in SOL where the shop takes SOL only) or what it already is. */
+export function tileLine(item: ShopItem, t: Translate, locale = 'en', solOnly: boolean = FOCUS_SOL_ONLY_SHOP): { text: string; tone: TileTone; crystal: boolean } {
   const plain = (text: string, tone: TileTone) => ({ text, tone, crystal: false });
   if (item.kind === 'avatar') {
     const state = avatarState(item);
@@ -139,6 +141,7 @@ export function tileLine(item: ShopItem, t: Translate, locale = 'en'): { text: s
     if (item.unlock?.unlocked) return plain(t('shop.claim'), 'free');
   }
   if (crystalsEnabled(item)) return { text: compactCount(item.priceCrystals ?? 0), tone: 'price', crystal: true };
+  if (solOnly) return plain(localizeDecimal(solPrice(item.priceLabel), locale), 'price');
   return plain(localizePriceLabel(shortPrice(item.priceLabel).replace(/\.00$/, ''), locale), 'price');
 }
 

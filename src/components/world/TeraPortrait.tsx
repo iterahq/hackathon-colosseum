@@ -3,12 +3,13 @@ import { TERA_FALLBACK_IMAGE, teraAvatarImage } from '@/utils/teraAvatarImage';
 
 const SIZES = { md: 'h-24 w-24', xl: 'h-40 w-40' } as const;
 
-/** Round portrait (the ring is part of the art), loaded at once: the cast page exists for these pictures. A soft glow stands in while a picture arrives; a missing file falls back to the default Tera. */
-export function TeraPortrait({ avatarKey, tier, size = 'md', art = 'chip', className = '' }: {
+/** Round portrait (the ring is part of the art), loaded at once: the cast page exists for these pictures. A soft glow stands in while a picture arrives; a missing file falls back to the default Tera. `locked` draws it grey and dim: a Tera the wallet does not hold. */
+export function TeraPortrait({ avatarKey, tier, size = 'md', art = 'chip', locked = false, className = '' }: {
   avatarKey: string;
   tier: LoreTier;
   size?: keyof typeof SIZES;
   art?: 'chip' | 'full';
+  locked?: boolean;
   className?: string;
 }) {
   return (
@@ -19,10 +20,11 @@ export function TeraPortrait({ avatarKey, tier, size = 'md', art = 'chip', class
       decoding="async"
       draggable={false}
       data-tier={tier}
+      data-locked={locked || undefined}
       onError={(e) => {
         if (!e.currentTarget.src.endsWith(TERA_FALLBACK_IMAGE)) e.currentTarget.src = TERA_FALLBACK_IMAGE;
       }}
-      className={`shrink-0 rounded-full bg-[radial-gradient(circle_at_50%_40%,#1d3a2a_0%,#141210_70%)] object-cover ${SIZES[size]} ${className}`}
+      className={`shrink-0 rounded-full bg-[radial-gradient(circle_at_50%_40%,#1d3a2a_0%,#141210_70%)] object-cover ${locked ? 'opacity-45 grayscale' : ''} ${SIZES[size]} ${className}`}
     />
   );
 }
