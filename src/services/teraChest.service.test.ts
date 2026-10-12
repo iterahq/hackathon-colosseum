@@ -6,7 +6,7 @@ describe('toChest', () => {
   it('reads a committed chest: the slot is on chain, nothing is rolled', () => {
     const chest = toChest(WIRE_CHEST_COMMITTED);
     expect(chest).toMatchObject({ id: 'chest_fixture_1', day: 3, trail: 'HTML', status: 'committed', seed: null, tier: null, tera: null, retryAfterMs: 1200 });
-    expect(chest?.commit).toEqual({ slot: 418_220_113, tx: '5fixtureCommitSignature' });
+    expect(chest?.commit).toMatchObject({ slot: 418_220_113, tx: '5fixtureCommitSignature' });
     expect(chest?.odds).toHaveLength(6);
   });
 
@@ -39,7 +39,9 @@ describe('toRecompute', () => {
     const r = toRecompute(WIRE_RECOMPUTE);
     expect(r?.formula).toContain('sha256');
     expect(r?.inputs.day).toBe(3);
-    expect(r?.pool).toEqual(['base_lider', 'base_livre', 'base_natural']);
+    expect(r?.poolDocument).toContain('base_lider');
+    expect([r?.unavailable, r?.held, r?.exhausted]).toEqual([['base_livre'], ['base_livre'], []]);
+    expect(r?.fromChain).toContain('blockhash');
     expect(r?.steps).toHaveLength(3);
     expect(toRecompute({})).toBeNull();
   });

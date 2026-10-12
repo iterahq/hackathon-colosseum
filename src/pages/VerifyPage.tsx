@@ -1,7 +1,8 @@
-import { Cpu, FileCode2, Hash, Hourglass, ShieldCheck, Snowflake, Stamp, Terminal, TriangleAlert } from 'lucide-react';
+import { Cpu, FileCode2, Gift, Hash, Hourglass, ShieldCheck, Snowflake, Stamp, Terminal, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BountyShell } from '@/components/bounty/bountyUi';
+import { ChestSection } from '@/components/verify/ChestSection';
 import { DurableSection } from '@/components/verify/DurableSection';
 import { EvidenceSection } from '@/components/verify/EvidenceSection';
 import { GateSection } from '@/components/verify/GateSection';
@@ -24,6 +25,7 @@ const CHROME: Record<string, { icon: ReactNode; tone?: SectionTone }> = {
   stamp: { icon: <Stamp className="h-5 w-5" /> },
   soulbound: { icon: <Snowflake className="h-5 w-5" /> },
   gate: { icon: <ShieldCheck className="h-5 w-5" /> },
+  chest: { icon: <Gift className="h-5 w-5" /> },
   rpc: { icon: <Terminal className="h-5 w-5" /> },
   durable: { icon: <Hourglass className="h-5 w-5" /> },
   trust: { icon: <TriangleAlert className="h-5 w-5" />, tone: 'gold' },
@@ -70,6 +72,7 @@ export default function VerifyPage() {
           <StampSection />
           <SoulboundSection />
           <GateSection />
+          <ChestSection />
         </div>
         <div className={GROUP}>
           <h2 className={`${MONO_LABEL} text-[#A0978A]`}>{t('verify.group.reference')}</h2>

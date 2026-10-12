@@ -38,7 +38,10 @@ export interface Chest {
   trail: string;
   certification: string;
   status: ChestStatus;
-  commit: { slot: number; tx: string } | null;
+  commit: { slot: number; tx: string; value?: string; txSlot?: number | null; via?: string } | null;
+  /** 0 to 3: the effort level written inside the commitment. */
+  level?: number | null;
+  effort?: { verified: number; gradable: number; clean: boolean; gold: boolean } | null;
   seed: { slot: number; blockhash: string } | null;
   /** Rarity key of the tier the roll landed on (`rare`, `legendary`…). */
   tier: string | null;
@@ -52,7 +55,14 @@ export interface Chest {
 export interface ChestRecompute {
   formula: string;
   inputs: Record<string, string | number>;
-  pool: string[];
+  /** The exact text whose sha256 the on-chain commitment names: the ordered pool of every tier. */
+  poolDocument: string;
+  /** Teras this chest could not give: the ones the learner held already and the editions used up. From Itera's tables. */
+  unavailable: string[];
+  held: string[];
+  exhausted: string[];
+  /** Names of the inputs that anyone reads from the chain. */
+  fromChain: string[];
   steps: string[];
 }
 
