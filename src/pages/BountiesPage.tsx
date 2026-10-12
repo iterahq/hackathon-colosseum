@@ -62,15 +62,18 @@ export default function BountiesPage() {
         <span className={`${MONO_LABEL} text-[#3FD17F]`}>{t('bounty.eyebrow')}</span>
         <h1 id="bounty-hero" className="max-w-[760px] [font:700_60px/.98_'Barlow_Condensed'] max-sm:text-[44px]">{t('bounty.hero.title')}</h1>
         <p className="max-w-[640px] [font:400_16px/1.4_Inter] text-[#C9BFB0]" data-testid="bounty-hero-line">{t('bounty.hero.line')}</p>
-        <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label={t('bounty.fold.how')} data-testid="bounty-hero-steps">
+        <ol className="grid max-w-[640px] grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-1.5" aria-label={t('bounty.fold.how')} data-testid="bounty-hero-steps">
           {HERO_STEPS.map(({ id, Icon }, index) => (
-            <li key={id} className="flex items-center gap-1.5" title={t(`bounty.hero.step.${id}.full`)}>
-              {index > 0 && <span aria-hidden className="[font:700_13px_JetBrains_Mono] text-[#5E574E]">→</span>}
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#2E2A25] bg-[#141210] pl-1 pr-2.5">
-                <span className="grid h-6 w-6 place-items-center rounded-full border border-[#3FD17F]/60 bg-[#3FD17F]/10 text-[#3FD17F]">
-                  <Icon aria-hidden className="h-3 w-3" strokeWidth={2.4} />
+            <li key={id} className="flex min-w-0 items-center gap-1.5" title={t(`bounty.hero.step.${id}.full`)}>
+              {index > 0 && <span aria-hidden className="[font:700_13px_JetBrains_Mono] text-[#5E574E] max-sm:hidden">→</span>}
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[12px] border border-[#2E2A25] bg-[#141210] max-sm:flex-col max-sm:px-1.5 max-sm:py-2 max-sm:text-center sm:h-8 sm:rounded-full sm:pl-1 sm:pr-2.5">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#3FD17F]/60 bg-[#3FD17F]/10 text-[#3FD17F] max-sm:h-8 max-sm:w-8">
+                  <Icon aria-hidden className="h-3 w-3 max-sm:h-4 max-sm:w-4" strokeWidth={2.4} />
                 </span>
-                <span className="[font:600_11px/1_JetBrains_Mono] text-[#F4EDE2]">{t(`bounty.hero.step.${id}`)}</span>
+                <span className="[font:600_11px/1.25_JetBrains_Mono] text-[#F4EDE2]">
+                  <span className="text-[#A0978A] sm:hidden">{index + 1}. </span>
+                  {t(`bounty.hero.step.${id}`)}
+                </span>
               </span>
             </li>
           ))}
