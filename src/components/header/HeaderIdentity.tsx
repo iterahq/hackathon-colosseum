@@ -75,7 +75,7 @@ export function HeaderIdentity() {
           ) : chosen || !wallet ? (
             <>
               <span className="max-w-full truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]" title={name}>{name}</span>
-              {wallet && <span className="mt-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">{shortAddress(wallet.address)}</span>}
+              {wallet && <span className="mt-0.5 [font:600_9px_JetBrains_Mono] tracking-[.06em] text-[#3FD17F]" data-testid="header-wallet-short">{shortAddress(wallet.address)}</span>}
             </>
           ) : (
             <>

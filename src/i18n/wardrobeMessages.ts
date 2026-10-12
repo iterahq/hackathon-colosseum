@@ -95,7 +95,7 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'viewer.zoomOut': 'Afastar',
     'viewer.fit': 'Ajustar à tela',
     'viewer.explorer': 'Ver no explorer',
-    'viewer.cert.line': 'Certificação do Tera · {done} de {total} dias',
+    'viewer.cert.line': 'Certificação · {done} de {total} dias',
     'viewer.companion.line': 'Tera companheiro, gravado on-chain',
   },
   en: {
@@ -193,7 +193,7 @@ export const WARDROBE_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'viewer.zoomOut': 'Zoom out',
     'viewer.fit': 'Fit to screen',
     'viewer.explorer': 'View in explorer',
-    'viewer.cert.line': "Tera's Certification · {done} of {total} days",
+    'viewer.cert.line': 'Certification · {done} of {total} days',
     'viewer.companion.line': 'Tera companion, written on-chain',
   },
 };

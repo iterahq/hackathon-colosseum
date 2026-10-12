@@ -5,6 +5,15 @@ import { I18nProvider } from '@/i18n';
 import LearnerProfilePage from '@/pages/LearnerProfilePage';
 import { parseProfile } from '@/services/learnerProfile.service';
 
+// These tests describe both builds: `story.off` false is the build that tells the bounty story, true is the focus build.
+const story = vi.hoisted(() => ({ off: false }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_EARN_STORY_OFF() {
+    return story.off;
+  },
+}));
+
 const useLearnerProfile = vi.fn();
 vi.mock('@/hooks/useLearnerProfile', () => ({ useLearnerProfile: (w: string, l: string) => useLearnerProfile(w, l), useWalletGraph: () => ({ data: undefined }), useRecheckProfile: () => ({ mutate: vi.fn(), isPending: false }) }));
 vi.mock('@/components/graph/CapabilityGraphSection', () => ({
@@ -55,6 +64,21 @@ describe('LearnerProfilePage', () => {
     expect(screen.queryByTestId('profile-mission')).toBeNull();
     expect(screen.getByTestId('talent-optin')).toBeInTheDocument();
     expect(screen.getByTestId('privacy-card')).toBeInTheDocument();
+  });
+
+  it('focus build: no paid mission for a visitor, no talent card for the owner, no Circuit line and no link to /verify', () => {
+    story.off = true;
+    useLearnerProfile.mockReturnValue(ok({ verified_count: 1, companion: null, certifications: [{ asset: 'C', trail: 'HTML', days_done: 5, total_days: 5 }], medals: [], circuit: { stamps_funded: 5500 } }));
+    const visitor = show();
+    expect(screen.queryByTestId('profile-mission')).toBeNull();
+    expect(screen.queryByTestId('profile-circuit')).toBeNull();
+    expect(Array.from(document.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '').filter((href) => /^\/(verify|bounties|talent)/.test(href))).toEqual([]);
+    visitor.unmount();
+    storyWallet.value = WALLET;
+    show();
+    expect(screen.queryByTestId('talent-optin')).toBeNull();
+    expect(screen.getByTestId('privacy-card')).toBeInTheDocument();
+    story.off = false;
   });
 
   it('a private profile read by a stranger: one calm line and nothing we aggregate', () => {

@@ -7,6 +7,15 @@ import CredentialPage from '@/pages/CredentialPage';
 import type { CredentialLookup } from '@/types/achievements';
 import { parseCredential } from '@/services/credential.service';
 
+// These tests describe both builds: `story.off` false is the build that tells the bounty story, true is the focus build.
+const story = vi.hoisted(() => ({ off: false }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_EARN_STORY_OFF() {
+    return story.off;
+  },
+}));
+
 const readAccount = vi.fn();
 vi.mock('@/lib/chain/rpc', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/chain/rpc')>()), readAccount: (...args: unknown[]) => readAccount(...args) }));
 
@@ -69,6 +78,15 @@ describe('CredentialPage (public)', () => {
     expect(readAccount).toHaveBeenCalledTimes(1);
     expect(readAccount.mock.calls[0][0]).toBe('Asset1111111111');
     expect(screen.getByRole('link', { name: /O que dura/ })).toHaveAttribute('href', '/verify#durable');
+  });
+
+  it('focus build: the certification page has no link to /verify, /bounties or /talent', () => {
+    story.off = true;
+    useCredential.mockReturnValue({ isPending: false, isError: false, data: verified() });
+    show();
+    expect(screen.getByTestId('read-without-itera')).toBeInTheDocument();
+    expect(Array.from(document.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '').filter((href) => /^\/(verify|bounties|talent)/.test(href))).toEqual([]);
+    story.off = false;
   });
 
   it('companion: lives, outfit, level, xp, streak and the art; no trail rows', () => {

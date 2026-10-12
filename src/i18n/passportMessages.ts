@@ -1,7 +1,7 @@
 /** Strings of Tera's certifications: dashboard panel, ceremony, /passport and the public /c/:asset page. */
 export const PASSPORT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
-    'passport.title': 'Certificações do Tera',
+    'passport.title': 'Certificações',
     'passport.pageLabel': 'CERTIFICAÇÕES DO TERA',
     'cert.label': 'CERTIFICAÇÃO DO TERA',
     'cert.state.notStarted': 'por começar',
@@ -148,7 +148,7 @@ export const PASSPORT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'dash.trail.certGold': 'Certificação dourada',
   },
   en: {
-    'passport.title': "Tera's Certifications",
+    'passport.title': 'Certifications',
     'passport.pageLabel': "TERA'S CERTIFICATIONS",
     'cert.label': 'TERA CERTIFICATION',
     'cert.state.notStarted': 'not started',

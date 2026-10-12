@@ -7,6 +7,15 @@ import { WIRE_CHEST_COMMITTED, WIRE_CHEST_MINTED, WIRE_CHEST_ROLLING } from '@/s
 import type { ChestPhase } from '@/utils/dayChest';
 import { DayChest } from './DayChest';
 
+// These tests describe both builds: `story.off` false is the build that tells the bounty story, true is the focus build.
+const story = vi.hoisted(() => ({ off: false }));
+vi.mock('@/config/focus', async (original) => ({
+  ...(await original<typeof import('@/config/focus')>()),
+  get FOCUS_EARN_STORY_OFF() {
+    return story.off;
+  },
+}));
+
 const play = vi.hoisted(() => vi.fn());
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play }) }));
 // The picture of the Tera is in the browser at once: the reveal waits for it.
@@ -64,6 +73,14 @@ describe('DayChest', () => {
     expect(screen.getByTestId('day-chest-world')).toHaveAttribute('href', '/world');
     expect(screen.getByTestId('day-chest-verify')).toHaveAttribute('href', '/verify?chest=chest_fixture_1#chest');
     expect(screen.getByTestId('day-chest-tera')).toHaveAttribute('src', expect.stringContaining('base_lider_128.webp'));
+  });
+
+  it('focus build: the opened chest links to the World and not to /verify', () => {
+    story.off = true;
+    show('revealed', WIRE_CHEST_MINTED);
+    expect(screen.getByTestId('day-chest-world')).toHaveAttribute('href', '/world');
+    expect(screen.queryByTestId('day-chest-verify')).not.toBeInTheDocument();
+    story.off = false;
   });
 
   it('a chest found again is drawn settled, in the same row', () => {

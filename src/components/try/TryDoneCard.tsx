@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOCUS_BUILD } from '@/config/focus';
 import { WebOnly } from '@/components/shell/WebOnly';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { TRY_PATH } from '@/consts/guestLesson';
@@ -30,11 +31,11 @@ export function TryDoneCard({ counts, total, onRedo }: { counts: TryDoneCounts; 
           <Link to={`/login?next=${next}`} className={TERA_BUTTON} data-testid="try-done-wallet">
             {t('try.done.wallet')}
           </Link>
-          <WebOnly>
+          {!FOCUS_BUILD && <WebOnly>
             <Link to={`/signup?next=${next}`} className={TRY_SECONDARY} data-testid="try-done-email">
               {t('try.done.email')}
             </Link>
-          </WebOnly>
+          </WebOnly>}
           {passed < total && (
             <button type="button" onClick={onRedo} className={TRY_SECONDARY} data-testid="try-done-redo">
               {t('try.done.redo')}

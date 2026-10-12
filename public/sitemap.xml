@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://hackathon-colosseum.178-105-2-230.sslip.io/</loc></url>
-  <url><loc>https://hackathon-colosseum.178-105-2-230.sslip.io/bounties</loc></url>
-  <url><loc>https://hackathon-colosseum.178-105-2-230.sslip.io/world</loc></url>
-  <url><loc>https://hackathon-colosseum.178-105-2-230.sslip.io/login</loc></url>
-  <url><loc>https://hackathon-colosseum.178-105-2-230.sslip.io/u/CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya</loc></url>
-  <url><loc>https://hackathon-colosseum.178-105-2-230.sslip.io/c/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG</loc></url>
+  <url><loc>https://hackathon.iterahq.dev/</loc></url>
+  <url><loc>https://hackathon.iterahq.dev/world</loc></url>
+  <url><loc>https://hackathon.iterahq.dev/login</loc></url>
+  <url><loc>https://hackathon.iterahq.dev/u/CHJBdsVLj3ZUJSRWc2EkxXFfG2nU98dUx5Gam94kGfya</loc></url>
+  <url><loc>https://hackathon.iterahq.dev/c/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG</loc></url>
 </urlset>

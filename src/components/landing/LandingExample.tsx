@@ -25,7 +25,7 @@ export function LandingExample() {
       <img src={profile.avatar.imageUrl} alt="" draggable={false} className="h-16 w-16 shrink-0 rounded-full bg-[#0A0908] object-cover ring-2 ring-[#3FD17F]" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className={`${LABEL} text-[#A0978A]`}>
-          {t('landing.example.label')} · {shortAddress(profile.wallet)}
+          {t('landing.example.label')} · <span className="normal-case tracking-normal" data-testid="landing-example-wallet">{shortAddress(profile.wallet)}</span>
         </span>
         {cert && (
           <span className="[font:700_22px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">

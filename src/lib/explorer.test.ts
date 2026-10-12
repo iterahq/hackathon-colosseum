@@ -14,7 +14,7 @@ describe('explorer links', () => {
   });
 
   it('shortens long addresses only', () => {
-    expect(shortAddress('7xKpQrstuvwxyz3Fa')).toBe('7xKp…3Fa');
+    expect(shortAddress('7xKpQrstuvwxyz3Fa')).toBe('7xKp…z3Fa');
     expect(shortAddress('abc')).toBe('abc');
   });
 

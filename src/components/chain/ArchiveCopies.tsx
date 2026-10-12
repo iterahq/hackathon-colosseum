@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { FOCUS_EARN_STORY_OFF } from '@/config/focus';
 import { Link } from 'react-router-dom';
 import { LINK, SECTION_TITLE } from '@/components/bounty/bountyUi';
 import { BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from '@/components/shop/shopStyles';
@@ -100,7 +101,7 @@ export function ArchiveCopies({ asset }: { asset: string }) {
             )}
           </div>
           <p className={SMALL}>
-            {t('archive.signed', { signer: shortAddress(data.signer), owner: owner.data ? `${owner.data.slice(0, 6)}…${owner.data.slice(-4)}` : '…' })}
+            {t('archive.signed', { signer: shortAddress(data.signer), owner: owner.data ? shortAddress(owner.data) : '…' })}
             {when && ` ${t('archive.when', { date: when })}`}
           </p>
           <p className={SMALL}>{t('archive.gateways')}</p>
@@ -115,7 +116,7 @@ export function ArchiveCopies({ asset }: { asset: string }) {
           )}
         </>
       )}
-      <Link to="/verify#durable" className={`${LINK} self-start`}>{t('archive.learn')}</Link>
+      {!FOCUS_EARN_STORY_OFF && <Link to="/verify#durable" className={`${LINK} self-start`}>{t('archive.learn')}</Link>}
     </section>
   );
 }

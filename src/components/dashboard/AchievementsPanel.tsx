@@ -37,7 +37,7 @@ function Thumb({ page, onOpen }: { page: PassportPageData; onOpen: (trailId: str
   );
 }
 
-/** "Tera's Certifications", compact: one thumbnail per trail, the counts, a single-row medal shelf. */
+/** The learner's certifications, compact: one thumbnail per trail, the counts, a single-row medal shelf. */
 export function AchievementsPanel({ pages, medals, stamps, onOpenTrail }: Props) {
   const { t } = useI18n();
   const earnedMedals = medals.filter((m) => m.earned).length;

@@ -16,7 +16,7 @@ describe('DirectInviteeBlock', () => {
   it('names the wallet, links to its profile, says who enforces it and can be removed', () => {
     const onRemove = vi.fn();
     show(state(), WALLET, vi.fn(), onRemove);
-    expect(screen.getByTestId('bounty-post-direct-title')).toHaveTextContent('Missão direta para BRNk…Upx');
+    expect(screen.getByTestId('bounty-post-direct-title')).toHaveTextContent('Missão direta para BRNk…6Upx');
     expect(screen.getByTestId('bounty-post-direct')).toHaveTextContent('programa de escrow na Solana');
     expect(screen.getByTestId('bounty-post-direct-profile')).toHaveAttribute('href', `/u/${WALLET}`);
     fireEvent.click(screen.getByTestId('bounty-post-direct-remove'));

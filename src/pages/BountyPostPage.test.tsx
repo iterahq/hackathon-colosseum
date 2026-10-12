@@ -23,7 +23,7 @@ describe('BountyPostPage ?to=', () => {
 
   it('signed out: names the invitee and keeps it through sign-in', () => {
     show(`/bounties/post?to=${WALLET}`);
-    expect(screen.getByTestId('bounty-post-direct-signin')).toHaveTextContent('BRNk…pUx'.replace('pUx', WALLET.slice(-3)));
+    expect(screen.getByTestId('bounty-post-direct-signin')).toHaveTextContent(`BRNk…${WALLET.slice(-4)}`);
     expect(screen.getByRole('link', { name: /Entrar/ })).toHaveAttribute('href', `/login?next=${encodeURIComponent(`/bounties/post?to=${WALLET}`)}`);
     expect(screen.queryByTestId('bounty-post-to-ignored')).toBeNull();
   });

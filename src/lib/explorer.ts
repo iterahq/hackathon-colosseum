@@ -11,8 +11,8 @@ export const chainUrl = (signature: string | null, asset: string | null): string
 export const assetFirstUrl = (asset: string | null, signature: string | null): string | null =>
   asset ? addressUrl(asset) : signature ? txUrl(signature) : null;
 
-/** `7xKpAbc...3Fa` -> `7xKp…3Fa` */
-export const shortAddress = (address: string): string => (address.length > 10 ? `${address.slice(0, 4)}…${address.slice(-3)}` : address);
+/** `7xKpAbc...x3Fa` -> `7xKp…x3Fa`: the one shape an address is shortened to, 4…4, in its real case (base58 is case-sensitive). */
+export const shortAddress = (address: string): string => (address.length > 10 ? `${address.slice(0, 4)}…${address.slice(-4)}` : address);
 
 export type ExplorerKind = 'tx' | 'address';
 export interface ExplorerLinkOption {
