@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { AppTopBar } from '@/components/header/AppTopBar';
-import { FOCUS_BUILD, FOCUS_SHOP_ONLY, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
+import { FOCUS_BUILD, FOCUS_PAID_TERAS_OFF, FOCUS_SHOP_ONLY, FOCUS_SOL_ONLY_SHOP } from '@/config/focus';
 import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArcade } from '@/components/shop/arcade/ShopArcade';
@@ -58,7 +58,7 @@ export default function ShopPage() {
   }, [crystalPhase]);
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
-  const [section, setSection] = useState<ArcadeCategory>(FOCUS_SHOP_ONLY ? 'certs' : 'avatars');
+  const [section, setSection] = useState<ArcadeCategory>(FOCUS_SHOP_ONLY && FOCUS_PAID_TERAS_OFF ? 'certs' : 'avatars');
   const { hash } = useLocation();
   useEffect(() => {
     if (hash === '#invite') setSection('more');
@@ -150,7 +150,7 @@ export default function ShopPage() {
         )}
         {FOCUS_BUILD && shop.isSuccess && !wardrobe && (
           <footer className="flex flex-col gap-2 max-lg:pb-[72px]" data-testid="shop-footer">
-            <CircuitStrip wallet={companion.wallet} />
+            <CircuitStrip wallet={companion.wallet} compact />
             <Link to="/world" className="self-start [font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
           </footer>
         )}
@@ -164,7 +164,7 @@ export default function ShopPage() {
         targetTitle={targetCert?.title ?? null}
         outfit={buying?.kind === 'outfit' ? buying.key : companion.outfit}
         art={bought ? <LearnerAvatar avatar={bought} size="xl" /> : undefined}
-        action={bought && purchase.state.phase === 'paid' && avatar.key !== bought.key ? { label: t('tryon.equipNow'), onClick: () => (equipAvatar.mutate(bought), purchase.reset()) } : null}
+        action={bought && purchase.state.phase === 'paid' && avatar.key !== bought.key ? { label: t('shop.avatar.useNow'), onClick: () => (equipAvatar.mutate(bought), purchase.reset()) } : null}
         onRetry={purchase.retry}
         onFund={() => void purchase.fund()}
         onClose={purchase.reset}
@@ -176,7 +176,7 @@ export default function ShopPage() {
         targetTitle={targetCert?.title ?? null}
         outfit={crystalItem?.kind === 'outfit' ? crystalItem.key : companion.outfit}
         art={crystalBought ? <LearnerAvatar avatar={crystalBought} size="xl" /> : undefined}
-        action={crystalBought && crystalPay.state.phase === 'paid' && avatar.key !== crystalBought.key ? { label: t('tryon.equipNow'), onClick: () => (equipAvatar.mutate(crystalBought), crystalPay.reset()) } : null}
+        action={crystalBought && crystalPay.state.phase === 'paid' && avatar.key !== crystalBought.key ? { label: t('shop.avatar.useNow'), onClick: () => (equipAvatar.mutate(crystalBought), crystalPay.reset()) } : null}
         onRetry={crystalPay.retry}
         onFund={crystalPay.reset}
         onClose={crystalPay.reset}

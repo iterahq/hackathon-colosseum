@@ -20,7 +20,12 @@ const keys = (items: ShopItem[]) => items.map((i) => i.key);
 
 describe('focusShopItems', () => {
   it('lists the certification cosmetics and every Tera: free, for sale and earn-only; nothing else', () => {
-    expect(keys(focusShopItems(list, 'shelf', true, false))).toEqual(['ink_gold', 'frame_fire', 'face_happy', 'base_lider', 'special_dourado', 'event_space', 'event_natal']);
+    expect(keys(focusShopItems(list, 'shelf', true, false, false))).toEqual(['ink_gold', 'frame_fire', 'face_happy', 'base_lider', 'special_dourado', 'event_space', 'event_natal']);
+  });
+
+  it('leaves the starter faces off the shelf when they are unlisted, and keeps them in the wardrobe', () => {
+    expect(keys(focusShopItems(list, 'shelf', true, false, true))).toEqual(['ink_gold', 'frame_fire', 'base_lider', 'special_dourado', 'event_space', 'event_natal']);
+    expect(keys(focusShopItems(list, 'wardrobe', true, false, true))).toContain('face_happy');
   });
 
   it('wears only the free faces and what the wallet owns: a Tera on the shelf is not in the wardrobe', () => {
@@ -35,7 +40,7 @@ describe('focusShopItems', () => {
 
 describe('the paid Tera shelf off', () => {
   it('drops the Teras for sale the learner does not own and keeps the free faces, the earn-only tiers and the cosmetics', () => {
-    expect(keys(focusShopItems(list, 'shelf', true, true))).toEqual(['ink_gold', 'frame_fire', 'face_happy', 'special_dourado', 'event_space']);
+    expect(keys(focusShopItems(list, 'shelf', true, true, false))).toEqual(['ink_gold', 'frame_fire', 'face_happy', 'special_dourado', 'event_space']);
   });
 
   it('keeps a Tera the wallet already bought, on the shelf and in the wardrobe', () => {

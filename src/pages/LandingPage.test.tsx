@@ -30,7 +30,8 @@ const data = vi.hoisted(() => ({
     },
   } as Record<string, unknown>,
 }));
-vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ signInWithSolana: vi.fn() }) }));
+// This file describes the landing with the paid Tera shelf off (a build with VITE_PAID_TERAS=off): the default is on.
+vi.mock('@/config/focus', async (original) => ({ ...(await original<typeof import('@/config/focus')>()), FOCUS_PAID_TERAS_OFF: true }));
 vi.mock('@/hooks/useBounties', () => ({ useBountyBoard: () => data.board }));
 vi.mock('@/hooks/useCircuit', () => ({ useCircuit: () => data.circuit }));
 const catalog = vi.hoisted(() => ({ source: 'bundled' as 'bundled' | 'live' }));
