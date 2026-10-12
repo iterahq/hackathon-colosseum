@@ -215,6 +215,11 @@ export const queryKeys = {
   classPodium: {
     chain: (sessionId: string) => ['classPodium', 'chain', sessionId] as const,
   },
+  // SOL balance of a wallet, read from the public node by the browser.
+  walletBalance: {
+    all: ['wallet-balance'] as const,
+    of: (address: string) => ['wallet-balance', address] as const,
+  },
   shop: {
     all: ['shop'] as const,
     items: (userId: string, locale: string) => ['shop', 'items', userId, { locale }] as const,

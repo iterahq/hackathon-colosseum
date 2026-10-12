@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { formatSol, formatUsdCents, priceLabel } from './shopPrice';
+import { formatSol, formatSolBalance, formatUsdCents, priceLabel } from './shopPrice';
 
 describe('shop price', () => {
   it('formats US cents', () => {
     expect(formatUsdCents(10)).toBe('US$ 0.10');
     expect(formatUsdCents(125)).toBe('US$ 1.25');
     expect(formatUsdCents(-4)).toBe('US$ 0.00');
+  });
+
+  it('shows a wallet balance with at most 4 decimals, rounded down', () => {
+    expect(formatSolBalance(2_000_000_000)).toBe('2');
+    expect(formatSolBalance(1_998_950_000)).toBe('1.9989');
+    expect(formatSolBalance(10_000_000)).toBe('0.01');
+    expect(formatSolBalance(99_999)).toBe('0');
+    expect(formatSolBalance(-5)).toBe('0');
   });
 
   it('formats lamports as SOL without trailing zeros', () => {

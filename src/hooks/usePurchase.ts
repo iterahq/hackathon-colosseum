@@ -58,6 +58,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
       );
       void queryClient.invalidateQueries({ queryKey: key });
       void queryClient.invalidateQueries({ queryKey: queryKeys.shop.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.walletBalance.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.achievements.mine(userId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.circuit.all });
     },

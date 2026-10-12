@@ -12,6 +12,13 @@ export function formatSol(lamports: number): string {
   return text === '' ? '0' : text;
 }
 
+/** A wallet balance as a wallet shows it: at most 4 decimals, never rounded up past what the wallet holds. 1998950000 -> "1.9989". */
+export function formatSolBalance(lamports: number): string {
+  const units = Math.floor(Math.max(0, lamports) / 100_000);
+  const text = (units / 10_000).toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+  return text === '' ? '0' : text;
+}
+
 /** "US$ 1,000.00" is the backend's English shape; a Portuguese screen reads it as "US$ 1.000,00". The SOL part is left as is. */
 export function localizePriceLabel(label: string, locale: string): string {
   if (locale !== 'pt') return label;
