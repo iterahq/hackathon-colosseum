@@ -67,11 +67,12 @@ describe('teraLore', () => {
     expect(new Set(all).size).toBe(LORE_KEYS.length);
   });
 
-  it('shows a paid avatar under its catalog rarity, never under the free moods', () => {
-    expect(['color_roxo', 'color_dourado', 'acc_oculos_codificador', 'rarity_comum'].map(loreTierOf)).toEqual(['common', 'common', 'common', 'common']);
-    expect(['lang_solidity', 'rarity_raro'].map(loreTierOf)).toEqual(['rare', 'rare']);
+  it('shows no paid avatar under the free moods, and the craft Teras under the first paid tier', () => {
+    const paid = LORE_KEYS.filter((k) => !k.startsWith('tera_') && !k.startsWith('code_') && k !== 'brand_tera_hero');
+    for (const key of paid) expect(loreTierOf(key), key).not.toBe('free');
+    for (const key of ['acc_programador', 'acc_fogueira', 'acc_oculos_tech', 'acc_capuz_web3', 'acc_chain_link', 'acc_cyber_chip']) expect(loreTierOf(key), key).toBe('common');
+    for (const key of ['base_focado', 'base_estudioso', 'base_determinado', 'base_disciplinado', 'base_focado_no_objetivo', 'base_criativo', 'base_analitico', 'color_roxo', 'color_dourado', 'acc_oculos_codificador', 'lang_solidity', 'rarity_comum', 'rarity_raro']) expect(loreTierOf(key), key).toBe('rare');
     expect(loreTierOf('rarity_epico')).toBe('epic');
     expect(loreTierOf('rarity_lendario')).toBe('legendary');
-    expect(loreTierOf('code_404')).toBe('free');
   });
 });
