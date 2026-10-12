@@ -67,7 +67,7 @@ export function ArcadeInspector({ item, actions, avatar, lives, certs, targetId,
   return (
     <>
       <aside className={`${CARD} hidden min-h-0 flex-col overflow-hidden border-b-[5px] border-b-[#2E2A25] lg:flex`} aria-label={title} data-testid="shop-inspector" data-item={item.key}>
-        <div className="relative flex h-[296px] flex-none flex-col items-center justify-center gap-2 overflow-hidden border-b border-[#262320] bg-[#0F0D0B] py-3">
+        <div className="relative flex h-[min(296px,30vh)] flex-none flex-col items-center justify-center gap-2 overflow-hidden border-b border-[#262320] bg-[#0F0D0B] py-3">
           <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(55% 60% at 50% 50%, ${edge}3D, transparent 72%)` }} />
           <motion.div key={`${item.key}-${on}`} initial={reduced ? false : { opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.16 }} className="relative flex min-h-0 flex-1 items-center justify-center [&_[data-testid=tryon-avatar-art]]:!h-[212px] [&_[data-testid=tryon-avatar-art]]:!w-[212px]" data-testid="inspector-stage">
             {tryable ? <TryOnStage item={item} on={on} avatar={avatar} target={target} /> : <ArcadeArt item={item} avatar={avatar} lives={lives} large />}

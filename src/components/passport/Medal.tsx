@@ -40,7 +40,7 @@ export function Medal({ glyph, kind, credentialId, title, caption, earned, accen
       {earned && minted ? (
         <OnChainMark txSignature={txSignature} assetAddress={assetAddress} />
       ) : (
-        <span className="line-clamp-2 [font:500_10px/1.3_JetBrains_Mono] text-[#A0978A]">{caption}</span>
+        <span className="line-clamp-3 [font:500_10px/1.3_JetBrains_Mono] text-[#A0978A]">{caption}</span>
       )}
     </div>
   );
