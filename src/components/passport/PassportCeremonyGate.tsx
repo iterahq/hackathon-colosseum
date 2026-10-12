@@ -4,7 +4,7 @@ import { useCompanion } from '@/hooks/useCompanion';
 import { useWalletLink } from '@/hooks/useWalletLink';
 import { usePassport, usePassportPrefetch } from '@/hooks/usePassport';
 import { useI18n } from '@/i18n';
-import { preparingModel } from '@/utils/lessonEnd';
+import { confirmedStamp, preparingModel } from '@/utils/lessonEnd';
 import { LoopPanel } from '@/components/loop/LoopPanel';
 import { LessonHeldNotice } from './HeldStampNotice';
 import { StampCeremony } from './StampCeremony';
@@ -77,7 +77,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
         outfit={outfit}
         hasWallet={Boolean(link.wallet) || link.pending}
       />
-      {!preparing && <LoopPanel trail={trail} day={day} />}
+      {!preparing && <LoopPanel trail={trail} day={day} stamp={confirmedStamp(view.model, trail, day)} />}
     </div>
   );
 }

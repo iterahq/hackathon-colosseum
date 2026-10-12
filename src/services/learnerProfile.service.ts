@@ -157,6 +157,7 @@ export async function getLearnerProfile(wallet: string, lang: 'pt' | 'en', { fre
   const live = () =>
     fetch(`${url}/functions/v1/learner-profile/${encodeURIComponent(wallet)}?lang=${lang}${fresh ? '&fresh=1' : ''}`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      cache: 'no-store',
     });
   const res = await ((fresh ? null : takePreload('__iteraProfile', wallet, lang)) ?? live()).catch(live);
   if (res.status === 400 || res.status === 404) return { status: 'invalid' };
