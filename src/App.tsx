@@ -352,9 +352,9 @@ const App = () => (
                 <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
                 <Route path="/bounties" element={<LazyRoute><BountiesPage /></LazyRoute>} />
                 <Route path="/talent" element={<LazyRoute><TalentPage /></LazyRoute>} />
-                <Route path="/bounties/manage" element={<LazyRoute><BountyManagePage /></LazyRoute>} />
-                <Route path="/bounties/post" element={<LazyRoute><BountyPostPage /></LazyRoute>} />
-                <Route path="/bounties/mine" element={<LazyRoute><BountyMinePage /></LazyRoute>} />
+                <Route path="/bounties/manage" element={<RequireAuth><LazyRoute><BountyManagePage /></LazyRoute></RequireAuth>} />
+                <Route path="/bounties/post" element={<RequireAuth><LazyRoute><BountyPostPage /></LazyRoute></RequireAuth>} />
+                <Route path="/bounties/mine" element={<RequireAuth><LazyRoute><BountyMinePage /></LazyRoute></RequireAuth>} />
                 <Route path="/bounties/:slug" element={<LazyRoute><BountyPage /></LazyRoute>} />
                 {/* Public: every on-chain claim, with the steps to check it without trusting Itera. */}
                 <Route path="/verify" element={<LazyRoute><VerifyPage /></LazyRoute>} />
