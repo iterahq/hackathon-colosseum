@@ -44,7 +44,7 @@ export const SOCIAL_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'circuit.how': 'Metade de cada compra é movida pelo servidor da Itera, numa transferência pública na chain, para a carteira que paga a taxa de rede dos carimbos. Nenhum programa impõe essa divisão: qualquer pessoa confere a transferência. É por isso que nenhum aluno paga para ganhar uma certificação.',
     'circuit.purchase': '+{n} carimbos cobertos pra outros alunos',
-    'circuit.profile': 'as compras desta carteira já pagaram a taxa de rede de {n} carimbos de outros alunos.',
+    'circuit.profile': 'as compras desta carteira cobrem a taxa de rede de até {n} carimbos de outros alunos.',
   },
   en: {
     'live.report.chain.title': 'On-chain podium',
@@ -90,6 +90,6 @@ export const SOCIAL_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     // not-commerce: devnet test money (the page says nothing here has real value); the shop is a web-only route in the shell
     'circuit.how': "Half of every purchase is moved by Itera's server, in a public transfer on chain, to the wallet that pays the network fee of the stamps. No program enforces the split: anyone can check the transfer. That is why no learner pays to earn a certification.",
     'circuit.purchase': '+{n} stamps covered for other learners',
-    'circuit.profile': "this wallet's purchases have paid the network fee of {n} stamps of other learners.",
+    'circuit.profile': "this wallet's purchases cover the network fee of up to {n} stamps of other learners.",
   },
 };
