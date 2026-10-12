@@ -48,6 +48,27 @@ export interface ArcadeGroup {
   items: ShopItem[];
 }
 
+/**
+ * The supply of a tier, said per Tera: each Tera has its own cap, so adding the caps up ("2 of 800 minted" for eight
+ * Teras of 100) reads as one Tera with 800 copies.
+ */
+export function tierSupply(items: readonly ShopItem[], t: Translate): string {
+  const caps = new Set(items.map((i) => i.avatar?.supply.max ?? null));
+  if (caps.has(null)) return caps.size === 1 ? t('shop.avatar.unlimited') : t('arcade.capMixed');
+  return caps.size === 1 ? t('arcade.capEach', { max: [...caps][0] as number }) : t('arcade.capMixed');
+}
+
+/** The item the inspector shows: the learner's pick while it is among the groups on screen, else the first thing of those groups still to get. */
+export function pickWithin(shelf: ArcadeShelf, pickedKey: string | undefined, visible: readonly ArcadeGroup[]): ShopItem | null {
+  const shownItems = visible.flatMap((group) => group.items);
+  const inView = (item: ShopItem | null | undefined): item is ShopItem => Boolean(item) && shownItems.some((i) => i.key === item?.key);
+  const picked = shelf.items.find((i) => i.key === pickedKey);
+  if (inView(picked)) return picked;
+  const usual = defaultPick(shelf);
+  if (inView(usual)) return usual;
+  return shownItems.find((i) => !has(i) && i.forSale !== false) ?? shownItems[0] ?? usual;
+}
+
 /** What a resale pays Itera, as a whole or one-decimal percentage: 500 -> "5". */
 export const royaltyPercent = (bps: number): string => String(Math.round(bps / 10) / 10);
 
@@ -67,7 +88,7 @@ export function groupsOf(shelf: ArcadeShelf, t: Translate, locale: string): Arca
     const { rows, free } = rowsOf(shelf.items.filter((i) => !earnOnly(i)));
     const tiers = rows.map((row): ArcadeGroup => {
       const crystals = row.priceCrystals != null ? ` · ${t('shop.crystals', { n: formatCount(row.priceCrystals, locale) })}` : '';
-      const supply = row.supply.max == null ? t('shop.avatar.unlimited') : t('arcade.minted', { minted: row.supply.minted, max: row.supply.max });
+      const supply = tierSupply(row.items, t);
       return { id: row.rarity, title: row.tierName, note: `${localizePriceLabel(row.priceShort, locale)}${crystals} · ${supply}${resaleNote(row.items, t)}`, edge: RARITY_EDGE[row.rarity], items: row.items };
     });
     const rank = (i: ShopItem) => ROW_ORDER.indexOf(i.avatar?.rarity ?? 'common');

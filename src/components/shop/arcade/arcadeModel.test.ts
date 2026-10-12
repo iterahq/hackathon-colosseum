@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ShopItem } from '@/types/shop';
 import type { AvatarOffer } from '@/types/avatar';
-import { compactCount, defaultPick, groupsOf, royaltyPercent, shelvesOfArcade, tileLine } from './arcadeModel';
+import { compactCount, defaultPick, groupsOf, pickWithin, royaltyPercent, shelvesOfArcade, tierSupply, tileLine } from './arcadeModel';
 
 const t = (key: string) => key;
 const base = (over: Partial<ShopItem>): ShopItem => ({ key: 'k', kind: 'outfit', title: 'T', description: '', priceUsdCents: 20, priceLamports: 1, priceLabel: 'US$ 0.20 ≈ 0.001 SOL', art: {}, owned: false, equipped: false, ownedRefs: [], ...over });
@@ -33,8 +33,8 @@ describe('the Tera shelf', () => {
   });
 
   it('says a tier for sale is transferable, and the resale fee only once one is set on chain', () => {
-    expect(groups[0].note).toBe('US$ 10.00 · arcade.minted:0,100 · shelf.transferable · shelf.fee:5');
-    expect(groups[1].note).toBe('US$ 1.00 · arcade.minted:3,500 · shelf.transferable');
+    expect(groups[0].note).toBe('US$ 10.00 · arcade.capEach:100 · shelf.transferable · shelf.fee:5');
+    expect(groups[1].note).toBe('US$ 1.00 · arcade.capEach:500 · shelf.transferable');
     expect(royaltyPercent(250)).toBe('2.5');
   });
 
@@ -43,6 +43,25 @@ describe('the Tera shelf', () => {
     const [mixed] = shelvesOfArcade([held, tera('pipo', { transferable: true, royaltyBps: 500 })]);
     const [common] = groupsOf(mixed, (key, params) => (params ? `${key}:${Object.values(params).join(',')}` : key), 'en');
     expect(common.note).toContain('shelf.transferable · shelf.fee:5');
+  });
+
+  it('says the cap of a tier per Tera and never adds the caps up', () => {
+    const say = (key: string, params?: Record<string, string | number>) => (params ? `${key}:${Object.values(params).join(',')}` : key);
+    const eight = Array.from({ length: 8 }, (_, n) => tera(`m${n}`, { rarity: 'epic', supply: { minted: n === 0 ? 2 : 0, max: 100 } }));
+    expect(tierSupply(eight, say)).toBe('arcade.capEach:100');
+    expect(tierSupply([tera('a', { supply: { minted: 0, max: 100 } }), tera('b', { supply: { minted: 0, max: 25 } })], say)).toBe('arcade.capMixed');
+    expect(tierSupply([tera('a', {}), tera('b', {})], say)).toBe('shop.avatar.unlimited');
+    expect(tierSupply([tera('a', {}), tera('b', { supply: { minted: 0, max: 5 } })], say)).toBe('arcade.capMixed');
+  });
+
+  it('under a tier filter the inspector shows a Tera of that tier, and keeps the pick while it is on screen', () => {
+    const only = (id: string) => groups.filter((g) => g.id === id);
+    expect(pickWithin(shelf, undefined, groups)?.key).toBe('ardo');
+    expect(pickWithin(shelf, undefined, only('common'))?.key).toBe('pipo');
+    expect(pickWithin(shelf, 'ardo', only('rare'))?.key).toBe('dom');
+    expect(pickWithin(shelf, 'dom', only('rare'))?.key).toBe('dom');
+    expect(pickWithin(shelf, undefined, only('earn'))?.key).toBe('phoenix');
+    expect(pickWithin(shelf, undefined, only('free'))?.key).toBe('face');
   });
 
   it('gives the earn-only group no price: only how it is earned', () => {
