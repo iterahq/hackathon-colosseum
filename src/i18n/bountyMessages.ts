@@ -332,7 +332,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.escrow.approver.wallet': 'Só esta carteira libera a recompensa. As chaves da Itera não podem.',
     'bounty.escrow.approver.itera': 'Chave da tesouraria da Itera (missão do time)',
     'bounty.custody.wallet':
-      'A carteira do patrocinador financiou este escrow, é o endereço de devolução e a única chave que aprova a entrega. As chaves da Itera não movem este dinheiro. Se ninguém entregar até o prazo, a recompensa volta para a carteira do patrocinador.',
+      'A carteira do patrocinador é o endereço de devolução deste escrow e a única chave que aprova a entrega, seja qual for a carteira que travou o valor (o registro abaixo diz qual). As chaves da Itera não movem este dinheiro. Se ninguém entregar até o prazo, a recompensa volta para a carteira do patrocinador.',
     'bounty.report.cta': 'Denunciar esta missão',
     'bounty.report.reason': 'O que há de errado? (3 a 300 caracteres)',
     'bounty.report.send': 'Enviar denúncia',
@@ -894,7 +894,7 @@ export const BOUNTY_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'bounty.escrow.approver.wallet': "Only this wallet can release the reward. Itera's keys cannot.",
     'bounty.escrow.approver.itera': 'Itera treasury key (team bounty)',
     'bounty.custody.wallet':
-      "The sponsor's wallet funded this escrow, is its refund address and is the only key that can approve the delivery. Itera's keys cannot move this money. If nobody delivers by the deadline, the reward returns to the sponsor's wallet.",
+      "The sponsor's wallet is this escrow's refund address and the only key that can approve the delivery, whichever wallet locked the reward (the ledger below names it). Itera's keys cannot move this money. If nobody delivers by the deadline, the reward returns to the sponsor's wallet.",
     'bounty.report.cta': 'Report this bounty',
     'bounty.report.reason': 'What is wrong? (3 to 300 characters)',
     'bounty.report.send': 'Send report',
