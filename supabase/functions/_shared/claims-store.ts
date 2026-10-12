@@ -1,6 +1,6 @@
 import type { ActivityNode, ProgressRow, UnitNode } from './awards.ts';
 import { graphOf } from './capability-graph.ts';
-import { claimsOf, evidenceDocument, expectedClaims, sha256Hex, type ProvenClaim } from './claims.ts';
+import { claimsOf, evidenceDocument, expectedClaims, journeyOf, sha256Hex, type AttemptRow, type ProvenClaim } from './claims.ts';
 import type { IteraClient } from './db.ts';
 import { lessonProof, verifiedShare, type PassingAttempt } from './proof.ts';
 
@@ -75,7 +75,7 @@ export async function markClaimsWritten(db: IteraClient, rowId: string, signatur
 
 export interface WalletGraphData {
   trails: Array<{ id: string; trail: number; title: Record<string, string> }>;
-  proofs: Array<{ user_achievement_id: string; claim_id: string; evidence_hash: string; tx_signature: string | null; proven_at: string }>;
+  proofs: Array<{ user_achievement_id: string; claim_id: string; evidence_hash: string; tx_signature: string | null; proven_at: string; evidence?: string | null }>;
 }
 
 /** The trails of a program and every claim recorded for these certification rows. */
@@ -83,7 +83,7 @@ export async function loadGraphData(db: IteraClient, programSlug: string, rowIds
   const [units, proofs] = await Promise.all([
     db.from('units').select('id,ordinal,title_i18n,programs!inner(slug)').eq('programs.slug', programSlug).order('ordinal'),
     rowIds.length > 0
-      ? db.from('claim_proofs').select(CLAIM_COLUMNS).in('user_achievement_id', rowIds).order('proven_at')
+      ? db.from('claim_proofs').select(`${CLAIM_COLUMNS},evidence`).in('user_achievement_id', rowIds).order('proven_at')
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (units.error) throw new Error(`units: ${units.error.message}`);
@@ -106,6 +106,38 @@ export async function loadEvidence(db: IteraClient, wallet: string, claimId: str
     .maybeSingle();
   if (error) throw new Error(`claim_proofs evidence: ${error.message}`);
   return data ? { claim: data.claim_id, lesson_id: data.lesson_id, evidence: data.evidence, evidence_hash: data.evidence_hash, tx_signature: data.tx_signature } : null;
+}
+
+const JOURNEY_ROWS = 600;
+
+/**
+ * The attempt track behind one claim of a wallet: the verdicts of the lesson
+ * that proved it, from `graded_attempts`. Reads the verdict, the mode and the
+ * activity only; never an answer or a hash. `null` when that wallet has not
+ * proven the claim.
+ */
+export async function loadJourney(db: IteraClient, wallet: string, claimId: string): Promise<ReturnType<typeof journeyOf> | null> {
+  const proof = await db
+    .from('claim_proofs')
+    .select('lesson_id,user_achievements!inner(user_id)')
+    .eq('wallet', wallet)
+    .eq('claim_id', claimId)
+    .order('proven_at')
+    .limit(1)
+    .maybeSingle();
+  if (proof.error) throw new Error(`claim_proofs journey: ${proof.error.message}`);
+  const found = proof.data as unknown as { lesson_id: string; user_achievements: { user_id: string } | null } | null;
+  if (!found?.user_achievements?.user_id) return null;
+  const attempts = await db
+    .from('graded_attempts')
+    .select('activity_id,mode,passed')
+    .eq('user_id', found.user_achievements.user_id)
+    .eq('lesson_id', found.lesson_id)
+    .order('created_at')
+    .order('id')
+    .limit(JOURNEY_ROWS);
+  if (attempts.error) throw new Error(`graded_attempts journey: ${attempts.error.message}`);
+  return journeyOf((attempts.data ?? []) as AttemptRow[]);
 }
 
 /**
