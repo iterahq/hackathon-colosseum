@@ -3,39 +3,58 @@
 Colosseum "Crypto World's Fair" submission by Samuel Stefano (DevFellowship, Brazil).
 Everything on-chain runs on **Solana devnet**.
 
-**Itera** is a Duolingo-style microlearning app for programming: five-day trails of short activities, real code
-checks, five lives, and a green phoenix mascot, Tera, who explains every miss. The product existed before the
-hackathon and runs in production with real cohorts (`iterahq/itera-player`). This repository is a copy made on
-2026-10-09 on which the Web3 layer was built during the competition. What is new and what is inherited is
-spelled out in [Built during the hackathon](#what-was-built-during-the-hackathon-vs-what-existed-before) and in
+**Itera** is a microlearning app for programming: short daily lessons of 5 to 15 minutes, hands-on activities
+with a real code editor, and a green phoenix mascot, Tera. The product existed before the hackathon and runs in
+production with real cohorts (`iterahq/itera-player`). This repository is a copy made on 2026-10-09 on which the
+Web3 layer was built during the competition. What is new and what is inherited is spelled out in
+[Built during the hackathon](#what-was-built-during-the-hackathon-vs-what-existed-before) and in
 [`docs/hackathon/BUILT-DURING-HACKATHON.md`](docs/hackathon/BUILT-DURING-HACKATHON.md).
 
-**Thesis.** A beginner needs proof they built themselves, that anyone can check. A PDF proves nothing; a wallet
-does. So the learner's credential is a soulbound Metaplex Core asset that is alive: every finished day is a
-stamp (an on-chain attribute update the server pays for), the fifth turns it gold, a public page verifies it with
-no login, and the same wallet that holds it can dress it through cent-sized purchases that land on the asset.
+**Thesis: learn, prove, own.** A beginner needs proof they built themselves, that anyone can check. A PDF proves
+nothing; a wallet does. So the learner's certification is a soulbound Metaplex Core asset that is alive: every
+finished day is a stamp (an on-chain attribute update the server pays for), the fifth turns it gold, and a public
+page verifies it with no login. The same wallet buys a Tera avatar with a cent-sized payment in SOL.
 
 ## Try it
 
-Live app: **https://hackathon-colosseum.178-105-2-230.sslip.io**
+Live app: **https://hackathon.iterahq.dev**
+(the same deployment also answers at `https://hackathon-colosseum.178-105-2-230.sslip.io`, the address of the
+example links below).
 
-You need the Phantom wallet set to **devnet** (Settings > Developer Settings > Testnet Mode). The app has a
-built-in devnet faucet, so an empty wallet can still pay for a first shop item.
+You need the Phantom wallet set to **devnet** (Settings > Developer Settings > Testnet Mode). When a wallet is short
+for a small purchase, the purchase dialog offers the built-in devnet faucet.
 
-1. Open the site, choose "Continue with Phantom" (English UI; the language switch is in the header) and sign the sign-in message (Sign in with Solana).
-2. Pick a nickname when asked (first sign-in only).
-3. Open a trail (for example Week 1 · HTML) and open a day. Finishing a whole day is what stamps it.
-4. Finish the day. The stamp ceremony appears; the certification is minted or updated on devnet, and you pay nothing.
-5. Open the certificate page (`/c/<asset>`; the `/passport` page has a copy-link button and `/u/<your wallet>` links each asset). It reads the
-   asset from the chain with no login: owner, frozen (soulbound), `days_done`, collection, issuer. Open the
-   Explorer link to compare.
-6. Open the shop (`/shop`) and buy an item with devnet SOL (cent-sized). Phantom asks you to sign; the effect
-   (a lens, an ink, a life) is then written to your assets. Your public profile is `/u/<your wallet>`.
+1. Open the site and choose "Connect Wallet". Phantom opens; confirm the sign-in message (Sign in with Solana).
+   There is no e-mail and no password.
+2. The header has four tabs: Trails, Certifications, World, Shop.
+3. In Trails, open Week 1 · HTML and then Day 1. Day 1 is four short activities: an X-ray of a page, a multiple
+   choice, a matching exercise and a code editor with a live preview. The other days have about 16 activities each.
+4. Finish the day. An activity you missed comes back at the end; nothing is lost for a miss. The day is then stamped:
+   the certification is minted or updated on devnet, and you pay nothing. A chest opens with a Tera avatar.
+5. Open Certifications. The HTML certification shows what you have proven and what is left, and links to the asset.
+   The public page `/c/<asset>` reads it from the chain with no login: owner, frozen (soulbound), `days_done`,
+   collection, issuer. Open the Explorer link to compare. `/u/<your wallet>` is your public profile.
+6. Open Shop and buy a Tera with devnet SOL (from about US$ 0.20). Phantom shows the amount and asks you to confirm;
+   the purchase dialog links to the transaction. The avatar is then yours to wear on your profile and in World.
 
-A fresh account has day progress to earn; a full trail is 5 days of about 16 short activities each. A finished
-example to open without playing: certificate
+A finished example to open without playing: certificate
 [`4WHw4G…ZdG`](https://hackathon-colosseum.178-105-2-230.sslip.io/c/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG)
 (gold, 5/5).
+
+### What the live build shows, and what this README also documents
+
+The live app is a **focus build** (`src/config/focus.ts`, on unless the build sets `VITE_FOCUS_BUILD=off`). It
+shows one loop, learn → prove → own, and hides everything beside it:
+
+- **Hidden in the live app:** lives (no hearts, a miss is redone), Phoenix Crystals, the life gift, the Circuit
+  mention in the shop, the video courses, the live classes and the subscription pages.
+- **Out of the landing and the home, still answering by URL:** the bounties (`/bounties`), the talent board
+  (`/talent`) and the escrow proof (`/verify`).
+- **The Web3 on Solana trails** are listed on the home as coming next and have no activities yet.
+
+Nothing was deleted: the code, the server functions and the on-chain programs of the hidden surfaces are in this
+repository and are described in the sections below. Where a section mentions lives, crystals, the gift Blink or
+bounties, it describes code that exists and is switched off or unlinked in the live build.
 
 ## What is on-chain
 
