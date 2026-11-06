@@ -39,7 +39,8 @@ env:
 jobs:
   build-and-push:
     name: Build image (push on main)
-    runs-on: [self-hosted, dfl-runner]
+    # Public repo: self-hosted dfl-runner blocked (allows_public=false). Authorized Tainan TG 2026-06-06.
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -102,7 +103,8 @@ jobs:
     name: Trigger Dokploy deploy (pull only)
     needs: [build-and-push]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, dfl-runner]
+    # Public repo: self-hosted dfl-runner blocked (allows_public=false). Authorized Tainan TG 2026-06-06.
+    runs-on: ubuntu-latest
     env:
       DOKPLOY_DEPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK_URL }}
     steps:
