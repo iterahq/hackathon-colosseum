@@ -82,8 +82,10 @@ jobs:
             VITE_ITERA_API_URL=${{ secrets.VITE_ITERA_API_URL }}
             VITE_UMAMI_WEBSITE_ID=${{ secrets.VITE_UMAMI_WEBSITE_ID }}
             GIT_SHA=${{ github.sha }}
+          # Q 9f13919c = C (Tainan TG 27804/27805): no PAT. The job GITHUB_TOKEN reads the
+          # @iterahq/* packages, because each package grants this repo Actions read access.
           secrets: |
-            NODE_AUTH_TOKEN=${{ secrets.ITERAHQ_PACKAGES_READ_TOKEN }}
+            NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=hackathon-colosseum-web
