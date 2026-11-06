@@ -47,6 +47,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Q 9f13919c = C: no PAT. Prove on EVERY run that the job GITHUB_TOKEN can download
+      # each private package that package-lock.json resolves from npm.pkg.github.com.
+      # The npm ci layer below can come from the layer cache, which would hide a 403.
+      - name: Check private package access (GITHUB_TOKEN)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          urls=$(jq -r '.packages[] | .resolved? // empty | select(startswith("https://npm.pkg.github.com/"))' package-lock.json | sort -u)
+          [ -n "$urls" ] || { echo "no npm.pkg.github.com package in package-lock.json"; exit 0; }
+          for u in $urls; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -L -H "Authorization: Bearer ${TOKEN}" "$u")
+            echo "$code $u"
+            [ "$code" = 200 ] || { echo "::error::GITHUB_TOKEN cannot read $u (HTTP $code). Give this repo Actions read access on the package."; exit 1; }
+          done
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
