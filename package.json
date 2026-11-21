@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@devfellowship/components": "^3.2.0",
-    "@devfellowship/observability": "^2.2.1",
+    "@devfellowship/observability": "^2.2.2",
     "@dnd-kit/react": "^0.3.2",
     "@hookform/resolvers": "^3.10.0",
     "@iterahq/activities": "*",
